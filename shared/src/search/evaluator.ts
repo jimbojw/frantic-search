@@ -17,7 +17,7 @@ const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
   oracle: "oracle", o: "oracle",
   color: "color", c: "color",
-  identity: "identity", id: "identity",
+  identity: "identity", id: "identity", commander: "identity", cmd: "identity",
   type: "type", t: "type",
   power: "power", pow: "power",
   toughness: "toughness", tou: "toughness",

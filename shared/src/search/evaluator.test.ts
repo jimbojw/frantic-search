@@ -453,6 +453,12 @@ describe("evaluate", () => {
   test("identity is card-level and matches on both faces", () => {
     expect(matchCount("id:br t:elf")).toBe(2);
   });
+
+  test("commander: is an alias for identity:", () => {
+    expect(matchCount("commander:w")).toBe(2);
+    expect(matchCount("commander:br")).toBe(2);
+    expect(matchCount("cmd:w")).toBe(2);
+  });
 });
 
 // ---------------------------------------------------------------------------
