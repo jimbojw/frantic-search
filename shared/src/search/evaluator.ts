@@ -147,7 +147,7 @@ function evalLeafField(
     }
     case "mana": {
       for (let i = 0; i < n; i++) {
-        buf[i] = index.manaCosts[i].includes(val) ? 1 : 0;
+        buf[i] = index.manaCostsLower[i].includes(valLower) ? 1 : 0;
       }
       break;
     }

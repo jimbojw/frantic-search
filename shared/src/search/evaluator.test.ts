@@ -7,7 +7,7 @@ import { Color, Format } from "../bits";
 import type { ColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
-// Synthetic card pool (8 cards = 9 face rows)
+// Synthetic card pool (9 cards = 10 face rows)
 // ---------------------------------------------------------------------------
 // Row #0  Birds of Paradise (front)  | G  | Creature — Elf               | pow=0
 // Row #1  Lightning Bolt             | R  | Instant                      | -
@@ -18,6 +18,7 @@ import type { ColumnarData } from "../data";
 // Row #6  Thalia, Guardian           | W  | Legendary Creature — Human   | pow=2
 // Row #7  Ayara, Widow (front)       | B  | Legendary Creature — Elf Noble     | pow=3
 // Row #8  Ayara, Furnace Queen (back)| BR | Legendary Creature — Phyrexian Elf | pow=4
+// Row #9  Dismember                  | B  | Instant                      | -
 //
 // Ayara is a transform DFC: rows 7+8 share canonical_face=7.
 
@@ -25,8 +26,8 @@ const powerDict = ["", "0", "*", "2", "3", "4"];
 const toughnessDict = ["", "1", "1+*", "3", "4"];
 
 const TEST_DATA: ColumnarData = {
-  names:          ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm", "Ayara, Furnace Queen"],
-  mana_costs:     ["{G}", "{R}", "{U}{U}", "{1}", "{1}{G}", "{W}{U}", "{1}{W}", "{1}{B}{B}", ""],
+  names:          ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm", "Ayara, Furnace Queen", "Dismember"],
+  mana_costs:     ["{G}", "{R}", "{U}{U}", "{1}", "{1}{G}", "{W}{U}", "{1}{W}", "{1}{B}{B}", "", "{1}{B/P}{B/P}"],
   oracle_texts:   [
     "Flying\n{T}: Add one mana of any color.",
     "Lightning Bolt deals 3 damage to any target.",
@@ -37,9 +38,10 @@ const TEST_DATA: ColumnarData = {
     "First strike\nNoncreature spells cost {1} more to cast.",
     "{T}, Sacrifice another creature or artifact: Ayara deals X damage to target opponent.",
     "At the beginning of combat on your turn, return up to one target artifact or creature card from your graveyard to the battlefield.",
+    "Target creature gets -5/-5 until end of turn.",
   ],
-  colors:         [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black, Color.Black | Color.Red],
-  color_identity: [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black | Color.Red, Color.Black | Color.Red],
+  colors:         [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black, Color.Black | Color.Red, Color.Black],
+  color_identity: [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black | Color.Red, Color.Black | Color.Red, Color.Black],
   type_lines:     [
     "Creature — Elf",
     "Instant",
@@ -50,11 +52,12 @@ const TEST_DATA: ColumnarData = {
     "Legendary Creature — Human Soldier",
     "Legendary Creature — Elf Noble",
     "Legendary Creature — Phyrexian Elf Noble",
+    "Instant",
   ],
-  powers:         [1, 0, 0, 0, 2, 0, 3, 4, 5],   // indices into powerDict
-  toughnesses:    [1, 0, 0, 0, 2, 0, 3, 3, 4],   // indices into toughnessDict
-  loyalties:      [0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:       [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  powers:         [1, 0, 0, 0, 2, 0, 3, 4, 5, 0],   // indices into powerDict
+  toughnesses:    [1, 0, 0, 0, 2, 0, 3, 3, 4, 0],   // indices into toughnessDict
+  loyalties:      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   legalities_legal: [
     Format.Commander | Format.Legacy,                   // #0 Birds
     Format.Commander | Format.Legacy | Format.Modern,   // #1 Bolt
@@ -65,19 +68,20 @@ const TEST_DATA: ColumnarData = {
     Format.Commander | Format.Legacy | Format.Modern,   // #6 Thalia
     Format.Commander | Format.Legacy | Format.Modern,   // #7 Ayara front (card-level, duplicated)
     Format.Commander | Format.Legacy | Format.Modern,   // #8 Ayara back  (card-level, duplicated)
+    Format.Commander | Format.Legacy | Format.Modern,   // #9 Dismember
   ],
   legalities_banned: [
     0, 0, 0,
     Format.Legacy,    // #3 Sol Ring
-    0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
   ],
   legalities_restricted: [
     0, 0, 0,
     Format.Vintage,   // #3 Sol Ring
-    0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
   ],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9],
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
   loyalty_lookup:  [""],
@@ -210,7 +214,7 @@ describe("evaluate", () => {
   test("oracle text field substring", () => {
     expect(matchCount("o:flying")).toBe(1);
     expect(matchCount("o:damage")).toBe(2);
-    expect(matchCount("o:target")).toBe(4);
+    expect(matchCount("o:target")).toBe(5);
   });
 
   test("color field with : (superset)", () => {
@@ -228,7 +232,7 @@ describe("evaluate", () => {
 
   test("type field matches card types", () => {
     expect(matchCount("t:creature")).toBe(5);
-    expect(matchCount("t:instant")).toBe(3);
+    expect(matchCount("t:instant")).toBe(4);
     expect(matchCount("t:artifact")).toBe(1);
   });
 
@@ -261,6 +265,13 @@ describe("evaluate", () => {
     expect(matchCount("m:{R}")).toBe(1);
   });
 
+  test("mana cost is case-insensitive", () => {
+    expect(matchCount("m:{g}")).toBe(2);
+    expect(matchCount("m:{r}")).toBe(1);
+    expect(matchCount("m:{u}{u}")).toBe(1);
+    expect(matchCount("m:{b/p}{b/p}")).toBe(1);
+  });
+
   test("exact name with !", () => {
     expect(matchCount('!"Lightning Bolt"')).toBe(1);
     expect(matchCount("!bolt")).toBe(0);
@@ -276,7 +287,7 @@ describe("evaluate", () => {
   });
 
   test("negation with -", () => {
-    expect(matchCount("-t:creature")).toBe(4);
+    expect(matchCount("-t:creature")).toBe(5);
     expect(matchCount("t:creature -c:w")).toBe(4);
   });
 
@@ -289,11 +300,11 @@ describe("evaluate", () => {
   });
 
   test("empty value matches all face rows", () => {
-    expect(matchCount("c:")).toBe(9);
+    expect(matchCount("c:")).toBe(10);
   });
 
   test("empty input matches all face rows", () => {
-    expect(matchCount("")).toBe(9);
+    expect(matchCount("")).toBe(10);
   });
 
   test("result tree has children with matchCounts", () => {
@@ -324,15 +335,15 @@ describe("evaluate", () => {
   });
 
   test("legal:commander matches all face rows legal in commander", () => {
-    expect(matchCount("legal:commander")).toBe(9);
+    expect(matchCount("legal:commander")).toBe(10);
   });
 
   test("legal:legacy matches face rows legal in legacy", () => {
-    expect(matchCount("legal:legacy")).toBe(7);
+    expect(matchCount("legal:legacy")).toBe(8);
   });
 
   test("f: alias works for legal:", () => {
-    expect(matchCount("f:modern")).toBe(5);
+    expect(matchCount("f:modern")).toBe(6);
   });
 
   test("banned:legacy matches cards banned in legacy", () => {
@@ -353,7 +364,7 @@ describe("evaluate", () => {
 
   test("regex on oracle text", () => {
     expect(matchCount("o:/damage/")).toBe(2);
-    expect(matchCount("o:/target/")).toBe(4);
+    expect(matchCount("o:/target/")).toBe(5);
   });
 
   test("regex on type line", () => {

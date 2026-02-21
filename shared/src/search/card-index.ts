@@ -5,7 +5,7 @@ export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
   readonly oracleTextsLower: string[];
-  readonly manaCosts: string[];
+  readonly manaCostsLower: string[];
   readonly colors: number[];
   readonly colorIdentity: number[];
   readonly typeLinesLower: string[];
@@ -27,7 +27,7 @@ export class CardIndex {
     this.faceCount = data.names.length;
     this.namesLower = data.names.map((n) => n.toLowerCase());
     this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
-    this.manaCosts = data.mana_costs;
+    this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());
     this.colors = data.colors;
     this.colorIdentity = data.color_identity;
     this.typeLinesLower = data.type_lines.map((t) => t.toLowerCase());
