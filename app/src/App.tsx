@@ -7,13 +7,14 @@ function artCropUrl(scryfallId: string): string {
   return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
 }
 
-// Washed-out color palette for placeholder backgrounds (WUBRG order).
-const CI_W = '#F5F0D0'
-const CI_U = '#A8D4F0'
-const CI_B = '#B8A8B0'
-const CI_R = '#F0B8A8'
-const CI_G = '#A8D8B0'
-const CI_COLORLESS = '#E0DDD8'
+// Color identity palette (WUBRG order). Mid-saturation: readable as a thin
+// permanent stripe, but not garish as a brief loading placeholder.
+const CI_W = '#E8D44D'
+const CI_U = '#4A90D9'
+const CI_B = '#6B5B6B'
+const CI_R = '#D94040'
+const CI_G = '#3A9A5A'
+const CI_COLORLESS = '#C0BCB0'
 
 function stripes(...colors: string[]): string {
   const step = 100 / colors.length
@@ -39,7 +40,7 @@ function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   const [loaded, setLoaded] = createSignal(false)
   return (
     <div
-      class="w-[3em] aspect-[4/3] rounded-sm overflow-hidden shrink-0 mt-0.5"
+      class="w-[3em] pb-1 rounded-sm overflow-hidden shrink-0 mt-0.5"
       style={{ background: CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS }}
     >
       <img
@@ -47,7 +48,7 @@ function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
         loading="lazy"
         alt=""
         onLoad={() => setLoaded(true)}
-        class="w-full h-full object-cover"
+        class="w-full aspect-[4/3] object-cover"
         classList={{ 'opacity-0': !loaded(), 'opacity-100': loaded() }}
         style="transition: opacity 300ms ease-in"
       />
