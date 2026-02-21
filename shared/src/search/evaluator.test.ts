@@ -27,6 +27,7 @@ const toughnessDict = ["", "1", "1+*", "3", "4"];
 
 const TEST_DATA: ColumnarData = {
   names:          ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm", "Ayara, Furnace Queen", "Dismember"],
+  combined_names: ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Dismember"],
   mana_costs:     ["{G}", "{R}", "{U}{U}", "{1}", "{1}{G}", "{W}{U}", "{1}{W}", "{1}{B}{B}", "", "{1}{B/P}{B/P}"],
   oracle_texts:   [
     "Flying\n{T}: Add one mana of any color.",
@@ -160,6 +161,12 @@ describe("nodeKey", () => {
     const key = nodeKey(parse('!"Lightning Bolt"'));
     expect(key).toContain("EXACT");
     expect(key).toContain("Lightning Bolt");
+  });
+
+  test("quoted and unquoted bare words produce different keys", () => {
+    const unquoted = { type: "BARE" as const, value: "x", quoted: false };
+    const quoted = { type: "BARE" as const, value: "x", quoted: true };
+    expect(nodeKey(unquoted)).not.toBe(nodeKey(quoted));
   });
 });
 
@@ -531,6 +538,60 @@ describe("evaluate", () => {
     expect(matchCount("cmd:br")).toBe(5);
     expect(matchCount("ci:wu")).toBe(4);
     expect(matchCount("ci:w")).toBe(2);
+  });
+
+  // -------------------------------------------------------------------------
+  // Combined name search (Spec 018)
+  // -------------------------------------------------------------------------
+
+  test("unquoted bare word matches normalized combined name across face boundary", () => {
+    // "realmayara" spans the boundary between "Realm" and "Ayara" in
+    // "Ayara, Widow of the Realm // Ayara, Furnace Queen"
+    // Normalized: "ayarawidowoftherealmayarafurnacequeen" contains "realmayara"
+    expect(matchCount("realmayara")).toBe(2); // both faces of the DFC
+  });
+
+  test("unquoted bare word still matches single-face cards via normalized name", () => {
+    expect(matchCount("bolt")).toBe(1);
+    expect(matchCount("lightningbolt")).toBe(1);
+  });
+
+  test("quoted bare word matches literal combined name", () => {
+    // Quoted " // " matches the literal combined name "Ayara, Widow of the Realm // Ayara, Furnace Queen"
+    expect(matchCount('" // "')).toBe(2); // both faces of Ayara DFC
+  });
+
+  test("quoted bare word does not match normalized form", () => {
+    // "realmayara" does not appear literally in "Ayara, Widow of the Realm // Ayara, Furnace Queen"
+    expect(matchCount('"realmayara"')).toBe(0);
+  });
+
+  test("name: field searches combined name", () => {
+    expect(matchCount('name:" // "')).toBe(2);
+  });
+
+  test("exact name matches combined name", () => {
+    expect(matchCount('!"Ayara, Widow of the Realm // Ayara, Furnace Queen"')).toBe(2);
+  });
+
+  test("exact name matches individual face name for DFC", () => {
+    expect(matchCount('!"Ayara, Furnace Queen"')).toBe(1);
+  });
+
+  test("exact name still matches single-face cards", () => {
+    expect(matchCount('!"Lightning Bolt"')).toBe(1);
+  });
+
+  test("regex on name searches combined name", () => {
+    expect(matchCount("name:/realm.*furnace/")).toBe(2);
+  });
+
+  test("combined name: cross-field AND with face-specific field", () => {
+    // name:widow matches both faces (combined name contains "widow")
+    // pow>=4 matches only back face (pow=4)
+    // Before 018: name:widow only matched face 7 (front), which has pow=3, so no match
+    // After 018: name:widow matches face 8 too (combined name), which has pow=4 → match
+    expect(matchCount("name:widow pow>=4")).toBe(1);
   });
 });
 

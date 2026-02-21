@@ -53,6 +53,7 @@ export interface FieldNode {
 export interface BareWordNode {
   type: "BARE";
   value: string;
+  quoted: boolean;
 }
 
 export interface ExactNameNode {

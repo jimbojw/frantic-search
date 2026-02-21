@@ -120,11 +120,11 @@ class Parser {
         }
         return { type: "FIELD", field: word.value, operator: op.value, value: "" };
       }
-      return { type: "BARE", value: word.value };
+      return { type: "BARE", value: word.value, quoted: false };
     }
 
     if (this.at(TokenType.QUOTED)) {
-      return { type: "BARE", value: this.advance().value };
+      return { type: "BARE", value: this.advance().value, quoted: true };
     }
 
     if (this.at(TokenType.REGEX)) {

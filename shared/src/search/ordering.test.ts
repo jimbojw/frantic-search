@@ -5,8 +5,8 @@ import type { ASTNode } from "./ast";
 
 // --- Helpers ---
 
-function bare(value: string): ASTNode {
-  return { type: "BARE", value };
+function bare(value: string, quoted = false): ASTNode {
+  return { type: "BARE", value, quoted };
 }
 
 function field(f: string, op: string, v: string): ASTNode {

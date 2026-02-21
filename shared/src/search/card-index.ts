@@ -5,6 +5,8 @@ import { parseManaSymbols, computeCmc } from "./mana";
 export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
+  readonly combinedNamesLower: string[];
+  readonly combinedNamesNormalized: string[];
   readonly oracleTextsLower: string[];
   readonly manaCostsLower: string[];
   readonly manaSymbols: Record<string, number>[];
@@ -30,6 +32,10 @@ export class CardIndex {
   constructor(data: ColumnarData) {
     this.faceCount = data.names.length;
     this.namesLower = data.names.map((n) => n.toLowerCase());
+    this.combinedNamesLower = data.combined_names.map((n) => n.toLowerCase());
+    this.combinedNamesNormalized = data.combined_names.map((n) =>
+      n.toLowerCase().replace(/[^a-z0-9]/g, ""),
+    );
     this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
     this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());
     this.manaSymbols = data.mana_costs.map((m) => parseManaSymbols(m));

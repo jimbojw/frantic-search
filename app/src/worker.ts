@@ -60,8 +60,10 @@ async function init(): Promise<void> {
     const totalMatches = matchingIndices.length
     const breakdown = toBreakdown(result)
     const deduped = index.deduplicateMatches(matchingIndices)
-    const bareWords = collectBareWords(ast).map(w => w.toLowerCase())
-    seededSort(deduped, nodeKey(ast), index.namesLower, bareWords)
+    const bareWords = collectBareWords(ast)
+      .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
+      .filter(w => w.length > 0)
+    seededSort(deduped, nodeKey(ast), index.combinedNamesNormalized, bareWords)
     const cards: CardResult[] = deduped.map(canonIdx => {
       const faces = index.facesOf(canonIdx).map((fi): CardFace => {
         const face: CardFace = {

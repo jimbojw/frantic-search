@@ -7,8 +7,8 @@ function field(f: string, op: string, v: string): ASTNode {
   return { type: "FIELD", field: f, operator: op, value: v };
 }
 
-function bare(v: string): ASTNode {
-  return { type: "BARE", value: v };
+function bare(v: string, quoted = false): ASTNode {
+  return { type: "BARE", value: v, quoted };
 }
 
 function and(...children: ASTNode[]): ASTNode {
@@ -40,8 +40,8 @@ describe("parse", () => {
     expect(parse("lightning")).toEqual(bare("lightning"));
   });
 
-  test("quoted bare word", () => {
-    expect(parse('"lightning bolt"')).toEqual(bare("lightning bolt"));
+  test("quoted bare word has quoted: true", () => {
+    expect(parse('"lightning bolt"')).toEqual(bare("lightning bolt", true));
   });
 
   test("single field:value", () => {

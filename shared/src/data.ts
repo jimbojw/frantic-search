@@ -2,6 +2,7 @@
 
 export interface ColumnarData {
   names: string[];
+  combined_names: string[];
   mana_costs: string[];
   oracle_texts: string[];
   colors: number[];

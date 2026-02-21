@@ -48,7 +48,7 @@ function parseColorValue(value: string): number {
 
 function getStringColumn(canonical: string, index: CardIndex): string[] | null {
   switch (canonical) {
-    case "name": return index.namesLower;
+    case "name": return index.combinedNamesLower;
     case "oracle": return index.oracleTextsLower;
     case "type": return index.typeLinesLower;
     default: return null;
@@ -241,17 +241,24 @@ function evalLeafRegex(
   }
 }
 
-function evalLeafBareWord(value: string, index: CardIndex, buf: Uint8Array): void {
-  const valLower = value.toLowerCase();
-  for (let i = 0; i < index.faceCount; i++) {
-    buf[i] = index.namesLower[i].includes(valLower) ? 1 : 0;
+function evalLeafBareWord(value: string, quoted: boolean, index: CardIndex, buf: Uint8Array): void {
+  if (quoted) {
+    const valLower = value.toLowerCase();
+    for (let i = 0; i < index.faceCount; i++) {
+      buf[i] = index.combinedNamesLower[i].includes(valLower) ? 1 : 0;
+    }
+  } else {
+    const valNormalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    for (let i = 0; i < index.faceCount; i++) {
+      buf[i] = index.combinedNamesNormalized[i].includes(valNormalized) ? 1 : 0;
+    }
   }
 }
 
 function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): void {
   const valLower = node.value.toLowerCase();
   for (let i = 0; i < index.faceCount; i++) {
-    buf[i] = index.namesLower[i] === valLower ? 1 : 0;
+    buf[i] = (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) ? 1 : 0;
   }
 }
 
@@ -281,7 +288,7 @@ export function nodeKey(ast: ASTNode): string {
     case "FIELD":
       return `FIELD${SEP}${ast.field}${SEP}${ast.operator}${SEP}${ast.value}`;
     case "BARE":
-      return `BARE${SEP}${ast.value}`;
+      return `BARE${SEP}${ast.quoted ? "Q" : "U"}${SEP}${ast.value}`;
     case "EXACT":
       return `EXACT${SEP}${ast.value}`;
     case "REGEX_FIELD":
@@ -379,7 +386,7 @@ export class NodeCache {
       case "BARE": {
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        evalLeafBareWord(ast.value, this.index, buf);
+        evalLeafBareWord(ast.value, ast.quoted, this.index, buf);
         const ms = performance.now() - t0;
         interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
         timings.set(interned.key, { cached: false, evalMs: ms });

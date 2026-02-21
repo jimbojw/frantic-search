@@ -1,6 +1,6 @@
 # Spec 018: Combined Name Search
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 
@@ -88,7 +88,7 @@ return { type: "BARE", value: this.advance().value, quoted: true };
 
 **`name:` field (`getStringColumn`):** Return `combinedNamesLower` instead of `namesLower`. This makes `name:value` search the combined name, so `name:" // "` finds split cards.
 
-**Exact name (`evalLeafExact`):** Match against `combinedNamesLower[i]` instead of `namesLower[i]`. `!"Beck // Call"` matches the combined name exactly.
+**Exact name (`evalLeafExact`):** Match against both `combinedNamesLower[i]` and `namesLower[i]`. `!"Beck // Call"` matches the combined name exactly; `!"Call"` matches the individual face name. This matches Scryfall's behavior where `!` finds cards by either their combined name or any individual face name.
 
 **Regex name (`evalLeafRegex`):** Inherits the change from `getStringColumn` — regex on `name` also searches the combined name.
 
@@ -187,3 +187,12 @@ This aligns with Scryfall's behavior: a card's name is a card-level property, no
 7. `!"Beck // Call"` matches exactly one card.
 8. `ColumnarData` includes a `combined_names: string[]` column populated by the ETL from Scryfall's card-level `name` field.
 9. All existing tests continue to pass, with updates for the new `quoted` field on `BARE` nodes.
+
+## Implementation Notes
+
+- 2026-02-21: `evalLeafExact` checks both `combinedNamesLower` and `namesLower`,
+  not just the combined name. Scryfall's `!` exact match finds cards by either
+  their combined name or any individual face name (e.g., `!"Ayara, Furnace Queen"`
+  finds the card even though the combined name is
+  "Ayara, Widow of the Realm // Ayara, Furnace Queen"). The design section above
+  has been updated to reflect this.
