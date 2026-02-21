@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run dev -w app",
+    "cli": "npm run run -w cli --",
     "etl": "npm run run -w etl --",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,5 +12,5 @@
   "author": "",
   "license": "Apache-2.0",
   "description": "Instant search across Magic: The Gathering cards",
-  "workspaces": ["app", "etl", "shared"]
+  "workspaces": ["app", "cli", "etl", "shared"]
 }

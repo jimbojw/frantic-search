@@ -1,0 +1,21 @@
+{
+  "name": "@frantic-search/cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "run": "tsx src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "description": "CLI tools for Frantic Search query engine",
+  "dependencies": {
+    "@frantic-search/shared": "*",
+    "cac": "^6.7.14"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0"
+  }
+}
