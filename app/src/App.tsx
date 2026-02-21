@@ -4,8 +4,11 @@ import type { FromWorker, CardResult, CardFace, BreakdownNode } from '@frantic-s
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
+import BugReport from './BugReport'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
+
+declare const __REPO_URL__: string
 
 function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   const [loaded, setLoaded] = createSignal(false)
@@ -63,7 +66,7 @@ function BreakdownTree(props: { node: BreakdownNode; depth?: number }) {
   )
 }
 
-function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; onHelpClick: () => void }) {
+function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; onHelpClick: () => void; onReportClick: () => void }) {
   const flat = () => isFlatAnd(props.breakdown)
 
   return (
@@ -89,13 +92,21 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; 
           <BreakdownRow label="Combined" count={props.breakdown.matchCount} muted={props.breakdown.matchCount > 0} />
         </div>
       </Show>
-      <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+      <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 flex items-center gap-2">
         <button
           type="button"
           onClick={() => props.onHelpClick()}
           class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           Syntax help
+        </button>
+        <span class="text-xs text-gray-300 dark:text-gray-600">·</span>
+        <button
+          type="button"
+          onClick={() => props.onReportClick()}
+          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          Report a problem
         </button>
       </div>
     </div>
@@ -131,10 +142,11 @@ function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boo
 
 const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
 
-type View = 'search' | 'help' | 'card'
+type View = 'search' | 'help' | 'card' | 'report'
 
 function parseView(params: URLSearchParams): View {
   if (params.has('card')) return 'card'
+  if (params.has('report')) return 'report'
   if (params.has('help')) return 'help'
   return 'search'
 }
@@ -234,6 +246,15 @@ function App() {
     setView('card')
   }
 
+  function navigateToReport() {
+    const params = new URLSearchParams()
+    const q = query().trim()
+    if (q) params.set('q', q)
+    params.set('report', '')
+    history.pushState(null, '', `?${params}`)
+    setView('report')
+  }
+
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'help'}>
@@ -241,6 +262,9 @@ function App() {
       </Show>
       <Show when={view() === 'card'}>
         <CardDetail card={results().find(c => c.scryfallId === cardId())} scryfallId={cardId()} />
+      </Show>
+      <Show when={view() === 'report'}>
+        <BugReport query={query()} breakdown={breakdown()} resultCount={totalMatches()} />
       </Show>
       <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
@@ -320,9 +344,24 @@ function App() {
 
         <Show when={workerStatus() === 'ready'}>
           <Show when={query().trim()} fallback={
-            <p class="text-center text-sm text-gray-400 dark:text-gray-600 pt-8">
-              Type a query to search
-            </p>
+            <div class="pt-8 text-center">
+              <p class="text-sm text-gray-400 dark:text-gray-600">
+                Type a query to search
+              </p>
+              <p class="mt-3 text-xs">
+                <a
+                  href={__REPO_URL__}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1.5 text-gray-400 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                >
+                  <svg class="size-4" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                  </svg>
+                  Source on GitHub
+                </a>
+              </p>
+            </div>
           }>
             <Show when={results().length > 0} fallback={
               <div class="pt-8 text-center">
@@ -348,18 +387,26 @@ function App() {
                   >
                     Try on Scryfall ↗
                   </a>
+                  <span class="text-gray-300 dark:text-gray-600"> · </span>
+                  <button
+                    type="button"
+                    onClick={() => navigateToReport()}
+                    class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  >
+                    Report a problem
+                  </button>
                 </p>
                 <Show when={showBreakdown() && breakdown()}>
                   {(bd) => (
                     <div class="mt-4 text-left">
-                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} />
+                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} onReportClick={() => navigateToReport()} />
                     </div>
                   )}
                 </Show>
               </div>
             }>
               <Show when={showBreakdown() && breakdown()}>
-                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} />}
+                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} onReportClick={() => navigateToReport()} />}
               </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">

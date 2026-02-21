@@ -11,6 +11,8 @@
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
+  "repository": "github:jimbojw/frantic-search",
+  "bugs": "https://github.com/jimbojw/frantic-search/issues",
   "description": "Instant search across Magic: The Gathering cards",
   "workspaces": ["app", "cli", "etl", "shared"]
 }

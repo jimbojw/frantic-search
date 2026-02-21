@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import pkg from '../package.json' with { type: 'json' }
 
 function serveData(): Plugin {
   const dataFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
@@ -50,8 +52,21 @@ function serveData(): Plugin {
   }
 }
 
+function gitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
 export default defineConfig({
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(gitHash()),
+    __BUGS_URL__: JSON.stringify(pkg.bugs),
+    __REPO_URL__: JSON.stringify(`https://github.com/${pkg.repository.replace('github:', '')}`),
+  },
   plugins: [
     serveData(),
     tailwindcss(),
