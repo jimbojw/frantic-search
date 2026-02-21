@@ -52,19 +52,26 @@ cli
     const { data, index } = loadIndex(options.data);
     const ast = parse(query);
     const { result, matchingIndices } = evaluate(ast, index);
+    const cardFaces = index.deduplicateMatches(matchingIndices);
 
     switch (options.output) {
       case "names":
-        for (const i of matchingIndices) {
+        for (const i of cardFaces) {
           process.stdout.write(data.names[i] + "\n");
         }
         break;
       case "cards": {
         const rawCards = loadRawCards(options.raw);
-        process.stdout.write(JSON.stringify(
-          matchingIndices.map((i) => rawCards[i]),
-          null, 2,
-        ) + "\n");
+        const seen = new Set<number>();
+        const cards: unknown[] = [];
+        for (const i of cardFaces) {
+          const ci = data.card_index[i];
+          if (!seen.has(ci)) {
+            seen.add(ci);
+            cards.push(rawCards[ci]);
+          }
+        }
+        process.stdout.write(JSON.stringify(cards, null, 2) + "\n");
         break;
       }
       case "tree":

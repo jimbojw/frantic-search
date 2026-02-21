@@ -56,7 +56,7 @@ function evalLeafField(
   buf: Uint8Array,
 ): void {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
-  const n = index.cardCount;
+  const n = index.faceCount;
   const op = node.operator;
   const val = node.value;
 
@@ -177,7 +177,7 @@ function evalLeafRegex(
   buf: Uint8Array,
 ): void {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
-  const n = index.cardCount;
+  const n = index.faceCount;
   const col = canonical ? getStringColumn(canonical, index) : null;
 
   if (!col) {
@@ -200,14 +200,14 @@ function evalLeafRegex(
 
 function evalLeafBareWord(value: string, index: CardIndex, buf: Uint8Array): void {
   const valLower = value.toLowerCase();
-  for (let i = 0; i < index.cardCount; i++) {
+  for (let i = 0; i < index.faceCount; i++) {
     buf[i] = index.namesLower[i].includes(valLower) ? 1 : 0;
   }
 }
 
 function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): void {
   const valLower = node.value.toLowerCase();
-  for (let i = 0; i < index.cardCount; i++) {
+  for (let i = 0; i < index.faceCount; i++) {
     buf[i] = index.namesLower[i] === valLower ? 1 : 0;
   }
 }
@@ -217,7 +217,7 @@ function evalNode(
   index: CardIndex,
   pool: BufferPool,
 ): { result: EvalResult; buf: Uint8Array } {
-  const n = index.cardCount;
+  const n = index.faceCount;
 
   switch (ast.type) {
     case "FIELD": {
@@ -316,10 +316,10 @@ function evalNode(
 }
 
 export function evaluate(ast: ASTNode, index: CardIndex): EvalOutput {
-  const pool = new BufferPool(index.cardCount);
+  const pool = new BufferPool(index.faceCount);
   const { result, buf } = evalNode(ast, index, pool);
   const matchingIndices: number[] = [];
-  for (let i = 0; i < index.cardCount; i++) {
+  for (let i = 0; i < index.faceCount; i++) {
     if (buf[i]) matchingIndices.push(i);
   }
   pool.release(buf);

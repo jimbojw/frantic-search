@@ -2,7 +2,7 @@
 import type { ColumnarData } from "../data";
 
 export class CardIndex {
-  readonly cardCount: number;
+  readonly faceCount: number;
   readonly namesLower: string[];
   readonly oracleTextsLower: string[];
   readonly manaCosts: string[];
@@ -16,13 +16,15 @@ export class CardIndex {
   readonly legalitiesLegal: number[];
   readonly legalitiesBanned: number[];
   readonly legalitiesRestricted: number[];
+  readonly cardIndex: number[];
+  readonly canonicalFace: number[];
   readonly powerLookup: string[];
   readonly toughnessLookup: string[];
   readonly loyaltyLookup: string[];
   readonly defenseLookup: string[];
 
   constructor(data: ColumnarData) {
-    this.cardCount = data.names.length;
+    this.faceCount = data.names.length;
     this.namesLower = data.names.map((n) => n.toLowerCase());
     this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
     this.manaCosts = data.mana_costs;
@@ -36,9 +38,24 @@ export class CardIndex {
     this.legalitiesLegal = data.legalities_legal;
     this.legalitiesBanned = data.legalities_banned;
     this.legalitiesRestricted = data.legalities_restricted;
+    this.cardIndex = data.card_index;
+    this.canonicalFace = data.canonical_face;
     this.powerLookup = data.power_lookup;
     this.toughnessLookup = data.toughness_lookup;
     this.loyaltyLookup = data.loyalty_lookup;
     this.defenseLookup = data.defense_lookup;
+  }
+
+  deduplicateMatches(faceIndices: number[]): number[] {
+    const seen = new Set<number>();
+    const result: number[] = [];
+    for (const fi of faceIndices) {
+      const cf = this.canonicalFace[fi];
+      if (!seen.has(cf)) {
+        seen.add(cf);
+        result.push(cf);
+      }
+    }
+    return result;
   }
 }

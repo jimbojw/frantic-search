@@ -8,25 +8,38 @@ Implement the lexer, parser, and evaluator described in ADR-009 inside the `shar
 
 ## Background
 
-The ETL pipeline (Spec 001) produces a columnar JSON file with the following per-card columns:
+The ETL pipeline (Spec 001) produces a columnar JSON file. Each row represents a **card face**, not a card. Single-face cards (layout `normal`, `saga`, `class`, etc.) have one row. Multi-face cards (layouts `transform`, `modal_dfc`, `adventure`, `split`, `flip`) have one row per face. Non-searchable layouts (`art_series`, `token`, `double_faced_token`, `emblem`, `planar`, `scheme`, `vanguard`, `augment`, `host`) are filtered out during ETL processing.
+
+### Per-face columns
 
 | Column           | Type       | Encoding                                   |
 |------------------|------------|---------------------------------------------|
-| `names`          | `string[]` | Raw card name                               |
-| `mana_costs`     | `string[]` | Raw mana cost string (e.g. `{2}{W}{U}`)    |
-| `oracle_texts`   | `string[]` | Raw Oracle text                             |
-| `colors`         | `number[]` | Bitmask (ADR-007): W=1, U=2, B=4, R=8, G=16 |
-| `color_identity` | `number[]` | Bitmask, same encoding as colors            |
-| `type_lines`     | `string[]` | Raw Scryfall type line (e.g. `Legendary Creature — Elf Druid`) |
+| `names`          | `string[]` | Face name (e.g. `"Ayara, Widow of the Realm"`, not the joined `"Front // Back"`) |
+| `mana_costs`     | `string[]` | Face mana cost string (e.g. `{2}{W}{U}`)   |
+| `oracle_texts`   | `string[]` | Face Oracle text                            |
+| `colors`         | `number[]` | Face colors bitmask (ADR-007): W=1, U=2, B=4, R=8, G=16 |
+| `color_identity` | `number[]` | Card-level color identity bitmask, duplicated across all faces of the same card |
+| `type_lines`     | `string[]` | Face type line (e.g. `Legendary Creature — Elf Noble`) |
 | `powers`         | `number[]` | Dict-encoded index into `power_lookup`      |
 | `toughnesses`    | `number[]` | Dict-encoded index into `toughness_lookup`  |
 | `loyalties`      | `number[]` | Dict-encoded index into `loyalty_lookup`    |
 | `defenses`       | `number[]` | Dict-encoded index into `defense_lookup`    |
-| `legalities_legal` | `number[]` | Bitmask: one bit per format where status is `"legal"` |
-| `legalities_banned` | `number[]` | Bitmask: one bit per format where status is `"banned"` |
-| `legalities_restricted` | `number[]` | Bitmask: one bit per format where status is `"restricted"` |
+| `legalities_legal` | `number[]` | Bitmask: one bit per format where status is `"legal"` (card-level, duplicated) |
+| `legalities_banned` | `number[]` | Bitmask: one bit per format where status is `"banned"` (card-level, duplicated) |
+| `legalities_restricted` | `number[]` | Bitmask: one bit per format where status is `"restricted"` (card-level, duplicated) |
+
+### Metadata columns
+
+| Column           | Type       | Purpose                                    |
+|------------------|------------|--------------------------------------------|
+| `card_index`     | `number[]` | Position of this face's card in the original `oracle-cards.json` array. Enables mapping back to the full Scryfall card object. |
+| `canonical_face` | `number[]` | Face-row index of this card's primary (front) face. For single-face cards and front faces, equals the row's own index. For back/secondary faces, points to the front face's row. Used for deduplication. |
 
 The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL (encoding) and the query engine (filtering). Format legality uses 21 bits (one per format: standard, commander, modern, legacy, etc.).
+
+### Face-per-row rationale
+
+Scryfall evaluates all query conditions against each face independently. A card matches when at least one face satisfies the entire query expression. For example, given a transform DFC with front face 3/3 and back face 4/4, the query `power>=4 toughness<=2` matches neither face (no single face satisfies both conditions), so the card does not match. This per-face semantics requires the data model to store face-level values for searchable fields. Card-level properties (legalities, color identity) are duplicated across faces since they apply uniformly. See ADR-012 for the full decision record.
 
 ## Architecture Overview
 
@@ -34,7 +47,9 @@ The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL
 raw input → lexer → tokens → parser → AST → evaluator (single-pass scan) → bitwise tree reduction
 ```
 
-The evaluator takes an AST and a `CardIndex` (evaluation-ready card data) and produces an `EvalResult` tree. Internally, each node is backed by a `Uint8Array` (one byte per card) from a reusable pool. Leaf nodes are populated during a single linear scan. Internal nodes are resolved bottom-up via byte-wise AND, OR, and NOT. The `EvalResult` tree exposes `matchCount` (popcount) per node but does not expose the raw bitmasks.
+The evaluator takes an AST and a `CardIndex` (evaluation-ready card data) and produces an `EvalResult` tree. Internally, each node is backed by a `Uint8Array` (one byte per face row) from a reusable pool. Leaf nodes are populated during a single linear scan over face rows. Internal nodes are resolved bottom-up via byte-wise AND, OR, and NOT. The `EvalResult` tree exposes `matchCount` (popcount) per node but does not expose the raw bitmasks.
+
+After evaluation, a deduplication step collapses face-level matching indices into card-level results using the `canonical_face` column: if any face of a card matches, the card's primary face index is included in the result set exactly once.
 
 ## Grammar
 
@@ -150,15 +165,22 @@ interface EvalResult {
 
 ```typescript
 class CardIndex {
-  readonly cardCount: number;
+  readonly faceCount: number;
   readonly namesLower: string[];       // pre-lowercased for case-insensitive search
   readonly oracleTextsLower: string[];
-  readonly subtypesLower: string[];
+  readonly typeLinesLower: string[];
   // bitmask and dict-encoded columns pass through unchanged
   readonly colors: number[];
-  readonly types: number[];
-  // ...
+  readonly colorIdentity: number[];
+  // ... other columns ...
+  // metadata for deduplication
+  readonly cardIndex: number[];
+  readonly canonicalFace: number[];
+
   constructor(data: ColumnarData) { /* derive */ }
+
+  /** Collapse face-level match indices to one per card (primary face index). */
+  deduplicateMatches(faceIndices: number[]): number[] { /* ... */ }
 }
 ```
 
@@ -203,7 +225,7 @@ Walk the AST and assign a `Uint8Array` from the buffer pool to each node.
 
 ### 3. Scan (single pass)
 
-Iterate over all cards by index (`0..N-1`). For each card, evaluate every leaf node and write `1` or `0` into `leaf.matches[i]`. This is a single linear pass over the columnar arrays.
+Iterate over all face rows by index (`0..N-1`). For each face, evaluate every leaf node and write `1` or `0` into `leaf.matches[i]`. This is a single linear pass over the columnar arrays.
 
 Within the loop, leaf evaluation uses the field type to select the right column and comparison:
 - Bitmask fields: bitwise operations on the column value.
@@ -221,9 +243,13 @@ Process in chunks aligned to 4 or 8 bytes where possible, using `Uint32Array` or
 
 ### 5. Read results
 
-The root node's `matches` array is the final result. Popcount (sum of all bytes) gives the total match count. Iterating the array yields matching card indices.
+The root node's `matches` array is the final result. Popcount (sum of all bytes) gives the total face-level match count. Iterating the array yields matching face-row indices.
 
-Each non-root node's `matches` array and popcount are available for the query debugger UX (ADR-009).
+### 6. Deduplicate
+
+Collapse the face-level matching indices into card-level results using `CardIndex.deduplicateMatches()`. For each matching face index, look up `canonical_face[i]` and collect unique values. The result is a list of primary face indices, one per matching card. Callers use these indices to look up card names (`names[i]`), or map through `card_index[i]` to retrieve full card objects from the raw Scryfall data.
+
+Each non-root node's `matches` array and popcount are available for the query debugger UX (ADR-009). Note that `matchCount` at each node reflects face-level matches, not deduplicated card counts.
 
 ## Buffer Pool
 
@@ -311,7 +337,12 @@ for (const [input, expected] of cases) {
 
 ### Evaluator tests
 
-Define a synthetic 5–10 card pool as a TypeScript `ColumnarData` constant in the test file. Wrap it in a `CardIndex`. Assert that `evaluate(parse(query), index).matchCount` equals the expected value for each query. Each card in the pool exists to exercise a specific condition (color, type, power, oracle text, etc.).
+Define a synthetic card pool as a TypeScript `ColumnarData` constant in the test file. Wrap it in a `CardIndex`. Assert that `evaluate(parse(query), index).matchCount` equals the expected value for each query. Each card in the pool exists to exercise a specific condition (color, type, power, oracle text, etc.).
+
+The synthetic pool must include at least one multi-face card (two face rows sharing a `canonical_face`) to verify:
+- A query matching only the back face still produces a card-level match after deduplication.
+- A query whose conditions span faces (e.g. front face power and back face toughness, where no single face satisfies both) produces no match.
+- When both faces match, deduplication produces exactly one result.
 
 ### Error recovery tests
 
@@ -326,11 +357,13 @@ test("trailing operator", () => {
 ## Acceptance Criteria
 
 1. `parse("c:wu t:creature")` returns an AND node with two FIELD children. The parser never throws on any string input.
-2. Given a synthetic 10-card dataset, `evaluate(parse("c:wu"), data)` returns a `Uint8Array` where exactly the white-blue cards are flagged.
+2. Given a synthetic dataset with single- and multi-face cards, `evaluate(parse("c:wu"), data)` returns a `Uint8Array` where exactly the white-blue face rows are flagged.
 3. Internal AST nodes carry correct per-node match counts after evaluation, enabling the query debugger UX.
 4. Buffer pool reuse: running `evaluate` twice on different queries allocates no new `Uint8Array` buffers on the second run (assuming equal or fewer AST nodes).
 5. All supported fields and operators from the table above are exercised by at least one test case.
 6. The lexer + parser together are under 300 lines of code (excluding tests).
+7. For a multi-face card, a query matching only the back face produces a deduplicated result containing the card's primary face index.
+8. For a multi-face card, a query with conditions that no single face satisfies (but different faces satisfy different conditions) produces no match.
 
 ## Implementation Notes
 
@@ -356,3 +389,15 @@ test("trailing operator", () => {
   tables from `bits.ts` as dead code. Implemented `REGEX_FIELD` evaluation for
   string fields (`name`, `oracle`, `type`) using `RegExp.test()` with case-insensitive
   matching. Invalid regex patterns gracefully match zero cards.
+- 2026-02-20: Switched from card-per-row to face-per-row data model (ADR-012).
+  Multi-face cards (transform, modal_dfc, adventure, split, flip) now emit one
+  row per face. This fixes missing data for ~500 DFCs whose `oracle_text`,
+  `mana_cost`, `power`, `colors`, etc. only existed on `card_faces` in the
+  Scryfall bulk data. Non-searchable layouts (art_series, tokens, emblems, etc.)
+  are now filtered out during ETL processing. Added `card_index` and
+  `canonical_face` metadata columns for mapping back to raw card objects and
+  deduplicating face-level results to card-level results. The evaluator core
+  is unchanged — it operates on face rows identically to how it previously
+  operated on card rows. Deduplication is a post-evaluation step on `CardIndex`.
+  Background, column table, CardIndex, evaluation pipeline, test strategy, and
+  acceptance criteria sections updated above to reflect the new model.

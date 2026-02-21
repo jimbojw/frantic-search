@@ -12,7 +12,20 @@ import {
 // Scryfall card shape (fields we care about)
 // ---------------------------------------------------------------------------
 
+interface CardFace {
+  name?: string;
+  mana_cost?: string;
+  type_line?: string;
+  oracle_text?: string;
+  colors?: string[];
+  power?: string;
+  toughness?: string;
+  loyalty?: string;
+  defense?: string;
+}
+
 interface Card {
+  layout?: string;
   name?: string;
   mana_cost?: string;
   type_line?: string;
@@ -24,7 +37,28 @@ interface Card {
   loyalty?: string;
   defense?: string;
   legalities?: Record<string, string>;
+  card_faces?: CardFace[];
 }
+
+const FILTERED_LAYOUTS = new Set([
+  "art_series",
+  "token",
+  "double_faced_token",
+  "emblem",
+  "planar",
+  "scheme",
+  "vanguard",
+  "augment",
+  "host",
+]);
+
+const MULTI_FACE_LAYOUTS = new Set([
+  "transform",
+  "modal_dfc",
+  "adventure",
+  "split",
+  "flip",
+]);
 
 // ---------------------------------------------------------------------------
 // Bitmask encoding helpers
@@ -83,6 +117,38 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
+function pushFaceRow(
+  data: ColumnarData,
+  face: CardFace,
+  card: Card,
+  cardIdx: number,
+  canonicalFace: number,
+  leg: { legal: number; banned: number; restricted: number },
+  powerDict: DictEncoder,
+  toughnessDict: DictEncoder,
+  loyaltyDict: DictEncoder,
+  defenseDict: DictEncoder,
+): void {
+  data.names.push(face.name ?? "");
+  data.mana_costs.push(face.mana_cost ?? "");
+  data.oracle_texts.push(face.oracle_text ?? "");
+  data.colors.push(encodeColors(face.colors ?? card.colors));
+  data.color_identity.push(encodeColors(card.color_identity));
+  data.type_lines.push(face.type_line ?? "");
+
+  data.powers.push(powerDict.encode(face.power));
+  data.toughnesses.push(toughnessDict.encode(face.toughness));
+  data.loyalties.push(loyaltyDict.encode(face.loyalty));
+  data.defenses.push(defenseDict.encode(face.defense));
+
+  data.legalities_legal.push(leg.legal);
+  data.legalities_banned.push(leg.banned);
+  data.legalities_restricted.push(leg.restricted);
+
+  data.card_index.push(cardIdx);
+  data.canonical_face.push(canonicalFace);
+}
+
 export function processCards(verbose: boolean): void {
   log(`Reading ${ORACLE_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(ORACLE_CARDS_PATH, "utf-8");
@@ -109,29 +175,37 @@ export function processCards(verbose: boolean): void {
     legalities_legal: [],
     legalities_banned: [],
     legalities_restricted: [],
+    card_index: [],
+    canonical_face: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
   };
 
-  for (const card of cards) {
-    data.names.push(card.name ?? "");
-    data.mana_costs.push(card.mana_cost ?? "");
-    data.oracle_texts.push(card.oracle_text ?? "");
-    data.colors.push(encodeColors(card.colors));
-    data.color_identity.push(encodeColors(card.color_identity));
-    data.type_lines.push(card.type_line ?? "");
+  let filtered = 0;
 
-    data.powers.push(powerDict.encode(card.power));
-    data.toughnesses.push(toughnessDict.encode(card.toughness));
-    data.loyalties.push(loyaltyDict.encode(card.loyalty));
-    data.defenses.push(defenseDict.encode(card.defense));
+  for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
+    const card = cards[cardIdx];
+    const layout = card.layout ?? "normal";
+
+    if (FILTERED_LAYOUTS.has(layout)) {
+      filtered++;
+      continue;
+    }
 
     const leg = encodeLegalities(card.legalities);
-    data.legalities_legal.push(leg.legal);
-    data.legalities_banned.push(leg.banned);
-    data.legalities_restricted.push(leg.restricted);
+    const faceRowStart = data.names.length;
+
+    if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
+      for (const face of card.card_faces) {
+        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg,
+          powerDict, toughnessDict, loyaltyDict, defenseDict);
+      }
+    } else {
+      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg,
+        powerDict, toughnessDict, loyaltyDict, defenseDict);
+    }
   }
 
   data.power_lookup = powerDict.lookup();
@@ -139,6 +213,7 @@ export function processCards(verbose: boolean): void {
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
 
+  log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
   ensureIntermediateDir();
