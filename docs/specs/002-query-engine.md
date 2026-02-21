@@ -1,0 +1,278 @@
+# Spec 002: Query Engine
+
+**Status:** Draft
+
+## Goal
+
+Implement the lexer, parser, and evaluator described in ADR-009 inside the `shared` workspace, with comprehensive tests, so that both the frontend WebWorker and a future CLI can parse and execute Scryfall-style queries against the columnar card dataset.
+
+## Background
+
+The ETL pipeline (Spec 001) produces a columnar JSON file with the following per-card columns:
+
+| Column           | Type       | Encoding                                   |
+|------------------|------------|---------------------------------------------|
+| `names`          | `string[]` | Raw card name                               |
+| `mana_costs`     | `string[]` | Raw mana cost string (e.g. `{2}{W}{U}`)    |
+| `oracle_texts`   | `string[]` | Raw Oracle text                             |
+| `colors`         | `number[]` | Bitmask (ADR-007): W=1, U=2, B=4, R=8, G=16 |
+| `color_identity` | `number[]` | Bitmask, same encoding as colors            |
+| `types`          | `number[]` | Bitmask: Artifact=1, Battle=2, Creature=4, … |
+| `supertypes`     | `number[]` | Bitmask: Basic=1, Legendary=2, Snow=4, World=8 |
+| `subtypes`       | `string[]` | Free text (e.g. `Goblin Warrior`)           |
+| `powers`         | `number[]` | Dict-encoded index into `power_lookup`      |
+| `toughnesses`    | `number[]` | Dict-encoded index into `toughness_lookup`  |
+| `loyalties`      | `number[]` | Dict-encoded index into `loyalty_lookup`    |
+| `defenses`       | `number[]` | Dict-encoded index into `defense_lookup`    |
+
+The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL (encoding) and the query engine (filtering).
+
+## Architecture Overview
+
+```
+raw input → lexer → tokens → parser → AST → evaluator (single-pass scan) → bitwise tree reduction
+```
+
+Each AST node owns a `Uint8Array` with one byte per card. Leaf nodes are populated during a single linear scan of the card pool. Internal nodes are resolved bottom-up: AND nodes combine children with byte-wise AND, OR nodes with byte-wise OR, NOT nodes with byte-wise flip. The result at the root is a bitmask of all matching cards.
+
+## Grammar
+
+```
+expr      = or_group
+or_group  = and_group ("OR" and_group)*
+and_group = term (term)*
+term      = "-"? atom
+atom      = "(" expr ")"
+          | WORD operator WORD
+          | WORD operator QUOTED
+          | WORD
+          | QUOTED
+operator  = ":" | "=" | "!=" | "<" | ">" | "<=" | ">="
+```
+
+Precedence, tightest to loosest: parentheses → negation → implicit AND → explicit OR.
+
+Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches.
+
+## Token Types
+
+The lexer produces a flat array of tokens. Each token has a `type` and a `value` string.
+
+| Token     | Matches                                         | Examples               |
+|-----------|--------------------------------------------------|------------------------|
+| `WORD`    | Contiguous non-whitespace, non-special characters | `lightning`, `c`, `wu` |
+| `QUOTED`  | Content between double quotes (quotes stripped)   | `"enters the"`         |
+| `COLON`   | `:`                                              |                        |
+| `EQ`      | `=`                                              |                        |
+| `NEQ`     | `!=`                                             |                        |
+| `LT`      | `<`                                              |                        |
+| `GT`      | `>`                                              |                        |
+| `LTE`     | `<=`                                             |                        |
+| `GTE`     | `>=`                                             |                        |
+| `LPAREN`  | `(`                                              |                        |
+| `RPAREN`  | `)`                                              |                        |
+| `DASH`    | `-` when preceding an atom (not inside a word)   |                        |
+| `OR`      | The literal keyword `OR` (case-sensitive)         |                        |
+| `EOF`     | End of input                                     |                        |
+
+Multi-character operators (`!=`, `<=`, `>=`) are matched greedily before single-character ones.
+
+## AST Node Types
+
+```typescript
+type ASTNode = AndNode | OrNode | NotNode | FieldNode | BareWordNode;
+
+interface AndNode {
+  type: "AND";
+  children: ASTNode[];
+}
+
+interface OrNode {
+  type: "OR";
+  children: ASTNode[];
+}
+
+interface NotNode {
+  type: "NOT";
+  child: ASTNode;
+}
+
+interface FieldNode {
+  type: "FIELD";
+  field: string;
+  operator: string;
+  value: string;
+}
+
+interface BareWordNode {
+  type: "BARE";
+  value: string;
+}
+```
+
+Every node additionally carries a `matches: Uint8Array` populated during evaluation, but the parser does not allocate these — the evaluator does (from the buffer pool).
+
+## Supported Fields (v1)
+
+These fields map to columns available in the current ETL output.
+
+| Field aliases      | Column(s)                   | `:` semantics                          | Comparison semantics (`=`, `<`, `>`, etc.) |
+|--------------------|-----------------------------|----------------------------------------|--------------------------------------------|
+| `name`, `n`        | `names`                     | Case-insensitive substring             | Exact match (case-insensitive)             |
+| `oracle`, `o`      | `oracle_texts`              | Case-insensitive substring             | —                                          |
+| `color`, `c`       | `colors`                    | Card has at least these colors (⊇)     | `=` exact, `<=` subset, `>=` superset      |
+| `identity`, `id`   | `color_identity`            | Same as `color`                        | Same as `color`                            |
+| `type`, `t`        | `types`, `supertypes`, `subtypes` | Bit check for types/supertypes, case-insensitive substring for subtypes | — |
+| `power`, `pow`     | `powers` + `power_lookup`   | Numeric equality                       | Numeric comparison via lookup              |
+| `toughness`, `tou` | `toughnesses` + `toughness_lookup` | Numeric equality                | Numeric comparison via lookup              |
+| `loyalty`, `loy`   | `loyalties` + `loyalty_lookup`   | Numeric equality                  | Numeric comparison via lookup              |
+| `defense`, `def`   | `defenses` + `defense_lookup`    | Numeric equality                  | Numeric comparison via lookup              |
+| `mana`, `m`        | `mana_costs`                | Substring on raw mana cost string      | —                                          |
+| (bare word)        | `names`                     | Case-insensitive substring             | —                                          |
+
+### Color value parsing
+
+Color values are parsed as a sequence of WUBRG letters: `c:wu` → White + Blue bitmask. The `:` operator means "at least these colors" (bitwise: `(card & query) === query`). The `=` operator means "exactly these colors" (bitwise: `card === query`).
+
+### Numeric field matching
+
+Power, toughness, loyalty, and defense are dict-encoded. To evaluate a comparison, resolve the dict index back to its string via the lookup table, attempt numeric parse, and compare. Non-numeric values (`*`, `X`, `1+*`) fail numeric comparisons gracefully (no match).
+
+## Evaluation Pipeline
+
+### 1. Parse
+
+Lex and parse the input string into an AST. This is pure and fast — no card data is touched.
+
+### 2. Allocate
+
+Walk the AST and assign a `Uint8Array` from the buffer pool to each node.
+
+### 3. Scan (single pass)
+
+Iterate over all cards by index (`0..N-1`). For each card, evaluate every leaf node and write `1` or `0` into `leaf.matches[i]`. This is a single linear pass over the columnar arrays.
+
+Within the loop, leaf evaluation uses the field type to select the right column and comparison:
+- Bitmask fields: bitwise operations on the column value.
+- String fields: case-insensitive `indexOf` on the column value.
+- Dict-encoded numeric fields: lookup + numeric comparison.
+
+### 4. Reduce (bottom-up)
+
+Walk the AST bottom-up. For each internal node, combine children byte-by-byte:
+- `AND`: `out[i] = a[i] & b[i]` (for each child).
+- `OR`: `out[i] = a[i] | b[i]`.
+- `NOT`: `out[i] = child[i] ^ 1`.
+
+Process in chunks aligned to 4 or 8 bytes where possible, using `Uint32Array` or `DataView` for throughput. The exact chunking strategy can be tuned during implementation.
+
+### 5. Read results
+
+The root node's `matches` array is the final result. Popcount (sum of all bytes) gives the total match count. Iterating the array yields matching card indices.
+
+Each non-root node's `matches` array and popcount are available for the query debugger UX (ADR-009).
+
+## Buffer Pool
+
+```typescript
+class BufferPool {
+  private free: Uint8Array[] = [];
+  private cardCount: number;
+
+  constructor(cardCount: number) { this.cardCount = cardCount; }
+  acquire(): Uint8Array { return this.free.pop() ?? new Uint8Array(this.cardCount); }
+  release(buf: Uint8Array): void { buf.fill(0); this.free.push(buf); }
+}
+```
+
+After evaluation, when the AST is discarded (e.g. user types a new query), all node buffers are released back to the pool. This avoids allocation churn during rapid re-evaluation.
+
+## Error Recovery
+
+The parser must handle incomplete input gracefully, since it runs on every keystroke. Principles:
+
+- **Trailing operator:** `c:` (no value yet) → parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter).
+- **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
+- **Empty input:** → empty AND node (matches everything).
+- **Unknown field:** `x:foo` → parse normally. The evaluator treats unrecognized fields as matching zero cards.
+
+The parser should never throw on user input. Malformed input produces a best-effort AST.
+
+## File Organization
+
+All query engine code lives in `shared/src/`:
+
+```
+shared/src/
+├── index.ts              (public API re-exports)
+├── bits.ts               (existing bitmask constants)
+├── search/
+│   ├── lexer.ts          (tokenizer)
+│   ├── parser.ts         (recursive descent → AST)
+│   ├── ast.ts            (AST node type definitions)
+│   ├── evaluator.ts      (single-pass scan + tree reduction)
+│   └── pool.ts           (Uint8Array buffer pool)
+```
+
+Tests live alongside in a `__tests__` directory or as `.test.ts` siblings — follow whichever convention the Vitest setup establishes.
+
+## Test Strategy
+
+Tests are written in TypeScript using Vitest (ADR-010). Three layers:
+
+### Lexer tests
+
+Assert that input strings produce expected token arrays.
+
+```typescript
+expect(lex("c:wu")).toEqual([
+  { type: "WORD", value: "c" },
+  { type: "COLON", value: ":" },
+  { type: "WORD", value: "wu" },
+  { type: "EOF", value: "" },
+]);
+```
+
+### Parser tests
+
+Assert that token streams produce expected ASTs. Use builder helpers for readability:
+
+```typescript
+const cases: [string, ASTNode][] = [
+  ["c:wu",             field("c", ":", "wu")],
+  ["-c:r",             not(field("c", ":", "r"))],
+  ["c:wu OR c:bg",     or(field("c", ":", "wu"), field("c", ":", "bg"))],
+  ["c:wu t:creature",  and(field("c", ":", "wu"), field("t", ":", "creature"))],
+  ["(c:wu OR c:bg) t:creature",
+    and(or(field("c", ":", "wu"), field("c", ":", "bg")), field("t", ":", "creature"))],
+];
+
+for (const [input, expected] of cases) {
+  test(`parse: ${input}`, () => {
+    expect(parse(input)).toEqual(expected);
+  });
+}
+```
+
+### Evaluator tests
+
+Use a small synthetic card pool (5–10 cards) with known column values. Assert that queries produce the expected matching indices.
+
+### Error recovery tests
+
+Assert that partial/malformed inputs produce reasonable ASTs without throwing:
+
+```typescript
+test("trailing operator", () => {
+  expect(() => parse("c:")).not.toThrow();
+});
+```
+
+## Acceptance Criteria
+
+1. `parse("c:wu t:creature")` returns an AND node with two FIELD children. The parser never throws on any string input.
+2. Given a synthetic 10-card dataset, `evaluate(parse("c:wu"), data)` returns a `Uint8Array` where exactly the white-blue cards are flagged.
+3. Internal AST nodes carry correct per-node match counts after evaluation, enabling the query debugger UX.
+4. Buffer pool reuse: running `evaluate` twice on different queries allocates no new `Uint8Array` buffers on the second run (assuming equal or fewer AST nodes).
+5. All supported fields and operators from the table above are exercised by at least one test case.
+6. The lexer + parser together are under 300 lines of code (excluding tests).
