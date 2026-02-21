@@ -1,6 +1,6 @@
 # Spec 014: Syntax Help Overlay
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State & History)
 

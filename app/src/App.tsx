@@ -2,6 +2,7 @@
 import { createSignal, createEffect, For, Show } from 'solid-js'
 import type { FromWorker, CardResult, CardFace, BreakdownNode } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
+import SyntaxHelp from './SyntaxHelp'
 
 function artCropUrl(scryfallId: string): string {
   return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
@@ -156,33 +157,23 @@ function BreakdownTree(props: { node: BreakdownNode; depth?: number }) {
   )
 }
 
-function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void }) {
+function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; onHelpClick: () => void }) {
   const flat = () => isFlatAnd(props.breakdown)
 
   return (
     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 mb-4">
       <div class="flex items-center justify-between mb-2">
         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Query breakdown</p>
-        <div class="flex items-center gap-2">
-          <a
-            href="https://scryfall.com/docs/syntax"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            Syntax guide ↗
-          </a>
-          <button
-            type="button"
-            onClick={() => props.onClose()}
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            aria-label="Close breakdown"
-          >
-            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => props.onClose()}
+          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          aria-label="Close breakdown"
+        >
+          <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
       <Show when={flat()} fallback={<BreakdownTree node={props.breakdown} />}>
         <For each={props.breakdown.children!}>
@@ -192,6 +183,15 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void }
           <BreakdownRow label="Combined" count={props.breakdown.matchCount} muted={props.breakdown.matchCount > 0} />
         </div>
       </Show>
+      <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+        <button
+          type="button"
+          onClick={() => props.onHelpClick()}
+          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          Syntax help
+        </button>
+      </div>
     </div>
   )
 }
@@ -315,6 +315,10 @@ function App() {
 
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+      <Show when={view() === 'help'}>
+        <SyntaxHelp onSelectExample={navigateToQuery} />
+      </Show>
+      <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
         <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
           <div
@@ -351,7 +355,7 @@ function App() {
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
             disabled={workerStatus() === 'error'}
-            class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 pl-11 text-base shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all disabled:opacity-50"
+            class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 pl-11 pr-11 text-base shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all disabled:opacity-50"
           />
           <svg
             class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
@@ -363,6 +367,16 @@ function App() {
           >
             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
+          <button
+            type="button"
+            onClick={() => navigateToHelp()}
+            aria-label="Syntax help"
+            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -414,14 +428,14 @@ function App() {
                 <Show when={showBreakdown() && breakdown()}>
                   {(bd) => (
                     <div class="mt-4 text-left">
-                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} />
+                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} />
                     </div>
                   )}
                 </Show>
               </div>
             }>
               <Show when={showBreakdown() && breakdown()}>
-                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} />}
+                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} />}
               </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -500,6 +514,7 @@ function App() {
           </Show>
         </Show>
       </main>
+      </Show>
     </div>
   )
 }
