@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run dev -w app",
+    "etl": "npm run run -w etl --",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

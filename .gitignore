@@ -33,6 +33,5 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# ETL / data outputs (optional: remove if you want to commit generated data)
-*.json.bz2
-data/output/
+# ETL / data outputs
+data/

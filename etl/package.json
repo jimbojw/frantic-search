@@ -12,7 +12,10 @@
   "author": "",
   "description": "ETL: fetch and transform Scryfall data",
   "dependencies": {
-    "@frantic-search/shared": "*"
+    "@frantic-search/shared": "*",
+    "axios": "^1.13.5",
+    "cac": "^6.7.14",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
