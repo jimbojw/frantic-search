@@ -75,6 +75,9 @@ function App() {
   const [results, setResults] = createSignal<CardResult[]>([])
   const [totalMatches, setTotalMatches] = createSignal(0)
   const [showOracleText, setShowOracleText] = createSignal(false)
+  const [inputFocused, setInputFocused] = createSignal(false)
+
+  const headerCollapsed = () => inputFocused() || query().trim() !== ''
 
   const worker = new SearchWorker()
   let latestQueryId = 0
@@ -108,13 +111,15 @@ function App() {
 
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
-      <header class="mx-auto max-w-2xl px-4 pt-16 pb-8">
-        <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
-          Frantic Search
-        </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
-          Instant MTG card search
-        </p>
+      <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-4 pb-4' : 'pt-16 pb-8'}`}>
+        <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-40 opacity-100'}`}>
+          <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
+            Frantic Search
+          </h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
+            Instant MTG card search
+          </p>
+        </div>
 
         <div class="relative">
           <input
@@ -122,6 +127,8 @@ function App() {
             placeholder='Search cards… e.g. "t:creature c:green"'
             value={query()}
             onInput={(e) => setQuery(e.currentTarget.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             disabled={workerStatus() === 'error'}
             class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 pl-11 text-base shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all disabled:opacity-50"
           />
