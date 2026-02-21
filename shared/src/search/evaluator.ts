@@ -9,6 +9,7 @@ import {
 } from "./ast";
 import type { CardIndex } from "./card-index";
 import { COLOR_FROM_LETTER, FORMAT_NAMES } from "../bits";
+import { parseManaSymbols, manaContains } from "./mana";
 
 const SEP = "\x1E";
 
@@ -146,8 +147,9 @@ function evalLeafField(
       break;
     }
     case "mana": {
+      const querySymbols = parseManaSymbols(valLower);
       for (let i = 0; i < n; i++) {
-        buf[i] = index.manaCostsLower[i].includes(valLower) ? 1 : 0;
+        buf[i] = manaContains(index.manaSymbols[i], querySymbols) ? 1 : 0;
       }
       break;
     }

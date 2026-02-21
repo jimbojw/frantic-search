@@ -199,7 +199,7 @@ These fields map to columns available in the current ETL output.
 | `toughness`, `tou` | `toughnesses` + `toughness_lookup` | Numeric equality                | Numeric comparison via lookup              |
 | `loyalty`, `loy`   | `loyalties` + `loyalty_lookup`   | Numeric equality                  | Numeric comparison via lookup              |
 | `defense`, `def`   | `defenses` + `defense_lookup`    | Numeric equality                  | Numeric comparison via lookup              |
-| `mana`, `m`        | `mana_costs`                | Substring on raw mana cost string      | —                                          |
+| `mana`, `m`        | `mana_costs`                | Card has at least these mana symbols (component-wise ≥ on parsed symbol map; see Spec 008) | —                |
 | `legal`, `f`, `format` | `legalities_legal`      | Card is legal in the given format      | —                                          |
 | `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
@@ -401,3 +401,9 @@ test("trailing operator", () => {
   operated on card rows. Deduplication is a post-evaluation step on `CardIndex`.
   Background, column table, CardIndex, evaluation pipeline, test strategy, and
   acceptance criteria sections updated above to reflect the new model.
+- 2026-02-20: Replaced substring-based mana cost matching with structured
+  symbol-map comparison (Spec 008). Mana costs are parsed into
+  `Record<string, number>` symbol maps; the `:` operator performs a
+  component-wise ≥ check. Bare shorthand (`m:rr`, `m:2rr`) and mixed forms
+  (`m:r{r}`, `m:{r}r`) now work correctly, matching Scryfall's behavior.
+  `CardIndex` pre-computes mana symbol maps at construction time.

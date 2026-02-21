@@ -260,16 +260,40 @@ describe("evaluate", () => {
     expect(matchCount("pow<2")).toBe(1);
   });
 
-  test("mana cost substring", () => {
+  test("mana symbol contains (braced)", () => {
     expect(matchCount("m:{G}")).toBe(2);
     expect(matchCount("m:{R}")).toBe(1);
-  });
-
-  test("mana cost is case-insensitive", () => {
-    expect(matchCount("m:{g}")).toBe(2);
-    expect(matchCount("m:{r}")).toBe(1);
     expect(matchCount("m:{u}{u}")).toBe(1);
     expect(matchCount("m:{b/p}{b/p}")).toBe(1);
+  });
+
+  test("mana symbol contains is case-insensitive", () => {
+    expect(matchCount("m:{g}")).toBe(2);
+    expect(matchCount("m:{r}")).toBe(1);
+  });
+
+  test("bare mana shorthand matches same as braced", () => {
+    expect(matchCount("m:g")).toBe(2);
+    expect(matchCount("m:r")).toBe(1);
+    expect(matchCount("m:uu")).toBe(1);
+    expect(matchCount("m:rr")).toBe(0);
+  });
+
+  test("mixed bare/braced mana shorthand", () => {
+    expect(matchCount("m:r{r}")).toBe(0);
+    expect(matchCount("m:{r}r")).toBe(0);
+    expect(matchCount("m:u{u}")).toBe(1);
+    expect(matchCount("m:{u}u")).toBe(1);
+  });
+
+  test("generic mana in query", () => {
+    expect(matchCount("m:1")).toBe(5);
+    expect(matchCount("m:1g")).toBe(1);
+    expect(matchCount("m:{1}{g}")).toBe(1);
+  });
+
+  test("phyrexian symbol in query matches only itself", () => {
+    expect(matchCount("m:{b/p}")).toBe(1);
   });
 
   test("exact name with !", () => {
