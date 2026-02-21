@@ -1,6 +1,6 @@
 # Spec 009: Query Breakdown
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

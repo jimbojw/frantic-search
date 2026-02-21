@@ -1,6 +1,6 @@
 # Spec 006: CI/CD Pipeline
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # Spec 012: Bare Regex (Top-Level `/pattern`)
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

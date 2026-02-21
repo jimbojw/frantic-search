@@ -1,6 +1,6 @@
 # Spec 001: ETL Download Command
 
-**Status:** Draft
+**Status:** Implemented 
 
 ## Goal
 

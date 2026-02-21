@@ -1,6 +1,6 @@
 # Spec 016: Bug Report Page
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State & History), Spec 009 (Query Breakdown)
 

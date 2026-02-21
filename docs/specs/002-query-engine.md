@@ -1,6 +1,6 @@
 # Spec 002: Query Engine
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

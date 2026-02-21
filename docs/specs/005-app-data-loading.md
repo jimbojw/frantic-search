@@ -1,6 +1,6 @@
 # Spec 005: App Data Loading
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

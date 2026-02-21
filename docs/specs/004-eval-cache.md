@@ -1,6 +1,6 @@
 # Spec 004: Evaluation Cache
 
-**Status:** Draft
+**Status:** Implemented 
 
 ## Goal
 
