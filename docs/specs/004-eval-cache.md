@@ -41,7 +41,7 @@ const SEP = "\x1E"; // ASCII Record Separator
 
 (The `␞` glyph represents `\x1E` for readability in this document.)
 
-Internal node keys are composed from their children's keys, so structural equality is transitive — an AND node with identical children always resolves to the same interned node, regardless of which parse pass produced it.
+Internal node keys are composed from their children's keys, so structural equality is transitive — an AND node with identical children always resolves to the same interned node, regardless of which parse pass produced it. Children are keyed in parse order, not sorted — `c:wu t:creature` and `t:creature c:wu` produce different AND keys. This is intentional: the parser deterministically orders children, so the same query text always produces the same key, and commutative normalization would add complexity for negligible cache-hit gain.
 
 ### Interned node and computed result
 
@@ -59,7 +59,7 @@ interface ComputedResult {
 }
 ```
 
-`ComputedResult` is attached to an `InternedNode` after its first evaluation. The `buf` is owned by the cache and must never be mutated after creation. `productionMs` is the wall-clock time for the original computation (inclusive of children for internal nodes).
+`ComputedResult` is attached to an `InternedNode` after its first evaluation. The `buf` is owned by the cache and must never be mutated after creation. `productionMs` is the exclusive wall-clock time for this node's own work — the linear scan for leaf nodes, the byte-wise combination for internal nodes — not including time spent producing children.
 
 ### Evaluation with cache
 
@@ -71,7 +71,7 @@ When `evaluate()` is called:
    - **Internal nodes:** Allocate a new `Uint8Array`, combine children's cached `buf` arrays via byte-wise AND/OR/NOT, record `productionMs`.
    - Attach the `ComputedResult` to the `InternedNode`.
 3. **Build query trace.** Walk the interned tree and build a `QueryNodeResult` for each node, recording whether the result was a cache hit and the wall-clock time for this specific evaluation pass (near-zero for cache hits).
-4. **Extract matching indices.** Read the root node's cached `buf` to produce the face-level `matchingIndices` array.
+4. **Extract matching indices.** Read the root node's cached `buf` to produce the face-level `matchingIndices` array. Deduplication to card-level results via `CardIndex.deduplicateMatches()` remains the caller's responsibility, unchanged from the current `evaluate()` contract.
 
 Because cached buffers are never mutated, internal node combination always reads from stable inputs. There is no acquire/release lifecycle.
 
@@ -99,14 +99,14 @@ interface EvalOutput {
 |----------------|-----------------------------------------------------------------|
 | `matchCount`   | Popcount of this node's bitmask (same as current `EvalResult`)  |
 | `cached`       | `true` if the result was already present before this evaluation |
-| `productionMs` | Wall-clock time for the original computation of this node       |
-| `evalMs`       | Wall-clock time for this node in the current evaluation pass    |
+| `productionMs` | Exclusive wall-clock time for this node's own work when it was first computed (not including children) |
+| `evalMs`       | Exclusive wall-clock time for this node's own work in the current evaluation pass (not including children) |
 
-For cached nodes, `evalMs` reflects only the cache lookup cost (near-zero). For freshly computed nodes, `evalMs` ≈ `productionMs`. `productionMs` is always the original computation cost, regardless of whether the current pass was a cache hit.
+All timings are exclusive: they measure only the node's own work (linear scan for leaves, byte-wise combination for internal nodes), not time spent producing children. For cached nodes, `evalMs` reflects only the cache lookup cost (near-zero). For freshly computed nodes, `evalMs` ≈ `productionMs`. `productionMs` is always the original computation cost, regardless of whether the current pass was a cache hit.
 
 ### Timing control
 
-Timing instrumentation uses `performance.now()`. Since timing is integral to the cache design (every `ComputedResult` records `productionMs`), it is always collected — there is no opt-out flag. The overhead of two `performance.now()` calls per node is negligible relative to the evaluation work.
+Timing instrumentation uses `performance.now()`. Since timing is integral to the cache design (every `ComputedResult` records `productionMs`), it is always collected — there is no opt-out flag. The overhead of `performance.now()` calls is negligible relative to the evaluation work.
 
 ### NodeCache lifetime and scoping
 
@@ -145,9 +145,9 @@ The `EvalResult` interface in `ast.ts` is replaced by `QueryNodeResult`, which a
 
 The standalone `evaluate(ast, index)` function is replaced by `NodeCache.evaluate(ast)`. The `CardIndex` is bound at cache construction, not passed per call. Callers (CLI, future WebWorker) construct a `NodeCache` once from a `CardIndex` and call `evaluate()` for each query.
 
-### New file: `shared/src/search/cache.ts`
+### Updated: `shared/src/search/evaluator.ts`
 
-Contains `NodeCache`, `InternedNode`, and `ComputedResult`. The interning, caching, and evaluation-with-timing logic lives here.
+The `NodeCache` class, `InternedNode`, and `ComputedResult` are added to `evaluator.ts` alongside the existing leaf evaluation functions. The `BufferPool` import, `evalNode`, and the standalone `evaluate()` function are removed. The leaf helpers (`evalLeafField`, `evalLeafRegex`, etc.) remain as private functions — they are now called by `NodeCache` instead of `evalNode`.
 
 ### Updated: `shared/src/search/ast.ts`
 
@@ -161,12 +161,11 @@ shared/src/search/
 ├── lexer.ts          (unchanged)
 ├── parser.ts         (unchanged)
 ├── card-index.ts     (unchanged)
-├── cache.ts          NodeCache — interning, cached evaluation, timing
-├── evaluator.ts      Leaf/internal evaluation logic (pure functions, called by cache)
+├── evaluator.ts      NodeCache + leaf/internal evaluation logic
 └── pool.ts           (deleted)
 ```
 
-The leaf evaluation functions (`evalLeafField`, `evalLeafRegex`, etc.) remain in `evaluator.ts` as pure functions that write into a provided `Uint8Array`. The `NodeCache` calls them — the scan logic doesn't change, only its lifecycle management.
+Caching is a feature of the evaluator, not a separate module. `NodeCache`, `InternedNode`, and `ComputedResult` live in `evaluator.ts` alongside the leaf evaluation functions (`evalLeafField`, `evalLeafRegex`, etc.), which remain private helpers. The scan logic doesn't change — only its lifecycle management.
 
 ## Test Strategy
 
