@@ -41,46 +41,51 @@ Each AST node owns a `Uint8Array` with one byte per card. Leaf nodes are populat
 expr      = or_group
 or_group  = and_group ("OR" and_group)*
 and_group = term (term)*
-term      = "-"? atom
+term      = "-" atom | "!" atom | atom
 atom      = "(" expr ")"
-          | WORD operator WORD
-          | WORD operator QUOTED
+          | WORD operator (WORD | QUOTED | REGEX)
           | WORD
           | QUOTED
 operator  = ":" | "=" | "!=" | "<" | ">" | "<=" | ">="
 ```
 
-Precedence, tightest to loosest: parentheses → negation → implicit AND → explicit OR.
+Precedence, tightest to loosest: parentheses → negation/exact → implicit AND → explicit OR.
 
-Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches.
+Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches. `!` before a word or quoted string is an exact-name match.
 
 ## Token Types
 
 The lexer produces a flat array of tokens. Each token has a `type` and a `value` string.
 
-| Token     | Matches                                         | Examples               |
-|-----------|--------------------------------------------------|------------------------|
-| `WORD`    | Contiguous non-whitespace, non-special characters | `lightning`, `c`, `wu` |
-| `QUOTED`  | Content between double quotes (quotes stripped)   | `"enters the"`         |
-| `COLON`   | `:`                                              |                        |
-| `EQ`      | `=`                                              |                        |
-| `NEQ`     | `!=`                                             |                        |
-| `LT`      | `<`                                              |                        |
-| `GT`      | `>`                                              |                        |
-| `LTE`     | `<=`                                             |                        |
-| `GTE`     | `>=`                                             |                        |
-| `LPAREN`  | `(`                                              |                        |
-| `RPAREN`  | `)`                                              |                        |
-| `DASH`    | `-` when preceding an atom (not inside a word)   |                        |
-| `OR`      | The literal keyword `OR` (case-sensitive)         |                        |
-| `EOF`     | End of input                                     |                        |
+| Token     | Matches                                           | Examples                |
+|-----------|---------------------------------------------------|-------------------------|
+| `WORD`    | Contiguous non-whitespace, non-special characters  | `lightning`, `c`, `wu`  |
+| `QUOTED`  | Content between matching `"` or `'` (stripped)     | `"enters the"`, `'can"t'` |
+| `REGEX`   | Content between `/` delimiters (`\/` escapes `/`)  | `/^{T}:/`               |
+| `COLON`   | `:`                                                |                         |
+| `EQ`      | `=`                                                |                         |
+| `NEQ`     | `!=`                                               |                         |
+| `LT`      | `<`                                                |                         |
+| `GT`      | `>`                                                |                         |
+| `LTE`     | `<=`                                               |                         |
+| `GTE`     | `>=`                                               |                         |
+| `LPAREN`  | `(`                                                |                         |
+| `RPAREN`  | `)`                                                |                         |
+| `DASH`    | `-` when preceding an atom (not inside a word)     |                         |
+| `BANG`    | `!` when not followed by `=` (exact-name prefix)   | `!fire`                 |
+| `OR`      | The literal keyword `OR` (case-insensitive)        | `OR`, `or`, `Or`        |
+| `EOF`     | End of input                                       |                         |
 
 Multi-character operators (`!=`, `<=`, `>=`) are matched greedily before single-character ones.
+
+Single quotes behave identically to double quotes for `QUOTED` tokens. An apostrophe mid-word (e.g. `can't`) is consumed as part of the word, not as a quote delimiter. Unclosed quotes of either kind consume to end of input (error recovery).
 
 ## AST Node Types
 
 ```typescript
-type ASTNode = AndNode | OrNode | NotNode | FieldNode | BareWordNode;
+type ASTNode =
+  | AndNode | OrNode | NotNode
+  | FieldNode | BareWordNode | ExactNameNode | RegexFieldNode;
 
 interface AndNode {
   type: "AND";
@@ -107,6 +112,18 @@ interface FieldNode {
 interface BareWordNode {
   type: "BARE";
   value: string;
+}
+
+interface ExactNameNode {
+  type: "EXACT";
+  value: string;
+}
+
+interface RegexFieldNode {
+  type: "REGEX_FIELD";
+  field: string;
+  operator: string;
+  pattern: string;
 }
 ```
 
@@ -276,3 +293,11 @@ test("trailing operator", () => {
 4. Buffer pool reuse: running `evaluate` twice on different queries allocates no new `Uint8Array` buffers on the second run (assuming equal or fewer AST nodes).
 5. All supported fields and operators from the table above are exercised by at least one test case.
 6. The lexer + parser together are under 300 lines of code (excluding tests).
+
+## Implementation Notes
+
+- 2026-02-19: Lexer extended beyond original spec during implementation:
+  single-quoted strings (matching Scryfall behavior for embedding quotes),
+  `BANG` token for `!`-prefixed exact-name search, `REGEX` token for
+  `/`-delimited regex patterns, and case-insensitive `OR` keyword matching.
+  Grammar and AST types updated above to reflect these additions.
