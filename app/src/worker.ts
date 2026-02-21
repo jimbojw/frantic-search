@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData, ToWorker, FromWorker, CardResult, BreakdownNode, QueryNodeResult } from '@frantic-search/shared'
-import { CardIndex, NodeCache, parse } from '@frantic-search/shared'
+import { CardIndex, NodeCache, nodeKey, parse, seededShuffle } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -59,6 +59,7 @@ async function init(): Promise<void> {
     const totalMatches = matchingIndices.length
     const breakdown = toBreakdown(result)
     const deduped = index.deduplicateMatches(matchingIndices)
+    seededShuffle(deduped, nodeKey(ast))
     const cards: CardResult[] = deduped.map(i => ({
       name: data.names[i],
       manaCost: data.mana_costs[i],

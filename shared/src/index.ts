@@ -12,5 +12,6 @@ export type { ToWorker, FromWorker, CardResult, BreakdownNode } from "./worker-p
 
 export type { QueryNodeResult } from "./search/ast";
 export { CardIndex } from "./search/card-index";
-export { NodeCache } from "./search/evaluator";
+export { NodeCache, nodeKey } from "./search/evaluator";
 export { parse } from "./search/parser";
+export { seededShuffle } from "./search/shuffle";
