@@ -20,6 +20,7 @@ export type CardFace = {
 export type CardResult = {
   scryfallId: string
   colorIdentity: number
+  thumbHash: string
   layout: string
   faces: CardFace[]
   legalities?: { legal: number; banned: number; restricted: number }

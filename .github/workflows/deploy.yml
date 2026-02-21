@@ -44,6 +44,15 @@ jobs:
       - name: Download Oracle Cards
         run: npm run etl -- download
 
+      - name: Restore ThumbHash cache
+        uses: actions/cache@v4
+        with:
+          path: data/thumbhash
+          key: thumbhash-manifest
+
+      - name: Generate ThumbHashes
+        run: npm run etl -- thumbhash --verbose
+
       - name: Process card data
         run: npm run etl -- process
 

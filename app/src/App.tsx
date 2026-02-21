@@ -6,18 +6,37 @@ import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import { ManaCost, OracleText } from './card-symbols'
+import { thumbHashToDataURL } from 'thumbhash'
 import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
 
-function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
+}
+
+function ArtCrop(props: { scryfallId: string; colorIdentity: number; thumbHash: string }) {
   const [loaded, setLoaded] = createSignal(false)
+
+  const gradient = () => CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS
+
+  const background = () => {
+    if (props.thumbHash) {
+      const bytes = base64ToBytes(props.thumbHash)
+      return `url(${thumbHashToDataURL(bytes)}) center/cover, ${gradient()}`
+    }
+    return gradient()
+  }
+
   return (
     <div
       class="w-[3em] pb-1 rounded-sm overflow-hidden shrink-0 mt-0.5"
-      style={{ background: CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS }}
+      style={{ background: background() }}
     >
       <img
         src={artCropUrl(props.scryfallId)}
@@ -500,7 +519,7 @@ function App() {
                     return (
                       <li class="group px-4 py-2 text-sm flex items-start gap-3">
                         <Show when={card.scryfallId}>
-                          <ArtCrop scryfallId={card.scryfallId} colorIdentity={card.colorIdentity} />
+                          <ArtCrop scryfallId={card.scryfallId} colorIdentity={card.colorIdentity} thumbHash={card.thumbHash} />
                         </Show>
                         <div class="min-w-0 flex-1">
                           <Show when={card.faces.length > 1} fallback={

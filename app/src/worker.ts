@@ -85,6 +85,7 @@ async function init(): Promise<void> {
       const card: CardResult = {
         scryfallId: data.scryfall_ids[canonIdx],
         colorIdentity: data.color_identity[canonIdx],
+        thumbHash: data.thumb_hashes[canonIdx],
         layout: data.layouts[canonIdx],
         faces,
         legalities: {

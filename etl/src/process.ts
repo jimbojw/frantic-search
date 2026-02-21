@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
+import { loadManifest } from "./thumbhash";
 import {
   COLOR_FROM_LETTER,
   FORMAT_NAMES,
@@ -125,6 +126,7 @@ function pushFaceRow(
   cardIdx: number,
   canonicalFace: number,
   leg: { legal: number; banned: number; restricted: number },
+  manifest: Record<string, string>,
   powerDict: DictEncoder,
   toughnessDict: DictEncoder,
   loyaltyDict: DictEncoder,
@@ -150,6 +152,7 @@ function pushFaceRow(
   data.card_index.push(cardIdx);
   data.canonical_face.push(canonicalFace);
   data.scryfall_ids.push(card.id ?? "");
+  data.thumb_hashes.push(manifest[card.id ?? ""] ?? "");
   data.layouts.push(card.layout ?? "normal");
 }
 
@@ -159,6 +162,9 @@ export function processCards(verbose: boolean): void {
   const cards: Card[] = JSON.parse(raw);
 
   log(`Processing ${cards.length} cards…`, verbose);
+
+  const manifest = loadManifest();
+  log(`ThumbHash manifest: ${Object.keys(manifest).length} entries`, verbose);
 
   const powerDict = new DictEncoder();
   const toughnessDict = new DictEncoder();
@@ -183,6 +189,7 @@ export function processCards(verbose: boolean): void {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
+    thumb_hashes: [],
     layouts: [],
     power_lookup: [],
     toughness_lookup: [],
@@ -206,11 +213,11 @@ export function processCards(verbose: boolean): void {
 
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
-        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg,
+        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, manifest,
           powerDict, toughnessDict, loyaltyDict, defenseDict);
       }
     } else {
-      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg,
+      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, manifest,
         powerDict, toughnessDict, loyaltyDict, defenseDict);
     }
   }

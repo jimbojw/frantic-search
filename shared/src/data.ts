@@ -18,6 +18,7 @@ export interface ColumnarData {
   card_index: number[];
   canonical_face: number[];
   scryfall_ids: string[];
+  thumb_hashes: string[];
   layouts: string[];
   power_lookup: string[];
   toughness_lookup: string[];

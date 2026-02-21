@@ -12,6 +12,7 @@ import {
 } from "./paths";
 import { log } from "./log";
 import { processCards } from "./process";
+import { generateThumbHashes } from "./thumbhash";
 
 const cli = cac("etl");
 
@@ -66,6 +67,25 @@ cli
       process.exit(1);
     }
   });
+
+cli
+  .command("thumbhash", "Generate ThumbHash placeholders for card art crops")
+  .option("--timeout <seconds>", "Maximum seconds to spend downloading", {
+    default: 500,
+  })
+  .option("--delay <ms>", "Milliseconds between downloads", { default: 100 })
+  .option("--verbose", "Print detailed progress", { default: false })
+  .action(
+    async (options: { timeout: number; delay: number; verbose: boolean }) => {
+      try {
+        await generateThumbHashes(options);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`Error: ${msg}\n`);
+        process.exit(1);
+      }
+    },
+  );
 
 cli.help();
 cli.parse();

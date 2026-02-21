@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "run": "tsx src/index.ts"
+    "run": "tsx src/index.ts",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -14,10 +15,13 @@
     "@frantic-search/shared": "*",
     "axios": "^1.13.5",
     "cac": "^6.7.14",
+    "sharp": "^0.34.5",
+    "thumbhash": "^0.1.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   }
 }

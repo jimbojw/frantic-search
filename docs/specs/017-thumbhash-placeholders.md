@@ -1,6 +1,6 @@
 # Spec 017: ThumbHash Image Placeholders
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 001 (ETL Download)
 
