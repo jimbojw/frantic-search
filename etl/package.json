@@ -5,8 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "run": "tsx src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "run": "tsx src/index.ts"
   },
   "keywords": [],
   "author": "",
