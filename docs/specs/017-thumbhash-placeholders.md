@@ -177,18 +177,20 @@ function ArtCrop(props: {
 }) {
   const [loaded, setLoaded] = createSignal(false)
 
+  const gradient = () => CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS
+
   const background = () => {
     if (props.thumbHash) {
       const bytes = base64ToBytes(props.thumbHash)
-      return `url(${thumbHashToDataURL(bytes)})`
+      return `url(${thumbHashToDataURL(bytes)}) center/cover, ${gradient()}`
     }
-    return CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS
+    return gradient()
   }
 
   return (
     <div
       class="w-[3em] pb-1 rounded-sm overflow-hidden shrink-0 mt-0.5"
-      style={{ background: background(), "background-size": "cover", "background-position": "center" }}
+      style={{ background: background() }}
     >
       <img
         src={artCropUrl(props.scryfallId)}
@@ -204,7 +206,7 @@ function ArtCrop(props: {
 }
 ```
 
-When a ThumbHash is available, the container shows a decoded blurry preview as its background. When not available, it falls back to the existing color-identity gradient. In both cases, the real art crop fades in on load as it does today.
+The color-identity gradient is always present. When a ThumbHash is available, its decoded image is layered on top of the gradient using CSS multiple backgrounds. Because the art crop `<img>` does not fully cover the container (the container has bottom padding), the gradient peeks out at the bottom as a persistent color-identity indicator even after the image loads. The real art crop fades in on load as it does today.
 
 ### Bundle Size
 
@@ -226,6 +228,6 @@ The `thumbhash` package is ~1 KB minified. The `thumbHashToDataURL` function is 
 5. Stale manifest entries (IDs not in current oracle cards) are pruned.
 6. `npm run etl -- process` reads the manifest and populates a `thumb_hashes` column in `columns.json`.
 7. Cards without a ThumbHash have an empty string in the column.
-8. The `ArtCrop` component shows a decoded ThumbHash as the placeholder background when available.
-9. The `ArtCrop` component falls back to the color-identity gradient when no ThumbHash is available.
+8. The `ArtCrop` component shows a decoded ThumbHash layered over the color-identity gradient when available.
+9. The color-identity gradient is always visible (it peeks out from the bottom padding even after the art crop image loads). When no ThumbHash is available, only the gradient is shown.
 10. The deploy workflow caches and restores the ThumbHash manifest between builds.
