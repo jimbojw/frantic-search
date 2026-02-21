@@ -33,7 +33,7 @@ The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL
 raw input → lexer → tokens → parser → AST → evaluator (single-pass scan) → bitwise tree reduction
 ```
 
-Each AST node owns a `Uint8Array` with one byte per card. Leaf nodes are populated during a single linear scan of the card pool. Internal nodes are resolved bottom-up: AND nodes combine children with byte-wise AND, OR nodes with byte-wise OR, NOT nodes with byte-wise flip. The result at the root is a bitmask of all matching cards.
+The evaluator takes an AST and a `CardIndex` (evaluation-ready card data) and produces an `EvalResult` tree. Internally, each node is backed by a `Uint8Array` (one byte per card) from a reusable pool. Leaf nodes are populated during a single linear scan. Internal nodes are resolved bottom-up via byte-wise AND, OR, and NOT. The `EvalResult` tree exposes `matchCount` (popcount) per node but does not expose the raw bitmasks.
 
 ## Grammar
 
@@ -127,7 +127,39 @@ interface RegexFieldNode {
 }
 ```
 
-Every node additionally carries a `matches: Uint8Array` populated during evaluation, but the parser does not allocate these — the evaluator does (from the buffer pool).
+AST types are pure parser output. They carry no runtime or evaluation data.
+
+### Evaluation Result Type
+
+The evaluator produces a separate `EvalResult` tree that mirrors the AST structure:
+
+```typescript
+interface EvalResult {
+  node: ASTNode;
+  matchCount: number;
+  children?: EvalResult[];
+}
+```
+
+`matchCount` is the popcount of the node's internal bitmask. `Uint8Array` bitmasks are pooled internally by the evaluator and not exposed on the result type.
+
+### CardIndex
+
+`ColumnarData` is the wire/storage format (what the ETL writes, what the app fetches). `CardIndex` wraps it with pre-computed evaluation-ready fields:
+
+```typescript
+class CardIndex {
+  readonly cardCount: number;
+  readonly namesLower: string[];       // pre-lowercased for case-insensitive search
+  readonly oracleTextsLower: string[];
+  readonly subtypesLower: string[];
+  // bitmask and dict-encoded columns pass through unchanged
+  readonly colors: number[];
+  readonly types: number[];
+  // ...
+  constructor(data: ColumnarData) { /* derive */ }
+}
+```
 
 ## Supported Fields (v1)
 
@@ -223,11 +255,13 @@ All query engine code lives in `shared/src/`:
 shared/src/
 ├── index.ts              (public API re-exports)
 ├── bits.ts               (existing bitmask constants)
+├── data.ts               (ColumnarData interface — wire/storage format)
 ├── search/
+│   ├── ast.ts            (token + AST node + EvalResult type definitions)
 │   ├── lexer.ts          (tokenizer)
 │   ├── parser.ts         (recursive descent → AST)
-│   ├── ast.ts            (AST node type definitions)
-│   ├── evaluator.ts      (single-pass scan + tree reduction)
+│   ├── card-index.ts     (CardIndex — evaluation-ready wrapper)
+│   ├── evaluator.ts      (single-pass scan + tree reduction → EvalResult)
 │   └── pool.ts           (Uint8Array buffer pool)
 ```
 
@@ -273,7 +307,7 @@ for (const [input, expected] of cases) {
 
 ### Evaluator tests
 
-Use a small synthetic card pool (5–10 cards) with known column values. Assert that queries produce the expected matching indices.
+Define a synthetic 5–10 card pool as a TypeScript `ColumnarData` constant in the test file. Wrap it in a `CardIndex`. Assert that `evaluate(parse(query), index).matchCount` equals the expected value for each query. Each card in the pool exists to exercise a specific condition (color, type, power, oracle text, etc.).
 
 ### Error recovery tests
 
@@ -301,3 +335,8 @@ test("trailing operator", () => {
   `BANG` token for `!`-prefixed exact-name search, `REGEX` token for
   `/`-delimited regex patterns, and case-insensitive `OR` keyword matching.
   Grammar and AST types updated above to reflect these additions.
+- 2026-02-19: Separated AST types (pure parser output) from evaluation
+  results (`EvalResult` tree with `matchCount`). Added `CardIndex` wrapper
+  for pre-computed evaluation-ready data, distinct from `ColumnarData`
+  wire format. `Uint8Array` bitmasks are internal to the evaluator.
+  `ColumnarData` moved to `shared/src/data.ts`.
