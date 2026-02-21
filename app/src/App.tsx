@@ -224,8 +224,11 @@ function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boo
   )
 }
 
+const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
+
 function App() {
   const [query, setQuery] = createSignal('')
+  const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
   const [results, setResults] = createSignal<CardResult[]>([])
@@ -274,11 +277,17 @@ function App() {
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
         <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
-          <div class="mb-4 h-14 overflow-hidden rounded-xl shadow-md">
+          <div
+            class="mb-4 h-14 overflow-hidden rounded-xl shadow-md bg-cover bg-[center_20%]"
+            style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
+          >
             <img
               src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
               alt="Frantic Search card art by Mitchell Malloy"
+              onLoad={() => setHeaderArtLoaded(true)}
               class="h-full w-full object-cover object-[center_20%]"
+              classList={{ 'opacity-0': !headerArtLoaded(), 'opacity-100': headerArtLoaded() }}
+              style="transition: opacity 300ms ease-in"
             />
           </div>
           <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
