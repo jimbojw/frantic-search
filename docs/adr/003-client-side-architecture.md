@@ -20,3 +20,7 @@ Build the app as a **Single Page Application (SPA)** with a dedicated **WebWorke
 - **Positive:** The WebWorker can load and decompress the card dataset without blocking rendering.
 - **Negative:** Data must be serialized across the main thread / worker boundary via `postMessage`. Transferable objects (e.g., `ArrayBuffer`) can mitigate this.
 - **Negative:** Debugging is slightly more complex (separate DevTools context for the worker).
+
+## SharedWorker Consideration (2026-02-20)
+
+A SharedWorker would allow multiple tabs to share a single card index in memory, avoiding redundant ~8 MB loads. However, SharedWorker is not supported in Safari on iOS as of early 2026. Since mobile is a primary target (and iOS/Safari is a significant share of mobile traffic), we defer SharedWorker in favor of a standard WebWorker. This can be revisited when Safari support ships — the migration path is straightforward since the `postMessage` API is identical.
