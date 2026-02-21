@@ -8,7 +8,7 @@ export {
 
 export type { ColumnarData } from "./data";
 
-export type { ToWorker, FromWorker } from "./worker-protocol";
+export type { ToWorker, FromWorker, CardResult } from "./worker-protocol";
 
 export { CardIndex } from "./search/card-index";
 export { NodeCache } from "./search/evaluator";

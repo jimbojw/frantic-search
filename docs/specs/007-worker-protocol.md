@@ -32,15 +32,21 @@ The main thread only sends `search` messages after receiving a `ready` status. `
 ### Worker → Main (`FromWorker`)
 
 ```typescript
+type CardResult = {
+  name: string
+  manaCost: string
+  typeLine: string
+}
+
 type FromWorker =
   | { type: 'status'; status: 'loading' | 'ready' | 'error'; error?: string }
-  | { type: 'result'; queryId: number; names: string[]; totalMatches: number }
+  | { type: 'result'; queryId: number; cards: CardResult[]; totalMatches: number }
 ```
 
 | Message    | When sent                                  | Fields                                  |
 |------------|--------------------------------------------|-----------------------------------------|
 | `status`   | On startup, after data load, or on failure | `status`: lifecycle state; `error`: message if `status` is `error` |
-| `result`   | After evaluating a search query            | `queryId`: echoed from request; `names`: matched card names; `totalMatches`: total face matches before deduplication |
+| `result`   | After evaluating a search query            | `queryId`: echoed from request; `cards`: matched card data (name, mana cost, type line); `totalMatches`: total face matches before deduplication |
 
 ## Worker Lifecycle
 
@@ -70,7 +76,7 @@ If any step fails (network error, JSON parse error, etc.), the worker posts `{ t
 1. The main thread assigns a monotonically increasing `queryId` and posts a `search` message.
 2. The worker receives the message, calls `parse(query)`, then `cache.evaluate(ast)`.
 3. The worker calls `index.deduplicateMatches(matchingIndices)` to get canonical face indices.
-4. The worker reads the names for the matched faces and posts a `result` message with the echoed `queryId`.
+4. The worker reads the name, mana cost, and type line for each matched face and posts a `result` message with the echoed `queryId`.
 
 ### Stale result discard
 
@@ -83,7 +89,7 @@ The main thread exposes three reactive signals:
 ```typescript
 const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
 const [workerError, setWorkerError] = createSignal<string>('')
-const [results, setResults] = createSignal<string[]>([])
+const [results, setResults] = createSignal<CardResult[]>([])
 ```
 
 A single `onmessage` handler maps incoming messages to signal updates:
@@ -98,7 +104,7 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
       break
     case 'result':
       if (msg.queryId === latestQueryId) {
-        setResults(msg.names)
+        setResults(msg.cards)
       }
       break
   }
@@ -125,7 +131,7 @@ This handles the "typing before ready" case automatically: SolidJS re-runs the e
 
 ## Result Shape
 
-The initial `result` message carries card names as a `string[]`. This is sufficient for the first UI iteration (a list of matching card names). As the UI evolves to show card details (mana cost, type line, images), the result shape will expand. The `queryId` correlation and stale-discard mechanism remain unchanged regardless of payload shape.
+The `result` message carries an array of `CardResult` objects, each containing the card's name, mana cost (Scryfall format, e.g. `{2}{W}{U}`), and type line. The `queryId` correlation and stale-discard mechanism remain unchanged regardless of payload shape. Additional fields (e.g., image URLs, oracle text) can be added to `CardResult` in the future without protocol changes.
 
 ## File Organization
 
@@ -145,7 +151,7 @@ The protocol types live in `shared/` because the CLI or test harness may want to
 1. The worker posts `{ type: 'status', status: 'loading' }` immediately on startup.
 2. After successfully loading and indexing `columns.json`, the worker posts `{ type: 'status', status: 'ready' }`.
 3. If data loading fails, the worker posts `{ type: 'status', status: 'error', error: '...' }` with a descriptive message.
-4. A `search` message with a valid query produces a `result` message with the correct `queryId` and matching card names.
+4. A `search` message with a valid query produces a `result` message with the correct `queryId` and matching card data (name, mana cost, type line).
 5. An empty or whitespace-only query does not produce a `search` message; the main thread clears results locally.
 6. When multiple `search` messages are sent in rapid succession, the main thread only applies the result whose `queryId` matches the latest sent query.
 7. If the user has typed a query before the worker is ready, the query is sent automatically when the worker transitions to `ready`.

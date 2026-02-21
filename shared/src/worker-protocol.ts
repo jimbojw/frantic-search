@@ -6,6 +6,12 @@ export type ToWorker = {
   query: string
 }
 
+export type CardResult = {
+  name: string
+  manaCost: string
+  typeLine: string
+}
+
 export type FromWorker =
   | { type: 'status'; status: 'loading' | 'ready' | 'error'; error?: string }
-  | { type: 'result'; queryId: number; names: string[]; totalMatches: number }
+  | { type: 'result'; queryId: number; cards: CardResult[]; totalMatches: number }

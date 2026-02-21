@@ -1,13 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, For, Show } from 'solid-js'
-import type { FromWorker } from '@frantic-search/shared'
+import type { FromWorker, CardResult } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
+
+const MANA_SYMBOL_RE = /\{([^}]+)\}/g
+
+function ManaCost(props: { cost: string }) {
+  const symbols = () => {
+    const result: string[] = []
+    let match
+    MANA_SYMBOL_RE.lastIndex = 0
+    while ((match = MANA_SYMBOL_RE.exec(props.cost)) !== null) {
+      result.push(match[1].toLowerCase().replace('/', ''))
+    }
+    return result
+  }
+
+  return (
+    <span class="inline-flex items-center gap-px">
+      <For each={symbols()}>
+        {(sym) => <i class={`ms ms-${sym} ms-cost`} />}
+      </For>
+    </span>
+  )
+}
 
 function App() {
   const [query, setQuery] = createSignal('')
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
-  const [results, setResults] = createSignal<string[]>([])
+  const [results, setResults] = createSignal<CardResult[]>([])
   const [totalMatches, setTotalMatches] = createSignal(0)
 
   const worker = new SearchWorker()
@@ -22,7 +44,7 @@ function App() {
         break
       case 'result':
         if (msg.queryId === latestQueryId) {
-          setResults(msg.names)
+          setResults(msg.cards)
           setTotalMatches(msg.totalMatches)
         }
         break
@@ -102,8 +124,14 @@ function App() {
               </p>
               <ul class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
                 <For each={results().slice(0, 200)}>
-                  {(name) => (
-                    <li class="px-4 py-2 text-sm">{name}</li>
+                  {(card) => (
+                    <li class="px-4 py-2 text-sm flex items-center justify-between gap-2">
+                      <div class="min-w-0">
+                        <span class="font-medium">{card.name}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{card.typeLine}</span>
+                      </div>
+                      <ManaCost cost={card.manaCost} />
+                    </li>
                   )}
                 </For>
                 <Show when={results().length > 200}>

@@ -11,6 +11,7 @@
   "dependencies": {
     "@frantic-search/shared": "*",
     "@tailwindcss/vite": "^4.2.0",
+    "mana-font": "^1.18.0",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.0"
   },
