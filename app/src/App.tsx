@@ -127,7 +127,14 @@ function App() {
                   {(card) => (
                     <li class="px-4 py-2 text-sm flex items-center justify-between gap-2">
                       <div class="min-w-0">
-                        <span class="font-medium">{card.name}</span>
+                        <a
+                          href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.name + '"')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="font-medium hover:underline"
+                        >
+                          {card.name}
+                        </a>
                         <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{card.typeLine}</span>
                       </div>
                       <ManaCost cost={card.manaCost} />
