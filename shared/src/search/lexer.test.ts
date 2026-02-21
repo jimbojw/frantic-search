@@ -246,6 +246,14 @@ describe("lex", () => {
     ]);
   });
 
+  test("! before single-quoted string", () => {
+    expect(lex("!'Lightning Bolt'")).toEqual([
+      { type: "BANG", value: "!" },
+      { type: "QUOTED", value: "Lightning Bolt" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
   test("!= is still NEQ, not BANG + EQ", () => {
     expect(lex("c!=r")).toEqual([
       { type: "WORD", value: "c" },

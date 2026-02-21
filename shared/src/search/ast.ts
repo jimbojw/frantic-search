@@ -25,3 +25,53 @@ export interface Token {
   type: TokenType;
   value: string;
 }
+
+// --- AST Node Types ---
+
+export interface AndNode {
+  type: "AND";
+  children: ASTNode[];
+}
+
+export interface OrNode {
+  type: "OR";
+  children: ASTNode[];
+}
+
+export interface NotNode {
+  type: "NOT";
+  child: ASTNode;
+}
+
+export interface FieldNode {
+  type: "FIELD";
+  field: string;
+  operator: string;
+  value: string;
+}
+
+export interface BareWordNode {
+  type: "BARE";
+  value: string;
+}
+
+export interface ExactNameNode {
+  type: "EXACT";
+  value: string;
+}
+
+export interface RegexFieldNode {
+  type: "REGEX_FIELD";
+  field: string;
+  operator: string;
+  pattern: string;
+}
+
+export type ASTNode =
+  | AndNode
+  | OrNode
+  | NotNode
+  | FieldNode
+  | BareWordNode
+  | ExactNameNode
+  | RegexFieldNode;
