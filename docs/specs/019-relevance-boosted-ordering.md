@@ -1,6 +1,6 @@
 # Spec 019: Relevance-Boosted Default Ordering
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

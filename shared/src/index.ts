@@ -17,4 +17,4 @@ export type { QueryNodeResult } from "./search/ast";
 export { CardIndex } from "./search/card-index";
 export { NodeCache, nodeKey } from "./search/evaluator";
 export { parse } from "./search/parser";
-export { seededShuffle } from "./search/shuffle";
+export { seededSort, collectBareWords } from "./search/ordering";
