@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { evaluate } from "./evaluator";
+import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { Color, Format } from "../bits";
@@ -87,11 +87,107 @@ const TEST_DATA: ColumnarData = {
 const index = new CardIndex(TEST_DATA);
 
 function matchCount(query: string): number {
-  return evaluate(parse(query), index).result.matchCount;
+  const cache = new NodeCache(index);
+  return cache.evaluate(parse(query)).result.matchCount;
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Node key uniqueness
+// ---------------------------------------------------------------------------
+
+describe("nodeKey", () => {
+  test("different node types produce different keys", () => {
+    const bare = parse("bolt");      // BARE
+    const field = parse("c:wu");     // FIELD
+    expect(nodeKey(bare)).not.toBe(nodeKey(field));
+  });
+
+  test("same structure produces identical keys", () => {
+    expect(nodeKey(parse("c:wu"))).toBe(nodeKey(parse("c:wu")));
+    expect(nodeKey(parse("c:wu t:creature"))).toBe(nodeKey(parse("c:wu t:creature")));
+  });
+
+  test("different field values produce different keys", () => {
+    expect(nodeKey(parse("c:wu"))).not.toBe(nodeKey(parse("c:bg")));
+  });
+
+  test("different operators produce different keys", () => {
+    expect(nodeKey(parse("c:wu"))).not.toBe(nodeKey(parse("c=wu")));
+  });
+
+  test("separator prevents ambiguous concatenation", () => {
+    // field "ab" + value "cd" vs field "a" + value "bcd"
+    const ast1 = { type: "FIELD" as const, field: "ab", operator: ":", value: "cd" };
+    const ast2 = { type: "FIELD" as const, field: "a", operator: ":", value: "bcd" };
+    expect(nodeKey(ast1)).not.toBe(nodeKey(ast2));
+  });
+
+  test("empty value produces unique key", () => {
+    expect(nodeKey(parse("c:"))).not.toBe(nodeKey(parse("c:wu")));
+  });
+
+  test("NOT key includes child key", () => {
+    const key = nodeKey(parse("-c:wu"));
+    expect(key).toContain("NOT");
+    expect(key).toContain("FIELD");
+  });
+
+  test("AND vs OR produce different keys for same children", () => {
+    const andKey = nodeKey(parse("c:wu t:creature"));    // implicit AND
+    const orKey = nodeKey(parse("c:wu OR t:creature"));
+    expect(andKey).not.toBe(orKey);
+  });
+
+  test("child order matters for AND keys", () => {
+    const ast1 = parse("c:wu t:creature");
+    const ast2 = parse("t:creature c:wu");
+    expect(nodeKey(ast1)).not.toBe(nodeKey(ast2));
+  });
+
+  test("regex field key includes pattern", () => {
+    const key = nodeKey(parse("o:/damage/"));
+    expect(key).toContain("REGEX_FIELD");
+    expect(key).toContain("damage");
+  });
+
+  test("exact name key", () => {
+    const key = nodeKey(parse('!"Lightning Bolt"'));
+    expect(key).toContain("EXACT");
+    expect(key).toContain("Lightning Bolt");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Interning identity
+// ---------------------------------------------------------------------------
+
+describe("NodeCache.intern", () => {
+  test("same AST structure returns same InternedNode", () => {
+    const cache = new NodeCache(index);
+    const ast1 = parse("c:wu");
+    const ast2 = parse("c:wu");
+    const interned1 = cache.intern(ast1);
+    const interned2 = cache.intern(ast2);
+    expect(interned1).toBe(interned2);
+  });
+
+  test("different ASTs return different InternedNodes", () => {
+    const cache = new NodeCache(index);
+    const interned1 = cache.intern(parse("c:wu"));
+    const interned2 = cache.intern(parse("c:bg"));
+    expect(interned1).not.toBe(interned2);
+  });
+
+  test("deeply nested identical structures resolve to same node", () => {
+    const cache = new NodeCache(index);
+    const ast1 = parse("(c:wu OR c:bg) t:creature");
+    const ast2 = parse("(c:wu OR c:bg) t:creature");
+    expect(cache.intern(ast1)).toBe(cache.intern(ast2));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Match count equivalence (same results as the old evaluate function)
 // ---------------------------------------------------------------------------
 
 describe("evaluate", () => {
@@ -112,80 +208,80 @@ describe("evaluate", () => {
   });
 
   test("oracle text field substring", () => {
-    expect(matchCount("o:flying")).toBe(1);           // Birds
-    expect(matchCount("o:damage")).toBe(2);            // Bolt + Ayara front ("deals X damage")
-    expect(matchCount("o:target")).toBe(4);            // Bolt + Counterspell + Ayara front + Ayara back
+    expect(matchCount("o:flying")).toBe(1);
+    expect(matchCount("o:damage")).toBe(2);
+    expect(matchCount("o:target")).toBe(4);
   });
 
   test("color field with : (superset)", () => {
-    expect(matchCount("c:g")).toBe(2);                 // Birds + Tarmogoyf
-    expect(matchCount("c:r")).toBe(2);                 // Bolt + Ayara back (BR)
-    expect(matchCount("c:wu")).toBe(1);                // Azorius Charm
-    expect(matchCount("c:w")).toBe(2);                 // Azorius Charm + Thalia
+    expect(matchCount("c:g")).toBe(2);
+    expect(matchCount("c:r")).toBe(2);
+    expect(matchCount("c:wu")).toBe(1);
+    expect(matchCount("c:w")).toBe(2);
   });
 
   test("color field with = (exact)", () => {
-    expect(matchCount("c=wu")).toBe(1);                // Azorius Charm only
-    expect(matchCount("c=w")).toBe(1);                 // Thalia only
-    expect(matchCount("c=g")).toBe(2);                 // Birds + Tarmogoyf
+    expect(matchCount("c=wu")).toBe(1);
+    expect(matchCount("c=w")).toBe(1);
+    expect(matchCount("c=g")).toBe(2);
   });
 
   test("type field matches card types", () => {
-    expect(matchCount("t:creature")).toBe(5);          // Birds + Tarmogoyf + Thalia + Ayara front + Ayara back
-    expect(matchCount("t:instant")).toBe(3);           // Bolt + Counterspell + Azorius Charm
-    expect(matchCount("t:artifact")).toBe(1);          // Sol Ring
+    expect(matchCount("t:creature")).toBe(5);
+    expect(matchCount("t:instant")).toBe(3);
+    expect(matchCount("t:artifact")).toBe(1);
   });
 
   test("type field matches supertypes", () => {
-    expect(matchCount("t:legendary")).toBe(3);         // Thalia + Ayara front + Ayara back
+    expect(matchCount("t:legendary")).toBe(3);
   });
 
   test("type field matches subtypes", () => {
-    expect(matchCount("t:elf")).toBe(3);               // Birds + Ayara front + Ayara back
-    expect(matchCount("t:human")).toBe(1);             // Thalia
+    expect(matchCount("t:elf")).toBe(3);
+    expect(matchCount("t:human")).toBe(1);
   });
 
   test("type field matches partial words", () => {
-    expect(matchCount("t:legend")).toBe(3);            // Thalia + Ayara front + Ayara back
+    expect(matchCount("t:legend")).toBe(3);
   });
 
   test("type field with quoted multi-word matches type_line substring", () => {
-    expect(matchCount('t:"legendary creature"')).toBe(3); // Thalia + Ayara front + Ayara back
+    expect(matchCount('t:"legendary creature"')).toBe(3);
   });
 
   test("power field numeric comparison", () => {
-    expect(matchCount("pow=0")).toBe(1);               // Birds (power "0")
-    expect(matchCount("pow=2")).toBe(1);               // Thalia (power "2")
-    expect(matchCount("pow>=2")).toBe(3);              // Thalia + Ayara front (3) + Ayara back (4)
-    expect(matchCount("pow<2")).toBe(1);               // Birds
+    expect(matchCount("pow=0")).toBe(1);
+    expect(matchCount("pow=2")).toBe(1);
+    expect(matchCount("pow>=2")).toBe(3);
+    expect(matchCount("pow<2")).toBe(1);
   });
 
   test("mana cost substring", () => {
-    expect(matchCount("m:{G}")).toBe(2);               // Birds + Tarmogoyf
-    expect(matchCount("m:{R}")).toBe(1);               // Bolt
+    expect(matchCount("m:{G}")).toBe(2);
+    expect(matchCount("m:{R}")).toBe(1);
   });
 
   test("exact name with !", () => {
     expect(matchCount('!"Lightning Bolt"')).toBe(1);
-    expect(matchCount("!bolt")).toBe(0);               // "bolt" != "Lightning Bolt"
+    expect(matchCount("!bolt")).toBe(0);
   });
 
   test("implicit AND", () => {
-    expect(matchCount("c:g t:creature")).toBe(2);      // Birds + Tarmogoyf
-    expect(matchCount("c:w t:creature")).toBe(1);      // Thalia only
+    expect(matchCount("c:g t:creature")).toBe(2);
+    expect(matchCount("c:w t:creature")).toBe(1);
   });
 
   test("explicit OR", () => {
-    expect(matchCount("c:r OR c:u")).toBe(4);          // Bolt + Counterspell + Azorius Charm + Ayara back (BR)
+    expect(matchCount("c:r OR c:u")).toBe(4);
   });
 
   test("negation with -", () => {
-    expect(matchCount("-t:creature")).toBe(4);          // Bolt + Counterspell + Sol Ring + Azorius Charm
-    expect(matchCount("t:creature -c:w")).toBe(4);     // Birds + Tarmogoyf + Ayara front (B) + Ayara back (BR)
+    expect(matchCount("-t:creature")).toBe(4);
+    expect(matchCount("t:creature -c:w")).toBe(4);
   });
 
   test("parenthesized group", () => {
-    expect(matchCount("(c:r OR c:u) t:instant")).toBe(3); // Bolt + Counterspell + Azorius Charm
+    expect(matchCount("(c:r OR c:u) t:instant")).toBe(3);
   });
 
   test("unknown field matches zero cards", () => {
@@ -201,25 +297,29 @@ describe("evaluate", () => {
   });
 
   test("result tree has children with matchCounts", () => {
-    const { result } = evaluate(parse("c:g t:creature"), index);
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("c:g t:creature"));
     expect(result.matchCount).toBe(2);
     expect(result.children).toHaveLength(2);
-    expect(result.children![0].matchCount).toBe(2);   // c:g -> Birds + Tarmogoyf
-    expect(result.children![1].matchCount).toBe(5);   // t:creature -> Birds + Tarmogoyf + Thalia + Ayara front + back
+    expect(result.children![0].matchCount).toBe(2);
+    expect(result.children![1].matchCount).toBe(5);
   });
 
   test("matchingIndices contains indices of matching cards", () => {
-    const { matchingIndices } = evaluate(parse("c:g t:creature"), index);
-    expect(matchingIndices).toEqual([0, 4]);           // Birds (#0) + Tarmogoyf (#4)
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("c:g t:creature"));
+    expect(matchingIndices).toEqual([0, 4]);
   });
 
   test("matchingIndices for single match", () => {
-    const { matchingIndices } = evaluate(parse('!"Lightning Bolt"'), index);
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse('!"Lightning Bolt"'));
     expect(matchingIndices).toEqual([1]);
   });
 
   test("matchingIndices empty when no matches", () => {
-    const { matchingIndices } = evaluate(parse("rarity:common"), index);
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("rarity:common"));
     expect(matchingIndices).toEqual([]);
   });
 
@@ -228,23 +328,23 @@ describe("evaluate", () => {
   });
 
   test("legal:legacy matches face rows legal in legacy", () => {
-    expect(matchCount("legal:legacy")).toBe(7);        // Birds, Bolt, Counterspell, Tarmogoyf, Thalia, Ayara front, Ayara back
+    expect(matchCount("legal:legacy")).toBe(7);
   });
 
   test("f: alias works for legal:", () => {
-    expect(matchCount("f:modern")).toBe(5);            // Bolt, Tarmogoyf, Thalia, Ayara front, Ayara back
+    expect(matchCount("f:modern")).toBe(5);
   });
 
   test("banned:legacy matches cards banned in legacy", () => {
-    expect(matchCount("banned:legacy")).toBe(1);       // Sol Ring
+    expect(matchCount("banned:legacy")).toBe(1);
   });
 
   test("restricted:vintage matches cards restricted in vintage", () => {
-    expect(matchCount("restricted:vintage")).toBe(1);  // Sol Ring
+    expect(matchCount("restricted:vintage")).toBe(1);
   });
 
   test("legal + type combo", () => {
-    expect(matchCount("legal:legacy t:creature")).toBe(5); // Birds, Tarmogoyf, Thalia, Ayara front, Ayara back
+    expect(matchCount("legal:legacy t:creature")).toBe(5);
   });
 
   test("unknown format matches zero", () => {
@@ -252,19 +352,19 @@ describe("evaluate", () => {
   });
 
   test("regex on oracle text", () => {
-    expect(matchCount("o:/damage/")).toBe(2);          // Bolt + Ayara front
-    expect(matchCount("o:/target/")).toBe(4);          // Bolt + Counterspell + Ayara front + Ayara back
+    expect(matchCount("o:/damage/")).toBe(2);
+    expect(matchCount("o:/target/")).toBe(4);
   });
 
   test("regex on type line", () => {
-    expect(matchCount("t:/legendary.*elf/")).toBe(2);  // Ayara front + Ayara back
-    expect(matchCount("t:/legendary.*human/")).toBe(1); // Thalia
+    expect(matchCount("t:/legendary.*elf/")).toBe(2);
+    expect(matchCount("t:/legendary.*human/")).toBe(1);
     expect(matchCount("t:/creature/")).toBe(5);
   });
 
   test("regex on name", () => {
-    expect(matchCount("name:/^birds/")).toBe(1);       // Birds of Paradise
-    expect(matchCount("name:/bolt$/")).toBe(1);        // Lightning Bolt
+    expect(matchCount("name:/^birds/")).toBe(1);
+    expect(matchCount("name:/bolt$/")).toBe(1);
   });
 
   test("regex with invalid pattern matches zero", () => {
@@ -280,38 +380,144 @@ describe("evaluate", () => {
   // -------------------------------------------------------------------------
 
   test("query matching only back face returns a face-level match", () => {
-    expect(matchCount("t:phyrexian")).toBe(1);          // Ayara back face only
+    expect(matchCount("t:phyrexian")).toBe(1);
   });
 
   test("back face match appears in matchingIndices", () => {
-    const { matchingIndices } = evaluate(parse("t:phyrexian"), index);
-    expect(matchingIndices).toEqual([8]);               // back face row index
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("t:phyrexian"));
+    expect(matchingIndices).toEqual([8]);
   });
 
   test("deduplicateMatches collapses back face to canonical (front) face", () => {
-    const { matchingIndices } = evaluate(parse("t:phyrexian"), index);
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("t:phyrexian"));
     const deduped = index.deduplicateMatches(matchingIndices);
-    expect(deduped).toEqual([7]);                       // canonical face = Ayara front
+    expect(deduped).toEqual([7]);
   });
 
   test("query matching both faces deduplicates to one result", () => {
-    const { matchingIndices } = evaluate(parse("t:elf t:legendary"), index);
-    expect(matchingIndices).toEqual([7, 8]);            // both Ayara faces match
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("t:elf t:legendary"));
+    expect(matchingIndices).toEqual([7, 8]);
     const deduped = index.deduplicateMatches(matchingIndices);
-    expect(deduped).toEqual([7]);                       // single card result
+    expect(deduped).toEqual([7]);
   });
 
   test("cross-face condition produces no match (per-face semantics)", () => {
-    expect(matchCount("pow>=4 tou<=2")).toBe(0);        // Ayara back has pow=4 but tou=4, front has pow=3 tou=3
+    expect(matchCount("pow>=4 tou<=2")).toBe(0);
   });
 
   test("DFC face-specific color match", () => {
-    expect(matchCount("c:r t:elf")).toBe(1);            // Ayara back face is BR + Elf
-    const { matchingIndices } = evaluate(parse("c:r t:elf"), index);
-    expect(matchingIndices).toEqual([8]);               // back face only
+    expect(matchCount("c:r t:elf")).toBe(1);
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("c:r t:elf"));
+    expect(matchingIndices).toEqual([8]);
   });
 
   test("identity is card-level and matches on both faces", () => {
-    expect(matchCount("id:br t:elf")).toBe(2);          // both Ayara faces have identity BR and type Elf
+    expect(matchCount("id:br t:elf")).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cache hit/miss behavior
+// ---------------------------------------------------------------------------
+
+describe("cache hit/miss", () => {
+  test("first evaluation returns cached: false on all nodes", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("c:wu"));
+    expect(result.cached).toBe(false);
+  });
+
+  test("shared subtree is cached on second evaluation", () => {
+    const cache = new NodeCache(index);
+    cache.evaluate(parse("c:wu t:creature"));
+    const { result } = cache.evaluate(parse("c:wu t:elf"));
+    const cwu = result.children!.find(
+      c => c.node.type === "FIELD" && c.node.field === "c"
+    );
+    expect(cwu).toBeDefined();
+    expect(cwu!.cached).toBe(true);
+    const tElf = result.children!.find(
+      c => c.node.type === "FIELD" && c.node.field === "t"
+    );
+    expect(tElf).toBeDefined();
+    expect(tElf!.cached).toBe(false);
+  });
+
+  test("integration: overlapping queries c:r t:creature then c:r t:elf", () => {
+    const cache = new NodeCache(index);
+    const first = cache.evaluate(parse("c:r t:creature"));
+    expect(first.result.cached).toBe(false);
+    for (const child of first.result.children!) {
+      expect(child.cached).toBe(false);
+    }
+
+    const second = cache.evaluate(parse("c:r t:elf"));
+    const cr = second.result.children!.find(
+      c => c.node.type === "FIELD" && c.node.field === "c"
+    );
+    expect(cr!.cached).toBe(true);
+    expect(cr!.matchCount).toBe(2);
+
+    const tElf = second.result.children!.find(
+      c => c.node.type === "FIELD" && c.node.field === "t"
+    );
+    expect(tElf!.cached).toBe(false);
+  });
+
+  test("exact same query on second call returns cached on all nodes", () => {
+    const cache = new NodeCache(index);
+    cache.evaluate(parse("c:g t:creature"));
+    const { result } = cache.evaluate(parse("c:g t:creature"));
+    expect(result.cached).toBe(true);
+    for (const child of result.children!) {
+      expect(child.cached).toBe(true);
+    }
+  });
+
+  test("separate NodeCache instances share no state", () => {
+    const cache1 = new NodeCache(index);
+    cache1.evaluate(parse("c:wu"));
+    const cache2 = new NodeCache(index);
+    const { result } = cache2.evaluate(parse("c:wu"));
+    expect(result.cached).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Timing
+// ---------------------------------------------------------------------------
+
+describe("timing", () => {
+  test("productionMs and evalMs are non-negative", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("c:wu t:creature"));
+    expect(result.productionMs).toBeGreaterThanOrEqual(0);
+    expect(result.evalMs).toBeGreaterThanOrEqual(0);
+    for (const child of result.children!) {
+      expect(child.productionMs).toBeGreaterThanOrEqual(0);
+      expect(child.evalMs).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  test("cached node has evalMs of zero", () => {
+    const cache = new NodeCache(index);
+    cache.evaluate(parse("c:wu"));
+    const { result } = cache.evaluate(parse("c:wu t:creature"));
+    const cwu = result.children!.find(
+      c => c.node.type === "FIELD" && c.node.field === "c"
+    );
+    expect(cwu!.cached).toBe(true);
+    expect(cwu!.evalMs).toBe(0);
+    expect(cwu!.productionMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("freshly computed node has evalMs approximately equal to productionMs", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("c:wu"));
+    expect(result.evalMs).toBe(result.productionMs);
   });
 });

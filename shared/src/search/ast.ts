@@ -78,13 +78,16 @@ export type ASTNode =
 
 // --- Evaluation Result ---
 
-export interface EvalResult {
+export interface QueryNodeResult {
   node: ASTNode;
   matchCount: number;
-  children?: EvalResult[];
+  cached: boolean;
+  productionMs: number;
+  evalMs: number;
+  children?: QueryNodeResult[];
 }
 
 export interface EvalOutput {
-  result: EvalResult;
+  result: QueryNodeResult;
   matchingIndices: number[];
 }

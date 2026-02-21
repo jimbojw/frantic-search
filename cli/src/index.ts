@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import cac from "cac";
 import { parse } from "@frantic-search/shared/src/search/parser";
-import { evaluate } from "@frantic-search/shared/src/search/evaluator";
+import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import type { ColumnarData } from "@frantic-search/shared/src/data";
 
@@ -50,8 +50,9 @@ cli
   .option("--output <format>", "Output format: tree, names, cards", { default: "tree" })
   .action((query: string, options: { data: string; raw: string; output: string }) => {
     const { data, index } = loadIndex(options.data);
+    const cache = new NodeCache(index);
     const ast = parse(query);
-    const { result, matchingIndices } = evaluate(ast, index);
+    const { result, matchingIndices } = cache.evaluate(ast);
     const cardFaces = index.deduplicateMatches(matchingIndices);
 
     switch (options.output) {

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   type ASTNode,
-  type EvalResult,
+  type QueryNodeResult,
   type EvalOutput,
   type FieldNode,
   type RegexFieldNode,
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
-import { BufferPool } from "./pool";
 import { COLOR_FROM_LETTER, FORMAT_NAMES } from "../bits";
+
+const SEP = "\x1E";
 
 const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -212,116 +213,234 @@ function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): 
   }
 }
 
-function evalNode(
-  ast: ASTNode,
-  index: CardIndex,
-  pool: BufferPool,
-): { result: EvalResult; buf: Uint8Array } {
-  const n = index.faceCount;
+// ---------------------------------------------------------------------------
+// Node interning and evaluation cache
+// ---------------------------------------------------------------------------
 
+interface EvalTiming {
+  cached: boolean;
+  evalMs: number;
+}
+
+export interface InternedNode {
+  key: string;
+  ast: ASTNode;
+  computed?: ComputedResult;
+}
+
+export interface ComputedResult {
+  buf: Uint8Array;
+  matchCount: number;
+  productionMs: number;
+}
+
+export function nodeKey(ast: ASTNode): string {
   switch (ast.type) {
-    case "FIELD": {
-      const buf = pool.acquire();
-      evalLeafField(ast, index, buf);
-      return {
-        result: { node: ast, matchCount: popcount(buf, n) },
-        buf,
-      };
-    }
-    case "BARE": {
-      const buf = pool.acquire();
-      evalLeafBareWord(ast.value, index, buf);
-      return {
-        result: { node: ast, matchCount: popcount(buf, n) },
-        buf,
-      };
-    }
-    case "EXACT": {
-      const buf = pool.acquire();
-      evalLeafExact(ast, index, buf);
-      return {
-        result: { node: ast, matchCount: popcount(buf, n) },
-        buf,
-      };
-    }
-    case "REGEX_FIELD": {
-      const buf = pool.acquire();
-      evalLeafRegex(ast, index, buf);
-      return {
-        result: { node: ast, matchCount: popcount(buf, n) },
-        buf,
-      };
-    }
-    case "NOT": {
-      const child = evalNode(ast.child, index, pool);
-      const buf = pool.acquire();
-      for (let i = 0; i < n; i++) buf[i] = child.buf[i] ^ 1;
-      pool.release(child.buf);
-      return {
-        result: { node: ast, matchCount: popcount(buf, n), children: [child.result] },
-        buf,
-      };
-    }
-    case "AND": {
-      if (ast.children.length === 0) {
-        const buf = pool.acquire();
-        buf.fill(1, 0, n);
-        return {
-          result: { node: ast, matchCount: n },
-          buf,
-        };
-      }
-      const childResults: { result: EvalResult; buf: Uint8Array }[] = [];
-      for (const child of ast.children) {
-        childResults.push(evalNode(child, index, pool));
-      }
-      const buf = pool.acquire();
-      const first = childResults[0].buf;
-      for (let i = 0; i < n; i++) buf[i] = first[i];
-      for (let c = 1; c < childResults.length; c++) {
-        const cb = childResults[c].buf;
-        for (let i = 0; i < n; i++) buf[i] &= cb[i];
-      }
-      for (const cr of childResults) pool.release(cr.buf);
-      return {
-        result: {
-          node: ast,
-          matchCount: popcount(buf, n),
-          children: childResults.map((cr) => cr.result),
-        },
-        buf,
-      };
-    }
-    case "OR": {
-      const childResults: { result: EvalResult; buf: Uint8Array }[] = [];
-      for (const child of ast.children) {
-        childResults.push(evalNode(child, index, pool));
-      }
-      const buf = pool.acquire();
-      buf.fill(0, 0, n);
-      for (const cr of childResults) {
-        for (let i = 0; i < n; i++) buf[i] |= cr.buf[i];
-      }
-      for (const cr of childResults) pool.release(cr.buf);
-      return {
-        result: {
-          node: ast,
-          matchCount: popcount(buf, n),
-          children: childResults.map((cr) => cr.result),
-        },
-        buf,
-      };
-    }
+    case "FIELD":
+      return `FIELD${SEP}${ast.field}${SEP}${ast.operator}${SEP}${ast.value}`;
+    case "BARE":
+      return `BARE${SEP}${ast.value}`;
+    case "EXACT":
+      return `EXACT${SEP}${ast.value}`;
+    case "REGEX_FIELD":
+      return `REGEX_FIELD${SEP}${ast.field}${SEP}${ast.operator}${SEP}${ast.pattern}`;
+    case "NOT":
+      return `NOT${SEP}${nodeKey(ast.child)}`;
+    case "AND":
+      return `AND${SEP}${ast.children.map(nodeKey).join(SEP)}`;
+    case "OR":
+      return `OR${SEP}${ast.children.map(nodeKey).join(SEP)}`;
   }
 }
 
-export function evaluate(ast: ASTNode, index: CardIndex): EvalOutput {
-  const pool = new BufferPool(index.faceCount);
-  const { result, buf } = evalNode(ast, index, pool);
-  const matchingIndices: number[] = [];
-  for (let i = 0; i < index.faceCount; i++) {
-    if (buf[i]) matchingIndices.push(i);
+export class NodeCache {
+  private nodes: Map<string, InternedNode> = new Map();
+
+  constructor(readonly index: CardIndex) {}
+
+  intern(ast: ASTNode): InternedNode {
+    const key = nodeKey(ast);
+    let interned = this.nodes.get(key);
+    if (!interned) {
+      interned = { key, ast };
+      this.nodes.set(key, interned);
+    }
+    return interned;
   }
-  pool.release(buf);
-  return { result, matchingIndices };
+
+  evaluate(ast: ASTNode): EvalOutput {
+    const timings = new Map<string, EvalTiming>();
+    const root = this.internTree(ast);
+    this.computeTree(root, timings);
+    const result = this.buildResult(root, timings);
+    const matchingIndices: number[] = [];
+    const buf = root.computed!.buf;
+    for (let i = 0; i < this.index.faceCount; i++) {
+      if (buf[i]) matchingIndices.push(i);
+    }
+    return { result, matchingIndices };
+  }
+
+  private internTree(ast: ASTNode): InternedNode {
+    switch (ast.type) {
+      case "AND":
+        for (const child of ast.children) this.internTree(child);
+        break;
+      case "OR":
+        for (const child of ast.children) this.internTree(child);
+        break;
+      case "NOT":
+        this.internTree(ast.child);
+        break;
+    }
+    return this.intern(ast);
+  }
+
+  private markCached(interned: InternedNode, timings: Map<string, EvalTiming>): void {
+    timings.set(interned.key, { cached: true, evalMs: 0 });
+    const ast = interned.ast;
+    switch (ast.type) {
+      case "NOT":
+        this.markCached(this.intern(ast.child), timings);
+        break;
+      case "AND":
+      case "OR":
+        for (const child of ast.children) {
+          this.markCached(this.intern(child), timings);
+        }
+        break;
+    }
+  }
+
+  private computeTree(interned: InternedNode, timings: Map<string, EvalTiming>): void {
+    if (interned.computed) {
+      this.markCached(interned, timings);
+      return;
+    }
+
+    const ast = interned.ast;
+    const n = this.index.faceCount;
+
+    switch (ast.type) {
+      case "FIELD": {
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        evalLeafField(ast, this.index, buf);
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "BARE": {
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        evalLeafBareWord(ast.value, this.index, buf);
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "EXACT": {
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        evalLeafExact(ast, this.index, buf);
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "REGEX_FIELD": {
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        evalLeafRegex(ast, this.index, buf);
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "NOT": {
+        const childInterned = this.intern(ast.child);
+        this.computeTree(childInterned, timings);
+        const childBuf = childInterned.computed!.buf;
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        for (let i = 0; i < n; i++) buf[i] = childBuf[i] ^ 1;
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "AND": {
+        if (ast.children.length === 0) {
+          const buf = new Uint8Array(n);
+          buf.fill(1, 0, n);
+          interned.computed = { buf, matchCount: n, productionMs: 0 };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+        const childInterneds = ast.children.map(c => {
+          const ci = this.intern(c);
+          this.computeTree(ci, timings);
+          return ci;
+        });
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        const first = childInterneds[0].computed!.buf;
+        for (let i = 0; i < n; i++) buf[i] = first[i];
+        for (let c = 1; c < childInterneds.length; c++) {
+          const cb = childInterneds[c].computed!.buf;
+          for (let i = 0; i < n; i++) buf[i] &= cb[i];
+        }
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+      case "OR": {
+        const childInterneds = ast.children.map(c => {
+          const ci = this.intern(c);
+          this.computeTree(ci, timings);
+          return ci;
+        });
+        const buf = new Uint8Array(n);
+        const t0 = performance.now();
+        for (const ci of childInterneds) {
+          const cb = ci.computed!.buf;
+          for (let i = 0; i < n; i++) buf[i] |= cb[i];
+        }
+        const ms = performance.now() - t0;
+        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        timings.set(interned.key, { cached: false, evalMs: ms });
+        break;
+      }
+    }
+  }
+
+  private buildResult(interned: InternedNode, timings: Map<string, EvalTiming>): QueryNodeResult {
+    const ast = interned.ast;
+    const computed = interned.computed!;
+    const timing = timings.get(interned.key)!;
+
+    const result: QueryNodeResult = {
+      node: ast,
+      matchCount: computed.matchCount,
+      cached: timing.cached,
+      productionMs: computed.productionMs,
+      evalMs: timing.evalMs,
+    };
+
+    switch (ast.type) {
+      case "NOT":
+        result.children = [this.buildResult(this.intern(ast.child), timings)];
+        break;
+      case "AND":
+      case "OR":
+        if (ast.children.length > 0) {
+          result.children = ast.children.map(c => this.buildResult(this.intern(c), timings));
+        }
+        break;
+    }
+
+    return result;
+  }
 }
