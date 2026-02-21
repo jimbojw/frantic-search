@@ -61,6 +61,7 @@ async function init(): Promise<void> {
     const deduped = index.deduplicateMatches(matchingIndices)
     seededShuffle(deduped, nodeKey(ast))
     const cards: CardResult[] = deduped.map(canonIdx => ({
+      scryfallId: data.scryfall_ids[canonIdx],
       faces: index.facesOf(canonIdx).map((fi): CardFace => ({
         name: data.names[fi],
         manaCost: data.mana_costs[fi],

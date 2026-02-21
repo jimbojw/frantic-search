@@ -25,6 +25,7 @@ interface CardFace {
 }
 
 interface Card {
+  id?: string;
   layout?: string;
   name?: string;
   mana_cost?: string;
@@ -147,6 +148,7 @@ function pushFaceRow(
 
   data.card_index.push(cardIdx);
   data.canonical_face.push(canonicalFace);
+  data.scryfall_ids.push(card.id ?? "");
 }
 
 export function processCards(verbose: boolean): void {
@@ -177,6 +179,7 @@ export function processCards(verbose: boolean): void {
     legalities_restricted: [],
     card_index: [],
     canonical_face: [],
+    scryfall_ids: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],

@@ -14,6 +14,7 @@ export type CardFace = {
 }
 
 export type CardResult = {
+  scryfallId: string
   faces: CardFace[]
 }
 

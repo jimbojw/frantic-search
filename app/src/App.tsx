@@ -3,6 +3,10 @@ import { createSignal, createEffect, For, Show } from 'solid-js'
 import type { FromWorker, CardResult, CardFace, BreakdownNode } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 
+function artCropUrl(scryfallId: string): string {
+  return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
+}
+
 const MANA_SYMBOL_RE = /\{([^}]+)\}/g
 
 const SYMBOL_OVERRIDES: Record<string, string> = {
@@ -357,24 +361,34 @@ function App() {
                   {(card) => {
                     const fullName = () => card.faces.map(f => f.name).join(' // ')
                     return (
-                      <li class="px-4 py-2 text-sm">
-                        <Show when={card.faces.length > 1} fallback={
-                          <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} />
-                        }>
-                          <a
-                            href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.faces[0].name + '"')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="font-medium hover:underline"
-                          >
-                            {fullName()}
-                          </a>
-                          <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
-                            <For each={card.faces}>
-                              {(face) => <CardFaceRow face={face} showOracle={showOracleText()} />}
-                            </For>
-                          </div>
+                      <li class="px-4 py-2 text-sm flex items-start gap-3">
+                        <Show when={card.scryfallId}>
+                          <img
+                            src={artCropUrl(card.scryfallId)}
+                            loading="lazy"
+                            alt=""
+                            class="w-[2em] aspect-[3/4] rounded-sm object-cover shrink-0 mt-0.5"
+                          />
                         </Show>
+                        <div class="min-w-0 flex-1">
+                          <Show when={card.faces.length > 1} fallback={
+                            <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} />
+                          }>
+                            <a
+                              href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.faces[0].name + '"')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="font-medium hover:underline"
+                            >
+                              {fullName()}
+                            </a>
+                            <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                              <For each={card.faces}>
+                                {(face) => <CardFaceRow face={face} showOracle={showOracleText()} />}
+                              </For>
+                            </div>
+                          </Show>
+                        </div>
                       </li>
                     )
                   }}

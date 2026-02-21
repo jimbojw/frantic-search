@@ -16,6 +16,7 @@ export interface ColumnarData {
   legalities_restricted: number[];
   card_index: number[];
   canonical_face: number[];
+  scryfall_ids: string[];
   power_lookup: string[];
   toughness_lookup: string[];
   loyalty_lookup: string[];
