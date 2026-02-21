@@ -1,0 +1,14 @@
+{
+  "name": "frantic-search",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev -w app",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "description": "Instant search across Magic: The Gathering cards",
+  "workspaces": ["app", "etl", "shared"]
+}

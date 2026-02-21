@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "references": [
+    { "path": "./shared" },
+    { "path": "./etl" },
+    { "path": "./app" }
+  ]
+}
