@@ -1,6 +1,6 @@
 # Spec 013: URL State & History
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Goal
 

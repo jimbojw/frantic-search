@@ -226,8 +226,14 @@ function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boo
 
 const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
 
+type View = 'search' | 'help'
+
 function App() {
-  const [query, setQuery] = createSignal('')
+  const initialParams = new URLSearchParams(location.search)
+  const [query, setQuery] = createSignal(initialParams.get('q') ?? '')
+  const [view, setView] = createSignal<View>(
+    initialParams.has('help') ? 'help' : 'search'
+  )
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
@@ -272,6 +278,40 @@ function App() {
       setBreakdown(null)
     }
   })
+
+  createEffect(() => {
+    const q = query().trim()
+    const params = new URLSearchParams(location.search)
+    if (q) {
+      params.set('q', q)
+    } else {
+      params.delete('q')
+    }
+    const url = params.toString() ? `?${params}` : location.pathname
+    history.replaceState(null, '', url)
+  })
+
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(location.search)
+    setView(params.has('help') ? 'help' : 'search')
+    setQuery(params.get('q') ?? '')
+  })
+
+  function navigateToHelp() {
+    const params = new URLSearchParams(location.search)
+    params.set('help', '')
+    history.pushState(null, '', `?${params}`)
+    setView('help')
+  }
+
+  function navigateToQuery(q: string) {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    const url = params.toString() ? `?${params}` : location.pathname
+    history.pushState(null, '', url)
+    setQuery(q)
+    setView('search')
+  }
 
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
