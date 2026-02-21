@@ -149,6 +149,7 @@ function pushFaceRow(
   data.card_index.push(cardIdx);
   data.canonical_face.push(canonicalFace);
   data.scryfall_ids.push(card.id ?? "");
+  data.layouts.push(card.layout ?? "normal");
 }
 
 export function processCards(verbose: boolean): void {
@@ -180,6 +181,7 @@ export function processCards(verbose: boolean): void {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
+    layouts: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],

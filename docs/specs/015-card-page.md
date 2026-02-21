@@ -1,6 +1,6 @@
 # Spec 015: Card Detail Page
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State & History)
 

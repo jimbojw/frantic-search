@@ -3,39 +3,9 @@ import { createSignal, createEffect, For, Show } from 'solid-js'
 import type { FromWorker, CardResult, CardFace, BreakdownNode } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
-
-function artCropUrl(scryfallId: string): string {
-  return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
-}
-
-// Color identity palette (WUBRG order). Mid-saturation: readable as a thin
-// permanent stripe, but not garish as a brief loading placeholder.
-const CI_W = '#E8D44D'
-const CI_U = '#4A90D9'
-const CI_B = '#6B5B6B'
-const CI_R = '#D94040'
-const CI_G = '#3A9A5A'
-const CI_COLORLESS = '#C0BCB0'
-
-function stripes(...colors: string[]): string {
-  const step = 100 / colors.length
-  const stops = colors.flatMap((c, i) => `${c} ${i * step}%,${c} ${(i + 1) * step}%`)
-  return `linear-gradient(to right,${stops.join(',')})`
-}
-
-// All 32 possible 5-bit color identity values, indexed by bitmask.
-// Bits: W=1, U=2, B=4, R=8, G=16.
-const CI_BACKGROUNDS: string[] = /* #__PURE__ */ (() => {
-  const COLORS: [number, string][] = [[1, CI_W], [2, CI_U], [4, CI_B], [8, CI_R], [16, CI_G]]
-  const table: string[] = new Array(32)
-  for (let mask = 0; mask < 32; mask++) {
-    const active = COLORS.filter(([bit]) => mask & bit).map(([, c]) => c)
-    table[mask] = active.length === 0 ? CI_COLORLESS
-      : active.length === 1 ? active[0]
-      : stripes(...active)
-  }
-  return table
-})()
+import CardDetail from './CardDetail'
+import { ManaCost, OracleText } from './card-symbols'
+import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 
 function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   const [loaded, setLoaded] = createSignal(false)
@@ -57,70 +27,6 @@ function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   )
 }
 
-const MANA_SYMBOL_RE = /\{([^}]+)\}/g
-
-const SYMBOL_OVERRIDES: Record<string, string> = {
-  t: 'tap',
-  q: 'untap',
-}
-
-function symbolToClass(raw: string): string {
-  const normalized = raw.toLowerCase().replace('/', '')
-  return SYMBOL_OVERRIDES[normalized] ?? normalized
-}
-
-function ManaCost(props: { cost: string }) {
-  const symbols = () => {
-    const result: string[] = []
-    let match
-    MANA_SYMBOL_RE.lastIndex = 0
-    while ((match = MANA_SYMBOL_RE.exec(props.cost)) !== null) {
-      result.push(symbolToClass(match[1]))
-    }
-    return result
-  }
-
-  return (
-    <span class="inline-flex items-center gap-px shrink-0">
-      <For each={symbols()}>
-        {(sym) => <i class={`ms ms-${sym} ms-cost`} />}
-      </For>
-    </span>
-  )
-}
-
-function OracleText(props: { text: string }) {
-  type Segment = { type: 'text'; value: string } | { type: 'symbol'; value: string }
-
-  const segments = (): Segment[] => {
-    const result: Segment[] = []
-    let lastIndex = 0
-    MANA_SYMBOL_RE.lastIndex = 0
-    let match
-    while ((match = MANA_SYMBOL_RE.exec(props.text)) !== null) {
-      if (match.index > lastIndex) {
-        result.push({ type: 'text', value: props.text.slice(lastIndex, match.index) })
-      }
-      result.push({ type: 'symbol', value: symbolToClass(match[1]) })
-      lastIndex = MANA_SYMBOL_RE.lastIndex
-    }
-    if (lastIndex < props.text.length) {
-      result.push({ type: 'text', value: props.text.slice(lastIndex) })
-    }
-    return result
-  }
-
-  return (
-    <p class="mt-1 text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-      <For each={segments()}>
-        {(seg) => seg.type === 'symbol'
-          ? <i class={`ms ms-${seg.value} ms-cost`} style="font-size: 0.85em" />
-          : <>{seg.value}</>
-        }
-      </For>
-    </p>
-  )
-}
 
 function isFlatAnd(node: BreakdownNode): boolean {
   if (node.label !== 'AND' || !node.children) return false
@@ -196,22 +102,21 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; 
   )
 }
 
-function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boolean }) {
+function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boolean; onCardClick?: () => void }) {
   return (
     <div>
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <Show when={props.fullName} fallback={
+          <Show when={props.fullName && props.onCardClick} fallback={
             <span class="font-medium text-gray-700 dark:text-gray-200">{props.face.name}</span>
           }>
-            <a
-              href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + props.face.name + '"')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="font-medium hover:underline"
+            <button
+              type="button"
+              onClick={() => props.onCardClick?.()}
+              class="font-medium hover:underline text-left"
             >
               {props.fullName}
-            </a>
+            </button>
           </Show>
           <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{props.face.typeLine}</span>
         </div>
@@ -226,14 +131,19 @@ function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boo
 
 const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
 
-type View = 'search' | 'help'
+type View = 'search' | 'help' | 'card'
+
+function parseView(params: URLSearchParams): View {
+  if (params.has('card')) return 'card'
+  if (params.has('help')) return 'help'
+  return 'search'
+}
 
 function App() {
   const initialParams = new URLSearchParams(location.search)
   const [query, setQuery] = createSignal(initialParams.get('q') ?? '')
-  const [view, setView] = createSignal<View>(
-    initialParams.has('help') ? 'help' : 'search'
-  )
+  const [view, setView] = createSignal<View>(parseView(initialParams))
+  const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
@@ -281,6 +191,7 @@ function App() {
 
   createEffect(() => {
     const q = query().trim()
+    if (view() !== 'search') return
     const params = new URLSearchParams(location.search)
     if (q) {
       params.set('q', q)
@@ -293,8 +204,9 @@ function App() {
 
   window.addEventListener('popstate', () => {
     const params = new URLSearchParams(location.search)
-    setView(params.has('help') ? 'help' : 'search')
+    setView(parseView(params))
     setQuery(params.get('q') ?? '')
+    setCardId(params.get('card') ?? '')
   })
 
   function navigateToHelp() {
@@ -313,10 +225,22 @@ function App() {
     setView('search')
   }
 
+  function navigateToCard(scryfallId: string) {
+    const params = new URLSearchParams(location.search)
+    params.delete('help')
+    params.set('card', scryfallId)
+    history.pushState(null, '', `?${params}`)
+    setCardId(scryfallId)
+    setView('card')
+  }
+
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'help'}>
         <SyntaxHelp onSelectExample={navigateToQuery} />
+      </Show>
+      <Show when={view() === 'card'}>
+        <CardDetail card={results().find(c => c.scryfallId === cardId())} scryfallId={cardId()} />
       </Show>
       <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
@@ -483,16 +407,15 @@ function App() {
                         </Show>
                         <div class="min-w-0 flex-1">
                           <Show when={card.faces.length > 1} fallback={
-                            <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} />
+                            <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} onCardClick={() => navigateToCard(card.scryfallId)} />
                           }>
-                            <a
-                              href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.faces[0].name + '"')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="font-medium hover:underline"
+                            <button
+                              type="button"
+                              onClick={() => navigateToCard(card.scryfallId)}
+                              class="font-medium hover:underline text-left"
                             >
                               {fullName()}
-                            </a>
+                            </button>
                             <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                               <For each={card.faces}>
                                 {(face) => <CardFaceRow face={face} showOracle={showOracleText()} />}

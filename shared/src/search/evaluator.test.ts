@@ -83,6 +83,7 @@ const TEST_DATA: ColumnarData = {
   card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8],
   canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9],
   scryfall_ids:   ["", "", "", "", "", "", "", "", "", ""],
+  layouts:        ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "transform", "transform", "normal"],
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
   loyalty_lookup:  [""],

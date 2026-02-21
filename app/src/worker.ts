@@ -61,16 +61,37 @@ async function init(): Promise<void> {
     const breakdown = toBreakdown(result)
     const deduped = index.deduplicateMatches(matchingIndices)
     seededShuffle(deduped, nodeKey(ast))
-    const cards: CardResult[] = deduped.map(canonIdx => ({
-      scryfallId: data.scryfall_ids[canonIdx],
-      colorIdentity: data.color_identity[canonIdx],
-      faces: index.facesOf(canonIdx).map((fi): CardFace => ({
-        name: data.names[fi],
-        manaCost: data.mana_costs[fi],
-        typeLine: data.type_lines[fi],
-        oracleText: data.oracle_texts[fi],
-      })),
-    }))
+    const cards: CardResult[] = deduped.map(canonIdx => {
+      const faces = index.facesOf(canonIdx).map((fi): CardFace => {
+        const face: CardFace = {
+          name: data.names[fi],
+          manaCost: data.mana_costs[fi],
+          typeLine: data.type_lines[fi],
+          oracleText: data.oracle_texts[fi],
+        }
+        const pow = data.power_lookup[data.powers[fi]]
+        const tou = data.toughness_lookup[data.toughnesses[fi]]
+        const loy = data.loyalty_lookup[data.loyalties[fi]]
+        const def = data.defense_lookup[data.defenses[fi]]
+        if (pow) face.power = pow
+        if (tou) face.toughness = tou
+        if (loy) face.loyalty = loy
+        if (def) face.defense = def
+        return face
+      })
+      const card: CardResult = {
+        scryfallId: data.scryfall_ids[canonIdx],
+        colorIdentity: data.color_identity[canonIdx],
+        layout: data.layouts[canonIdx],
+        faces,
+        legalities: {
+          legal: data.legalities_legal[canonIdx],
+          banned: data.legalities_banned[canonIdx],
+          restricted: data.legalities_restricted[canonIdx],
+        },
+      }
+      return card
+    })
 
     post({ type: 'result', queryId: msg.queryId, cards, totalMatches, breakdown })
   }

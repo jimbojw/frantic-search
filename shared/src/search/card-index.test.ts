@@ -21,6 +21,7 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
+    layouts: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],

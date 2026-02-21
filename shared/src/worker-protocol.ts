@@ -11,12 +11,18 @@ export type CardFace = {
   manaCost: string
   typeLine: string
   oracleText: string
+  power?: string
+  toughness?: string
+  loyalty?: string
+  defense?: string
 }
 
 export type CardResult = {
   scryfallId: string
   colorIdentity: number
+  layout: string
   faces: CardFace[]
+  legalities?: { legal: number; banned: number; restricted: number }
 }
 
 export type BreakdownNode = {
