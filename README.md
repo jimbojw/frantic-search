@@ -2,6 +2,8 @@
 
 A single-page app (SPA), mobile optimized, for performing instant search across Magic: The Gathering cards. Built with TypeScript, Node.js, and Vite.
 
+**[Try it live →](https://jimbojw.github.io/frantic-search/)**
+
 ## Project Structure
 
 ```
