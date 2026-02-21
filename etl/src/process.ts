@@ -6,6 +6,7 @@ import {
   COLOR_FROM_LETTER,
   CARD_TYPE_NAMES,
   SUPERTYPE_NAMES,
+  type ColumnarData,
 } from "@frantic-search/shared";
 
 // ---------------------------------------------------------------------------
@@ -102,25 +103,6 @@ class DictEncoder {
 // ---------------------------------------------------------------------------
 // Columnar output
 // ---------------------------------------------------------------------------
-
-interface ColumnarData {
-  names: string[];
-  mana_costs: string[];
-  oracle_texts: string[];
-  colors: number[];
-  color_identity: number[];
-  types: number[];
-  supertypes: number[];
-  subtypes: string[];
-  powers: number[];
-  toughnesses: number[];
-  loyalties: number[];
-  defenses: number[];
-  power_lookup: string[];
-  toughness_lookup: string[];
-  loyalty_lookup: string[];
-  defense_lookup: string[];
-}
 
 export function processCards(verbose: boolean): void {
   log(`Reading ${ORACLE_CARDS_PATH}…`, verbose);

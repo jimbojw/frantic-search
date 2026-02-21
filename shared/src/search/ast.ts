@@ -75,3 +75,11 @@ export type ASTNode =
   | BareWordNode
   | ExactNameNode
   | RegexFieldNode;
+
+// --- Evaluation Result ---
+
+export interface EvalResult {
+  node: ASTNode;
+  matchCount: number;
+  children?: EvalResult[];
+}

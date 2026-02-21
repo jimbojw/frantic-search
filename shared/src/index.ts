@@ -7,3 +7,5 @@ export {
   Supertype,
   SUPERTYPE_NAMES,
 } from "./bits";
+
+export type { ColumnarData } from "./data";
