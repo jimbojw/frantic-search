@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Shared types and search logic for Frantic Search
-// Placeholder for Card, Set, and filter logic
-export {};
+export {
+  Color,
+  COLOR_FROM_LETTER,
+  CardType,
+  CARD_TYPE_NAMES,
+  Supertype,
+  SUPERTYPE_NAMES,
+} from "./bits";

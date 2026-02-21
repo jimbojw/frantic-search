@@ -1,197 +1,185 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import {
-  ORACLE_CARDS_PATH,
-  DICTIONARY_PATH,
-  MANA_DICTIONARY_PATH,
-  TRIE_PATH,
-  MANA_TRIE_PATH,
-  ensureIntermediateDir,
-} from "./paths";
+import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureIntermediateDir } from "./paths";
 import { log } from "./log";
+import {
+  COLOR_FROM_LETTER,
+  CARD_TYPE_NAMES,
+  SUPERTYPE_NAMES,
+} from "@frantic-search/shared";
+
+// ---------------------------------------------------------------------------
+// Scryfall card shape (fields we care about)
+// ---------------------------------------------------------------------------
 
 interface Card {
   name?: string;
   mana_cost?: string;
   type_line?: string;
   oracle_text?: string;
+  colors?: string[];
+  color_identity?: string[];
+  power?: string;
+  toughness?: string;
+  loyalty?: string;
+  defense?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Tokenization
+// Bitmask encoding helpers
 // ---------------------------------------------------------------------------
 
-const MANA_COST_RE = /^(\{[^}]+\})+$/;
-
-function isManaToken(token: string): boolean {
-  return MANA_COST_RE.test(token);
-}
-
-function normalize(token: string): string {
-  return token
-    .replace(/^["(]+/, "")
-    .replace(/[,.:")+]+$/, "")
-    .toLowerCase();
-}
-
-function expandSlashes(token: string): string[] {
-  if (!token.includes("/")) return [token];
-  if (token.includes("{") || token.includes("}")) return [token];
-  const parts = token.split("/").filter((p) => p.length > 0);
-  return [token, ...parts];
-}
-
-function tokenize(text: string): string[] {
-  return text
-    .split(/[\s\u2014]+/)
-    .map(normalize)
-    .filter((t) => t.length > 0)
-    .flatMap(expandSlashes);
-}
-
-function extractTokens(card: Card): string[] {
-  const fields = [card.name, card.mana_cost, card.type_line, card.oracle_text];
-  return fields.flatMap((f) => (f ? tokenize(f) : []));
-}
-
-// ---------------------------------------------------------------------------
-// Trie (shared)
-// ---------------------------------------------------------------------------
-
-/** Split a token into atomic symbols: brace-enclosed sequences or single chars. */
-function toSymbols(token: string): string[] {
-  return token.match(/\{[^}]*\}|./g) ?? [];
-}
-
-interface TrieNode {
-  count: number;
-  children: Record<string, TrieNode>;
-}
-
-function createTrieNode(): TrieNode {
-  return { count: 0, children: {} };
-}
-
-function insertIntoTrie(
-  root: TrieNode,
-  symbols: string[],
-  count: number,
-): void {
-  let node = root;
-  for (const symbol of symbols) {
-    if (!node.children[symbol]) {
-      node.children[symbol] = createTrieNode();
-    }
-    node = node.children[symbol];
+function encodeColors(colors: string[] | undefined): number {
+  if (!colors) return 0;
+  let mask = 0;
+  for (const c of colors) {
+    mask |= COLOR_FROM_LETTER[c] ?? 0;
   }
-  node.count += count;
+  return mask;
 }
 
-/** Strip zero counts and empty children for a compact JSON representation. */
-function compactTrie(node: TrieNode): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  if (node.count > 0) out.count = node.count;
-  const keys = Object.keys(node.children);
-  if (keys.length > 0) {
-    const children: Record<string, unknown> = {};
-    for (const key of keys) {
-      children[key] = compactTrie(node.children[key]);
+interface ParsedTypeLine {
+  types: number;
+  supertypes: number;
+  subtypes: string;
+}
+
+function parseTypeLine(typeLine: string): ParsedTypeLine {
+  let types = 0;
+  let supertypes = 0;
+  const remaining: string[] = [];
+
+  for (const word of typeLine.split(/\s+/)) {
+    if (word === "—" || word === "//") {
+      remaining.push(word);
+      continue;
     }
-    out.children = children;
+    const typeBit = CARD_TYPE_NAMES[word];
+    if (typeBit !== undefined) {
+      types |= typeBit;
+      continue;
+    }
+    const superBit = SUPERTYPE_NAMES[word];
+    if (superBit !== undefined) {
+      supertypes |= superBit;
+      continue;
+    }
+    remaining.push(word);
   }
-  return out;
+
+  const subtypes = remaining.join(" ").replace(/^\s*—\s*/, "").replace(/\s*—\s*$/, "").trim();
+
+  return { types, supertypes, subtypes };
 }
 
 // ---------------------------------------------------------------------------
-// Mana canonical ordering
+// Dictionary encoding: map a small set of strings to uint8 indices
 // ---------------------------------------------------------------------------
 
-const MANA_PRIORITY: Record<string, number> = {
-  "{w}": 0,
-  "{u}": 1,
-  "{b}": 2,
-  "{r}": 3,
-  "{g}": 4,
-  "{c}": 5,
-  "{s}": 6,
-  "{x}": 7,
-};
+const NONE_SENTINEL = "";
 
-function manaSortKey(symbol: string): number {
-  const priority = MANA_PRIORITY[symbol];
-  if (priority !== undefined) return priority;
-  // Hybrid symbols (e.g. {w/u}, {r/p}) — sort after basic colors, before generics
-  if (symbol.includes("/")) return 8;
-  // Numeric mana — sort last, by value
-  const num = parseInt(symbol.replace(/[{}]/g, ""), 10);
-  if (!isNaN(num)) return 100 + num;
-  // Anything else
-  return 50;
-}
+class DictEncoder {
+  private table: string[] = [NONE_SENTINEL];
+  private index = new Map<string, number>([[NONE_SENTINEL, 0]]);
 
-function canonicalizeMana(symbols: string[]): string[] {
-  return [...symbols].sort((a, b) => manaSortKey(a) - manaSortKey(b));
+  encode(value: string | undefined): number {
+    const v = value ?? NONE_SENTINEL;
+    let idx = this.index.get(v);
+    if (idx === undefined) {
+      idx = this.table.length;
+      if (idx > 255) throw new Error(`Dictionary exceeded 255 entries at "${v}"`);
+      this.table.push(v);
+      this.index.set(v, idx);
+    }
+    return idx;
+  }
+
+  lookup(): string[] {
+    return this.table;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Entry point
+// Columnar output
 // ---------------------------------------------------------------------------
 
-export function buildDictionary(verbose: boolean): void {
+interface ColumnarData {
+  names: string[];
+  mana_costs: string[];
+  oracle_texts: string[];
+  colors: number[];
+  color_identity: number[];
+  types: number[];
+  supertypes: number[];
+  subtypes: string[];
+  powers: number[];
+  toughnesses: number[];
+  loyalties: number[];
+  defenses: number[];
+  power_lookup: string[];
+  toughness_lookup: string[];
+  loyalty_lookup: string[];
+  defense_lookup: string[];
+}
+
+export function processCards(verbose: boolean): void {
   log(`Reading ${ORACLE_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(ORACLE_CARDS_PATH, "utf-8");
   const cards: Card[] = JSON.parse(raw);
 
   log(`Processing ${cards.length} cards…`, verbose);
 
-  const wordFreq: Record<string, number> = {};
-  const manaFreq: Record<string, number> = {};
+  const powerDict = new DictEncoder();
+  const toughnessDict = new DictEncoder();
+  const loyaltyDict = new DictEncoder();
+  const defenseDict = new DictEncoder();
+
+  const data: ColumnarData = {
+    names: [],
+    mana_costs: [],
+    oracle_texts: [],
+    colors: [],
+    color_identity: [],
+    types: [],
+    supertypes: [],
+    subtypes: [],
+    powers: [],
+    toughnesses: [],
+    loyalties: [],
+    defenses: [],
+    power_lookup: [],
+    toughness_lookup: [],
+    loyalty_lookup: [],
+    defense_lookup: [],
+  };
 
   for (const card of cards) {
-    for (const token of extractTokens(card)) {
-      if (isManaToken(token)) {
-        manaFreq[token] = (manaFreq[token] ?? 0) + 1;
-      } else {
-        wordFreq[token] = (wordFreq[token] ?? 0) + 1;
-      }
-    }
+    data.names.push(card.name ?? "");
+    data.mana_costs.push(card.mana_cost ?? "");
+    data.oracle_texts.push(card.oracle_text ?? "");
+    data.colors.push(encodeColors(card.colors));
+    data.color_identity.push(encodeColors(card.color_identity));
+
+    const parsed = parseTypeLine(card.type_line ?? "");
+    data.types.push(parsed.types);
+    data.supertypes.push(parsed.supertypes);
+    data.subtypes.push(parsed.subtypes);
+
+    data.powers.push(powerDict.encode(card.power));
+    data.toughnesses.push(toughnessDict.encode(card.toughness));
+    data.loyalties.push(loyaltyDict.encode(card.loyalty));
+    data.defenses.push(defenseDict.encode(card.defense));
   }
 
-  const wordCount = Object.keys(wordFreq).length;
-  const manaCount = Object.keys(manaFreq).length;
-  log(`Found ${wordCount} word tokens, ${manaCount} mana cost tokens`, verbose);
+  data.power_lookup = powerDict.lookup();
+  data.toughness_lookup = toughnessDict.lookup();
+  data.loyalty_lookup = loyaltyDict.lookup();
+  data.defense_lookup = defenseDict.lookup();
+
+  log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
   ensureIntermediateDir();
 
-  fs.writeFileSync(DICTIONARY_PATH, JSON.stringify(wordFreq, null, 2) + "\n");
-  log(`Wrote ${DICTIONARY_PATH}`, true);
-
-  fs.writeFileSync(
-    MANA_DICTIONARY_PATH,
-    JSON.stringify(manaFreq, null, 2) + "\n",
-  );
-  log(`Wrote ${MANA_DICTIONARY_PATH}`, true);
-
-  log("Building word trie…", verbose);
-  const wordTrie = createTrieNode();
-  for (const [token, count] of Object.entries(wordFreq)) {
-    insertIntoTrie(wordTrie, toSymbols(token), count);
-  }
-  fs.writeFileSync(
-    TRIE_PATH,
-    JSON.stringify(compactTrie(wordTrie), null, 2) + "\n",
-  );
-  log(`Wrote ${TRIE_PATH}`, true);
-
-  log("Building mana trie (canonical order)…", verbose);
-  const manaTrie = createTrieNode();
-  for (const [token, count] of Object.entries(manaFreq)) {
-    const symbols = toSymbols(token);
-    insertIntoTrie(manaTrie, canonicalizeMana(symbols), count);
-  }
-  fs.writeFileSync(
-    MANA_TRIE_PATH,
-    JSON.stringify(compactTrie(manaTrie), null, 2) + "\n",
-  );
-  log(`Wrote ${MANA_TRIE_PATH}`, true);
+  fs.writeFileSync(COLUMNS_PATH, JSON.stringify(data) + "\n");
+  log(`Wrote ${COLUMNS_PATH}`, true);
 }

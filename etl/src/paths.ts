@@ -9,10 +9,7 @@ export const RAW_DIR = path.join(PROJECT_ROOT, "data", "raw");
 export const INTERMEDIATE_DIR = path.join(PROJECT_ROOT, "data", "intermediate");
 export const ORACLE_CARDS_PATH = path.join(RAW_DIR, "oracle-cards.json");
 export const META_PATH = path.join(RAW_DIR, "meta.json");
-export const DICTIONARY_PATH = path.join(INTERMEDIATE_DIR, "dictionary.json");
-export const MANA_DICTIONARY_PATH = path.join(INTERMEDIATE_DIR, "mana-dictionary.json");
-export const TRIE_PATH = path.join(INTERMEDIATE_DIR, "trie.json");
-export const MANA_TRIE_PATH = path.join(INTERMEDIATE_DIR, "mana-trie.json");
+export const COLUMNS_PATH = path.join(INTERMEDIATE_DIR, "columns.json");
 
 const LocalMetaSchema = z.object({
   updated_at: z.string(),

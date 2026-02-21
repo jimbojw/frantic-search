@@ -11,7 +11,7 @@ import {
   META_PATH,
 } from "./paths";
 import { log } from "./log";
-import { buildDictionary } from "./process";
+import { processCards } from "./process";
 
 const cli = cac("etl");
 
@@ -55,11 +55,11 @@ cli
   });
 
 cli
-  .command("process", "Build a token frequency dictionary from Oracle Cards data")
+  .command("process", "Extract searchable fields into a columnar JSON file")
   .option("--verbose", "Print detailed progress", { default: false })
   .action((options: { verbose: boolean }) => {
     try {
-      buildDictionary(options.verbose);
+      processCards(options.verbose);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       process.stderr.write(`Error: ${msg}\n`);
