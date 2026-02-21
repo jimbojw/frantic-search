@@ -255,8 +255,11 @@ export function nodeKey(ast: ASTNode): string {
 
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
+  readonly index: CardIndex;
 
-  constructor(readonly index: CardIndex) {}
+  constructor(index: CardIndex) {
+    this.index = index;
+  }
 
   intern(ast: ASTNode): InternedNode {
     const key = nodeKey(ast);
