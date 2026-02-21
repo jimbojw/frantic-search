@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, For, Show } from 'solid-js'
-import type { FromWorker, CardResult } from '@frantic-search/shared'
+import type { FromWorker, CardResult, BreakdownNode } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 
 const MANA_SYMBOL_RE = /\{([^}]+)\}/g
@@ -68,6 +68,59 @@ function OracleText(props: { text: string }) {
   )
 }
 
+function isFlatAnd(node: BreakdownNode): boolean {
+  if (node.label !== 'AND' || !node.children) return false
+  return node.children.every(c => !c.children)
+}
+
+function BreakdownRow(props: { label: string; count: number; indent?: number; muted?: boolean }) {
+  return (
+    <div
+      class={`flex items-baseline justify-between gap-4 py-0.5 ${props.muted ? 'text-gray-400 dark:text-gray-500' : ''}`}
+      style={props.indent ? { "padding-left": `${props.indent * 1.25}rem` } : undefined}
+    >
+      <span class={`font-mono text-xs truncate ${props.count === 0 && !props.muted ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+        {props.label}
+      </span>
+      <span class={`font-mono text-xs tabular-nums shrink-0 ${props.count === 0 && !props.muted ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+        {props.count.toLocaleString()}
+      </span>
+    </div>
+  )
+}
+
+function BreakdownTree(props: { node: BreakdownNode; depth?: number }) {
+  const depth = () => props.depth ?? 0
+  return (
+    <>
+      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={depth()} />
+      <Show when={props.node.children}>
+        <For each={props.node.children}>
+          {(child) => <BreakdownTree node={child} depth={depth() + 1} />}
+        </For>
+      </Show>
+    </>
+  )
+}
+
+function QueryBreakdown(props: { breakdown: BreakdownNode }) {
+  const flat = () => isFlatAnd(props.breakdown)
+
+  return (
+    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 mb-4">
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Query breakdown</p>
+      <Show when={flat()} fallback={<BreakdownTree node={props.breakdown} />}>
+        <For each={props.breakdown.children!}>
+          {(child) => <BreakdownRow label={child.label} count={child.matchCount} />}
+        </For>
+        <div class="border-t border-gray-200 dark:border-gray-700 mt-1.5 pt-1.5">
+          <BreakdownRow label="Combined" count={props.breakdown.matchCount} muted={props.breakdown.matchCount > 0} />
+        </div>
+      </Show>
+    </div>
+  )
+}
+
 function App() {
   const [query, setQuery] = createSignal('')
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
@@ -75,6 +128,8 @@ function App() {
   const [results, setResults] = createSignal<CardResult[]>([])
   const [totalMatches, setTotalMatches] = createSignal(0)
   const [showOracleText, setShowOracleText] = createSignal(false)
+  const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
+  const [showBreakdown, setShowBreakdown] = createSignal(false)
   const [inputFocused, setInputFocused] = createSignal(false)
 
   const headerCollapsed = () => inputFocused() || query().trim() !== ''
@@ -93,6 +148,7 @@ function App() {
         if (msg.queryId === latestQueryId) {
           setResults(msg.cards)
           setTotalMatches(msg.totalMatches)
+          setBreakdown(msg.breakdown)
         }
         break
     }
@@ -106,6 +162,7 @@ function App() {
     } else if (!q) {
       setResults([])
       setTotalMatches(0)
+      setBreakdown(null)
     }
   })
 
@@ -166,13 +223,45 @@ function App() {
             </p>
           }>
             <Show when={results().length > 0} fallback={
-              <p class="text-center text-sm text-gray-400 dark:text-gray-600 pt-8">
-                No cards found
-              </p>
+              <div class="pt-8 text-center">
+                <p class="text-sm text-gray-400 dark:text-gray-600">
+                  No cards found
+                </p>
+                <Show when={breakdown()}>
+                  {(bd) => (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowBreakdown(v => !v)}
+                        class="mt-2 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      >
+                        {showBreakdown() ? 'Hide' : 'Show'} query breakdown
+                      </button>
+                      <Show when={showBreakdown()}>
+                        <div class="mt-4 text-left">
+                          <QueryBreakdown breakdown={bd()} />
+                        </div>
+                      </Show>
+                    </>
+                  )}
+                </Show>
+              </div>
             }>
+              <Show when={showBreakdown() && breakdown()}>
+                {(bd) => <QueryBreakdown breakdown={bd()} />}
+              </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                   {results().length} cards ({totalMatches()} face matches)
+                  <Show when={breakdown()}>
+                    <> &middot; <button
+                      type="button"
+                      onClick={() => setShowBreakdown(v => !v)}
+                      class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    >
+                      {showBreakdown() ? 'hide' : 'show'} breakdown
+                    </button></>
+                  </Show>
                 </p>
                 <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-500 dark:text-gray-400">
                   Oracle text

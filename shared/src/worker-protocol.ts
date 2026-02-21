@@ -13,6 +13,12 @@ export type CardResult = {
   oracleText: string
 }
 
+export type BreakdownNode = {
+  label: string
+  matchCount: number
+  children?: BreakdownNode[]
+}
+
 export type FromWorker =
   | { type: 'status'; status: 'loading' | 'ready' | 'error'; error?: string }
-  | { type: 'result'; queryId: number; cards: CardResult[]; totalMatches: number }
+  | { type: 'result'; queryId: number; cards: CardResult[]; totalMatches: number; breakdown: BreakdownNode }
