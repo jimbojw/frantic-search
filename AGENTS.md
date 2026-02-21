@@ -25,6 +25,7 @@ npm install
 
 1. Read the ADRs in `docs/adr/` to understand architectural constraints. Start with `docs/adr/008-documentation-strategy.md` — it explains how this project uses ADRs (decisions) and Specs (feature designs).
 2. Check `docs/specs/` for a spec covering the feature you're working on. If one exists, follow it. If one doesn't, propose one before implementing.
+3. Check `docs/guides/` for operational guides relevant to your task (e.g., comparing search results against Scryfall). Read these as needed, not upfront.
 
 ## Development Process
 
