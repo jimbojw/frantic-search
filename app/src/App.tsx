@@ -108,7 +108,17 @@ function QueryBreakdown(props: { breakdown: BreakdownNode }) {
 
   return (
     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 mb-4">
-      <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Query breakdown</p>
+      <div class="flex items-baseline justify-between mb-2">
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Query breakdown</p>
+        <a
+          href="https://scryfall.com/docs/syntax"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          Syntax guide ↗
+        </a>
+      </div>
       <Show when={flat()} fallback={<BreakdownTree node={props.breakdown} />}>
         <For each={props.breakdown.children!}>
           {(child) => <BreakdownRow label={child.label} count={child.matchCount} />}
@@ -133,6 +143,7 @@ function App() {
   const [inputFocused, setInputFocused] = createSignal(false)
 
   const headerCollapsed = () => inputFocused() || query().trim() !== ''
+  const scryfallUrl = () => `https://scryfall.com/search?q=${encodeURIComponent(query().trim())}`
 
   const worker = new SearchWorker()
   let latestQueryId = 0
@@ -227,22 +238,31 @@ function App() {
                 <p class="text-sm text-gray-400 dark:text-gray-600">
                   No cards found
                 </p>
-                <Show when={breakdown()}>
+                <p class="mt-2 text-sm">
+                  <Show when={breakdown()}>
+                    <button
+                      type="button"
+                      onClick={() => setShowBreakdown(v => !v)}
+                      class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    >
+                      {showBreakdown() ? 'Hide' : 'Show'} query breakdown
+                    </button>
+                    <span class="text-gray-300 dark:text-gray-600"> · </span>
+                  </Show>
+                  <a
+                    href={scryfallUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  >
+                    Try on Scryfall ↗
+                  </a>
+                </p>
+                <Show when={showBreakdown() && breakdown()}>
                   {(bd) => (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setShowBreakdown(v => !v)}
-                        class="mt-2 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                      >
-                        {showBreakdown() ? 'Hide' : 'Show'} query breakdown
-                      </button>
-                      <Show when={showBreakdown()}>
-                        <div class="mt-4 text-left">
-                          <QueryBreakdown breakdown={bd()} />
-                        </div>
-                      </Show>
-                    </>
+                    <div class="mt-4 text-left">
+                      <QueryBreakdown breakdown={bd()} />
+                    </div>
                   )}
                 </Show>
               </div>
@@ -254,14 +274,22 @@ function App() {
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                   {results().length} cards ({totalMatches()} face matches)
                   <Show when={breakdown()}>
-                    <> &middot; <button
+                    <span> · <button
                       type="button"
                       onClick={() => setShowBreakdown(v => !v)}
                       class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                     >
                       {showBreakdown() ? 'hide' : 'show'} breakdown
-                    </button></>
+                    </button></span>
                   </Show>
+                  <span> · <a
+                    href={scryfallUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  >
+                    Scryfall ↗
+                  </a></span>
                 </p>
                 <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-500 dark:text-gray-400">
                   Oracle text
