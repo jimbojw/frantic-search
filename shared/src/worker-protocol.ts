@@ -15,6 +15,7 @@ export type CardFace = {
 
 export type CardResult = {
   scryfallId: string
+  colorIdentity: number
   faces: CardFace[]
 }
 

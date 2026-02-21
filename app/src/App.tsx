@@ -7,6 +7,54 @@ function artCropUrl(scryfallId: string): string {
   return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
 }
 
+// Washed-out color palette for placeholder backgrounds (WUBRG order).
+const CI_W = '#F5F0D0'
+const CI_U = '#A8D4F0'
+const CI_B = '#B8A8B0'
+const CI_R = '#F0B8A8'
+const CI_G = '#A8D8B0'
+const CI_COLORLESS = '#E0DDD8'
+
+function stripes(...colors: string[]): string {
+  const step = 100 / colors.length
+  const stops = colors.flatMap((c, i) => `${c} ${i * step}%,${c} ${(i + 1) * step}%`)
+  return `linear-gradient(to right,${stops.join(',')})`
+}
+
+// All 32 possible 5-bit color identity values, indexed by bitmask.
+// Bits: W=1, U=2, B=4, R=8, G=16.
+const CI_BACKGROUNDS: string[] = /* #__PURE__ */ (() => {
+  const COLORS: [number, string][] = [[1, CI_W], [2, CI_U], [4, CI_B], [8, CI_R], [16, CI_G]]
+  const table: string[] = new Array(32)
+  for (let mask = 0; mask < 32; mask++) {
+    const active = COLORS.filter(([bit]) => mask & bit).map(([, c]) => c)
+    table[mask] = active.length === 0 ? CI_COLORLESS
+      : active.length === 1 ? active[0]
+      : stripes(...active)
+  }
+  return table
+})()
+
+function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
+  const [loaded, setLoaded] = createSignal(false)
+  return (
+    <div
+      class="w-[3em] aspect-[4/3] rounded-sm overflow-hidden shrink-0 mt-0.5"
+      style={{ background: CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS }}
+    >
+      <img
+        src={artCropUrl(props.scryfallId)}
+        loading="lazy"
+        alt=""
+        onLoad={() => setLoaded(true)}
+        class="w-full h-full object-cover"
+        classList={{ 'opacity-0': !loaded(), 'opacity-100': loaded() }}
+        style="transition: opacity 300ms ease-in"
+      />
+    </div>
+  )
+}
+
 const MANA_SYMBOL_RE = /\{([^}]+)\}/g
 
 const SYMBOL_OVERRIDES: Record<string, string> = {
@@ -363,12 +411,7 @@ function App() {
                     return (
                       <li class="px-4 py-2 text-sm flex items-start gap-3">
                         <Show when={card.scryfallId}>
-                          <img
-                            src={artCropUrl(card.scryfallId)}
-                            loading="lazy"
-                            alt=""
-                            class="w-[2em] aspect-[3/4] rounded-sm object-cover shrink-0 mt-0.5"
-                          />
+                          <ArtCrop scryfallId={card.scryfallId} colorIdentity={card.colorIdentity} />
                         </Show>
                         <div class="min-w-0 flex-1">
                           <Show when={card.faces.length > 1} fallback={
