@@ -207,7 +207,21 @@ These fields map to columns available in the current ETL output.
 
 ### Color value parsing
 
-Color values are parsed as a sequence of WUBRG letters: `c:wu` → White + Blue bitmask. The `:` operator means "at least these colors" (bitwise: `(card & query) === query`). The `=` operator means "exactly these colors" (bitwise: `card === query`).
+Color values are resolved in order:
+
+1. **Named lookup.** If the entire value matches a named color entry (case-insensitive), use its bitmask. Named entries include:
+   - Full color names: `white` (W), `blue` (U), `black` (B), `red` (R), `green` (G).
+   - Guild names (2-color): `azorius` (WU), `dimir` (UB), `rakdos` (BR), `gruul` (RG), `selesnya` (GW), `orzhov` (WB), `izzet` (UR), `golgari` (BG), `boros` (RW), `simic` (GU).
+   - Shard names (3-color): `bant` (GWU), `esper` (WUB), `grixis` (UBR), `jund` (BRG), `naya` (RGW).
+   - Wedge names (3-color): `abzan` (WBG), `jeskai` (URW), `sultai` (BGU), `mardu` (RWB), `temur` (GUR).
+   - Strixhaven college names (2-color, aliases for guilds): `silverquill` (WB), `prismari` (UR), `witherbloom` (BG), `lorehold` (RW), `quandrix` (GU).
+   - Four-color nicknames: `chaos` (UBRG), `aggression` (WBRG), `altruism` (WURG), `growth` (WUBG), `artifice` (WUBR).
+2. **Special predicates.** Two values change _how_ the comparison works rather than supplying a bitmask:
+   - `colorless` (alias `c`): matches cards with exactly zero color bits. When used with `:`, `=`, `<=`, it means "has no colors" (`mask === 0`). With `>`, `>=`, `!=` it inverts accordingly.
+   - `multicolor` (alias `m`): matches cards with two or more color bits (`popcount(mask) >= 2`). Comparison operators are not meaningful; only `:` is supported (other operators match nothing).
+3. **Letter-sequence fallback.** Each character is looked up in WUBRG: `c:wu` → White + Blue bitmask.
+
+The `:` operator means "at least these colors" for `color:` (bitwise superset: `(card & query) === query`) and "fits in a deck of these colors" for `identity:` (bitwise subset: `(card & ~query) === 0`). The `=` operator means "exactly these colors" (`card === query`).
 
 ### Numeric field matching
 

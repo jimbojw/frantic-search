@@ -2,6 +2,9 @@
 export {
   Color,
   COLOR_FROM_LETTER,
+  COLOR_NAMES,
+  COLOR_COLORLESS,
+  COLOR_MULTICOLOR,
   Format,
   FORMAT_NAMES,
 } from "./bits";

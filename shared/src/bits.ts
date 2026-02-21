@@ -17,6 +17,70 @@ export const COLOR_FROM_LETTER: Record<string, number> = {
   G: Color.Green,
 };
 
+// Sentinel values for special color predicates (not real bitmasks).
+// These are negative to avoid collision with any valid 5-bit color mask.
+export const COLOR_COLORLESS = -1;
+export const COLOR_MULTICOLOR = -2;
+
+/**
+ * Named color values → bitmask (or sentinel for special predicates).
+ * All keys are lowercase. Looked up before the letter-sequence fallback.
+ */
+export const COLOR_NAMES: Record<string, number> = {
+  // Full color names
+  white: Color.White,
+  blue: Color.Blue,
+  black: Color.Black,
+  red: Color.Red,
+  green: Color.Green,
+
+  // Guilds (2-color)
+  azorius: Color.White | Color.Blue,
+  dimir: Color.Blue | Color.Black,
+  rakdos: Color.Black | Color.Red,
+  gruul: Color.Red | Color.Green,
+  selesnya: Color.Green | Color.White,
+  orzhov: Color.White | Color.Black,
+  izzet: Color.Blue | Color.Red,
+  golgari: Color.Black | Color.Green,
+  boros: Color.Red | Color.White,
+  simic: Color.Green | Color.Blue,
+
+  // Shards (3-color)
+  bant: Color.Green | Color.White | Color.Blue,
+  esper: Color.White | Color.Blue | Color.Black,
+  grixis: Color.Blue | Color.Black | Color.Red,
+  jund: Color.Black | Color.Red | Color.Green,
+  naya: Color.Red | Color.Green | Color.White,
+
+  // Wedges (3-color)
+  abzan: Color.White | Color.Black | Color.Green,
+  jeskai: Color.Blue | Color.Red | Color.White,
+  sultai: Color.Black | Color.Green | Color.Blue,
+  mardu: Color.Red | Color.White | Color.Black,
+  temur: Color.Green | Color.Blue | Color.Red,
+
+  // Strixhaven colleges (2-color, aliases for guilds)
+  silverquill: Color.White | Color.Black,
+  prismari: Color.Blue | Color.Red,
+  witherbloom: Color.Black | Color.Green,
+  lorehold: Color.Red | Color.White,
+  quandrix: Color.Green | Color.Blue,
+
+  // Four-color nicknames
+  chaos: Color.Blue | Color.Black | Color.Red | Color.Green,
+  aggression: Color.White | Color.Black | Color.Red | Color.Green,
+  altruism: Color.White | Color.Blue | Color.Red | Color.Green,
+  growth: Color.White | Color.Blue | Color.Black | Color.Green,
+  artifice: Color.White | Color.Blue | Color.Black | Color.Red,
+
+  // Special predicates
+  colorless: COLOR_COLORLESS,
+  c: COLOR_COLORLESS,
+  multicolor: COLOR_MULTICOLOR,
+  m: COLOR_MULTICOLOR,
+};
+
 // --- Format Legality (21 bits) ---
 export const Format = {
   Standard: 1 << 0,

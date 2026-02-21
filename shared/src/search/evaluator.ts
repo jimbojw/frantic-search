@@ -8,7 +8,7 @@ import {
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
-import { COLOR_FROM_LETTER, FORMAT_NAMES } from "../bits";
+import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, FORMAT_NAMES } from "../bits";
 import { parseManaSymbols, manaContains } from "./mana";
 
 const SEP = "\x1E";
@@ -37,6 +37,8 @@ function popcount(buf: Uint8Array, len: number): number {
 }
 
 function parseColorValue(value: string): number {
+  const named = COLOR_NAMES[value.toLowerCase()];
+  if (named !== undefined) return named;
   let mask = 0;
   for (const ch of value.toUpperCase()) {
     mask |= COLOR_FROM_LETTER[ch] ?? 0;
@@ -88,6 +90,20 @@ function evalLeafField(
     case "identity": {
       const col = canonical === "color" ? index.colors : index.colorIdentity;
       const queryMask = parseColorValue(val);
+
+      if (queryMask === COLOR_COLORLESS) {
+        for (let i = 0; i < n; i++) buf[i] = col[i] === 0 ? 1 : 0;
+        break;
+      }
+      if (queryMask === COLOR_MULTICOLOR) {
+        for (let i = 0; i < n; i++) {
+          let v = col[i]; v = (v & 0x55) + ((v >> 1) & 0x55);
+          v = (v & 0x33) + ((v >> 2) & 0x33); v = (v + (v >> 4)) & 0x0f;
+          buf[i] = v >= 2 ? 1 : 0;
+        }
+        break;
+      }
+
       // color: colon means superset (≥): "has at least these colors"
       // identity: colon means subset (≤): "fits in a deck of these colors"
       const colonOp = canonical === "identity" ? "<=" : ">=";

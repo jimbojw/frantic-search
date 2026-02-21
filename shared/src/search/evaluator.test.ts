@@ -230,6 +230,51 @@ describe("evaluate", () => {
     expect(matchCount("c=g")).toBe(2);
   });
 
+  test("full color names work as values", () => {
+    expect(matchCount("c:green")).toBe(2);
+    expect(matchCount("c:red")).toBe(2);
+    expect(matchCount("c:blue")).toBe(2);
+    expect(matchCount("c:white")).toBe(2);
+    expect(matchCount("c:black")).toBe(3);
+  });
+
+  test("guild names work as color values", () => {
+    expect(matchCount("c:azorius")).toBe(1);   // WU → only Azorius Charm
+    expect(matchCount("c:rakdos")).toBe(1);    // BR → only Ayara back
+  });
+
+  test("shard and wedge names work as color values", () => {
+    expect(matchCount("c:esper")).toBe(0);     // WUB → no card has all three
+    expect(matchCount("c:jeskai")).toBe(0);    // URW → no card has all three
+  });
+
+  test("college names are aliases for guilds", () => {
+    expect(matchCount("c:prismari")).toBe(matchCount("c:izzet"));   // UR
+    expect(matchCount("c:silverquill")).toBe(matchCount("c:orzhov")); // WB
+  });
+
+  test("colorless matches cards with zero color bits", () => {
+    expect(matchCount("c:colorless")).toBe(1);  // Sol Ring only
+    expect(matchCount("c:c")).toBe(1);
+  });
+
+  test("multicolor matches cards with 2+ color bits", () => {
+    expect(matchCount("c:multicolor")).toBe(2); // Azorius Charm (WU), Ayara back (BR)
+    expect(matchCount("c:m")).toBe(2);
+  });
+
+  test("color names work with identity field", () => {
+    expect(matchCount("id<=esper")).toBe(5);  // identity ⊆ WUB: Counterspell(U), Sol Ring(∅), Azorius(WU), Thalia(W), Dismember(B)
+    expect(matchCount("id:green")).toBe(matchCount("id:g"));
+  });
+
+  test("color names are case-insensitive", () => {
+    expect(matchCount("c:Green")).toBe(2);
+    expect(matchCount("c:AZORIUS")).toBe(1);
+    expect(matchCount("c:Colorless")).toBe(1);
+    expect(matchCount("c:Multicolor")).toBe(2);
+  });
+
   test("type field matches card types", () => {
     expect(matchCount("t:creature")).toBe(5);
     expect(matchCount("t:instant")).toBe(4);
