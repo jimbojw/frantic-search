@@ -41,6 +41,7 @@ async function init(): Promise<void> {
       name: data.names[i],
       manaCost: data.mana_costs[i],
       typeLine: data.type_lines[i],
+      oracleText: data.oracle_texts[i],
     }))
 
     post({ type: 'result', queryId: msg.queryId, cards, totalMatches })

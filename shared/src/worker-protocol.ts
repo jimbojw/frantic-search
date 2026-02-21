@@ -10,6 +10,7 @@ export type CardResult = {
   name: string
   manaCost: string
   typeLine: string
+  oracleText: string
 }
 
 export type FromWorker =
