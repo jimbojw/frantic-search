@@ -483,6 +483,55 @@ describe("evaluate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// CMC / mana value
+// ---------------------------------------------------------------------------
+// Row CMC: #0=1, #1=1, #2=2, #3=1, #4=2, #5=2, #6=2, #7=3, #8=0, #9=3
+
+describe("cmc / mana value", () => {
+  test("cmc:2 matches rows with mana value exactly 2", () => {
+    expect(matchCount("cmc:2")).toBe(4);
+  });
+
+  test("cmc>2 matches mana value > 2", () => {
+    expect(matchCount("cmc>2")).toBe(2);
+  });
+
+  test("cmc>=2 matches mana value >= 2", () => {
+    expect(matchCount("cmc>=2")).toBe(6);
+  });
+
+  test("cmc<2 matches mana value < 2", () => {
+    expect(matchCount("cmc<2")).toBe(4);
+  });
+
+  test("cmc<=1 matches mana value <= 1", () => {
+    expect(matchCount("cmc<=1")).toBe(4);
+  });
+
+  test("cmc!=2 matches all rows except mana value 2", () => {
+    expect(matchCount("cmc!=2")).toBe(6);
+  });
+
+  test("mv: and manavalue: are aliases for cmc:", () => {
+    expect(matchCount("mv:2")).toBe(4);
+    expect(matchCount("manavalue:2")).toBe(4);
+    expect(matchCount("mv>2")).toBe(2);
+  });
+
+  test("non-numeric value matches nothing", () => {
+    expect(matchCount("cmc:abc")).toBe(0);
+  });
+
+  test("cmc:0 matches only the back face with empty mana cost", () => {
+    expect(matchCount("cmc:0")).toBe(1);
+  });
+
+  test("Dismember {1}{B/P}{B/P} has cmc 3", () => {
+    expect(matchCount("cmc:3")).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Cache hit/miss behavior
 // ---------------------------------------------------------------------------
 

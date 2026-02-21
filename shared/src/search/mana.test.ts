@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { parseManaSymbols, manaContains } from "./mana";
+import { parseManaSymbols, manaContains, computeCmc } from "./mana";
 
 describe("parseManaSymbols", () => {
   test("empty string produces empty map", () => {
@@ -124,5 +124,62 @@ describe("manaContains", () => {
   test("hybrid/phyrexian key matches only itself", () => {
     expect(manaContains({ generic: 1, "b/p": 2 }, { "b/p": 1 })).toBe(true);
     expect(manaContains({ generic: 1, "b/p": 2 }, { "b/p": 3 })).toBe(false);
+  });
+});
+
+describe("computeCmc", () => {
+  test("empty map → 0", () => {
+    expect(computeCmc({})).toBe(0);
+  });
+
+  test("generic only", () => {
+    expect(computeCmc({ generic: 3 })).toBe(3);
+  });
+
+  test("colored symbols count 1 each", () => {
+    expect(computeCmc({ w: 1, u: 1 })).toBe(2);
+    expect(computeCmc({ r: 3 })).toBe(3);
+  });
+
+  test("generic + colored", () => {
+    expect(computeCmc({ generic: 2, r: 2 })).toBe(4);
+    expect(computeCmc({ generic: 1, g: 1 })).toBe(2);
+  });
+
+  test("X contributes 0", () => {
+    expect(computeCmc({ x: 1 })).toBe(0);
+    expect(computeCmc({ x: 2, r: 1 })).toBe(1);
+  });
+
+  test("phyrexian symbols count 1 each", () => {
+    expect(computeCmc({ "b/p": 2 })).toBe(2);
+    expect(computeCmc({ generic: 1, "b/p": 2 })).toBe(3);
+  });
+
+  test("color hybrid symbols count 1 each", () => {
+    expect(computeCmc({ "w/u": 1 })).toBe(1);
+    expect(computeCmc({ "w/u": 3 })).toBe(3);
+  });
+
+  test("numeric hybrid {2/W} counts the numeric part", () => {
+    expect(computeCmc({ "2/w": 1 })).toBe(2);
+    expect(computeCmc({ "2/w": 3 })).toBe(6);
+  });
+
+  test("colorless and snow count 1 each", () => {
+    expect(computeCmc({ c: 2 })).toBe(2);
+    expect(computeCmc({ s: 3 })).toBe(3);
+  });
+
+  test("full mana cost round-trip: {3}{W}{W}", () => {
+    expect(computeCmc(parseManaSymbols("{3}{W}{W}"))).toBe(5);
+  });
+
+  test("full mana cost round-trip: {X}{R}", () => {
+    expect(computeCmc(parseManaSymbols("{X}{R}"))).toBe(1);
+  });
+
+  test("full mana cost round-trip: {2/W}{2/W}{2/W}", () => {
+    expect(computeCmc(parseManaSymbols("{2/W}{2/W}{2/W}"))).toBe(6);
   });
 });

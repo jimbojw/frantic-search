@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData } from "../data";
-import { parseManaSymbols } from "./mana";
+import { parseManaSymbols, computeCmc } from "./mana";
 
 export class CardIndex {
   readonly faceCount: number;
@@ -8,6 +8,7 @@ export class CardIndex {
   readonly oracleTextsLower: string[];
   readonly manaCostsLower: string[];
   readonly manaSymbols: Record<string, number>[];
+  readonly manaValue: number[];
   readonly colors: number[];
   readonly colorIdentity: number[];
   readonly typeLinesLower: string[];
@@ -31,6 +32,7 @@ export class CardIndex {
     this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
     this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());
     this.manaSymbols = data.mana_costs.map((m) => parseManaSymbols(m));
+    this.manaValue = this.manaSymbols.map(computeCmc);
     this.colors = data.colors;
     this.colorIdentity = data.color_identity;
     this.typeLinesLower = data.type_lines.map((t) => t.toLowerCase());

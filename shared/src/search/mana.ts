@@ -59,6 +59,29 @@ export function manaContains(
   return true;
 }
 
+/**
+ * Compute the converted mana cost (mana value) from a parsed symbol map.
+ * X contributes 0. Numeric hybrids like {2/W} contribute the numeric part.
+ */
+export function computeCmc(symbols: Record<string, number>): number {
+  let total = 0;
+  for (const key in symbols) {
+    if (key === "x") continue;
+    if (key === "generic") {
+      total += symbols[key];
+      continue;
+    }
+    const slash = key.indexOf("/");
+    if (slash !== -1) {
+      const left = parseInt(key.slice(0, slash), 10);
+      total += isNaN(left) ? symbols[key] : symbols[key] * left;
+    } else {
+      total += symbols[key];
+    }
+  }
+  return total;
+}
+
 function isDigit(ch: string): boolean {
   return ch >= "0" && ch <= "9";
 }

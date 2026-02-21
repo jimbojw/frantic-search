@@ -23,6 +23,7 @@ const FIELD_ALIASES: Record<string, string> = {
   toughness: "toughness", tou: "toughness",
   loyalty: "loyalty", loy: "loyalty",
   defense: "defense", def: "defense",
+  cmc: "manavalue", mv: "manavalue", manavalue: "manavalue",
   mana: "mana", m: "mana",
   legal: "legal", f: "legal", format: "legal",
   banned: "banned",
@@ -144,6 +145,26 @@ function evalLeafField(
           case "<":  buf[i] = cardNum < queryNum ? 1 : 0; break;
           case ">=": buf[i] = cardNum >= queryNum ? 1 : 0; break;
           case "<=": buf[i] = cardNum <= queryNum ? 1 : 0; break;
+          default: buf[i] = 0;
+        }
+      }
+      break;
+    }
+    case "manavalue": {
+      const queryNum = Number(val);
+      if (isNaN(queryNum)) {
+        buf.fill(0, 0, n);
+        break;
+      }
+      const cmcCol = index.manaValue;
+      for (let i = 0; i < n; i++) {
+        switch (op) {
+          case ":": case "=": buf[i] = cmcCol[i] === queryNum ? 1 : 0; break;
+          case "!=": buf[i] = cmcCol[i] !== queryNum ? 1 : 0; break;
+          case ">":  buf[i] = cmcCol[i] > queryNum ? 1 : 0; break;
+          case "<":  buf[i] = cmcCol[i] < queryNum ? 1 : 0; break;
+          case ">=": buf[i] = cmcCol[i] >= queryNum ? 1 : 0; break;
+          case "<=": buf[i] = cmcCol[i] <= queryNum ? 1 : 0; break;
           default: buf[i] = 0;
         }
       }
