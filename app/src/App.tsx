@@ -9,6 +9,8 @@ import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 
 declare const __REPO_URL__: string
+declare const __APP_VERSION__: string
+declare const __BUILD_TIME__: string
 
 function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   const [loaded, setLoaded] = createSignal(false)
@@ -370,6 +372,9 @@ function App() {
                   </svg>
                   Source on GitHub
                 </a>
+              </p>
+              <p class="mt-1 text-[10px] font-mono text-gray-400 dark:text-gray-600">
+                {__APP_VERSION__} · {new Date(__BUILD_TIME__).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
               </p>
             </div>
           }>

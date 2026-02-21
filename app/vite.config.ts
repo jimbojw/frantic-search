@@ -64,6 +64,7 @@ export default defineConfig({
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(gitHash()),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     __BUGS_URL__: JSON.stringify(pkg.bugs),
     __REPO_URL__: JSON.stringify(`https://github.com/${pkg.repository.replace('github:', '')}`),
   },
