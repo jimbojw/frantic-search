@@ -255,6 +255,13 @@ function App() {
     setView('report')
   }
 
+  function navigateHome() {
+    history.pushState(null, '', location.pathname)
+    setQuery('')
+    setView('search')
+    setCardId('')
+  }
+
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'help'}>
@@ -268,20 +275,23 @@ function App() {
       </Show>
       <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
+        <button
+          type="button"
+          onClick={() => navigateHome()}
+          aria-label="Go to home"
+          class="mb-4 h-14 w-full overflow-hidden rounded-xl shadow-md bg-cover bg-[center_20%] block text-left border-0 p-0 cursor-pointer transition-opacity hover:opacity-95 active:opacity-90"
+          style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
+        >
+          <img
+            src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
+            alt="Frantic Search card art by Mitchell Malloy"
+            onLoad={() => setHeaderArtLoaded(true)}
+            class="h-full w-full object-cover object-[center_20%] pointer-events-none"
+            classList={{ 'opacity-0': !headerArtLoaded(), 'opacity-100': headerArtLoaded() }}
+            style="transition: opacity 300ms ease-in"
+          />
+        </button>
         <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
-          <div
-            class="mb-4 h-14 overflow-hidden rounded-xl shadow-md bg-cover bg-[center_20%]"
-            style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
-          >
-            <img
-              src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
-              alt="Frantic Search card art by Mitchell Malloy"
-              onLoad={() => setHeaderArtLoaded(true)}
-              class="h-full w-full object-cover object-[center_20%]"
-              classList={{ 'opacity-0': !headerArtLoaded(), 'opacity-100': headerArtLoaded() }}
-              style="transition: opacity 300ms ease-in"
-            />
-          </div>
           <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
             Frantic Search
           </h1>
