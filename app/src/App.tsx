@@ -302,6 +302,10 @@ function App() {
           <input
             type="text"
             placeholder='Search cards… e.g. "t:creature c:green"'
+            autocapitalize="none"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck={false}
             value={query()}
             onInput={(e) => setQuery(e.currentTarget.value)}
             onFocus={() => setInputFocused(true)}
