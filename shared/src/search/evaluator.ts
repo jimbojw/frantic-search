@@ -87,8 +87,11 @@ function evalLeafField(
     case "identity": {
       const col = canonical === "color" ? index.colors : index.colorIdentity;
       const queryMask = parseColorValue(val);
-      switch (op) {
-        case ":":
+      // color: colon means superset (≥): "has at least these colors"
+      // identity: colon means subset (≤): "fits in a deck of these colors"
+      const colonOp = canonical === "identity" ? "<=" : ">=";
+      const effectiveOp = op === ":" ? colonOp : op;
+      switch (effectiveOp) {
         case ">=":
           for (let i = 0; i < n; i++) buf[i] = (col[i] & queryMask) === queryMask ? 1 : 0;
           break;

@@ -450,14 +450,33 @@ describe("evaluate", () => {
     expect(matchingIndices).toEqual([8]);
   });
 
-  test("identity is card-level and matches on both faces", () => {
+  test("identity: colon uses subset semantics (fits in a commander deck)", () => {
+    // identity:wu → cards whose identity ⊆ {W,U}: Counterspell(U), Sol Ring(∅), Azorius(WU), Thalia(W)
+    expect(matchCount("id:wu")).toBe(4);
+    // identity:w → Thalia(W), Sol Ring(∅)
+    expect(matchCount("id:w")).toBe(2);
+    // identity:br → Bolt(R), Sol Ring(∅), Ayara front(BR), Ayara back(BR), Dismember(B)
+    expect(matchCount("id:br")).toBe(5);
+  });
+
+  test("identity: explicit >= still uses superset semantics", () => {
+    // identity>=wu → cards whose identity ⊇ {W,U}: only Azorius Charm (WU)
+    expect(matchCount("id>=wu")).toBe(1);
+    // identity>=w → Azorius(WU) + Thalia(W)
+    expect(matchCount("id>=w")).toBe(2);
+  });
+
+  test("identity: subset combined with type narrows correctly", () => {
+    // id:br t:elf → Ayara front(BR, Elf) + Ayara back(BR, Elf) — both ⊆ {B,R}
     expect(matchCount("id:br t:elf")).toBe(2);
   });
 
-  test("commander: is an alias for identity:", () => {
+  test("commander: and cmd: are aliases with same subset colon semantics", () => {
+    expect(matchCount("commander:wu")).toBe(4);
+    expect(matchCount("commander:br")).toBe(5);
     expect(matchCount("commander:w")).toBe(2);
-    expect(matchCount("commander:br")).toBe(2);
     expect(matchCount("cmd:w")).toBe(2);
+    expect(matchCount("cmd:br")).toBe(5);
   });
 });
 
