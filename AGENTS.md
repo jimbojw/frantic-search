@@ -37,11 +37,11 @@ npm install
 
 The test framework is Vitest (ADR-010). Tests live alongside source files as `.test.ts` siblings.
 
-| Scope              | Command                              |
-|--------------------|--------------------------------------|
-| Single workspace   | `npm test -w shared`                 |
-| Single test file   | `npx vitest run src/search/lexer.test.ts -w shared` |
-| Pattern match      | `npx vitest run -t "trailing operator" -w shared` |
+| Scope              | Command                                                    |
+|--------------------|------------------------------------------------------------|
+| Single workspace   | `npm test -w shared`                                       |
+| Single test file   | `npm test -w shared -- src/search/lexer.test.ts`           |
+| Pattern match      | `npm test -w shared -- -t "trailing operator"`             |
 
 ## Key Architectural Decisions
 

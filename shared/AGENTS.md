@@ -7,9 +7,10 @@ This workspace contains the query engine, bitmask constants, and shared types us
 All parsers, evaluators, and data transformations must be developed test-first. Write a failing test, then write the implementation. See the root `AGENTS.md` for test commands.
 
 ```
-npm test -w shared                    # run all tests
-npx vitest run -t "some pattern" -w shared  # run matching tests
-npx vitest -w shared                  # watch mode
+npm test -w shared                              # run all tests
+npm test -w shared -- -t "some pattern"         # run matching tests
+npm test -w shared -- src/search/lexer.test.ts  # run single file
+npx vitest --watch --dir shared                 # watch mode
 ```
 
 ## Architecture
