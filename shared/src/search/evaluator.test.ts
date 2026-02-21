@@ -50,7 +50,7 @@ const TEST_DATA: ColumnarData = {
 const index = new CardIndex(TEST_DATA);
 
 function matchCount(query: string): number {
-  return evaluate(parse(query), index).matchCount;
+  return evaluate(parse(query), index).result.matchCount;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,10 +156,25 @@ describe("evaluate", () => {
   });
 
   test("result tree has children with matchCounts", () => {
-    const result = evaluate(parse("c:g t:creature"), index);
+    const { result } = evaluate(parse("c:g t:creature"), index);
     expect(result.matchCount).toBe(2);
     expect(result.children).toHaveLength(2);
     expect(result.children![0].matchCount).toBe(2);   // c:g -> Birds + Tarmogoyf
     expect(result.children![1].matchCount).toBe(3);   // t:creature -> Birds + Tarmogoyf + Thalia
+  });
+
+  test("matchingIndices contains indices of matching cards", () => {
+    const { matchingIndices } = evaluate(parse("c:g t:creature"), index);
+    expect(matchingIndices).toEqual([0, 4]);           // Birds (#0) + Tarmogoyf (#4)
+  });
+
+  test("matchingIndices for single match", () => {
+    const { matchingIndices } = evaluate(parse('!"Lightning Bolt"'), index);
+    expect(matchingIndices).toEqual([1]);
+  });
+
+  test("matchingIndices empty when no matches", () => {
+    const { matchingIndices } = evaluate(parse("rarity:common"), index);
+    expect(matchingIndices).toEqual([]);
   });
 });

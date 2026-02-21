@@ -2,6 +2,7 @@
 import {
   type ASTNode,
   type EvalResult,
+  type EvalOutput,
   type FieldNode,
   type ExactNameNode,
 } from "./ast";
@@ -282,9 +283,13 @@ function evalNode(
   }
 }
 
-export function evaluate(ast: ASTNode, index: CardIndex): EvalResult {
+export function evaluate(ast: ASTNode, index: CardIndex): EvalOutput {
   const pool = new BufferPool(index.cardCount);
   const { result, buf } = evalNode(ast, index, pool);
+  const matchingIndices: number[] = [];
+  for (let i = 0; i < index.cardCount; i++) {
+    if (buf[i]) matchingIndices.push(i);
+  }
   pool.release(buf);
-  return result;
+  return { result, matchingIndices };
 }

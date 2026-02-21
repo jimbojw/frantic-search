@@ -83,3 +83,8 @@ export interface EvalResult {
   matchCount: number;
   children?: EvalResult[];
 }
+
+export interface EvalOutput {
+  result: EvalResult;
+  matchingIndices: number[];
+}
