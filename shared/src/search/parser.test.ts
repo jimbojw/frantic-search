@@ -154,4 +154,49 @@ describe("parse", () => {
       ),
     );
   });
+
+  describe("bare regex desugaring", () => {
+    function bareRegex(pattern: string): ASTNode {
+      return or(
+        regexField("name", ":", pattern),
+        regexField("oracle", ":", pattern),
+        regexField("type", ":", pattern),
+      );
+    }
+
+    test("simple bare regex desugars to OR over string fields", () => {
+      expect(parse("/bolt/")).toEqual(bareRegex("bolt"));
+    });
+
+    test("unclosed bare regex desugars the same way", () => {
+      expect(parse("/bolt")).toEqual(bareRegex("bolt"));
+    });
+
+    test("negated bare regex", () => {
+      expect(parse("-/bolt/")).toEqual(not(bareRegex("bolt")));
+    });
+
+    test("bare regex in implicit AND", () => {
+      expect(parse("c:r /bolt/")).toEqual(
+        and(field("c", ":", "r"), bareRegex("bolt")),
+      );
+    });
+
+    test("bare regex in explicit OR", () => {
+      expect(parse("c:r OR /bolt/")).toEqual(
+        or(field("c", ":", "r"), bareRegex("bolt")),
+      );
+    });
+
+    test("empty bare regex (just a slash)", () => {
+      expect(parse("/")).toEqual(bareRegex(""));
+    });
+
+    test("bare regex does not break never-throws guarantee", () => {
+      const inputs = ["/", "/bolt", "/bolt/", "-/x/", "(/x/) c:r"];
+      for (const input of inputs) {
+        expect(() => parse(input), `parse("${input}") should not throw`).not.toThrow();
+      }
+    });
+  });
 });

@@ -2,6 +2,8 @@
 import { TokenType, type Token, type ASTNode } from "./ast";
 import { lex } from "./lexer";
 
+const BARE_REGEX_FIELDS = ["name", "oracle", "type"];
+
 const OPERATORS = new Set<string>([
   TokenType.COLON,
   TokenType.EQ,
@@ -68,6 +70,7 @@ class Parser {
     return (
       t === TokenType.WORD ||
       t === TokenType.QUOTED ||
+      t === TokenType.REGEX ||
       t === TokenType.DASH ||
       t === TokenType.BANG ||
       t === TokenType.LPAREN
@@ -92,7 +95,7 @@ class Parser {
 
   private isAtomStart(): boolean {
     const t = this.peek().type;
-    return t === TokenType.LPAREN || t === TokenType.WORD || t === TokenType.QUOTED;
+    return t === TokenType.LPAREN || t === TokenType.WORD || t === TokenType.QUOTED || t === TokenType.REGEX;
   }
 
   private parseAtom(): ASTNode {
@@ -122,6 +125,19 @@ class Parser {
 
     if (this.at(TokenType.QUOTED)) {
       return { type: "BARE", value: this.advance().value };
+    }
+
+    if (this.at(TokenType.REGEX)) {
+      const pattern = this.advance().value;
+      return {
+        type: "OR",
+        children: BARE_REGEX_FIELDS.map((field) => ({
+          type: "REGEX_FIELD" as const,
+          field,
+          operator: ":",
+          pattern,
+        })),
+      };
     }
 
     this.advance();
