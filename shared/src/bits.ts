@@ -55,6 +55,7 @@ export const FORMAT_NAMES: Record<string, number> = {
   vintage: Format.Vintage,
   penny: Format.Penny,
   commander: Format.Commander,
+  edh: Format.Commander,
   oathbreaker: Format.Oathbreaker,
   standardbrawl: Format.StandardBrawl,
   brawl: Format.Brawl,

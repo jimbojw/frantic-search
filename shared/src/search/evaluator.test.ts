@@ -370,6 +370,11 @@ describe("evaluate", () => {
     expect(matchCount("f:modern")).toBe(6);
   });
 
+  test("edh is an alias for commander", () => {
+    expect(matchCount("legal:edh")).toBe(matchCount("legal:commander"));
+    expect(matchCount("f:edh")).toBe(matchCount("f:commander"));
+  });
+
   test("banned:legacy matches cards banned in legacy", () => {
     expect(matchCount("banned:legacy")).toBe(1);
   });
