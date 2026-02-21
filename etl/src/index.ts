@@ -11,6 +11,7 @@ import {
   META_PATH,
 } from "./paths";
 import { log } from "./log";
+import { buildDictionary } from "./process";
 
 const cli = cac("etl");
 
@@ -46,6 +47,19 @@ cli
       });
 
       log(`Download complete → ${ORACLE_CARDS_PATH}`, true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Error: ${msg}\n`);
+      process.exit(1);
+    }
+  });
+
+cli
+  .command("process", "Build a token frequency dictionary from Oracle Cards data")
+  .option("--verbose", "Print detailed progress", { default: false })
+  .action((options: { verbose: boolean }) => {
+    try {
+      buildDictionary(options.verbose);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       process.stderr.write(`Error: ${msg}\n`);
