@@ -103,21 +103,33 @@ function BreakdownTree(props: { node: BreakdownNode; depth?: number }) {
   )
 }
 
-function QueryBreakdown(props: { breakdown: BreakdownNode }) {
+function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void }) {
   const flat = () => isFlatAnd(props.breakdown)
 
   return (
     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 mb-4">
-      <div class="flex items-baseline justify-between mb-2">
+      <div class="flex items-center justify-between mb-2">
         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Query breakdown</p>
-        <a
-          href="https://scryfall.com/docs/syntax"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          Syntax guide ↗
-        </a>
+        <div class="flex items-center gap-2">
+          <a
+            href="https://scryfall.com/docs/syntax"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            Syntax guide ↗
+          </a>
+          <button
+            type="button"
+            onClick={() => props.onClose()}
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            aria-label="Close breakdown"
+          >
+            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
       <Show when={flat()} fallback={<BreakdownTree node={props.breakdown} />}>
         <For each={props.breakdown.children!}>
@@ -261,14 +273,14 @@ function App() {
                 <Show when={showBreakdown() && breakdown()}>
                   {(bd) => (
                     <div class="mt-4 text-left">
-                      <QueryBreakdown breakdown={bd()} />
+                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} />
                     </div>
                   )}
                 </Show>
               </div>
             }>
               <Show when={showBreakdown() && breakdown()}>
-                {(bd) => <QueryBreakdown breakdown={bd()} />}
+                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} />}
               </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
