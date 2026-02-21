@@ -19,6 +19,7 @@ function isSpecial(ch: string): boolean {
     ch === "<" ||
     ch === ">" ||
     ch === '"' ||
+    ch === "'" ||
     ch === "-"
   );
 }
@@ -47,10 +48,10 @@ export function lex(input: string): Token[] {
       continue;
     }
 
-    if (ch === '"') {
+    if (ch === '"' || ch === "'") {
       pos++;
       const start = pos;
-      while (pos < input.length && input[pos] !== '"') {
+      while (pos < input.length && input[pos] !== ch) {
         pos++;
       }
       tokens.push({ type: TokenType.QUOTED, value: input.slice(start, pos) });

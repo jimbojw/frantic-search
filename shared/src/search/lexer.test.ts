@@ -128,8 +128,42 @@ describe("lex", () => {
     ]);
   });
 
-  test("unclosed quote consumes to end of input", () => {
+  test("single-quoted string", () => {
+    expect(lex("o:'enters the'")).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "QUOTED", value: "enters the" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("single quotes can embed double quotes", () => {
+    expect(lex(`o:'gains "'`)).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "QUOTED", value: 'gains "' },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("double quotes can embed single quotes", () => {
+    expect(lex(`o:"gains '"`)).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "QUOTED", value: "gains '" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("unclosed double quote consumes to end of input", () => {
     expect(lex('"hello')).toEqual([
+      { type: "QUOTED", value: "hello" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("unclosed single quote consumes to end of input", () => {
+    expect(lex("'hello")).toEqual([
       { type: "QUOTED", value: "hello" },
       { type: "EOF", value: "" },
     ]);
