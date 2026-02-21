@@ -1,15 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 function serveData(): Plugin {
   const dataFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
+  let columnsFilename = 'columns.json'
 
   return {
     name: 'serve-data',
+
+    config(_config, { command }) {
+      if (command === 'build' && fs.existsSync(dataFile)) {
+        const hash = createHash('md5')
+          .update(fs.readFileSync(dataFile))
+          .digest('hex')
+          .slice(0, 8)
+        columnsFilename = `columns.${hash}.json`
+      }
+      return {
+        define: {
+          __COLUMNS_FILENAME__: JSON.stringify(columnsFilename),
+        },
+      }
+    },
 
     configureServer(server) {
       server.middlewares.use('/columns.json', (_req, res) => {
@@ -26,7 +44,7 @@ function serveData(): Plugin {
     closeBundle() {
       const outDir = path.resolve(__dirname, 'dist')
       if (fs.existsSync(dataFile)) {
-        fs.copyFileSync(dataFile, path.join(outDir, 'columns.json'))
+        fs.copyFileSync(dataFile, path.join(outDir, columnsFilename))
       }
     },
   }
@@ -34,5 +52,45 @@ function serveData(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: [serveData(), tailwindcss(), solid()],
+  plugins: [
+    serveData(),
+    tailwindcss(),
+    solid(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /columns\.[a-f0-9]+\.json$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'card-data',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/cards\.scryfall\.io\//,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'card-art',
+              expiration: { maxEntries: 500 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      manifest: {
+        name: 'Frantic Search',
+        short_name: 'Frantic',
+        description: 'Instant MTG card search',
+        theme_color: '#030712',
+        background_color: '#030712',
+        display: 'standalone',
+        icons: [
+          { src: 'https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg', sizes: '626x457', type: 'image/jpeg' },
+        ],
+      },
+    }),
+  ],
 })

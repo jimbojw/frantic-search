@@ -3,6 +3,7 @@ import type { ColumnarData, ToWorker, FromWorker, CardResult, CardFace, Breakdow
 import { CardIndex, NodeCache, nodeKey, parse, seededShuffle } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
+declare const __COLUMNS_FILENAME__: string
 
 function nodeLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -34,7 +35,7 @@ async function init(): Promise<void> {
 
   let data: ColumnarData
   try {
-    const url = new URL(/* @vite-ignore */ '../columns.json', import.meta.url)
+    const url = new URL(/* @vite-ignore */ `../${__COLUMNS_FILENAME__}`, import.meta.url)
     const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`Failed to fetch columns.json: ${response.status} ${response.statusText}`)

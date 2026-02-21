@@ -13,7 +13,8 @@
     "@tailwindcss/vite": "^4.2.0",
     "mana-font": "^1.18.0",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.0"
+    "tailwindcss": "^4.2.0",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
