@@ -19,7 +19,8 @@ You are the implementer. The user guides architecture and reviews output but doe
 This is an npm workspaces monorepo (ADR-001):
 
 - `app/` — SolidJS frontend SPA.
+- `cli/` — Command-line tools for parsing and inspecting Scryfall-style queries.
 - `etl/` — Node.js CLI for fetching and transforming Scryfall card data.
-- `shared/` — Common types, constants, and search logic used by both.
+- `shared/` — Common types, constants, and search logic used by all workspaces.
 - `docs/adr/` — Architecture Decision Records.
 - `docs/specs/` — Feature design documents.
