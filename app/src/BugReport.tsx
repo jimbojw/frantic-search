@@ -5,6 +5,33 @@ import type { BreakdownNode } from '@frantic-search/shared'
 declare const __APP_VERSION__: string
 declare const __BUGS_URL__: string
 
+type ScryfallStatus =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'success'; totalCards: number }
+  | { state: 'unsupported' }
+  | { state: 'error'; message: string }
+
+const SCRYFALL_API = 'https://api.scryfall.com/cards/search'
+
+async function fetchScryfallCount(query: string): Promise<ScryfallStatus> {
+  const url = `${SCRYFALL_API}?q=${encodeURIComponent(query)}`
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'FranticSearch/BugReport' },
+  })
+  if (res.ok) {
+    const data = await res.json()
+    return { state: 'success', totalCards: data.total_cards }
+  }
+  if (res.status === 404) {
+    return { state: 'success', totalCards: 0 }
+  }
+  if (res.status === 400 || res.status === 422) {
+    return { state: 'unsupported' }
+  }
+  return { state: 'error', message: `HTTP ${res.status}` }
+}
+
 function serializeBreakdown(node: BreakdownNode, indent = 0): string {
   const prefix = '  '.repeat(indent)
   const line = `${prefix}${node.label}  ${node.matchCount.toLocaleString()}`
@@ -12,14 +39,28 @@ function serializeBreakdown(node: BreakdownNode, indent = 0): string {
   return [line, ...node.children.map(c => serializeBreakdown(c, indent + 1))].join('\n')
 }
 
+function scryfallComparisonText(query: string, scryfall: ScryfallStatus): string {
+  const scryfallUrl = `https://scryfall.com/search?q=${encodeURIComponent(query)}`
+  switch (scryfall.state) {
+    case 'idle':
+    case 'loading':
+      return 'Not checked'
+    case 'success':
+      return `Scryfall found ${scryfall.totalCards.toLocaleString()} cards: [link](${scryfallUrl})`
+    case 'unsupported':
+      return 'Query not supported by Scryfall'
+    case 'error':
+      return `Couldn't reach Scryfall (${scryfall.message})`
+  }
+}
+
 function buildReportBody(
   query: string,
   expected: string,
   resultCount: number,
   breakdown: BreakdownNode | null,
-  scryfallDiffers: boolean,
+  scryfall: ScryfallStatus,
 ): string {
-  const scryfallUrl = `https://scryfall.com/search?q=${encodeURIComponent(query)}`
   const sections = [
     `## Query\n\n\`${query}\``,
     `## Expected\n\n${expected || '(not provided)'}`,
@@ -30,9 +71,7 @@ function buildReportBody(
     sections.push(`## Breakdown\n\n\`\`\`\n${serializeBreakdown(breakdown)}\n\`\`\``)
   }
 
-  sections.push(
-    `## Scryfall Comparison\n\n${scryfallDiffers ? `Scryfall returns different results: [link](${scryfallUrl})` : 'Not checked'}`,
-  )
+  sections.push(`## Scryfall Comparison\n\n${scryfallComparisonText(query, scryfall)}`)
 
   sections.push(
     `## Environment\n\n- App version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'}\n- User agent: ${navigator.userAgent}\n- Date: ${new Date().toISOString()}`,
@@ -78,7 +117,7 @@ export default function BugReport(props: {
   resultCount: number
 }) {
   const [expected, setExpected] = createSignal('')
-  const [scryfallDiffers, setScryfallDiffers] = createSignal(false)
+  const [scryfall, setScryfall] = createSignal<ScryfallStatus>({ state: 'idle' })
   const [copied, setCopied] = createSignal(false)
 
   function getReportBody() {
@@ -87,8 +126,18 @@ export default function BugReport(props: {
       expected(),
       props.resultCount,
       props.breakdown,
-      scryfallDiffers(),
+      scryfall(),
     )
+  }
+
+  async function handleCheckScryfall() {
+    setScryfall({ state: 'loading' })
+    try {
+      const result = await fetchScryfallCount(props.query)
+      setScryfall(result)
+    } catch {
+      setScryfall({ state: 'error', message: 'Network error' })
+    }
   }
 
   function handleReviewOnGitHub() {
@@ -159,19 +208,35 @@ export default function BugReport(props: {
       </section>
 
       <section class="mb-8">
-        <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-300">
-          <span class="relative inline-flex items-center">
-            <input
-              type="checkbox"
-              checked={scryfallDiffers()}
-              onChange={(e) => setScryfallDiffers(e.currentTarget.checked)}
-              class="peer sr-only"
-            />
-            <span class="block h-5 w-9 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-blue-500 transition-colors" />
-            <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
-          </span>
-          Scryfall returns different results for this query
-        </label>
+        <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Scryfall comparison</h2>
+        <Show when={scryfall().state !== 'idle'} fallback={
+          <button
+            type="button"
+            onClick={handleCheckScryfall}
+            class="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+          >
+            Check Scryfall
+          </button>
+        }>
+          <p class="text-sm">
+            <Show when={scryfall().state === 'loading'}>
+              <span class="text-gray-500 dark:text-gray-400">Checking…</span>
+            </Show>
+            <Show when={scryfall().state === 'success'}>
+              <span class="text-gray-700 dark:text-gray-300">
+                Scryfall found <strong>{(scryfall() as { state: 'success'; totalCards: number }).totalCards.toLocaleString()}</strong> cards
+              </span>
+            </Show>
+            <Show when={scryfall().state === 'unsupported'}>
+              <span class="text-amber-600 dark:text-amber-400">Query not supported by Scryfall</span>
+            </Show>
+            <Show when={scryfall().state === 'error'}>
+              <span class="text-red-600 dark:text-red-400">
+                Couldn't reach Scryfall
+              </span>
+            </Show>
+          </p>
+        </Show>
       </section>
 
       {/* Submit buttons */}

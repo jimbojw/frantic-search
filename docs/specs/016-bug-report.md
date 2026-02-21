@@ -75,9 +75,20 @@ This is phrased as a concrete question, not an open-ended "describe the bug." It
 
 #### Scryfall comparison (optional)
 
-A checkbox: "Scryfall returns different results for this query"
+A "Check Scryfall" button that fetches the Scryfall API to compare results.
 
-When checked, the report body includes a Scryfall comparison link (`https://scryfall.com/search?q=<query>`). This is the strongest possible bug signal — if Scryfall finds cards and we don't, there's almost certainly a bug in our engine. The link is auto-generated from the query.
+**API:** `GET https://api.scryfall.com/cards/search?q=<query>` — returns `{ total_cards: number, ... }` on success, or a 404 JSON body for zero results. Scryfall supports CORS.
+
+**Request requirements:** Scryfall asks for a descriptive `User-Agent` header and 50–100ms between requests. Since this is a single user-initiated request per report, rate limiting is not a concern.
+
+**States:**
+
+- **Idle:** Button reads "Check Scryfall". No comparison data in the report.
+- **Loading:** Button shows a spinner or "Checking…". Disabled to prevent double-fetch.
+- **Success:** Displays "Scryfall found N cards" (or "Scryfall found 0 cards"). The count and a Scryfall search link are included in the report body.
+- **Error:** Displays "Couldn't reach Scryfall" (network error) or "Query not supported by Scryfall" (4xx response). The report can still be submitted without comparison data.
+
+This is the strongest possible bug signal — if Scryfall finds cards and we don't, there's almost certainly a bug in our engine.
 
 ### Review & Submit
 
@@ -139,7 +150,7 @@ The query is truncated to ~80 characters if long. The user can edit the title on
 
 ## Scryfall Comparison
 
-<"Scryfall returns different results: [link]" or "Not checked">
+<"Scryfall found N cards: [link]" or "Not checked">
 
 ## Environment
 
@@ -195,7 +206,7 @@ This is acceptable because the entire report flow up to the final submission is 
 2. Tapping the link navigates to the report page (`?report&q=...`). Browser back returns to the search view.
 3. The report page displays the query, breakdown tree, and result count as read-only context.
 4. A textarea allows the user to describe their expectation.
-5. An optional checkbox captures whether Scryfall returns different results.
+5. A "Check Scryfall" button fetches the Scryfall API and displays the result count. The comparison is included in the report body when checked.
 6. The "Review on GitHub" button opens a pre-filled GitHub issue in a new tab.
 7. The issue body contains the query, expected behavior, breakdown, Scryfall comparison status, and environment info.
 8. The form is fully functional offline (except the final GitHub submission).
