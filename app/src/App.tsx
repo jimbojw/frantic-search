@@ -284,7 +284,7 @@ function App() {
               </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {results().length} cards ({totalMatches()} face matches)
+                  {results().length.toLocaleString()} cards ({totalMatches().toLocaleString()} face matches)
                   <Show when={breakdown()}>
                     <span> · <button
                       type="button"
@@ -343,7 +343,7 @@ function App() {
                 </For>
                 <Show when={results().length > 200}>
                   <li class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic">
-                    …and {results().length - 200} more
+                    …and {(results().length - 200).toLocaleString()} more
                   </li>
                 </Show>
               </ul>
