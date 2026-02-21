@@ -81,13 +81,22 @@ When checked, the report body includes a Scryfall comparison link (`https://scry
 
 ### Review & Submit
 
-A "Review on GitHub" button that:
+Two buttons, side-by-side. "Review on GitHub" is the primary action; "Copy Report" is secondary.
+
+#### "Review on GitHub" (primary)
 
 1. Constructs a GitHub Issues URL with pre-filled title and body.
 2. Opens it in a new tab.
 3. The user reviews the pre-filled issue and submits (requires a GitHub account).
 
 No API token, no server, no authentication. The entire flow is client-side URL construction.
+
+#### "Copy Report" (secondary)
+
+1. Copies the full Markdown report body (identical to the GitHub issue body) to the clipboard via `navigator.clipboard.writeText()`.
+2. After copying, the button text changes to "Copied!" for ~2 seconds, then reverts.
+
+This is the escape hatch for users who aren't logged into GitHub or prefer to send the report through another channel (Discord, Slack, email, etc.).
 
 ## GitHub Issue Format
 
@@ -190,3 +199,5 @@ This is acceptable because the entire report flow up to the final submission is 
 6. The "Review on GitHub" button opens a pre-filled GitHub issue in a new tab.
 7. The issue body contains the query, expected behavior, breakdown, Scryfall comparison status, and environment info.
 8. The form is fully functional offline (except the final GitHub submission).
+9. A "Copy Report" button copies the full Markdown report to the clipboard.
+10. After copying, the button shows brief visual confirmation ("Copied!" for ~2 seconds).
