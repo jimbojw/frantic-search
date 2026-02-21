@@ -32,6 +32,37 @@ function ArtCrop(props: { scryfallId: string; colorIdentity: number }) {
   )
 }
 
+function CopyButton(props: { text: string }) {
+  const [copied, setCopied] = createSignal(false)
+  async function handleClick(e: MouseEvent) {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(props.text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard not available */
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={copied() ? 'Copied' : 'Copy name'}
+      class="shrink-0 p-0.5 rounded text-gray-400 dark:text-gray-500 opacity-60 transition-opacity group-hover:opacity-100 hover:opacity-100 active:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+    >
+      <Show when={copied()} fallback={
+        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 0-1.125 1.125v3.375c0 .621.504 1.125 1.125 1.125Z" />
+        </svg>
+      }>
+        <svg class="size-4 text-green-600 dark:text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      </Show>
+    </button>
+  )
+}
 
 function isFlatAnd(node: BreakdownNode): boolean {
   if (node.label !== 'AND' || !node.children) return false
@@ -116,21 +147,25 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; 
 }
 
 function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boolean; onCardClick?: () => void }) {
+  const copyText = () => props.fullName ?? props.face.name
   return (
     <div>
       <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0">
-          <Show when={props.fullName && props.onCardClick} fallback={
-            <span class="font-medium text-gray-700 dark:text-gray-200">{props.face.name}</span>
-          }>
-            <button
-              type="button"
-              onClick={() => props.onCardClick?.()}
-              class="font-medium hover:underline text-left"
-            >
-              {props.fullName}
-            </button>
-          </Show>
+        <div class="min-w-0 flex-1">
+          <div class="inline-flex items-center gap-1.5 min-w-0">
+            <Show when={props.fullName && props.onCardClick} fallback={
+              <span class="font-medium text-gray-700 dark:text-gray-200 truncate">{props.face.name}</span>
+            }>
+              <button
+                type="button"
+                onClick={() => props.onCardClick?.()}
+                class="font-medium hover:underline text-left truncate min-w-0"
+              >
+                {props.fullName}
+              </button>
+            </Show>
+            <CopyButton text={copyText()} />
+          </div>
           <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{props.face.typeLine}</span>
         </div>
         <ManaCost cost={props.face.manaCost} />
@@ -463,7 +498,7 @@ function App() {
                   {(card) => {
                     const fullName = () => card.faces.map(f => f.name).join(' // ')
                     return (
-                      <li class="px-4 py-2 text-sm flex items-start gap-3">
+                      <li class="group px-4 py-2 text-sm flex items-start gap-3">
                         <Show when={card.scryfallId}>
                           <ArtCrop scryfallId={card.scryfallId} colorIdentity={card.colorIdentity} />
                         </Show>
@@ -471,13 +506,16 @@ function App() {
                           <Show when={card.faces.length > 1} fallback={
                             <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} onCardClick={() => navigateToCard(card.scryfallId)} />
                           }>
-                            <button
-                              type="button"
-                              onClick={() => navigateToCard(card.scryfallId)}
-                              class="font-medium hover:underline text-left"
-                            >
-                              {fullName()}
-                            </button>
+                            <div class="inline-flex items-center gap-1.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => navigateToCard(card.scryfallId)}
+                                class="font-medium hover:underline text-left truncate min-w-0"
+                              >
+                                {fullName()}
+                              </button>
+                              <CopyButton text={fullName()} />
+                            </div>
                             <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                               <For each={card.faces}>
                                 {(face) => <CardFaceRow face={face} showOracle={showOracleText()} />}
