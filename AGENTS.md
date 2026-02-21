@@ -66,7 +66,7 @@ The `data/` directory lives at the project root (not inside any workspace). It i
 ```
 data/
 ├── raw/              # Scryfall bulk downloads (oracle-cards.json, meta.json)
-└── intermediate/     # Processed columnar data (columns.json)
+└── dist/             # Processed columnar data (columns.json)
 ```
 
 To populate it: `npm run etl -- download` then `npm run etl -- process`.

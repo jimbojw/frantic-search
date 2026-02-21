@@ -17,7 +17,7 @@ Fetches the latest "Oracle Cards" bulk data file from Scryfall.
 Transforms the raw Scryfall data into a compact, column-oriented JSON file for the client app.
 
 - **Input:** `data/raw/oracle-cards.json`
-- **Output:** `data/intermediate/columns.json`
+- **Output:** `data/dist/columns.json`
 - **Features:**
   - Extracts only search-relevant fields (name, mana cost, oracle text, subtypes).
   - Encodes Colors, Color Identity, Types, and Supertypes as compact bitmasks.

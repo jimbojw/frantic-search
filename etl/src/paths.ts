@@ -6,10 +6,10 @@ import { z } from "zod";
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
 export const RAW_DIR = path.join(PROJECT_ROOT, "data", "raw");
-export const INTERMEDIATE_DIR = path.join(PROJECT_ROOT, "data", "intermediate");
+export const DIST_DIR = path.join(PROJECT_ROOT, "data", "dist");
 export const ORACLE_CARDS_PATH = path.join(RAW_DIR, "oracle-cards.json");
 export const META_PATH = path.join(RAW_DIR, "meta.json");
-export const COLUMNS_PATH = path.join(INTERMEDIATE_DIR, "columns.json");
+export const COLUMNS_PATH = path.join(DIST_DIR, "columns.json");
 
 const LocalMetaSchema = z.object({
   updated_at: z.string(),
@@ -24,8 +24,8 @@ export function ensureDataDir(): void {
   fs.mkdirSync(RAW_DIR, { recursive: true });
 }
 
-export function ensureIntermediateDir(): void {
-  fs.mkdirSync(INTERMEDIATE_DIR, { recursive: true });
+export function ensureDistDir(): void {
+  fs.mkdirSync(DIST_DIR, { recursive: true });
 }
 
 export function readLocalMeta(): LocalMeta | null {

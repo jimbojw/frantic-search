@@ -117,7 +117,7 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 
 | Path                                | Contents                        |
 |-------------------------------------|---------------------------------|
-| `data/intermediate/columns.json`    | Columnar JSON (`ColumnarData`)  |
+| `data/dist/columns.json`            | Columnar JSON (`ColumnarData`)  |
 
 The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`.
 
@@ -130,10 +130,16 @@ With the current Scryfall dataset (~37,000 raw cards), the process filters ~3,50
 
 ## Acceptance Criteria
 
-1. Running `npm run etl -- process` after `download` produces `data/intermediate/columns.json`.
+1. Running `npm run etl -- process` after `download` produces `data/dist/columns.json`.
 2. Non-searchable layouts (art_series, tokens, etc.) are absent from the output.
 3. Multi-face cards (transform, modal_dfc, adventure, split, flip) produce one row per face with face-level field values.
 4. Card-level fields (color_identity, legalities) are duplicated identically across all faces of the same card.
 5. `canonical_face` for all faces of a multi-face card points to the same row (the first-emitted face).
 6. `card_index` correctly maps back to the card's position in the original `oracle-cards.json`.
 7. All output goes to `stderr` (logs); `stdout` remains clean.
+
+## Implementation Notes
+
+- 2026-02-20: Renamed output directory from `data/intermediate/` to `data/dist/`.
+  The file is the final artifact consumed by the app and CLI, not an intermediate
+  step. This aligns with the original directory layout in Spec 001.

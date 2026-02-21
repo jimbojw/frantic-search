@@ -13,7 +13,7 @@ process.stdout.on("error", (err) => {
 });
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..");
-const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "intermediate", "columns.json");
+const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "dist", "columns.json");
 const ORACLE_CARDS_PATH = path.join(PROJECT_ROOT, "data", "raw", "oracle-cards.json");
 
 function loadIndex(dataPath: string): { data: ColumnarData; index: CardIndex } {

@@ -22,7 +22,7 @@ Output goes to `data/` at the **project root** (not inside `etl/`), since the ap
 |----------------------------------|----------------------------------------------|
 | `data/raw/oracle-cards.json`     | Full Oracle Cards JSON array from Scryfall   |
 | `data/raw/meta.json`             | Freshness metadata (timestamps, URIs)        |
-| `data/intermediate/columns.json` | Columnar format consumed by the query engine |
+| `data/dist/columns.json`         | Columnar format consumed by the query engine |
 
 ## Dependencies
 

@@ -12,7 +12,7 @@ npm run cli -- search <query> --output cards     # print full card JSON
 npm run cli -- --help
 ```
 
-The `search` command requires processed data. Run `npm run etl -- download` and `npm run etl -- process` first if `data/intermediate/columns.json` does not exist.
+The `search` command requires processed data. Run `npm run etl -- download` and `npm run etl -- process` first if `data/dist/columns.json` does not exist.
 
 ## Dependencies
 

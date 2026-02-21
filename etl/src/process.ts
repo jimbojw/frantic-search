@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureIntermediateDir } from "./paths";
+import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
 import {
   COLOR_FROM_LETTER,
@@ -216,7 +216,7 @@ export function processCards(verbose: boolean): void {
   log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
-  ensureIntermediateDir();
+  ensureDistDir();
 
   fs.writeFileSync(COLUMNS_PATH, JSON.stringify(data) + "\n");
   log(`Wrote ${COLUMNS_PATH}`, true);
