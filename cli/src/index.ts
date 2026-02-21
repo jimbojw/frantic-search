@@ -14,6 +14,7 @@ process.stdout.on("error", (err) => {
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "intermediate", "columns.json");
+const ORACLE_CARDS_PATH = path.join(PROJECT_ROOT, "data", "raw", "oracle-cards.json");
 
 function loadIndex(dataPath: string): { data: ColumnarData; index: CardIndex } {
   if (!fs.existsSync(dataPath)) {
@@ -25,21 +26,12 @@ function loadIndex(dataPath: string): { data: ColumnarData; index: CardIndex } {
   return { data, index: new CardIndex(data) };
 }
 
-function cardToObject(data: ColumnarData, i: number): Record<string, unknown> {
-  return {
-    name: data.names[i],
-    mana_cost: data.mana_costs[i],
-    oracle_text: data.oracle_texts[i],
-    colors: data.colors[i],
-    color_identity: data.color_identity[i],
-    types: data.types[i],
-    supertypes: data.supertypes[i],
-    subtypes: data.subtypes[i],
-    power: data.power_lookup[data.powers[i]] || null,
-    toughness: data.toughness_lookup[data.toughnesses[i]] || null,
-    loyalty: data.loyalty_lookup[data.loyalties[i]] || null,
-    defense: data.defense_lookup[data.defenses[i]] || null,
-  };
+function loadRawCards(rawPath: string): unknown[] {
+  if (!fs.existsSync(rawPath)) {
+    process.stderr.write(`Error: ${rawPath} not found. Run 'npm run etl -- download' first.\n`);
+    process.exit(1);
+  }
+  return JSON.parse(fs.readFileSync(rawPath, "utf-8"));
 }
 
 const cli = cac("frantic-search");
@@ -54,8 +46,9 @@ cli
 cli
   .command("search <query>", "Parse and evaluate a Scryfall query against the card dataset")
   .option("--data <path>", "Path to columns.json", { default: COLUMNS_PATH })
+  .option("--raw <path>", "Path to oracle-cards.json (for --output cards)", { default: ORACLE_CARDS_PATH })
   .option("--output <format>", "Output format: tree, names, cards", { default: "tree" })
-  .action((query: string, options: { data: string; output: string }) => {
+  .action((query: string, options: { data: string; raw: string; output: string }) => {
     const { data, index } = loadIndex(options.data);
     const ast = parse(query);
     const { result, matchingIndices } = evaluate(ast, index);
@@ -66,12 +59,14 @@ cli
           process.stdout.write(data.names[i] + "\n");
         }
         break;
-      case "cards":
+      case "cards": {
+        const rawCards = loadRawCards(options.raw);
         process.stdout.write(JSON.stringify(
-          matchingIndices.map((i) => cardToObject(data, i)),
+          matchingIndices.map((i) => rawCards[i]),
           null, 2,
         ) + "\n");
         break;
+      }
       case "tree":
       default:
         process.stdout.write(JSON.stringify(result, null, 2) + "\n");
