@@ -11,7 +11,7 @@ export {
 
 export type { ColumnarData } from "./data";
 
-export type { ToWorker, FromWorker, CardResult, BreakdownNode } from "./worker-protocol";
+export type { ToWorker, FromWorker, CardFace, CardResult, BreakdownNode } from "./worker-protocol";
 
 export type { QueryNodeResult } from "./search/ast";
 export { CardIndex } from "./search/card-index";

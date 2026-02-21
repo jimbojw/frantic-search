@@ -6,11 +6,15 @@ export type ToWorker = {
   query: string
 }
 
-export type CardResult = {
+export type CardFace = {
   name: string
   manaCost: string
   typeLine: string
   oracleText: string
+}
+
+export type CardResult = {
+  faces: CardFace[]
 }
 
 export type BreakdownNode = {

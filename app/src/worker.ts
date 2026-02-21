@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ColumnarData, ToWorker, FromWorker, CardResult, BreakdownNode, QueryNodeResult } from '@frantic-search/shared'
+import type { ColumnarData, ToWorker, FromWorker, CardResult, CardFace, BreakdownNode, QueryNodeResult } from '@frantic-search/shared'
 import { CardIndex, NodeCache, nodeKey, parse, seededShuffle } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -60,11 +60,13 @@ async function init(): Promise<void> {
     const breakdown = toBreakdown(result)
     const deduped = index.deduplicateMatches(matchingIndices)
     seededShuffle(deduped, nodeKey(ast))
-    const cards: CardResult[] = deduped.map(i => ({
-      name: data.names[i],
-      manaCost: data.mana_costs[i],
-      typeLine: data.type_lines[i],
-      oracleText: data.oracle_texts[i],
+    const cards: CardResult[] = deduped.map(canonIdx => ({
+      faces: index.facesOf(canonIdx).map((fi): CardFace => ({
+        name: data.names[fi],
+        manaCost: data.mana_costs[fi],
+        typeLine: data.type_lines[fi],
+        oracleText: data.oracle_texts[fi],
+      })),
     }))
 
     post({ type: 'result', queryId: msg.queryId, cards, totalMatches, breakdown })

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, For, Show } from 'solid-js'
-import type { FromWorker, CardResult, BreakdownNode } from '@frantic-search/shared'
+import type { FromWorker, CardResult, CardFace, BreakdownNode } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 
 const MANA_SYMBOL_RE = /\{([^}]+)\}/g
@@ -138,6 +138,34 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void }
         <div class="border-t border-gray-200 dark:border-gray-700 mt-1.5 pt-1.5">
           <BreakdownRow label="Combined" count={props.breakdown.matchCount} muted={props.breakdown.matchCount > 0} />
         </div>
+      </Show>
+    </div>
+  )
+}
+
+function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boolean }) {
+  return (
+    <div>
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <Show when={props.fullName} fallback={
+            <span class="font-medium text-gray-700 dark:text-gray-200">{props.face.name}</span>
+          }>
+            <a
+              href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + props.face.name + '"')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium hover:underline"
+            >
+              {props.fullName}
+            </a>
+          </Show>
+          <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{props.face.typeLine}</span>
+        </div>
+        <ManaCost cost={props.face.manaCost} />
+      </div>
+      <Show when={props.showOracle && props.face.oracleText}>
+        <OracleText text={props.face.oracleText} />
       </Show>
     </div>
   )
@@ -326,27 +354,30 @@ function App() {
               </div>
               <ul class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
                 <For each={results().slice(0, 200)}>
-                  {(card) => (
-                    <li class="px-4 py-2 text-sm">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
+                  {(card) => {
+                    const fullName = () => card.faces.map(f => f.name).join(' // ')
+                    return (
+                      <li class="px-4 py-2 text-sm">
+                        <Show when={card.faces.length > 1} fallback={
+                          <CardFaceRow face={card.faces[0]} fullName={fullName()} showOracle={showOracleText()} />
+                        }>
                           <a
-                            href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.name + '"')}`}
+                            href={`https://scryfall.com/search?q=${encodeURIComponent('!"' + card.faces[0].name + '"')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             class="font-medium hover:underline"
                           >
-                            {card.name}
+                            {fullName()}
                           </a>
-                          <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{card.typeLine}</span>
-                        </div>
-                        <ManaCost cost={card.manaCost} />
-                      </div>
-                      <Show when={showOracleText() && card.oracleText}>
-                        <OracleText text={card.oracleText} />
-                      </Show>
-                    </li>
-                  )}
+                          <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                            <For each={card.faces}>
+                              {(face) => <CardFaceRow face={face} showOracle={showOracleText()} />}
+                            </For>
+                          </div>
+                        </Show>
+                      </li>
+                    )
+                  }}
                 </For>
                 <Show when={results().length > 200}>
                   <li class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic">

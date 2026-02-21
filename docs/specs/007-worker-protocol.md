@@ -32,11 +32,15 @@ The main thread only sends `search` messages after receiving a `ready` status. `
 ### Worker → Main (`FromWorker`)
 
 ```typescript
-type CardResult = {
+type CardFace = {
   name: string
   manaCost: string
   typeLine: string
   oracleText: string
+}
+
+type CardResult = {
+  faces: CardFace[]
 }
 
 type FromWorker =
@@ -47,7 +51,9 @@ type FromWorker =
 | Message    | When sent                                  | Fields                                  |
 |------------|--------------------------------------------|-----------------------------------------|
 | `status`   | On startup, after data load, or on failure | `status`: lifecycle state; `error`: message if `status` is `error` |
-| `result`   | After evaluating a search query            | `queryId`: echoed from request; `cards`: matched card data (name, mana cost, type line, oracle text); `totalMatches`: total face matches before deduplication |
+| `result`   | After evaluating a search query            | `queryId`: echoed from request; `cards`: matched card data; `totalMatches`: total face matches before deduplication |
+
+Each `CardResult` contains a `faces` array with one entry per card face. Single-faced cards have exactly one face. Multi-faced cards (split, transform, modal DFC, adventure, flip) have two or more faces, ordered front-to-back. The first face is always the canonical face. Each `CardFace` carries the face's name, mana cost (Scryfall format), type line, and oracle text.
 
 ## Worker Lifecycle
 
@@ -77,7 +83,11 @@ If any step fails (network error, JSON parse error, etc.), the worker posts `{ t
 1. The main thread assigns a monotonically increasing `queryId` and posts a `search` message.
 2. The worker receives the message, calls `parse(query)`, then `cache.evaluate(ast)`.
 3. The worker calls `index.deduplicateMatches(matchingIndices)` to get canonical face indices.
-4. The worker reads the name, mana cost, type line, and oracle text for each matched face and posts a `result` message with the echoed `queryId`.
+4. For each canonical face index, the worker looks up all sibling faces via `index.facesOf(canonicalIndex)` and assembles a `CardResult` with a `faces` array containing every face's name, mana cost, type line, and oracle text. The worker posts a `result` message with the echoed `queryId`.
+
+### Forward face index
+
+`CardIndex` maintains a forward index (`facesOf`) built at construction time. Given a canonical face index, it returns the ordered list of all face row indices for that card. This is the inverse of `canonicalFace` (which maps any face → its canonical face). The forward index enables the worker to gather all faces for a matched card in O(1) without scanning.
 
 ### Stale result discard
 
@@ -132,7 +142,9 @@ This handles the "typing before ready" case automatically: SolidJS re-runs the e
 
 ## Result Shape
 
-The `result` message carries an array of `CardResult` objects, each containing the card's name, mana cost (Scryfall format, e.g. `{2}{W}{U}`), type line, and oracle text. The `queryId` correlation and stale-discard mechanism remain unchanged regardless of payload shape. Additional fields (e.g., image URLs) can be added to `CardResult` in the future without protocol changes.
+The `result` message carries an array of `CardResult` objects. Each `CardResult` contains a `faces` array — one `CardFace` per card face. Single-faced cards have `faces.length === 1`. Multi-faced cards (e.g., "Beck // Call") have two or more faces. The first face is always the canonical (front) face.
+
+This structure lets the app render all faces of a matched card, avoiding confusion when a card's color identity, mana cost, or other properties span multiple faces. Additional fields (e.g., image URLs) can be added to `CardFace` in the future without protocol changes.
 
 ## File Organization
 
@@ -152,7 +164,8 @@ The protocol types live in `shared/` because the CLI or test harness may want to
 1. The worker posts `{ type: 'status', status: 'loading' }` immediately on startup.
 2. After successfully loading and indexing `columns.json`, the worker posts `{ type: 'status', status: 'ready' }`.
 3. If data loading fails, the worker posts `{ type: 'status', status: 'error', error: '...' }` with a descriptive message.
-4. A `search` message with a valid query produces a `result` message with the correct `queryId` and matching card data (name, mana cost, type line, oracle text).
+4. A `search` message with a valid query produces a `result` message with the correct `queryId` and matching card data. Each `CardResult` contains a `faces` array with all faces of the matched card.
 5. An empty or whitespace-only query does not produce a `search` message; the main thread clears results locally.
 6. When multiple `search` messages are sent in rapid succession, the main thread only applies the result whose `queryId` matches the latest sent query.
 7. If the user has typed a query before the worker is ready, the query is sent automatically when the worker transitions to `ready`.
+8. A multi-faced card (e.g., "Beck // Call") produces a `CardResult` with `faces.length > 1`, one entry per face in front-to-back order. A single-faced card produces `faces.length === 1`.

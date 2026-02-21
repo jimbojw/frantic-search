@@ -25,6 +25,7 @@ export class CardIndex {
   readonly toughnessLookup: string[];
   readonly loyaltyLookup: string[];
   readonly defenseLookup: string[];
+  private readonly _facesOf: Map<number, number[]>;
 
   constructor(data: ColumnarData) {
     this.faceCount = data.names.length;
@@ -49,6 +50,21 @@ export class CardIndex {
     this.toughnessLookup = data.toughness_lookup;
     this.loyaltyLookup = data.loyalty_lookup;
     this.defenseLookup = data.defense_lookup;
+
+    this._facesOf = new Map();
+    for (let i = 0; i < this.faceCount; i++) {
+      const cf = data.canonical_face[i];
+      let faces = this._facesOf.get(cf);
+      if (!faces) {
+        faces = [];
+        this._facesOf.set(cf, faces);
+      }
+      faces.push(i);
+    }
+  }
+
+  facesOf(canonicalIndex: number): number[] {
+    return this._facesOf.get(canonicalIndex) ?? [];
   }
 
   deduplicateMatches(faceIndices: number[]): number[] {
