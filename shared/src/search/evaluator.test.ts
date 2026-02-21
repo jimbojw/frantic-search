@@ -471,12 +471,14 @@ describe("evaluate", () => {
     expect(matchCount("id:br t:elf")).toBe(2);
   });
 
-  test("commander: and cmd: are aliases with same subset colon semantics", () => {
+  test("commander:, cmd:, and ci: are aliases with same subset colon semantics", () => {
     expect(matchCount("commander:wu")).toBe(4);
     expect(matchCount("commander:br")).toBe(5);
     expect(matchCount("commander:w")).toBe(2);
     expect(matchCount("cmd:w")).toBe(2);
     expect(matchCount("cmd:br")).toBe(5);
+    expect(matchCount("ci:wu")).toBe(4);
+    expect(matchCount("ci:w")).toBe(2);
   });
 });
 
