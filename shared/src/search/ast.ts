@@ -13,6 +13,8 @@ export const TokenType = {
   LPAREN: "LPAREN",
   RPAREN: "RPAREN",
   DASH: "DASH",
+  BANG: "BANG",
+  REGEX: "REGEX",
   OR: "OR",
   EOF: "EOF",
 } as const;

@@ -58,9 +58,25 @@ export function lex(input: string): Token[] {
       continue;
     }
 
-    if (ch === "!" && pos + 1 < input.length && input[pos + 1] === "=") {
-      tokens.push({ type: TokenType.NEQ, value: "!=" });
-      pos += 2;
+    if (ch === "/") {
+      pos++;
+      const start = pos;
+      while (pos < input.length && !(input[pos] === "/" && input[pos - 1] !== "\\")) {
+        pos++;
+      }
+      tokens.push({ type: TokenType.REGEX, value: input.slice(start, pos) });
+      if (pos < input.length) pos++; // skip closing slash
+      continue;
+    }
+
+    if (ch === "!") {
+      if (pos + 1 < input.length && input[pos + 1] === "=") {
+        tokens.push({ type: TokenType.NEQ, value: "!=" });
+        pos += 2;
+      } else {
+        tokens.push({ type: TokenType.BANG, value: "!" });
+        pos++;
+      }
       continue;
     }
 
@@ -99,7 +115,7 @@ export function lex(input: string): Token[] {
     }
     if (pos > start) {
       const value = input.slice(start, pos);
-      tokens.push({ type: value === "OR" ? TokenType.OR : TokenType.WORD, value });
+      tokens.push({ type: value.toUpperCase() === "OR" ? TokenType.OR : TokenType.WORD, value });
     }
   }
 

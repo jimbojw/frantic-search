@@ -44,6 +44,24 @@ describe("lex", () => {
     ]);
   });
 
+  test("lowercase or is recognized as OR", () => {
+    expect(lex("a or b")).toEqual([
+      { type: "WORD", value: "a" },
+      { type: "OR", value: "or" },
+      { type: "WORD", value: "b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("mixed-case Or is recognized as OR", () => {
+    expect(lex("a Or b")).toEqual([
+      { type: "WORD", value: "a" },
+      { type: "OR", value: "Or" },
+      { type: "WORD", value: "b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
   test("OR within a word is not special", () => {
     expect(lex("oracle")).toEqual([
       { type: "WORD", value: "oracle" },
@@ -181,6 +199,58 @@ describe("lex", () => {
       { type: "WORD", value: "o" },
       { type: "COLON", value: ":" },
       { type: "WORD", value: "can't" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("! as exact-name prefix", () => {
+    expect(lex("!fire")).toEqual([
+      { type: "BANG", value: "!" },
+      { type: "WORD", value: "fire" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("! before quoted string", () => {
+    expect(lex('!"Sift Through Sands"')).toEqual([
+      { type: "BANG", value: "!" },
+      { type: "QUOTED", value: "Sift Through Sands" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("regex delimited by forward slashes", () => {
+    expect(lex("o:/^{T}:/")).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "REGEX", value: "^{T}:" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("regex with escaped forward slash", () => {
+    expect(lex("name:/a\\/b/")).toEqual([
+      { type: "WORD", value: "name" },
+      { type: "COLON", value: ":" },
+      { type: "REGEX", value: "a\\/b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("unclosed regex consumes to end of input", () => {
+    expect(lex("o:/partial")).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "REGEX", value: "partial" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("!= is still NEQ, not BANG + EQ", () => {
+    expect(lex("c!=r")).toEqual([
+      { type: "WORD", value: "c" },
+      { type: "NEQ", value: "!=" },
+      { type: "WORD", value: "r" },
       { type: "EOF", value: "" },
     ]);
   });
