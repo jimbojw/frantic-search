@@ -169,6 +169,22 @@ describe("lex", () => {
     ]);
   });
 
+  test("apostrophe within a word is not a quote delimiter", () => {
+    expect(lex("can't")).toEqual([
+      { type: "WORD", value: "can't" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("apostrophe in a field value", () => {
+    expect(lex("o:can't")).toEqual([
+      { type: "WORD", value: "o" },
+      { type: "COLON", value: ":" },
+      { type: "WORD", value: "can't" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
   test("complex query", () => {
     expect(lex('c:wu (t:creature OR t:planeswalker) -o:"enters the"')).toEqual([
       { type: "WORD", value: "c" },
