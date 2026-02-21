@@ -17,9 +17,7 @@ The ETL pipeline (Spec 001) produces a columnar JSON file with the following per
 | `oracle_texts`   | `string[]` | Raw Oracle text                             |
 | `colors`         | `number[]` | Bitmask (ADR-007): W=1, U=2, B=4, R=8, G=16 |
 | `color_identity` | `number[]` | Bitmask, same encoding as colors            |
-| `types`          | `number[]` | Bitmask: Artifact=1, Battle=2, Creature=4, … |
-| `supertypes`     | `number[]` | Bitmask: Basic=1, Legendary=2, Snow=4, World=8 |
-| `subtypes`       | `string[]` | Free text (e.g. `Goblin Warrior`)           |
+| `type_lines`     | `string[]` | Raw Scryfall type line (e.g. `Legendary Creature — Elf Druid`) |
 | `powers`         | `number[]` | Dict-encoded index into `power_lookup`      |
 | `toughnesses`    | `number[]` | Dict-encoded index into `toughness_lookup`  |
 | `loyalties`      | `number[]` | Dict-encoded index into `loyalty_lookup`    |
@@ -174,7 +172,7 @@ These fields map to columns available in the current ETL output.
 | `oracle`, `o`      | `oracle_texts`              | Case-insensitive substring             | —                                          |
 | `color`, `c`       | `colors`                    | Card has at least these colors (⊇)     | `=` exact, `<=` subset, `>=` superset      |
 | `identity`, `id`   | `color_identity`            | Same as `color`                        | Same as `color`                            |
-| `type`, `t`        | `types`, `supertypes`, `subtypes` | Bit check for types/supertypes, case-insensitive substring for subtypes | — |
+| `type`, `t`        | `type_lines`                | Case-insensitive substring             | Regex via `/pattern/`                      |
 | `power`, `pow`     | `powers` + `power_lookup`   | Numeric equality                       | Numeric comparison via lookup              |
 | `toughness`, `tou` | `toughnesses` + `toughness_lookup` | Numeric equality                | Numeric comparison via lookup              |
 | `loyalty`, `loy`   | `loyalties` + `loyalty_lookup`   | Numeric equality                  | Numeric comparison via lookup              |
@@ -350,3 +348,11 @@ test("trailing operator", () => {
   (`legalities_legal`, `legalities_banned`, `legalities_restricted`) with
   21 bits for Scryfall's supported formats. Evaluator handles `legal:`/`f:`,
   `banned:`, and `restricted:` fields.
+- 2026-02-19: Replaced `types`/`supertypes`/`subtypes` bitmask+string columns
+  with a single `type_lines` string column storing the raw Scryfall type line.
+  Type matching is now pure substring search (case-insensitive), which correctly
+  handles partial words (`t:legend`), multi-word matches (`t:"legendary creature"`),
+  and cross-category queries. Removed `CardType`, `Supertype`, and their lookup
+  tables from `bits.ts` as dead code. Implemented `REGEX_FIELD` evaluation for
+  string fields (`name`, `oracle`, `type`) using `RegExp.test()` with case-insensitive
+  matching. Invalid regex patterns gracefully match zero cards.

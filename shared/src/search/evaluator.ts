@@ -4,11 +4,12 @@ import {
   type EvalResult,
   type EvalOutput,
   type FieldNode,
+  type RegexFieldNode,
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
 import { BufferPool } from "./pool";
-import { COLOR_FROM_LETTER, CARD_TYPE_NAMES, SUPERTYPE_NAMES, FORMAT_NAMES } from "../bits";
+import { COLOR_FROM_LETTER, FORMAT_NAMES } from "../bits";
 
 const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -40,9 +41,13 @@ function parseColorValue(value: string): number {
   return mask;
 }
 
-function resolveTypeBit(value: string): number | null {
-  const capitalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-  return CARD_TYPE_NAMES[capitalized] ?? SUPERTYPE_NAMES[capitalized] ?? null;
+function getStringColumn(canonical: string, index: CardIndex): string[] | null {
+  switch (canonical) {
+    case "name": return index.namesLower;
+    case "oracle": return index.oracleTextsLower;
+    case "type": return index.typeLinesLower;
+    default: return null;
+  }
 }
 
 function evalLeafField(
@@ -67,20 +72,12 @@ function evalLeafField(
   const valLower = val.toLowerCase();
 
   switch (canonical) {
-    case "name": {
+    case "name":
+    case "oracle":
+    case "type": {
+      const col = getStringColumn(canonical, index)!;
       for (let i = 0; i < n; i++) {
-        buf[i] = op === ":" || op === "!="
-          ? index.namesLower[i].includes(valLower) ? 1 : 0
-          : index.namesLower[i] === valLower ? 1 : 0;
-      }
-      if (op === "!=") {
-        for (let i = 0; i < n; i++) buf[i] ^= 1;
-      }
-      break;
-    }
-    case "oracle": {
-      for (let i = 0; i < n; i++) {
-        buf[i] = index.oracleTextsLower[i].includes(valLower) ? 1 : 0;
+        buf[i] = col[i].includes(valLower) ? 1 : 0;
       }
       break;
     }
@@ -110,17 +107,6 @@ function evalLeafField(
           break;
         default:
           buf.fill(0, 0, n);
-      }
-      break;
-    }
-    case "type": {
-      const bit = resolveTypeBit(val);
-      if (bit !== null) {
-        const isSuper = SUPERTYPE_NAMES[val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()] !== undefined;
-        const col = isSuper ? index.supertypes : index.types;
-        for (let i = 0; i < n; i++) buf[i] = (col[i] & bit) !== 0 ? 1 : 0;
-      } else {
-        for (let i = 0; i < n; i++) buf[i] = index.subtypesLower[i].includes(valLower) ? 1 : 0;
       }
       break;
     }
@@ -185,6 +171,33 @@ function evalLeafField(
   }
 }
 
+function evalLeafRegex(
+  node: RegexFieldNode,
+  index: CardIndex,
+  buf: Uint8Array,
+): void {
+  const canonical = FIELD_ALIASES[node.field.toLowerCase()];
+  const n = index.cardCount;
+  const col = canonical ? getStringColumn(canonical, index) : null;
+
+  if (!col) {
+    buf.fill(0, 0, n);
+    return;
+  }
+
+  let re: RegExp;
+  try {
+    re = new RegExp(node.pattern, "i");
+  } catch {
+    buf.fill(0, 0, n);
+    return;
+  }
+
+  for (let i = 0; i < n; i++) {
+    buf[i] = re.test(col[i]) ? 1 : 0;
+  }
+}
+
 function evalLeafBareWord(value: string, index: CardIndex, buf: Uint8Array): void {
   const valLower = value.toLowerCase();
   for (let i = 0; i < index.cardCount; i++) {
@@ -233,9 +246,9 @@ function evalNode(
     }
     case "REGEX_FIELD": {
       const buf = pool.acquire();
-      buf.fill(0, 0, n);
+      evalLeafRegex(ast, index, buf);
       return {
-        result: { node: ast, matchCount: 0 },
+        result: { node: ast, matchCount: popcount(buf, n) },
         buf,
       };
     }

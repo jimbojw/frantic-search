@@ -6,9 +6,7 @@ export interface ColumnarData {
   oracle_texts: string[];
   colors: number[];
   color_identity: number[];
-  types: number[];
-  supertypes: number[];
-  subtypes: string[];
+  type_lines: string[];
   powers: number[];
   toughnesses: number[];
   loyalties: number[];

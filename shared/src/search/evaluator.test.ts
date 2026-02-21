@@ -3,7 +3,7 @@ import { describe, test, expect } from "vitest";
 import { evaluate } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { Color, CardType, Supertype, Format } from "../bits";
+import { Color, Format } from "../bits";
 import type { ColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
@@ -34,9 +34,15 @@ const TEST_DATA: ColumnarData = {
   ],
   colors:         [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White],
   color_identity: [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White],
-  types:          [CardType.Creature, CardType.Instant, CardType.Instant, CardType.Artifact, CardType.Creature, CardType.Instant, CardType.Creature],
-  supertypes:     [0, 0, 0, 0, 0, 0, Supertype.Legendary],
-  subtypes:       ["Elf", "", "", "", "Lhurgoyf", "", "Human Soldier"],
+  type_lines:     [
+    "Creature — Elf",
+    "Instant",
+    "Instant",
+    "Artifact",
+    "Creature — Lhurgoyf",
+    "Instant",
+    "Legendary Creature — Human Soldier",
+  ],
   powers:         [1, 0, 0, 0, 2, 0, 3],   // indices into powerDict
   toughnesses:    [1, 0, 0, 0, 2, 0, 3],   // indices into toughnessDict
   loyalties:      [0, 0, 0, 0, 0, 0, 0],
@@ -120,7 +126,7 @@ describe("evaluate", () => {
     expect(matchCount("c=g")).toBe(2);                 // Birds + Tarmogoyf
   });
 
-  test("type field", () => {
+  test("type field matches card types", () => {
     expect(matchCount("t:creature")).toBe(3);          // Birds + Tarmogoyf + Thalia
     expect(matchCount("t:instant")).toBe(3);           // Bolt + Counterspell + Azorius Charm
     expect(matchCount("t:artifact")).toBe(1);          // Sol Ring
@@ -133,6 +139,14 @@ describe("evaluate", () => {
   test("type field matches subtypes", () => {
     expect(matchCount("t:elf")).toBe(1);               // Birds
     expect(matchCount("t:human")).toBe(1);             // Thalia
+  });
+
+  test("type field matches partial words", () => {
+    expect(matchCount("t:legend")).toBe(1);            // Thalia ("Legendary" contains "legend")
+  });
+
+  test("type field with quoted multi-word matches type_line substring", () => {
+    expect(matchCount('t:"legendary creature"')).toBe(1); // Thalia
   });
 
   test("power field numeric comparison", () => {
@@ -231,5 +245,29 @@ describe("evaluate", () => {
 
   test("unknown format matches zero", () => {
     expect(matchCount("legal:fakefmt")).toBe(0);
+  });
+
+  test("regex on oracle text", () => {
+    expect(matchCount("o:/damage/")).toBe(1);          // Bolt
+    expect(matchCount("o:/target/")).toBe(2);          // Bolt + Counterspell
+  });
+
+  test("regex on type line", () => {
+    expect(matchCount("t:/legendary.*elf/")).toBe(0);  // no legendary elves in pool
+    expect(matchCount("t:/legendary.*human/")).toBe(1); // Thalia
+    expect(matchCount("t:/creature/")).toBe(3);
+  });
+
+  test("regex on name", () => {
+    expect(matchCount("name:/^birds/")).toBe(1);       // Birds of Paradise
+    expect(matchCount("name:/bolt$/")).toBe(1);        // Lightning Bolt
+  });
+
+  test("regex with invalid pattern matches zero", () => {
+    expect(matchCount("o:/[invalid/")).toBe(0);
+  });
+
+  test("regex on unsupported field matches zero", () => {
+    expect(matchCount("pow:/3/")).toBe(0);
   });
 });

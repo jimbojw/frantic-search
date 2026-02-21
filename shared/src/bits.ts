@@ -17,44 +17,6 @@ export const COLOR_FROM_LETTER: Record<string, number> = {
   G: Color.Green,
 };
 
-// --- Card Types (8 bits) ---
-export const CardType = {
-  Artifact: 1 << 0,
-  Battle: 1 << 1,
-  Creature: 1 << 2,
-  Enchantment: 1 << 3,
-  Instant: 1 << 4,
-  Land: 1 << 5,
-  Planeswalker: 1 << 6,
-  Sorcery: 1 << 7,
-} as const;
-
-export const CARD_TYPE_NAMES: Record<string, number> = {
-  Artifact: CardType.Artifact,
-  Battle: CardType.Battle,
-  Creature: CardType.Creature,
-  Enchantment: CardType.Enchantment,
-  Instant: CardType.Instant,
-  Land: CardType.Land,
-  Planeswalker: CardType.Planeswalker,
-  Sorcery: CardType.Sorcery,
-};
-
-// --- Supertypes (4 bits) ---
-export const Supertype = {
-  Basic: 1 << 0,
-  Legendary: 1 << 1,
-  Snow: 1 << 2,
-  World: 1 << 3,
-} as const;
-
-export const SUPERTYPE_NAMES: Record<string, number> = {
-  Basic: Supertype.Basic,
-  Legendary: Supertype.Legendary,
-  Snow: Supertype.Snow,
-  World: Supertype.World,
-};
-
 // --- Format Legality (21 bits) ---
 export const Format = {
   Standard: 1 << 0,

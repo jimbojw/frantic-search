@@ -8,9 +8,7 @@ export class CardIndex {
   readonly manaCosts: string[];
   readonly colors: number[];
   readonly colorIdentity: number[];
-  readonly types: number[];
-  readonly supertypes: number[];
-  readonly subtypesLower: string[];
+  readonly typeLinesLower: string[];
   readonly powers: number[];
   readonly toughnesses: number[];
   readonly loyalties: number[];
@@ -30,9 +28,7 @@ export class CardIndex {
     this.manaCosts = data.mana_costs;
     this.colors = data.colors;
     this.colorIdentity = data.color_identity;
-    this.types = data.types;
-    this.supertypes = data.supertypes;
-    this.subtypesLower = data.subtypes.map((s) => s.toLowerCase());
+    this.typeLinesLower = data.type_lines.map((t) => t.toLowerCase());
     this.powers = data.powers;
     this.toughnesses = data.toughnesses;
     this.loyalties = data.loyalties;

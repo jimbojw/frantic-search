@@ -4,8 +4,6 @@ import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureIntermediateDir } from "./paths"
 import { log } from "./log";
 import {
   COLOR_FROM_LETTER,
-  CARD_TYPE_NAMES,
-  SUPERTYPE_NAMES,
   FORMAT_NAMES,
   type ColumnarData,
 } from "@frantic-search/shared";
@@ -52,40 +50,6 @@ function encodeLegalities(legalities: Record<string, string> | undefined): { leg
     else if (status === "restricted") restricted |= bit;
   }
   return { legal, banned, restricted };
-}
-
-interface ParsedTypeLine {
-  types: number;
-  supertypes: number;
-  subtypes: string;
-}
-
-function parseTypeLine(typeLine: string): ParsedTypeLine {
-  let types = 0;
-  let supertypes = 0;
-  const remaining: string[] = [];
-
-  for (const word of typeLine.split(/\s+/)) {
-    if (word === "—" || word === "//") {
-      remaining.push(word);
-      continue;
-    }
-    const typeBit = CARD_TYPE_NAMES[word];
-    if (typeBit !== undefined) {
-      types |= typeBit;
-      continue;
-    }
-    const superBit = SUPERTYPE_NAMES[word];
-    if (superBit !== undefined) {
-      supertypes |= superBit;
-      continue;
-    }
-    remaining.push(word);
-  }
-
-  const subtypes = remaining.join(" ").replace(/^\s*—\s*/, "").replace(/\s*—\s*$/, "").trim();
-
-  return { types, supertypes, subtypes };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,9 +101,7 @@ export function processCards(verbose: boolean): void {
     oracle_texts: [],
     colors: [],
     color_identity: [],
-    types: [],
-    supertypes: [],
-    subtypes: [],
+    type_lines: [],
     powers: [],
     toughnesses: [],
     loyalties: [],
@@ -159,11 +121,7 @@ export function processCards(verbose: boolean): void {
     data.oracle_texts.push(card.oracle_text ?? "");
     data.colors.push(encodeColors(card.colors));
     data.color_identity.push(encodeColors(card.color_identity));
-
-    const parsed = parseTypeLine(card.type_line ?? "");
-    data.types.push(parsed.types);
-    data.supertypes.push(parsed.supertypes);
-    data.subtypes.push(parsed.subtypes);
+    data.type_lines.push(card.type_line ?? "");
 
     data.powers.push(powerDict.encode(card.power));
     data.toughnesses.push(toughnessDict.encode(card.toughness));

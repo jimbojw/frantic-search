@@ -2,10 +2,6 @@
 export {
   Color,
   COLOR_FROM_LETTER,
-  CardType,
-  CARD_TYPE_NAMES,
-  Supertype,
-  SUPERTYPE_NAMES,
   Format,
   FORMAT_NAMES,
 } from "./bits";
