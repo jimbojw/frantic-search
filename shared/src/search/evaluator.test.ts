@@ -3,7 +3,7 @@ import { describe, test, expect } from "vitest";
 import { evaluate } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { Color, CardType, Supertype } from "../bits";
+import { Color, CardType, Supertype, Format } from "../bits";
 import type { ColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +41,33 @@ const TEST_DATA: ColumnarData = {
   toughnesses:    [1, 0, 0, 0, 2, 0, 3],   // indices into toughnessDict
   loyalties:      [0, 0, 0, 0, 0, 0, 0],
   defenses:       [0, 0, 0, 0, 0, 0, 0],
+  legalities_legal: [
+    Format.Commander | Format.Legacy,                   // #0 Birds: legal in commander + legacy
+    Format.Commander | Format.Legacy | Format.Modern,   // #1 Bolt: legal in commander + legacy + modern
+    Format.Commander | Format.Legacy,                   // #2 Counterspell: legal in commander + legacy
+    Format.Commander | Format.Vintage,                  // #3 Sol Ring: legal in commander + vintage (banned in legacy, restricted in vintage handled below)
+    Format.Commander | Format.Legacy | Format.Modern,   // #4 Tarmogoyf: legal in commander + legacy + modern
+    Format.Commander | Format.Pioneer,                  // #5 Azorius Charm: legal in commander + pioneer
+    Format.Commander | Format.Legacy | Format.Modern,   // #6 Thalia: legal in commander + legacy + modern
+  ],
+  legalities_banned: [
+    0,                // #0
+    0,                // #1
+    0,                // #2
+    Format.Legacy,    // #3 Sol Ring: banned in legacy
+    0,                // #4
+    0,                // #5
+    0,                // #6
+  ],
+  legalities_restricted: [
+    0,                // #0
+    0,                // #1
+    0,                // #2
+    Format.Vintage,   // #3 Sol Ring: restricted in vintage
+    0,                // #4
+    0,                // #5
+    0,                // #6
+  ],
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
   loyalty_lookup:  [""],
@@ -176,5 +203,33 @@ describe("evaluate", () => {
   test("matchingIndices empty when no matches", () => {
     const { matchingIndices } = evaluate(parse("rarity:common"), index);
     expect(matchingIndices).toEqual([]);
+  });
+
+  test("legal:commander matches all cards legal in commander", () => {
+    expect(matchCount("legal:commander")).toBe(7);
+  });
+
+  test("legal:legacy matches cards legal in legacy", () => {
+    expect(matchCount("legal:legacy")).toBe(5);        // Birds, Bolt, Counterspell, Tarmogoyf, Thalia
+  });
+
+  test("f: alias works for legal:", () => {
+    expect(matchCount("f:modern")).toBe(3);            // Bolt, Tarmogoyf, Thalia
+  });
+
+  test("banned:legacy matches cards banned in legacy", () => {
+    expect(matchCount("banned:legacy")).toBe(1);       // Sol Ring
+  });
+
+  test("restricted:vintage matches cards restricted in vintage", () => {
+    expect(matchCount("restricted:vintage")).toBe(1);  // Sol Ring
+  });
+
+  test("legal + type combo", () => {
+    expect(matchCount("legal:legacy t:creature")).toBe(3); // Birds, Tarmogoyf, Thalia
+  });
+
+  test("unknown format matches zero", () => {
+    expect(matchCount("legal:fakefmt")).toBe(0);
   });
 });

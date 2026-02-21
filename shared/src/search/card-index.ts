@@ -15,6 +15,9 @@ export class CardIndex {
   readonly toughnesses: number[];
   readonly loyalties: number[];
   readonly defenses: number[];
+  readonly legalitiesLegal: number[];
+  readonly legalitiesBanned: number[];
+  readonly legalitiesRestricted: number[];
   readonly powerLookup: string[];
   readonly toughnessLookup: string[];
   readonly loyaltyLookup: string[];
@@ -34,6 +37,9 @@ export class CardIndex {
     this.toughnesses = data.toughnesses;
     this.loyalties = data.loyalties;
     this.defenses = data.defenses;
+    this.legalitiesLegal = data.legalities_legal;
+    this.legalitiesBanned = data.legalities_banned;
+    this.legalitiesRestricted = data.legalities_restricted;
     this.powerLookup = data.power_lookup;
     this.toughnessLookup = data.toughness_lookup;
     this.loyaltyLookup = data.loyalty_lookup;

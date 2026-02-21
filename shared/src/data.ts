@@ -13,6 +13,9 @@ export interface ColumnarData {
   toughnesses: number[];
   loyalties: number[];
   defenses: number[];
+  legalities_legal: number[];
+  legalities_banned: number[];
+  legalities_restricted: number[];
   power_lookup: string[];
   toughness_lookup: string[];
   loyalty_lookup: string[];

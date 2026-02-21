@@ -24,8 +24,11 @@ The ETL pipeline (Spec 001) produces a columnar JSON file with the following per
 | `toughnesses`    | `number[]` | Dict-encoded index into `toughness_lookup`  |
 | `loyalties`      | `number[]` | Dict-encoded index into `loyalty_lookup`    |
 | `defenses`       | `number[]` | Dict-encoded index into `defense_lookup`    |
+| `legalities_legal` | `number[]` | Bitmask: one bit per format where status is `"legal"` |
+| `legalities_banned` | `number[]` | Bitmask: one bit per format where status is `"banned"` |
+| `legalities_restricted` | `number[]` | Bitmask: one bit per format where status is `"restricted"` |
 
-The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL (encoding) and the query engine (filtering).
+The bitmask constants are defined in `shared/src/bits.ts` and shared between ETL (encoding) and the query engine (filtering). Format legality uses 21 bits (one per format: standard, commander, modern, legacy, etc.).
 
 ## Architecture Overview
 
@@ -177,6 +180,9 @@ These fields map to columns available in the current ETL output.
 | `loyalty`, `loy`   | `loyalties` + `loyalty_lookup`   | Numeric equality                  | Numeric comparison via lookup              |
 | `defense`, `def`   | `defenses` + `defense_lookup`    | Numeric equality                  | Numeric comparison via lookup              |
 | `mana`, `m`        | `mana_costs`                | Substring on raw mana cost string      | —                                          |
+| `legal`, `f`, `format` | `legalities_legal`      | Card is legal in the given format      | —                                          |
+| `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
+| `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
 | (bare word)        | `names`                     | Case-insensitive substring             | —                                          |
 
 ### Color value parsing
@@ -340,3 +346,7 @@ test("trailing operator", () => {
   for pre-computed evaluation-ready data, distinct from `ColumnarData`
   wire format. `Uint8Array` bitmasks are internal to the evaluator.
   `ColumnarData` moved to `shared/src/data.ts`.
+- 2026-02-19: Added format legality support. Three new bitmask columns
+  (`legalities_legal`, `legalities_banned`, `legalities_restricted`) with
+  21 bits for Scryfall's supported formats. Evaluator handles `legal:`/`f:`,
+  `banned:`, and `restricted:` fields.

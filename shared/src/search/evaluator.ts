@@ -8,7 +8,7 @@ import {
 } from "./ast";
 import type { CardIndex } from "./card-index";
 import { BufferPool } from "./pool";
-import { COLOR_FROM_LETTER, CARD_TYPE_NAMES, SUPERTYPE_NAMES } from "../bits";
+import { COLOR_FROM_LETTER, CARD_TYPE_NAMES, SUPERTYPE_NAMES, FORMAT_NAMES } from "../bits";
 
 const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -21,6 +21,9 @@ const FIELD_ALIASES: Record<string, string> = {
   loyalty: "loyalty", loy: "loyalty",
   defense: "defense", def: "defense",
   mana: "mana", m: "mana",
+  legal: "legal", f: "legal", format: "legal",
+  banned: "banned",
+  restricted: "restricted",
 };
 
 function popcount(buf: Uint8Array, len: number): number {
@@ -158,6 +161,22 @@ function evalLeafField(
     case "mana": {
       for (let i = 0; i < n; i++) {
         buf[i] = index.manaCosts[i].includes(val) ? 1 : 0;
+      }
+      break;
+    }
+    case "legal":
+    case "banned":
+    case "restricted": {
+      const formatBit = FORMAT_NAMES[valLower];
+      if (formatBit === undefined) {
+        buf.fill(0, 0, n);
+        break;
+      }
+      const col = canonical === "legal" ? index.legalitiesLegal
+        : canonical === "banned" ? index.legalitiesBanned
+        : index.legalitiesRestricted;
+      for (let i = 0; i < n; i++) {
+        buf[i] = (col[i] & formatBit) !== 0 ? 1 : 0;
       }
       break;
     }

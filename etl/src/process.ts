@@ -6,6 +6,7 @@ import {
   COLOR_FROM_LETTER,
   CARD_TYPE_NAMES,
   SUPERTYPE_NAMES,
+  FORMAT_NAMES,
   type ColumnarData,
 } from "@frantic-search/shared";
 
@@ -24,6 +25,7 @@ interface Card {
   toughness?: string;
   loyalty?: string;
   defense?: string;
+  legalities?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,6 +39,19 @@ function encodeColors(colors: string[] | undefined): number {
     mask |= COLOR_FROM_LETTER[c] ?? 0;
   }
   return mask;
+}
+
+function encodeLegalities(legalities: Record<string, string> | undefined): { legal: number; banned: number; restricted: number } {
+  let legal = 0, banned = 0, restricted = 0;
+  if (!legalities) return { legal, banned, restricted };
+  for (const [format, status] of Object.entries(legalities)) {
+    const bit = FORMAT_NAMES[format];
+    if (bit === undefined) continue;
+    if (status === "legal") legal |= bit;
+    else if (status === "banned") banned |= bit;
+    else if (status === "restricted") restricted |= bit;
+  }
+  return { legal, banned, restricted };
 }
 
 interface ParsedTypeLine {
@@ -129,6 +144,9 @@ export function processCards(verbose: boolean): void {
     toughnesses: [],
     loyalties: [],
     defenses: [],
+    legalities_legal: [],
+    legalities_banned: [],
+    legalities_restricted: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],
@@ -151,6 +169,11 @@ export function processCards(verbose: boolean): void {
     data.toughnesses.push(toughnessDict.encode(card.toughness));
     data.loyalties.push(loyaltyDict.encode(card.loyalty));
     data.defenses.push(defenseDict.encode(card.defense));
+
+    const leg = encodeLegalities(card.legalities);
+    data.legalities_legal.push(leg.legal);
+    data.legalities_banned.push(leg.banned);
+    data.legalities_restricted.push(leg.restricted);
   }
 
   data.power_lookup = powerDict.lookup();
