@@ -1,6 +1,6 @@
 # Spec 011: Deterministic Random Ordering
 
-**Status:** Draft
+**Status:** Superseded by Spec 019
 
 ## Goal
 
