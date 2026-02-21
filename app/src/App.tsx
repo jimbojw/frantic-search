@@ -192,7 +192,14 @@ function App() {
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-4 pb-4' : 'pt-16 pb-8'}`}>
-        <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-40 opacity-100'}`}>
+        <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
+          <div class="mb-4 h-14 overflow-hidden rounded-xl shadow-md">
+            <img
+              src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
+              alt="Frantic Search card art by Mitchell Malloy"
+              class="h-full w-full object-cover object-[center_20%]"
+            />
+          </div>
           <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
             Frantic Search
           </h1>
