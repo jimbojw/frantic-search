@@ -30,7 +30,7 @@ const TEST_DATA: ColumnarData = {
   combined_names: ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Dismember"],
   mana_costs:     ["{G}", "{R}", "{U}{U}", "{1}", "{1}{G}", "{W}{U}", "{1}{W}", "{1}{B}{B}", "", "{1}{B/P}{B/P}"],
   oracle_texts:   [
-    "Flying\n{T}: Add one mana of any color.",
+    "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
     "Lightning Bolt deals 3 damage to any target.",
     "Counter target spell.",
     "{T}: Add {C}{C}.",
@@ -42,7 +42,7 @@ const TEST_DATA: ColumnarData = {
     "Target creature gets -5/-5 until end of turn.",
   ],
   oracle_texts_tilde: [
-    "",
+    "Flying (~ can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
     "~ deals 3 damage to any target.",
     "",
     "",
@@ -763,7 +763,7 @@ describe("timing", () => {
 // Tilde self-reference (Spec 020)
 // ---------------------------------------------------------------------------
 // oracle_texts_tilde values for test data:
-//   #0 Birds:     ""  (no self-ref)
+//   #0 Birds:     "Flying (~ can't be blocked …)\n{T}: Add one mana of any color."  (~ only in reminder text)
 //   #1 Bolt:      "~ deals 3 damage to any target."
 //   #2 Counter:   ""
 //   #3 Sol Ring:  ""
@@ -817,5 +817,45 @@ describe("tilde self-reference", () => {
     const cache = new NodeCache(index);
     const { matchingIndices } = cache.evaluate(parse("o:~"));
     expect(matchingIndices).toEqual([1, 4, 7]);
+  });
+
+  test("o:~ does NOT match when tilde is only inside reminder text", () => {
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("o:~"));
+    expect(matchingIndices).not.toContain(0); // Birds: ~ only in "(~ can't be blocked…)"
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reminder text stripping
+// ---------------------------------------------------------------------------
+// Scryfall ignores reminder text (parenthesized text) when matching o: queries.
+// Birds of Paradise now has:
+//   "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color."
+// After stripping: "Flying \n{T}: Add one mana of any color."
+
+describe("reminder text stripping", () => {
+  test("o:flying still matches (keyword is outside reminder text)", () => {
+    expect(matchCount("o:flying")).toBe(1);
+  });
+
+  test("o:reach does NOT match (only in reminder text)", () => {
+    expect(matchCount("o:reach")).toBe(0);
+  });
+
+  test("o:blocked does NOT match (only in reminder text)", () => {
+    expect(matchCount("o:blocked")).toBe(0);
+  });
+
+  test("o:damage is unchanged (no reminder text involved)", () => {
+    expect(matchCount("o:damage")).toBe(2);
+  });
+
+  test("o:target is unchanged (all occurrences outside reminder text)", () => {
+    expect(matchCount("o:target")).toBe(5);
+  });
+
+  test("o:/reach/ regex does NOT match reminder text", () => {
+    expect(matchCount("o:/reach/")).toBe(0);
   });
 });

@@ -2,6 +2,12 @@
 import type { ColumnarData } from "../data";
 import { parseManaSymbols, computeCmc } from "./mana";
 
+const REMINDER_TEXT_RE = /\([^)]*\)/g;
+
+function stripReminderText(text: string): string {
+  return text.replace(REMINDER_TEXT_RE, "");
+}
+
 export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
@@ -37,9 +43,11 @@ export class CardIndex {
     this.combinedNamesNormalized = data.combined_names.map((n) =>
       n.toLowerCase().replace(/[^a-z0-9]/g, ""),
     );
-    this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
+    this.oracleTextsLower = data.oracle_texts.map((t) =>
+      stripReminderText(t).toLowerCase(),
+    );
     this.oracleTextsTildeLower = data.oracle_texts_tilde.map((t) =>
-      t.toLowerCase(),
+      stripReminderText(t).toLowerCase(),
     );
     this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());
     this.manaSymbols = data.mana_costs.map((m) => parseManaSymbols(m));
