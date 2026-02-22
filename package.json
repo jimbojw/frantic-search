@@ -6,6 +6,7 @@
     "dev": "npm run dev -w app",
     "cli": "npm run -s run -w cli --",
     "etl": "npm run -s run -w etl --",
+    "generate-icons": "./scripts/generate-icons.sh",
     "test": "npm test --workspaces --if-present"
   },
   "keywords": [],
