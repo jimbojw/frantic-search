@@ -36,7 +36,11 @@ function ArtCrop(props: { scryfallId: string; colorIdentity: number; thumbHash: 
   return (
     <div
       class="w-[3em] pb-1 rounded-sm overflow-hidden shrink-0 mt-0.5"
-      style={{ background: background() }}
+      style={{
+        background: background(),
+        'background-origin': props.thumbHash ? 'content-box, border-box' : undefined,
+        'background-clip': props.thumbHash ? 'content-box, border-box' : undefined,
+      }}
     >
       <img
         src={artCropUrl(props.scryfallId)}
