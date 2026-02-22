@@ -1,6 +1,6 @@
 # Spec 023: Breakdown Remove Node
 
-**Status:** Draft
+**Status:** In Progress
 
 **Depends on:** Spec 021 (Inline Query Breakdown)
 
@@ -45,9 +45,7 @@ Layout of a single row (three columns):
 
 ### Visibility
 
-- **Desktop (hover):** The × button is hidden by default and revealed when the user hovers anywhere on the row. Use Tailwind `group`/`group-hover` on the row container.
-- **Mobile (always visible):** The × button is always visible but rendered in a muted color (`text-gray-300 dark:text-gray-600`) to avoid visual clutter. It darkens on `:active`.
-- **Breakpoint:** Use `sm:` as the threshold — `opacity-100 sm:opacity-0 sm:group-hover:opacity-100`.
+The × button is **always visible** at reduced opacity (`opacity-60`), increasing to full opacity on hover. This avoids layout jitter and ensures discoverability on both desktop and mobile without requiring hover-based reveal.
 
 ### Which rows show the button
 
@@ -161,7 +159,7 @@ Add `reconstructWithout(root, exclude)` alongside the existing `reconstructQuery
 
 - Add an `onRemove?: () => void` prop.
 - Add a third column to the row layout: a `<button>` with an × SVG icon, rendered when `onRemove` is provided.
-- Apply `group` class to the row container and `sm:opacity-0 sm:group-hover:opacity-100` to the button.
+- The button is always visible at `opacity-60`, with `hover:opacity-100` for emphasis.
 
 ### 3. Wire remove handlers
 
@@ -200,8 +198,7 @@ When the query is a single term and the user clicks ×, `reconstructWithout` ret
 3. In a nested query, every non-root row (leaves and internal AND/OR nodes) displays a × button.
 4. A single-term query displays a × button. Clicking it clears the query.
 5. Removing a child from a two-child AND/OR collapses the parent: the surviving child's query is used directly, with no redundant grouping.
-6. On desktop (`sm:` and above), the × button is hidden by default and appears on row hover.
-7. On mobile (below `sm:`), the × button is always visible in a muted color.
+6. The × button is always visible at reduced opacity and brightens on hover.
 8. Clicking the × button does not trigger the drill-down (label click) action.
 9. The × button is a `<button>` element with an appropriate `aria-label`.
 10. Removing a term from a zero-result query (where the removed term had zero matches) produces a new query that returns results.

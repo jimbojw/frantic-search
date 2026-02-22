@@ -293,6 +293,7 @@ function App() {
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
                 onNodeClick={setQuery}
+                onNodeRemove={setQuery}
               />
             )}
           </Show>

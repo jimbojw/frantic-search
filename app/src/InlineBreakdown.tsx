@@ -39,7 +39,23 @@ function reconstructQuery(node: BreakdownNode): string {
   ).join(' ')
 }
 
-function BreakdownRow(props: { label: string; count: number; indent?: number; onClick?: () => void }) {
+function filterNode(node: BreakdownNode, exclude: BreakdownNode): BreakdownNode | null {
+  if (node === exclude) return null
+  if (!node.children) return node
+  const filtered = node.children
+    .map(c => filterNode(c, exclude))
+    .filter((c): c is BreakdownNode => c !== null)
+  if (filtered.length === 0) return null
+  if (filtered.length === 1) return filtered[0]
+  return { ...node, children: filtered }
+}
+
+function reconstructWithout(root: BreakdownNode, exclude: BreakdownNode): string {
+  const filtered = filterNode(root, exclude)
+  return filtered ? reconstructQuery(filtered) : ''
+}
+
+function BreakdownRow(props: { label: string; count: number; indent?: number; onClick?: () => void; onRemove?: () => void }) {
   return (
     <div
       class="flex items-baseline justify-between gap-4 py-0.5"
@@ -51,20 +67,39 @@ function BreakdownRow(props: { label: string; count: number; indent?: number; on
       >
         {props.label}
       </span>
-      <span class={`font-mono text-xs tabular-nums shrink-0 ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
-        {props.count.toLocaleString()}
+      <span class="flex items-center gap-2 shrink-0">
+        <span class={`font-mono text-xs tabular-nums ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+          {props.count.toLocaleString()}
+        </span>
+        <Show when={props.onRemove}>
+          <button
+            onClick={(e) => { e.stopPropagation(); props.onRemove!() }}
+            class="opacity-60 hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+            aria-label={`Remove ${props.label}`}
+          >
+            <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </Show>
       </span>
     </div>
   )
 }
 
-function BreakdownTreeNode(props: { node: BreakdownNode; depth: number; onNodeClick: (query: string) => void }) {
+function BreakdownTreeNode(props: { node: BreakdownNode; root: BreakdownNode; depth: number; onNodeClick: (query: string) => void; onNodeRemove: (query: string) => void }) {
   return (
     <>
-      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={props.depth} onClick={() => props.onNodeClick(reconstructQuery(props.node))} />
+      <BreakdownRow
+        label={props.node.label}
+        count={props.node.matchCount}
+        indent={props.depth}
+        onClick={() => props.onNodeClick(reconstructQuery(props.node))}
+        onRemove={props.depth > 0 ? () => props.onNodeRemove(reconstructWithout(props.root, props.node)) : undefined}
+      />
       <Show when={props.node.children}>
         <For each={props.node.children}>
-          {(child) => <BreakdownTreeNode node={child} depth={props.depth + 1} onNodeClick={props.onNodeClick} />}
+          {(child) => <BreakdownTreeNode node={child} root={props.root} depth={props.depth + 1} onNodeClick={props.onNodeClick} onNodeRemove={props.onNodeRemove} />}
         </For>
       </Show>
     </>
@@ -78,6 +113,7 @@ export default function InlineBreakdown(props: {
   expanded: boolean
   onToggle: () => void
   onNodeClick: (query: string) => void
+  onNodeRemove: (query: string) => void
 }) {
   const displayCase = () => getBreakdownCase(props.breakdown)
   const label = () => getSummaryLabel(props.breakdown)
@@ -87,14 +123,14 @@ export default function InlineBreakdown(props: {
       <Show when={props.expanded}>
         <div class="px-3 pt-1.5 pb-0.5">
           <Show when={displayCase() !== 'nested'} fallback={
-            <BreakdownTreeNode node={props.breakdown} depth={0} onNodeClick={props.onNodeClick} />
+            <BreakdownTreeNode node={props.breakdown} root={props.breakdown} depth={0} onNodeClick={props.onNodeClick} onNodeRemove={props.onNodeRemove} />
           }>
             <Show when={displayCase() === 'single'} fallback={
               <For each={props.breakdown.children!}>
-                {(child) => <BreakdownRow label={child.label} count={child.matchCount} onClick={() => props.onNodeClick(reconstructQuery(child))} />}
+                {(child) => <BreakdownRow label={child.label} count={child.matchCount} onClick={() => props.onNodeClick(reconstructQuery(child))} onRemove={() => props.onNodeRemove(reconstructWithout(props.breakdown, child))} />}
               </For>
             }>
-              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} onClick={() => props.onNodeClick(reconstructQuery(props.breakdown))} />
+              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} onClick={() => props.onNodeClick(reconstructQuery(props.breakdown))} onRemove={() => props.onNodeRemove('')} />
             </Show>
           </Show>
         </div>
