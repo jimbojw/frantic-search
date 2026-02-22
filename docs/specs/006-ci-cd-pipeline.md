@@ -8,11 +8,12 @@ Automate the full build-and-deploy pipeline so that pushes to `main` produce a l
 
 ## Background
 
-The project has three build stages that must run in sequence:
+The project has four build stages that must run in sequence:
 
 1. **ETL download** — fetch Oracle Cards from Scryfall (~160 MB).
-2. **ETL process** — transform raw data into `data/dist/columns.json` (~8 MB).
-3. **App build** — Vite compiles the SPA and includes `columns.json` in the output (Spec 005).
+2. **ETL thumbhash** — progressively generate ThumbHash placeholders for card art (Spec 017).
+3. **ETL process** — transform raw data into `data/dist/columns.json` (~8 MB).
+4. **App build** — Vite compiles the SPA and includes `columns.json` in the output (Spec 005).
 
 The result is a static directory (`app/dist/`) ready to deploy. GitHub Pages is the hosting target (ADR-004).
 
@@ -26,6 +27,9 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
 
 permissions:
   contents: read
@@ -58,10 +62,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: scryfall-oracle-cards
+          key: scryfall-oracle-cards-${{ github.run_id }}
+          restore-keys: |
+            scryfall-oracle-cards-
 
       - name: Download Oracle Cards
         run: npm run etl -- download
+
+      - name: Restore ThumbHash cache
+        uses: actions/cache@v4
+        with:
+          path: data/thumbhash
+          key: thumbhash-manifest-${{ github.run_id }}
+          restore-keys: |
+            thumbhash-manifest-
+
+      - name: Generate ThumbHashes
+        run: npm run etl -- thumbhash --verbose
 
       - name: Process card data
         run: npm run etl -- process
@@ -83,19 +100,32 @@ jobs:
 
 ### Key design choices
 
-#### Scryfall data caching
+#### Data caching
 
-The Scryfall download is ~160 MB and only updates a few times per week. The `actions/cache` step stores `data/raw/` (containing `oracle-cards.json` and `meta.json`) under a stable key. On cache hit, the `download` command's built-in freshness check (Spec 001) compares the cached `meta.json` timestamp against the Scryfall API and skips the download if the data is current.
+Both the Scryfall download (`data/raw/`) and the ThumbHash manifest (`data/thumbhash/`) are cached across workflow runs using `actions/cache@v4`.
 
-The cache key is intentionally **not** content-addressed — we want to reuse the same cache entry and let the ETL's own freshness logic decide whether to re-download. If Scryfall has published newer data, the download command overwrites the cached files, and the updated `data/raw/` is saved back to the cache on workflow completion.
+Each cache step uses a **run-unique key** (`*-${{ github.run_id }}`) with a **`restore-keys` prefix fallback**. This is necessary because `actions/cache` entries are immutable — once saved under a given key, they are never overwritten. The pattern works as follows:
+
+1. **Restore**: The exact key (containing the current run ID) misses. The `restore-keys` prefix matches the most recent prior cache entry.
+2. **Save (post-job)**: Since the exact key was a miss, the updated directory is saved under the new run-specific key.
+
+This ensures each build picks up where the previous one left off.
+
+For Scryfall data, the cache avoids redundant downloads. On cache hit, the `download` command's freshness check (Spec 001) compares the cached `meta.json` timestamp against the Scryfall API and skips the download if the data is current.
+
+For the ThumbHash manifest, the cache enables progressive backfill (Spec 017). Each build restores the previous manifest, generates additional ThumbHashes up to a time limit, and saves the extended manifest for the next run.
 
 #### Concurrency
 
 `cancel-in-progress: false` ensures a deploy that is already running completes rather than being interrupted by a newer push. GitHub Pages deployments are idempotent and fast, so the cost of letting a stale deploy finish is low, and it avoids partial-upload edge cases.
 
-#### No scheduled trigger
+#### Triggers
 
-The workflow runs on push to `main`, not on a schedule. Card data freshness depends on when Scryfall updates (typically daily), but deploying stale data is harmless — the site simply shows cards as of the last Scryfall snapshot. A scheduled trigger could be added later if near-real-time data freshness is desired.
+The workflow runs on three triggers:
+
+- **Push to `main`** — deploys the latest code with fresh data.
+- **Daily schedule** (`cron: '0 0 * * *'`) — keeps card data and ThumbHash coverage current even without code changes. The ThumbHash progressive backfill (Spec 017) benefits from frequent runs to accumulate coverage.
+- **Manual dispatch** (`workflow_dispatch`) — allows on-demand builds for testing or recovery.
 
 ## App build script
 
@@ -108,7 +138,9 @@ GitHub Pages does not support server-side routing. Since this is a single-page a
 ## Acceptance Criteria
 
 1. Pushing to `main` triggers the workflow and deploys the site to GitHub Pages.
-2. The Scryfall download is cached across runs; repeated pushes do not re-download unless Scryfall data has been updated.
-3. `columns.json` is present in the deployed site and loadable by the WebWorker.
-4. The deployed site is accessible at `https://<username>.github.io/frantic-search/`.
-5. The workflow uses the GitHub Pages deployment API (`upload-pages-artifact` + `deploy-pages`), not the legacy `gh-pages` branch approach.
+2. The daily schedule and manual dispatch also trigger successful builds.
+3. The Scryfall download is cached across runs; repeated pushes do not re-download unless Scryfall data has been updated.
+4. The ThumbHash manifest is cached across runs; each build extends the previous manifest with additional hashes.
+5. `columns.json` is present in the deployed site and loadable by the WebWorker.
+6. The deployed site is accessible at `https://<username>.github.io/frantic-search/`.
+7. The workflow uses the GitHub Pages deployment API (`upload-pages-artifact` + `deploy-pages`), not the legacy `gh-pages` branch approach.

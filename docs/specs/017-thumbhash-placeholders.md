@@ -105,15 +105,17 @@ Add a cache step to the deploy workflow for the ThumbHash manifest, separate fro
   uses: actions/cache@v4
   with:
     path: data/thumbhash
-    key: thumbhash-manifest
+    key: thumbhash-manifest-${{ github.run_id }}
+    restore-keys: |
+      thumbhash-manifest-
 
 - name: Generate ThumbHashes
-  run: npm run etl -- thumbhash
+  run: npm run etl -- thumbhash --verbose
 ```
 
 This goes after the "Download Oracle Cards" step (which populates `data/raw/oracle-cards.json`) and before the "Process card data" step (which reads the manifest).
 
-The cache key `thumbhash-manifest` is fixed. Each run restores the previous manifest, extends it, and saves it back. GitHub's cache action handles the save-on-success automatically.
+The cache key includes the run ID so each build saves a new entry. The `restore-keys` prefix fallback ensures each run restores the most recent prior cache. GitHub's cache action saves on workflow completion when the exact key is a miss.
 
 ## Wire Format: `ColumnarData` Extension
 
