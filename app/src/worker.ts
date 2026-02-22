@@ -5,7 +5,7 @@ import { CardIndex, NodeCache, parse, seededSort, collectBareWords } from '@fran
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
 
-function nodeLabel(qnr: QueryNodeResult): string {
+function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
   switch (n.type) {
     case 'FIELD': return `${n.field}${n.operator}${n.value}`
@@ -18,8 +18,18 @@ function nodeLabel(qnr: QueryNodeResult): string {
   }
 }
 
+function isNotLeaf(qnr: QueryNodeResult): boolean {
+  if (qnr.node.type !== 'NOT' || !qnr.children || qnr.children.length !== 1) return false
+  const child = qnr.children[0]
+  return !child.children || child.children.length === 0
+}
+
 function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
-  const node: BreakdownNode = { label: nodeLabel(qnr), matchCount: qnr.matchCount }
+  if (isNotLeaf(qnr)) {
+    const childLabel = leafLabel(qnr.children![0])
+    return { type: 'NOT', label: `-${childLabel}`, matchCount: qnr.matchCount }
+  }
+  const node: BreakdownNode = { type: qnr.node.type, label: leafLabel(qnr), matchCount: qnr.matchCount }
   if (qnr.children) {
     node.children = qnr.children.map(toBreakdown)
   }

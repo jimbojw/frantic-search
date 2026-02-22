@@ -1,6 +1,6 @@
 # Spec 021: Inline Query Breakdown
 
-**Status:** Draft
+**Status:** Implemented
 
 **Supersedes:** Spec 009 (Query Breakdown)
 

@@ -27,6 +27,7 @@ export type CardResult = {
 }
 
 export type BreakdownNode = {
+  type: 'AND' | 'OR' | 'NOT' | 'FIELD' | 'BARE' | 'EXACT' | 'REGEX_FIELD'
   label: string
   matchCount: number
   children?: BreakdownNode[]

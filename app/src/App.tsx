@@ -87,83 +87,101 @@ function CopyButton(props: { text: string }) {
   )
 }
 
-function isFlatAnd(node: BreakdownNode): boolean {
-  if (node.label !== 'AND' || !node.children) return false
-  return node.children.every(c => !c.children)
+type BreakdownCase = 'single' | 'flat-and' | 'flat-or' | 'nested'
+
+function getBreakdownCase(node: BreakdownNode): BreakdownCase {
+  if (!node.children || node.children.length === 0) return 'single'
+  const allLeaves = node.children.every(c => !c.children || c.children.length === 0)
+  if (node.type === 'AND' && allLeaves) return 'flat-and'
+  if (node.type === 'OR' && allLeaves) return 'flat-or'
+  return 'nested'
 }
 
-function BreakdownRow(props: { label: string; count: number; indent?: number; muted?: boolean }) {
+function getSummaryLabel(node: BreakdownNode): string {
+  const c = getBreakdownCase(node)
+  if (c === 'single') return ''
+  if (c === 'flat-and') return 'ALL'
+  if (c === 'flat-or') return 'ANY'
+  let hasAnd = false, hasOr = false
+  function scan(n: BreakdownNode) {
+    if (n.type === 'AND') hasAnd = true
+    if (n.type === 'OR') hasOr = true
+    n.children?.forEach(scan)
+  }
+  scan(node)
+  if (hasAnd && hasOr) return 'FINAL'
+  return hasAnd ? 'ALL' : 'ANY'
+}
+
+function BreakdownRow(props: { label: string; count: number; indent?: number }) {
   return (
     <div
-      class={`flex items-baseline justify-between gap-4 py-0.5 ${props.muted ? 'text-gray-400 dark:text-gray-500' : ''}`}
+      class="flex items-baseline justify-between gap-4 py-0.5"
       style={props.indent ? { "padding-left": `${props.indent * 1.25}rem` } : undefined}
     >
-      <span class={`font-mono text-xs truncate ${props.count === 0 && !props.muted ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+      <span class={`font-mono text-xs truncate ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
         {props.label}
       </span>
-      <span class={`font-mono text-xs tabular-nums shrink-0 ${props.count === 0 && !props.muted ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+      <span class={`font-mono text-xs tabular-nums shrink-0 ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
         {props.count.toLocaleString()}
       </span>
     </div>
   )
 }
 
-function BreakdownTree(props: { node: BreakdownNode; depth?: number }) {
-  const depth = () => props.depth ?? 0
+function BreakdownTreeNode(props: { node: BreakdownNode; depth: number }) {
   return (
     <>
-      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={depth()} />
+      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={props.depth} />
       <Show when={props.node.children}>
         <For each={props.node.children}>
-          {(child) => <BreakdownTree node={child} depth={depth() + 1} />}
+          {(child) => <BreakdownTreeNode node={child} depth={props.depth + 1} />}
         </For>
       </Show>
     </>
   )
 }
 
-function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; onHelpClick: () => void; onReportClick: () => void }) {
-  const flat = () => isFlatAnd(props.breakdown)
+function InlineBreakdown(props: {
+  breakdown: BreakdownNode
+  cardCount: number
+  faceCount: number
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const displayCase = () => getBreakdownCase(props.breakdown)
+  const label = () => getSummaryLabel(props.breakdown)
 
   return (
-    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 mb-4">
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Query breakdown</p>
-        <button
-          type="button"
-          onClick={() => props.onClose()}
-          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          aria-label="Close breakdown"
-        >
-          <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <Show when={flat()} fallback={<BreakdownTree node={props.breakdown} />}>
-        <For each={props.breakdown.children!}>
-          {(child) => <BreakdownRow label={child.label} count={child.matchCount} />}
-        </For>
-        <div class="border-t border-gray-200 dark:border-gray-700 mt-1.5 pt-1.5">
-          <BreakdownRow label="Combined" count={props.breakdown.matchCount} muted={props.breakdown.matchCount > 0} />
+    <div class="border-t border-gray-200 dark:border-gray-700">
+      <Show when={props.expanded}>
+        <div class="px-3 pt-1.5 pb-0.5">
+          <Show when={displayCase() !== 'nested'} fallback={
+            <BreakdownTreeNode node={props.breakdown} depth={0} />
+          }>
+            <Show when={displayCase() === 'single'} fallback={
+              <For each={props.breakdown.children!}>
+                {(child) => <BreakdownRow label={child.label} count={child.matchCount} />}
+              </For>
+            }>
+              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} />
+            </Show>
+          </Show>
         </div>
       </Show>
-      <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => props.onHelpClick()}
-          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          Syntax help
-        </button>
-        <span class="text-xs text-gray-300 dark:text-gray-600">·</span>
-        <button
-          type="button"
-          onClick={() => props.onReportClick()}
-          class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          Report a problem
-        </button>
+      <div
+        onClick={() => props.onToggle()}
+        class={`flex items-center justify-between gap-4 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
+      >
+        <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+          <svg class={`size-2.5 fill-current transition-transform ${props.expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+            <path d="M8 5l8 7-8 7z" />
+          </svg>
+          <Show when={label()}>{label()}</Show>
+        </span>
+        <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
+          {props.cardCount.toLocaleString()} cards ({props.faceCount.toLocaleString()} faces)
+        </span>
       </div>
     </div>
   )
@@ -237,7 +255,16 @@ function App() {
   const [totalMatches, setTotalMatches] = createSignal(0)
   const [showOracleText, setShowOracleText] = createSignal(false)
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
-  const [showBreakdown, setShowBreakdown] = createSignal(false)
+  const [breakdownExpanded, setBreakdownExpanded] = createSignal(
+    localStorage.getItem('frantic-breakdown-expanded') !== 'false'
+  )
+  function toggleBreakdown() {
+    setBreakdownExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-breakdown-expanded', String(next))
+      return next
+    })
+  }
   const [inputFocused, setInputFocused] = createSignal(false)
 
   const headerCollapsed = () => inputFocused() || query().trim() !== ''
@@ -374,41 +401,54 @@ function App() {
           </p>
         </div>
 
-        <div class="relative">
-          <input
-            type="text"
-            placeholder='Search cards… e.g. "t:creature c:green"'
-            autocapitalize="none"
-            autocomplete="off"
-            autocorrect="off"
-            spellcheck={false}
-            value={query()}
-            onInput={(e) => setQuery(e.currentTarget.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            disabled={workerStatus() === 'error'}
-            class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 pl-11 pr-11 text-base shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all disabled:opacity-50"
-          />
-          <svg
-            class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <button
-            type="button"
-            onClick={() => navigateToHelp()}
-            aria-label="Syntax help"
-            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+        <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
+          <div class="relative">
+            <input
+              type="text"
+              placeholder='Search cards… e.g. "t:creature c:green"'
+              autocapitalize="none"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck={false}
+              value={query()}
+              onInput={(e) => setQuery(e.currentTarget.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              disabled={workerStatus() === 'error'}
+              class="w-full bg-transparent px-4 py-3 pl-11 pr-11 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+            />
+            <svg
+              class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-          </button>
+            <button
+              type="button"
+              onClick={() => navigateToHelp()}
+              aria-label="Syntax help"
+              class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+              </svg>
+            </button>
+          </div>
+          <Show when={breakdown()}>
+            {(bd) => (
+              <InlineBreakdown
+                breakdown={bd()}
+                cardCount={results().length}
+                faceCount={totalMatches()}
+                expanded={breakdownExpanded()}
+                onToggle={toggleBreakdown}
+              />
+            )}
+          </Show>
         </div>
       </header>
 
@@ -456,16 +496,6 @@ function App() {
                   No cards found
                 </p>
                 <p class="mt-2 text-sm">
-                  <Show when={breakdown()}>
-                    <button
-                      type="button"
-                      onClick={() => setShowBreakdown(v => !v)}
-                      class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                    >
-                      {showBreakdown() ? 'Hide' : 'Show'} query breakdown
-                    </button>
-                    <span class="text-gray-300 dark:text-gray-600"> · </span>
-                  </Show>
                   <a
                     href={scryfallUrl()}
                     target="_blank"
@@ -483,38 +513,18 @@ function App() {
                     Report a problem
                   </button>
                 </p>
-                <Show when={showBreakdown() && breakdown()}>
-                  {(bd) => (
-                    <div class="mt-4 text-left">
-                      <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} onReportClick={() => navigateToReport()} />
-                    </div>
-                  )}
-                </Show>
               </div>
             }>
-              <Show when={showBreakdown() && breakdown()}>
-                {(bd) => <QueryBreakdown breakdown={bd()} onClose={() => setShowBreakdown(false)} onHelpClick={() => navigateToHelp()} onReportClick={() => navigateToReport()} />}
-              </Show>
               <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {results().length.toLocaleString()} cards ({totalMatches().toLocaleString()} face matches)
-                  <Show when={breakdown()}>
-                    <span> · <button
-                      type="button"
-                      onClick={() => setShowBreakdown(v => !v)}
-                      class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                    >
-                      {showBreakdown() ? 'hide' : 'show'} breakdown
-                    </button></span>
-                  </Show>
-                  <span> · <a
+                  <a
                     href={scryfallUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                   >
                     Scryfall ↗
-                  </a></span>
+                  </a>
                 </p>
                 <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-500 dark:text-gray-400">
                   Oracle text
