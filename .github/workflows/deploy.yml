@@ -39,7 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: scryfall-oracle-cards
+          key: scryfall-oracle-cards-${{ github.run_id }}
+          restore-keys: |
+            scryfall-oracle-cards-
 
       - name: Download Oracle Cards
         run: npm run etl -- download
@@ -48,7 +50,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/thumbhash
-          key: thumbhash-manifest
+          key: thumbhash-manifest-${{ github.run_id }}
+          restore-keys: |
+            thumbhash-manifest-
 
       - name: Generate ThumbHashes
         run: npm run etl -- thumbhash --verbose
