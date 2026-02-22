@@ -169,8 +169,16 @@ function QueryBreakdown(props: { breakdown: BreakdownNode; onClose: () => void; 
   )
 }
 
+function faceStat(face: CardFace): string | null {
+  if (face.power != null && face.toughness != null) return `${face.power}/${face.toughness}`
+  if (face.loyalty != null) return `Loyalty: ${face.loyalty}`
+  if (face.defense != null) return `Defense: ${face.defense}`
+  return null
+}
+
 function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boolean; onCardClick?: () => void }) {
   const copyText = () => props.fullName ?? props.face.name
+  const stat = () => faceStat(props.face)
   return (
     <div>
       <div class="flex items-start justify-between gap-2">
@@ -189,12 +197,18 @@ function CardFaceRow(props: { face: CardFace; fullName?: string; showOracle: boo
             </Show>
             <CopyButton text={copyText()} />
           </div>
-          <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{props.face.typeLine}</span>
+          <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">
+            {props.face.typeLine}
+            <Show when={!props.showOracle && stat()}>{' · '}{stat()}</Show>
+          </span>
         </div>
         <ManaCost cost={props.face.manaCost} />
       </div>
       <Show when={props.showOracle && props.face.oracleText}>
         <OracleText text={props.face.oracleText} />
+      </Show>
+      <Show when={props.showOracle && stat()}>
+        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 mt-1">{stat()}</p>
       </Show>
     </div>
   )
