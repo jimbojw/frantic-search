@@ -53,15 +53,48 @@ function parseSymbols(text: string): Segment[] {
   return result
 }
 
+type Block = { reminder: boolean; segments: Segment[] }
+
+const REMINDER_RE = /\([^)]*\)/g
+
+function parseOracleBlocks(text: string): Block[] {
+  const blocks: Block[] = []
+  let lastIndex = 0
+  REMINDER_RE.lastIndex = 0
+  let match
+  while ((match = REMINDER_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      blocks.push({ reminder: false, segments: parseSymbols(text.slice(lastIndex, match.index)) })
+    }
+    blocks.push({ reminder: true, segments: parseSymbols(match[0]) })
+    lastIndex = REMINDER_RE.lastIndex
+  }
+  if (lastIndex < text.length) {
+    blocks.push({ reminder: false, segments: parseSymbols(text.slice(lastIndex)) })
+  }
+  return blocks
+}
+
+function SegmentList(props: { segments: Segment[] }) {
+  return (
+    <For each={props.segments}>
+      {(seg) => seg.type === 'symbol'
+        ? <i class={`ms ms-${seg.value} ms-cost`} style="font-size: 0.85em" />
+        : <>{seg.value}</>
+      }
+    </For>
+  )
+}
+
 export function OracleText(props: { text: string; class?: string }) {
-  const segments = () => parseSymbols(props.text)
+  const blocks = () => parseOracleBlocks(props.text)
 
   return (
     <p class={props.class ?? 'mt-1 text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap'}>
-      <For each={segments()}>
-        {(seg) => seg.type === 'symbol'
-          ? <i class={`ms ms-${seg.value} ms-cost`} style="font-size: 0.85em" />
-          : <>{seg.value}</>
+      <For each={blocks()}>
+        {(block) => block.reminder
+          ? <span class="italic"><SegmentList segments={block.segments} /></span>
+          : <SegmentList segments={block.segments} />
         }
       </For>
     </p>
