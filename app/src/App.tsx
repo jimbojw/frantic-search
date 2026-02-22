@@ -113,13 +113,27 @@ function getSummaryLabel(node: BreakdownNode): string {
   return hasAnd ? 'ALL' : 'ANY'
 }
 
-function BreakdownRow(props: { label: string; count: number; indent?: number }) {
+function reconstructQuery(node: BreakdownNode): string {
+  if (!node.children) return node.label
+  if (node.type === 'OR')
+    return node.children.map(c =>
+      c.type === 'AND' ? `(${reconstructQuery(c)})` : reconstructQuery(c)
+    ).join(' OR ')
+  return node.children.map(c =>
+    c.type === 'OR' ? `(${reconstructQuery(c)})` : reconstructQuery(c)
+  ).join(' ')
+}
+
+function BreakdownRow(props: { label: string; count: number; indent?: number; onClick?: () => void }) {
   return (
     <div
       class="flex items-baseline justify-between gap-4 py-0.5"
       style={props.indent ? { "padding-left": `${props.indent * 1.25}rem` } : undefined}
     >
-      <span class={`font-mono text-xs truncate ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+      <span
+        class={`font-mono text-xs truncate ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
+        onClick={props.onClick}
+      >
         {props.label}
       </span>
       <span class={`font-mono text-xs tabular-nums shrink-0 ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
@@ -129,13 +143,13 @@ function BreakdownRow(props: { label: string; count: number; indent?: number }) 
   )
 }
 
-function BreakdownTreeNode(props: { node: BreakdownNode; depth: number }) {
+function BreakdownTreeNode(props: { node: BreakdownNode; depth: number; onNodeClick: (query: string) => void }) {
   return (
     <>
-      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={props.depth} />
+      <BreakdownRow label={props.node.label} count={props.node.matchCount} indent={props.depth} onClick={() => props.onNodeClick(reconstructQuery(props.node))} />
       <Show when={props.node.children}>
         <For each={props.node.children}>
-          {(child) => <BreakdownTreeNode node={child} depth={props.depth + 1} />}
+          {(child) => <BreakdownTreeNode node={child} depth={props.depth + 1} onNodeClick={props.onNodeClick} />}
         </For>
       </Show>
     </>
@@ -148,6 +162,7 @@ function InlineBreakdown(props: {
   faceCount: number
   expanded: boolean
   onToggle: () => void
+  onNodeClick: (query: string) => void
 }) {
   const displayCase = () => getBreakdownCase(props.breakdown)
   const label = () => getSummaryLabel(props.breakdown)
@@ -157,14 +172,14 @@ function InlineBreakdown(props: {
       <Show when={props.expanded}>
         <div class="px-3 pt-1.5 pb-0.5">
           <Show when={displayCase() !== 'nested'} fallback={
-            <BreakdownTreeNode node={props.breakdown} depth={0} />
+            <BreakdownTreeNode node={props.breakdown} depth={0} onNodeClick={props.onNodeClick} />
           }>
             <Show when={displayCase() === 'single'} fallback={
               <For each={props.breakdown.children!}>
-                {(child) => <BreakdownRow label={child.label} count={child.matchCount} />}
+                {(child) => <BreakdownRow label={child.label} count={child.matchCount} onClick={() => props.onNodeClick(reconstructQuery(child))} />}
               </For>
             }>
-              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} />
+              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} onClick={() => props.onNodeClick(reconstructQuery(props.breakdown))} />
             </Show>
           </Show>
         </div>
@@ -446,6 +461,7 @@ function App() {
                 faceCount={totalMatches()}
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
+                onNodeClick={setQuery}
               />
             )}
           </Show>
