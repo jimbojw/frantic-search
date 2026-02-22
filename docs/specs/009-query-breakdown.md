@@ -1,6 +1,6 @@
 # Spec 009: Query Breakdown
 
-**Status:** Implemented
+**Status:** Superseded by Spec 021
 
 ## Goal
 
