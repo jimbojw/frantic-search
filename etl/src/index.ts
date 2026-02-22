@@ -13,6 +13,7 @@ import {
 import { log } from "./log";
 import { processCards } from "./process";
 import { generateThumbHashes } from "./thumbhash";
+import { restoreManifest } from "./restore";
 
 const cli = cac("etl");
 
@@ -79,6 +80,25 @@ cli
     async (options: { timeout: number; delay: number; verbose: boolean }) => {
       try {
         await generateThumbHashes(options);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`Error: ${msg}\n`);
+        process.exit(1);
+      }
+    },
+  );
+
+cli
+  .command(
+    "restore",
+    "Restore ThumbHash manifest from previous deployment or local columns data",
+  )
+  .option("--site-url <url>", "URL of the deployed site to fetch columns.json from")
+  .option("--verbose", "Print detailed progress", { default: false })
+  .action(
+    async (options: { siteUrl?: string; verbose: boolean }) => {
+      try {
+        await restoreManifest(options);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         process.stderr.write(`Error: ${msg}\n`);

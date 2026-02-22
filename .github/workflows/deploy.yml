@@ -34,6 +34,13 @@ jobs:
       - run: npm ci
 
       # -- ETL --
+      - name: Restore data from previous deployment
+        run: >-
+          npm run etl -- restore
+          --site-url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          --verbose
+        continue-on-error: true
+
       - name: Restore Scryfall data cache
         id: scryfall-cache
         uses: actions/cache@v4

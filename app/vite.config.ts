@@ -47,6 +47,7 @@ function serveData(): Plugin {
       const outDir = path.resolve(__dirname, 'dist')
       if (fs.existsSync(dataFile)) {
         fs.copyFileSync(dataFile, path.join(outDir, columnsFilename))
+        fs.copyFileSync(dataFile, path.join(outDir, 'columns.json'))
       }
     },
   }

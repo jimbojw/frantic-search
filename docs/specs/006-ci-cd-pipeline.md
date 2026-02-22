@@ -8,12 +8,13 @@ Automate the full build-and-deploy pipeline so that pushes to `main` produce a l
 
 ## Background
 
-The project has four build stages that must run in sequence:
+The project has five build stages that must run in sequence:
 
-1. **ETL download** — fetch Oracle Cards from Scryfall (~160 MB).
-2. **ETL thumbhash** — progressively generate ThumbHash placeholders for card art (Spec 017).
-3. **ETL process** — transform raw data into `data/dist/columns.json` (~8 MB).
-4. **App build** — Vite compiles the SPA and includes `columns.json` in the output (Spec 005).
+1. **ETL restore** — recover the ThumbHash manifest from the previous deployment's `columns.json`.
+2. **ETL download** — fetch Oracle Cards from Scryfall (~160 MB).
+3. **ETL thumbhash** — progressively generate ThumbHash placeholders for card art (Spec 017).
+4. **ETL process** — transform raw data into `data/dist/columns.json` (~8 MB).
+5. **App build** — Vite compiles the SPA and includes `columns.json` in the output (Spec 005).
 
 The result is a static directory (`app/dist/`) ready to deploy. GitHub Pages is the hosting target (ADR-004).
 
@@ -57,6 +58,13 @@ jobs:
       - run: npm ci
 
       # -- ETL --
+      - name: Restore data from previous deployment
+        run: >-
+          npm run etl -- restore
+          --site-url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          --verbose
+        continue-on-error: true
+
       - name: Restore Scryfall data cache
         id: scryfall-cache
         uses: actions/cache@v4
@@ -100,20 +108,26 @@ jobs:
 
 ### Key design choices
 
-#### Data caching
+#### ThumbHash manifest restoration
 
-Both the Scryfall download (`data/raw/`) and the ThumbHash manifest (`data/thumbhash/`) are cached across workflow runs using `actions/cache@v4`.
+The ThumbHash progressive backfill (Spec 017) depends on each build starting from the previous build's manifest. Two complementary mechanisms provide this:
+
+1. **Previous deployment fetch.** The `restore` command downloads `columns.json` from the live GitHub Pages site, reconstructs a ThumbHash manifest from its `scryfall_ids` and `thumb_hashes` arrays, and merges it with any existing on-disk manifest. This is the primary recovery mechanism — it survives cache eviction and works from a cold start.
+
+2. **`actions/cache`.** The ThumbHash cache step restores `data/thumbhash/` from the most recent prior run. When both sources are available, the cached manifest takes precedence for any overlapping entries (it may contain hashes generated after the last deploy).
+
+The `restore` step runs first with `continue-on-error: true` so that a fetch failure (first-ever deploy, Pages outage) does not block the build. The Vite build outputs `columns.json` at a stable (non-hashed) URL alongside the content-hashed copy used by the app, so the restore step always has a predictable URL to fetch.
+
+#### Scryfall data caching
+
+The Scryfall download (`data/raw/`) is cached using `actions/cache@v4`.
 
 Each cache step uses a **run-unique key** (`*-${{ github.run_id }}`) with a **`restore-keys` prefix fallback**. This is necessary because `actions/cache` entries are immutable — once saved under a given key, they are never overwritten. The pattern works as follows:
 
 1. **Restore**: The exact key (containing the current run ID) misses. The `restore-keys` prefix matches the most recent prior cache entry.
 2. **Save (post-job)**: Since the exact key was a miss, the updated directory is saved under the new run-specific key.
 
-This ensures each build picks up where the previous one left off.
-
-For Scryfall data, the cache avoids redundant downloads. On cache hit, the `download` command's freshness check (Spec 001) compares the cached `meta.json` timestamp against the Scryfall API and skips the download if the data is current.
-
-For the ThumbHash manifest, the cache enables progressive backfill (Spec 017). Each build restores the previous manifest, generates additional ThumbHashes up to a time limit, and saves the extended manifest for the next run.
+On cache hit, the `download` command's freshness check (Spec 001) compares the cached `meta.json` timestamp against the Scryfall API and skips the download if the data is current.
 
 #### Concurrency
 
@@ -140,7 +154,10 @@ GitHub Pages does not support server-side routing. Since this is a single-page a
 1. Pushing to `main` triggers the workflow and deploys the site to GitHub Pages.
 2. The daily schedule and manual dispatch also trigger successful builds.
 3. The Scryfall download is cached across runs; repeated pushes do not re-download unless Scryfall data has been updated.
-4. The ThumbHash manifest is cached across runs; each build extends the previous manifest with additional hashes.
-5. `columns.json` is present in the deployed site and loadable by the WebWorker.
-6. The deployed site is accessible at `https://<username>.github.io/frantic-search/`.
-7. The workflow uses the GitHub Pages deployment API (`upload-pages-artifact` + `deploy-pages`), not the legacy `gh-pages` branch approach.
+4. The ThumbHash manifest is restored from the previous deployment's `columns.json` and extended with new hashes each build.
+5. The ThumbHash manifest is also cached via `actions/cache` as a complementary fast path.
+6. A stable-named `columns.json` (no content hash) is deployed alongside the hashed copy for use by the restore step.
+7. The restore step tolerates a missing or unreachable site (first deploy, outage) without failing the build.
+8. `columns.json` is present in the deployed site and loadable by the WebWorker.
+9. The deployed site is accessible at `https://<username>.github.io/frantic-search/`.
+10. The workflow uses the GitHub Pages deployment API (`upload-pages-artifact` + `deploy-pages`), not the legacy `gh-pages` branch approach.
