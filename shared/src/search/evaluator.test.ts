@@ -41,6 +41,18 @@ const TEST_DATA: ColumnarData = {
     "At the beginning of combat on your turn, return up to one target artifact or creature card from your graveyard to the battlefield.",
     "Target creature gets -5/-5 until end of turn.",
   ],
+  oracle_texts_tilde: [
+    "",
+    "~ deals 3 damage to any target.",
+    "",
+    "",
+    "~'s power is equal to the number of card types among cards in all graveyards and its toughness is that number plus 1.",
+    "",
+    "",
+    "{T}, Sacrifice another creature or artifact: ~ deals X damage to target opponent.",
+    "",
+    "",
+  ],
   colors:         [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black, Color.Black | Color.Red, Color.Black],
   color_identity: [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black | Color.Red, Color.Black | Color.Red, Color.Black],
   type_lines:     [
@@ -84,6 +96,7 @@ const TEST_DATA: ColumnarData = {
   card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8],
   canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9],
   scryfall_ids:   ["", "", "", "", "", "", "", "", "", ""],
+  thumb_hashes:   ["", "", "", "", "", "", "", "", "", ""],
   layouts:        ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "transform", "transform", "normal"],
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
@@ -743,5 +756,66 @@ describe("timing", () => {
     const cache = new NodeCache(index);
     const { result } = cache.evaluate(parse("c:wu"));
     expect(result.evalMs).toBe(result.productionMs);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tilde self-reference (Spec 020)
+// ---------------------------------------------------------------------------
+// oracle_texts_tilde values for test data:
+//   #0 Birds:     ""  (no self-ref)
+//   #1 Bolt:      "~ deals 3 damage to any target."
+//   #2 Counter:   ""
+//   #3 Sol Ring:  ""
+//   #4 Tarmogoyf: "~'s power is equal to …"
+//   #5 Azorius:   ""
+//   #6 Thalia:    ""
+//   #7 Ayara (F): "{T}, Sacrifice another creature or artifact: ~ deals X damage to target opponent."
+//   #8 Ayara (B): ""
+//   #9 Dismember: ""
+
+describe("tilde self-reference", () => {
+  test("o:~ matches cards with any self-reference", () => {
+    expect(matchCount("o:~")).toBe(3); // Bolt, Tarmogoyf, Ayara front
+  });
+
+  test('o:"~ deals" matches cards with that tilde pattern', () => {
+    expect(matchCount('o:"~ deals"')).toBe(2); // Bolt, Ayara front
+  });
+
+  test("o:~ does NOT match cards without self-reference", () => {
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("o:~"));
+    expect(matchingIndices).not.toContain(0); // Birds
+    expect(matchingIndices).not.toContain(2); // Counterspell
+    expect(matchingIndices).not.toContain(3); // Sol Ring
+    expect(matchingIndices).not.toContain(5); // Azorius Charm
+    expect(matchingIndices).not.toContain(6); // Thalia
+    expect(matchingIndices).not.toContain(8); // Ayara back
+    expect(matchingIndices).not.toContain(9); // Dismember
+  });
+
+  test("o:flying (no tilde) uses original column, unchanged", () => {
+    expect(matchCount("o:flying")).toBe(1);
+  });
+
+  test("o:damage (no tilde) is unchanged", () => {
+    expect(matchCount("o:damage")).toBe(2);
+  });
+
+  test("o:/~ deals \\d+/ regex matches against tilde column", () => {
+    // Row 1: "~ deals 3 damage" → matches \d+
+    // Row 7: "~ deals X damage" → X is not \d+
+    expect(matchCount("o:/~ deals \\d+/")).toBe(1);
+  });
+
+  test("o:/damage/ regex without tilde uses original column", () => {
+    expect(matchCount("o:/damage/")).toBe(2);
+  });
+
+  test("matchingIndices for o:~ contains expected rows", () => {
+    const cache = new NodeCache(index);
+    const { matchingIndices } = cache.evaluate(parse("o:~"));
+    expect(matchingIndices).toEqual([1, 4, 7]);
   });
 });

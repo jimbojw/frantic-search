@@ -78,9 +78,17 @@ function evalLeafField(
 
   switch (canonical) {
     case "name":
-    case "oracle":
     case "type": {
       const col = getStringColumn(canonical, index)!;
+      for (let i = 0; i < n; i++) {
+        buf[i] = col[i].includes(valLower) ? 1 : 0;
+      }
+      break;
+    }
+    case "oracle": {
+      const col = valLower.includes("~")
+        ? index.oracleTextsTildeLower
+        : index.oracleTextsLower;
       for (let i = 0; i < n; i++) {
         buf[i] = col[i].includes(valLower) ? 1 : 0;
       }
@@ -221,7 +229,13 @@ function evalLeafRegex(
 ): void {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
-  const col = canonical ? getStringColumn(canonical, index) : null;
+
+  let col: string[] | null;
+  if (canonical === "oracle" && node.pattern.includes("~")) {
+    col = index.oracleTextsTildeLower;
+  } else {
+    col = canonical ? getStringColumn(canonical, index) : null;
+  }
 
   if (!col) {
     buf.fill(0, 0, n);

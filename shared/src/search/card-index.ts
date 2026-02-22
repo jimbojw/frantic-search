@@ -8,6 +8,7 @@ export class CardIndex {
   readonly combinedNamesLower: string[];
   readonly combinedNamesNormalized: string[];
   readonly oracleTextsLower: string[];
+  readonly oracleTextsTildeLower: string[];
   readonly manaCostsLower: string[];
   readonly manaSymbols: Record<string, number>[];
   readonly manaValue: number[];
@@ -37,6 +38,9 @@ export class CardIndex {
       n.toLowerCase().replace(/[^a-z0-9]/g, ""),
     );
     this.oracleTextsLower = data.oracle_texts.map((t) => t.toLowerCase());
+    this.oracleTextsTildeLower = data.oracle_texts_tilde.map((t) =>
+      t.toLowerCase(),
+    );
     this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());
     this.manaSymbols = data.mana_costs.map((m) => parseManaSymbols(m));
     this.manaValue = this.manaSymbols.map(computeCmc);

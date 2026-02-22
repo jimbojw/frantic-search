@@ -9,6 +9,8 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     combined_names: [],
     mana_costs: [],
     oracle_texts: [],
+    oracle_texts_tilde: [],
+    thumb_hashes: [],
     colors: [],
     color_identity: [],
     type_lines: [],
