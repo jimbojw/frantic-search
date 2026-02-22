@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
-import type { CardResult, CardFace } from '@frantic-search/shared'
+import type { DisplayColumns } from '@frantic-search/shared'
 import { Format } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
@@ -119,30 +119,35 @@ function CardImage(props: { scryfallId: string; colorIdentity: number; layout: s
   )
 }
 
-function FaceDetail(props: { face: CardFace }) {
+function FaceDetail(props: { d: DisplayColumns; fi: number }) {
+  const pow = () => props.d.power_lookup[props.d.powers[props.fi]]
+  const tou = () => props.d.toughness_lookup[props.d.toughnesses[props.fi]]
+  const loy = () => props.d.loyalty_lookup[props.d.loyalties[props.fi]]
+  const def = () => props.d.defense_lookup[props.d.defenses[props.fi]]
+
   return (
     <div>
       <div class="flex items-start justify-between gap-2">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{props.face.name}</h3>
-        <ManaCost cost={props.face.manaCost} />
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{props.d.names[props.fi]}</h3>
+        <ManaCost cost={props.d.mana_costs[props.fi]} />
       </div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">{props.face.typeLine}</p>
-      <Show when={props.face.oracleText}>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{props.d.type_lines[props.fi]}</p>
+      <Show when={props.d.oracle_texts[props.fi]}>
         <div class="mt-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 relative">
-          <OracleText text={props.face.oracleText} class="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap" />
-          <Show when={props.face.power != null && props.face.toughness != null}>
+          <OracleText text={props.d.oracle_texts[props.fi]} class="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap" />
+          <Show when={pow() && tou()}>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 text-right mt-1">
-              {props.face.power}/{props.face.toughness}
+              {pow()}/{tou()}
             </p>
           </Show>
-          <Show when={props.face.loyalty != null}>
+          <Show when={loy()}>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 text-right mt-1">
-              Loyalty: {props.face.loyalty}
+              Loyalty: {loy()}
             </p>
           </Show>
-          <Show when={props.face.defense != null}>
+          <Show when={def()}>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 text-right mt-1">
-              Defense: {props.face.defense}
+              Defense: {def()}
             </p>
           </Show>
         </div>
@@ -169,8 +174,22 @@ function LegalityGrid(props: { legalities: { legal: number; banned: number; rest
   )
 }
 
-export default function CardDetail(props: { card: CardResult | undefined; scryfallId: string }) {
-  const fullName = () => props.card?.faces.map(f => f.name).join(' // ') ?? ''
+export default function CardDetail(props: {
+  canonicalIndex: number | undefined
+  scryfallId: string
+  display: DisplayColumns | null
+  facesOf: Map<number, number[]>
+}) {
+  const ci = () => props.canonicalIndex
+  const d = () => props.display
+  const faces = () => {
+    const idx = ci()
+    return idx != null ? (props.facesOf.get(idx) ?? []) : []
+  }
+  const fullName = () => {
+    const cols = d()
+    return cols ? faces().map(fi => cols.names[fi]).join(' // ') : ''
+  }
   const scryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
 
   return (
@@ -200,37 +219,41 @@ export default function CardDetail(props: { card: CardResult | undefined; scryfa
         </a>
       </div>
 
-      <Show when={props.card} fallback={
+      <Show when={ci() != null && d()} fallback={
         <p class="text-center text-sm text-gray-400 dark:text-gray-600 pt-8">
           Card not found in current results.
         </p>
       }>
-        {(card) => (
-          <>
-            <div class="mb-6 max-w-xs mx-auto">
-              <CardImage
-                scryfallId={card().scryfallId}
-                colorIdentity={card().colorIdentity}
-                layout={card().layout}
-              />
-            </div>
+        {(cols) => {
+          const idx = ci()!
+          const legalities = () => ({
+            legal: cols().legalities_legal[idx],
+            banned: cols().legalities_banned[idx],
+            restricted: cols().legalities_restricted[idx],
+          })
+          return (
+            <>
+              <div class="mb-6 max-w-xs mx-auto">
+                <CardImage
+                  scryfallId={cols().scryfall_ids[idx]}
+                  colorIdentity={cols().color_identity[idx]}
+                  layout={cols().layouts[idx]}
+                />
+              </div>
 
-            <div class="space-y-4 mb-8">
-              <For each={card().faces}>
-                {(face) => <FaceDetail face={face} />}
-              </For>
-            </div>
+              <div class="space-y-4 mb-8">
+                <For each={faces()}>
+                  {(fi) => <FaceDetail d={cols()} fi={fi} />}
+                </For>
+              </div>
 
-            <Show when={card().legalities}>
-              {(legalities) => (
-                <section>
-                  <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Format Legality</h2>
-                  <LegalityGrid legalities={legalities()} />
-                </section>
-              )}
-            </Show>
-          </>
-        )}
+              <section>
+                <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Format Legality</h2>
+                <LegalityGrid legalities={legalities()} />
+              </section>
+            </>
+          )
+        }}
       </Show>
     </div>
   )

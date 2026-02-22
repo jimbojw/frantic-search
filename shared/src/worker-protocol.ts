@@ -6,24 +6,27 @@ export type ToWorker = {
   query: string
 }
 
-export type CardFace = {
-  name: string
-  manaCost: string
-  typeLine: string
-  oracleText: string
-  power?: string
-  toughness?: string
-  loyalty?: string
-  defense?: string
-}
-
-export type CardResult = {
-  scryfallId: string
-  colorIdentity: number
-  thumbHash: string
-  layout: string
-  faces: CardFace[]
-  legalities?: { legal: number; banned: number; restricted: number }
+export type DisplayColumns = {
+  names: string[]
+  mana_costs: string[]
+  type_lines: string[]
+  oracle_texts: string[]
+  powers: number[]
+  toughnesses: number[]
+  loyalties: number[]
+  defenses: number[]
+  color_identity: number[]
+  scryfall_ids: string[]
+  thumb_hashes: string[]
+  layouts: string[]
+  legalities_legal: number[]
+  legalities_banned: number[]
+  legalities_restricted: number[]
+  power_lookup: string[]
+  toughness_lookup: string[]
+  loyalty_lookup: string[]
+  defense_lookup: string[]
+  canonical_face: number[]
 }
 
 export type BreakdownNode = {
@@ -34,5 +37,7 @@ export type BreakdownNode = {
 }
 
 export type FromWorker =
-  | { type: 'status'; status: 'loading' | 'ready' | 'error'; error?: string }
-  | { type: 'result'; queryId: number; cards: CardResult[]; totalMatches: number; breakdown: BreakdownNode }
+  | { type: 'status'; status: 'loading' }
+  | { type: 'status'; status: 'ready'; display: DisplayColumns }
+  | { type: 'status'; status: 'error'; error: string }
+  | { type: 'result'; queryId: number; indices: Uint32Array; totalMatches: number; breakdown: BreakdownNode }

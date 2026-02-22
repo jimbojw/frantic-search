@@ -1,6 +1,6 @@
 # Spec 007: Worker Protocol
 
-**Status:** Implemented
+**Status:** Superseded by Spec 024
 
 ## Goal
 
