@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData, ToWorker, FromWorker, CardResult, CardFace, BreakdownNode, QueryNodeResult } from '@frantic-search/shared'
-import { CardIndex, NodeCache, nodeKey, parse, seededSort, collectBareWords } from '@frantic-search/shared'
+import { CardIndex, NodeCache, parse, seededSort, collectBareWords } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
@@ -63,7 +63,7 @@ async function init(): Promise<void> {
     const bareWords = collectBareWords(ast)
       .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
       .filter(w => w.length > 0)
-    seededSort(deduped, nodeKey(ast), index.combinedNamesNormalized, bareWords)
+    seededSort(deduped, msg.query, index.combinedNamesNormalized, bareWords)
     const cards: CardResult[] = deduped.map(canonIdx => {
       const faces = index.facesOf(canonIdx).map((fi): CardFace => {
         const face: CardFace = {

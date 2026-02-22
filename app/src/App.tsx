@@ -249,7 +249,7 @@ function App() {
     const q = query().trim()
     if (workerStatus() === 'ready' && q) {
       latestQueryId++
-      worker.postMessage({ type: 'search', queryId: latestQueryId, query: q })
+      worker.postMessage({ type: 'search', queryId: latestQueryId, query: query() })
     } else if (!q) {
       setResults([])
       setTotalMatches(0)
@@ -262,7 +262,7 @@ function App() {
     if (view() !== 'search') return
     const params = new URLSearchParams(location.search)
     if (q) {
-      params.set('q', q)
+      params.set('q', query())
     } else {
       params.delete('q')
     }

@@ -8,7 +8,7 @@ Boost name-prefix matches to the top of search results while preserving the seed
 
 ## Background
 
-Spec 011 introduced deterministic random ordering via a seeded Fisher-Yates shuffle. The seed is derived from the query's AST, so the same query always produces the same card order, but the order is unpredictable — giving the app its "frantic" character.
+Spec 011 introduced deterministic random ordering via a seeded Fisher-Yates shuffle. The seed is derived from the literal query string (including whitespace), so the same query always produces the same card order, but the order is unpredictable — giving the app its "frantic" character. Using the raw query (rather than a normalized AST key) allows users to tap space at the end to shuffle results without changing the filter.
 
 This works well for filter-oriented queries (`t:creature c:red`) where no single result is more "expected" than another. But for the common use case of finding a card by name — the user types `light` and expects Lightning Bolt near the top — pure random ordering buries prefix matches among the ~323 cards containing "light" anywhere in their name.
 
@@ -32,7 +32,7 @@ The keyed hash preserves all stability properties of the Fisher-Yates shuffle (s
 
 ### Keyed hash function
 
-The hash mixes the query seed (a 32-bit FNV-1a hash of `nodeKey(ast)`) with the card's face index using an integer finalizer:
+The hash mixes the query seed (a 32-bit FNV-1a hash of the literal query string) with the card's face index using an integer finalizer:
 
 ```typescript
 function seededRank(seedHash: number, index: number): number {
@@ -146,11 +146,11 @@ The sort replaces `seededShuffle` in the worker pipeline:
 AST → evaluate → matchingIndices → deduplicate → seededSort(deduped, seed, names, bareWords) → map to CardResult[]
 ```
 
-The worker extracts bare words from the AST before sorting:
+The worker extracts bare words from the AST before sorting and passes the literal query string as the seed (so trailing whitespace changes the order — enabling tap-to-shuffle):
 
 ```typescript
 const bareWords = collectBareWords(ast).map(w => w.toLowerCase());
-seededSort(deduped, nodeKey(ast), index.namesLower, bareWords);
+seededSort(deduped, msg.query, index.namesLower, bareWords);
 ```
 
 ### Interaction with Spec 010 (Sort Directives)
@@ -193,7 +193,7 @@ The previous Fisher-Yates shuffle was O(n) ≈ 30K ops. The new sort is O(n log 
 | Same query typed twice | Identical result order |
 | Backspace (restoring previous query) | Previous result order restored |
 | Different query | Different result order |
-| Same filters, different whitespace | Same order (AST is whitespace-invariant) |
+| Same filters, different whitespace | Different order (seed is literal query; tap space to shuffle) |
 | Same filters, different parenthesization that simplifies to same AST | Same order |
 | Query with bare word vs. same query without | Prefix matches cluster at top; within-tier order differs (different seed) |
 
