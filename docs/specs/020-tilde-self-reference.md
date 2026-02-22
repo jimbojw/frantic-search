@@ -1,6 +1,6 @@
 # Spec 020: Tilde Self-Reference in Oracle Text
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 003 (ETL Process)
 
