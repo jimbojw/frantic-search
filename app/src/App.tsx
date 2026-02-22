@@ -70,7 +70,13 @@ function parseView(params: URLSearchParams): View {
   return 'search'
 }
 
+function saveScrollPosition() {
+  history.replaceState({ ...history.state, scrollY: window.scrollY }, '')
+}
+
 function App() {
+  history.scrollRestoration = 'manual'
+
   const initialParams = new URLSearchParams(location.search)
   const [query, setQuery] = createSignal(initialParams.get('q') ?? '')
   const [view, setView] = createSignal<View>(parseView(initialParams))
@@ -139,7 +145,7 @@ function App() {
       params.delete('q')
     }
     const url = params.toString() ? `?${params}` : location.pathname
-    history.replaceState(null, '', url)
+    history.replaceState(history.state, '', url)
   })
 
   window.addEventListener('popstate', () => {
@@ -147,47 +153,60 @@ function App() {
     setView(parseView(params))
     setQuery(params.get('q') ?? '')
     setCardId(params.get('card') ?? '')
+
+    const scrollY = history.state?.scrollY ?? 0
+    requestAnimationFrame(() => window.scrollTo(0, scrollY))
   })
 
   function navigateToHelp() {
+    saveScrollPosition()
     const params = new URLSearchParams(location.search)
     params.set('help', '')
     history.pushState(null, '', `?${params}`)
     setView('help')
+    window.scrollTo(0, 0)
   }
 
   function navigateToQuery(q: string) {
+    saveScrollPosition()
     const params = new URLSearchParams()
     if (q) params.set('q', q)
     const url = params.toString() ? `?${params}` : location.pathname
     history.pushState(null, '', url)
     setQuery(q)
     setView('search')
+    window.scrollTo(0, 0)
   }
 
   function navigateToCard(scryfallId: string) {
+    saveScrollPosition()
     const params = new URLSearchParams(location.search)
     params.delete('help')
     params.set('card', scryfallId)
     history.pushState(null, '', `?${params}`)
     setCardId(scryfallId)
     setView('card')
+    window.scrollTo(0, 0)
   }
 
   function navigateToReport() {
+    saveScrollPosition()
     const params = new URLSearchParams()
     const q = query().trim()
     if (q) params.set('q', q)
     params.set('report', '')
     history.pushState(null, '', `?${params}`)
     setView('report')
+    window.scrollTo(0, 0)
   }
 
   function navigateHome() {
+    saveScrollPosition()
     history.pushState(null, '', location.pathname)
     setQuery('')
     setView('search')
     setCardId('')
+    window.scrollTo(0, 0)
   }
 
   return (
