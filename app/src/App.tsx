@@ -61,24 +61,32 @@ function CardFaceRow(props: {
     <div>
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
-          <div class="inline-flex items-center gap-1.5 min-w-0">
+          <div class="flex items-center gap-1.5 min-w-0">
             <Show when={props.fullName && props.onCardClick} fallback={
-              <span class="font-medium text-gray-700 dark:text-gray-200 truncate">{props.d.names[props.fi]}</span>
+              <span class={`font-medium text-gray-700 dark:text-gray-200 min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}>
+                {props.d.names[props.fi]}
+              </span>
             }>
               <button
                 type="button"
                 onClick={() => props.onCardClick?.()}
-                class="font-medium hover:underline text-left truncate min-w-0"
+                class={`font-medium hover:underline text-left min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}
               >
                 {props.fullName}
               </button>
             </Show>
             <CopyButton text={copyText()} />
           </div>
-          <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">
-            {props.d.type_lines[props.fi]}
-            <Show when={!props.showOracle && stat()}>{' · '}{stat()}</Show>
-          </span>
+          <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <span class={`min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}>
+              {props.d.type_lines[props.fi]}
+            </span>
+            <Show when={!props.showOracle && stat()}>
+              <span class="shrink-0 whitespace-nowrap">
+                {' · '}{stat()}
+              </span>
+            </Show>
+          </div>
         </div>
         <ManaCost cost={props.d.mana_costs[props.fi]} />
       </div>
@@ -465,11 +473,11 @@ function App() {
                             <Show when={faces().length > 1} fallback={
                               <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
                             }>
-                              <div class="inline-flex items-center gap-1.5 min-w-0">
+                              <div class="flex items-center gap-1.5 min-w-0">
                                 <button
                                   type="button"
                                   onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                  class="font-medium hover:underline text-left truncate min-w-0"
+                                  class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
                                 >
                                   {name()}
                                 </button>
