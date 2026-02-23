@@ -117,6 +117,39 @@ function saveScrollPosition() {
   history.replaceState({ ...history.state, scrollY: window.scrollY }, '')
 }
 
+const HISTORY_DEBOUNCE_MS = 2000
+let needsPush = false
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearDebounceTimer() {
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
+}
+
+function pushIfNeeded() {
+  if (!needsPush) return
+  needsPush = false
+  saveScrollPosition()
+  history.pushState(history.state, '', location.href)
+}
+
+function scheduleDebouncedCommit() {
+  clearDebounceTimer()
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null
+    needsPush = true
+  }, HISTORY_DEBOUNCE_MS)
+}
+
+function flushPendingCommit() {
+  clearDebounceTimer()
+  needsPush = true
+}
+
+function cancelPendingCommit() {
+  clearDebounceTimer()
+  needsPush = false
+}
+
 function App() {
   history.scrollRestoration = 'manual'
 
@@ -233,10 +266,14 @@ function App() {
       params.delete('q')
     }
     const url = params.toString() ? `?${params}` : location.pathname
+    pushIfNeeded()
     history.replaceState(history.state, '', url)
+    scheduleDebouncedCommit()
   })
 
   window.addEventListener('popstate', () => {
+    cancelPendingCommit()
+
     const params = new URLSearchParams(location.search)
     setView(parseView(params))
     setQuery(params.get('q') ?? '')
@@ -247,6 +284,7 @@ function App() {
   })
 
   function navigateToHelp() {
+    cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
     params.set('help', '')
@@ -256,6 +294,7 @@ function App() {
   }
 
   function navigateToQuery(q: string) {
+    cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams()
     if (q) params.set('q', q)
@@ -267,6 +306,7 @@ function App() {
   }
 
   function navigateToCard(scryfallId: string) {
+    cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
     params.delete('help')
@@ -278,6 +318,7 @@ function App() {
   }
 
   function navigateToReport() {
+    cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams()
     const q = query().trim()
@@ -289,6 +330,7 @@ function App() {
   }
 
   function navigateHome() {
+    cancelPendingCommit()
     saveScrollPosition()
     history.pushState(null, '', location.pathname)
     setQuery('')
@@ -298,6 +340,7 @@ function App() {
   }
 
   function appendQuery(term: string) {
+    flushPendingCommit()
     setQuery(q => {
       const trimmed = q.trim()
       if (!trimmed) return term
@@ -390,8 +433,8 @@ function App() {
                 faceCount={totalMatches()}
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
-                onNodeClick={setQuery}
-                onNodeRemove={setQuery}
+                onNodeClick={(q) => { flushPendingCommit(); setQuery(q) }}
+                onNodeRemove={(q) => { flushPendingCommit(); setQuery(q) }}
               />
             )}
           </Show>
