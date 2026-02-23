@@ -64,6 +64,16 @@ describe("gilbertCurve", () => {
     expect(curveY[0]).toBe(0);
   });
 
+  test("trailing positions land in the bottom-left for square grids", () => {
+    const side = 10;
+    const { curveX, curveY } = gilbertCurve(side, side);
+    const n = side * side;
+    const lastX = curveX[n - 1];
+    const lastY = curveY[n - 1];
+    expect(lastX).toBeLessThan(side / 2);
+    expect(lastY).toBeGreaterThanOrEqual(side / 2);
+  });
+
   test("handles the real-world density map size (~183x183)", () => {
     const side = Math.ceil(Math.sqrt(33340));
     const { curveX, curveY, n } = verify(side, side);

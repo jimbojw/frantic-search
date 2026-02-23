@@ -79,7 +79,7 @@ export function gilbertCurve(
     }
   }
 
-  if (width >= height) {
+  if (width > height) {
     generate(0, 0, width, 0, 0, height)
   } else {
     generate(0, 0, 0, height, width, 0)
