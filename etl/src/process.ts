@@ -5,12 +5,10 @@ import { log } from "./log";
 import { loadManifest } from "./thumbhash";
 import {
   COLOR_FROM_LETTER,
-  TYPE_FROM_WORD,
   FORMAT_NAMES,
   type ColumnarData,
 } from "@frantic-search/shared";
 import { normalizeOracleText } from "./tilde";
-import { computeLensOrderings, type CardLensEntry } from "./lenses";
 
 // ---------------------------------------------------------------------------
 // Scryfall card shape (fields we care about)
@@ -43,8 +41,6 @@ interface Card {
   defense?: string;
   legalities?: Record<string, string>;
   card_faces?: CardFace[];
-  released_at?: string;
-  cmc?: number;
 }
 
 const FILTERED_LAYOUTS = new Set([
@@ -76,16 +72,6 @@ function encodeColors(colors: string[] | undefined): number {
   let mask = 0;
   for (const c of colors) {
     mask |= COLOR_FROM_LETTER[c] ?? 0;
-  }
-  return mask;
-}
-
-function encodeTypes(typeLine: string | undefined): number {
-  if (!typeLine) return 0;
-  const left = typeLine.split(" \u2014 ")[0];
-  let mask = 0;
-  for (const word of left.toLowerCase().split(/\s+/)) {
-    mask |= TYPE_FROM_WORD[word] ?? 0;
   }
   return mask;
 }
@@ -215,17 +201,9 @@ export function processCards(verbose: boolean): void {
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
-    lens_name: [],
-    lens_chronology: [],
-    lens_mana_curve: [],
-    lens_complexity: [],
-    lens_color_identity: [],
-    lens_type_map: [],
-    lens_color_type: [],
   };
 
   let filtered = 0;
-  const lensEntries: CardLensEntry[] = [];
 
   for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
     const card = cards[cardIdx];
@@ -239,41 +217,15 @@ export function processCards(verbose: boolean): void {
     const leg = encodeLegalities(card.legalities);
     const faceRowStart = data.names.length;
 
-    let complexity = 0;
-    let manaCostLength = 0;
-    let typeIdentity = 0;
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
-      manaCostLength = (card.card_faces[0].mana_cost ?? "").length;
       for (const face of card.card_faces) {
         pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, manifest,
           powerDict, toughnessDict, loyaltyDict, defenseDict);
-        complexity +=
-          (face.mana_cost ?? "").length +
-          (face.type_line ?? "").length +
-          (face.oracle_text ?? "").length;
-        typeIdentity |= encodeTypes(face.type_line);
       }
     } else {
-      manaCostLength = (card.mana_cost ?? "").length;
       pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, manifest,
         powerDict, toughnessDict, loyaltyDict, defenseDict);
-      complexity =
-        (card.mana_cost ?? "").length +
-        (card.type_line ?? "").length +
-        (card.oracle_text ?? "").length;
-      typeIdentity = encodeTypes(card.type_line);
     }
-
-    lensEntries.push({
-      canonicalFace: faceRowStart,
-      name: card.name ?? "",
-      releasedAt: card.released_at ?? "",
-      cmc: card.cmc ?? 0,
-      manaCostLength,
-      complexity,
-      colorIdentity: encodeColors(card.color_identity),
-      typeIdentity,
-    });
   }
 
   data.power_lookup = powerDict.lookup();
@@ -281,17 +233,7 @@ export function processCards(verbose: boolean): void {
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
 
-  const lenses = computeLensOrderings(lensEntries);
-  data.lens_name = lenses.lens_name;
-  data.lens_chronology = lenses.lens_chronology;
-  data.lens_mana_curve = lenses.lens_mana_curve;
-  data.lens_complexity = lenses.lens_complexity;
-  data.lens_color_identity = lenses.lens_color_identity;
-  data.lens_type_map = lenses.lens_type_map;
-  data.lens_color_type = lenses.lens_color_type;
-
   log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
-  log(`Lens orderings: ${lensEntries.length} unique cards`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
   ensureDistDir();

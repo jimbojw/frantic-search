@@ -1,6 +1,6 @@
 # Spec 028: Density Map Lens Orderings
 
-**Status:** Implemented 
+**Status:** Superseded by Spec 030
 
 **Depends on:** Spec 003 (ETL Process), Spec 024 (Index-Based Result Protocol)
 

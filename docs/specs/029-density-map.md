@@ -1,6 +1,6 @@
 # Spec 029: Density Map
 
-**Status:** Implemented 
+**Status:** Superseded by Spec 030
 
 **Depends on:** Spec 028 (Density Map Lens Orderings)
 

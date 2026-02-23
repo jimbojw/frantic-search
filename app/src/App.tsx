@@ -11,7 +11,6 @@ import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import { ManaCost, OracleText } from './card-symbols'
-import DensityMap from './DensityMap'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -151,16 +150,6 @@ function App() {
     setResultsOptionsExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-results-options-expanded', String(next))
-      return next
-    })
-  }
-  const [mapExpanded, setMapExpanded] = createSignal(
-    localStorage.getItem('frantic-map-expanded') !== 'false'
-  )
-  function toggleMap() {
-    setMapExpanded(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-map-expanded', String(next))
       return next
     })
   }
@@ -425,7 +414,6 @@ function App() {
 
         <Show when={workerStatus() === 'ready' && display()}>
           {(d) => (<>
-            <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} expanded={mapExpanded()} onToggle={toggleMap} />
             <Show when={query().trim()} fallback={
               <div class="pt-4 text-center">
                 <p class="text-sm text-gray-400 dark:text-gray-600">

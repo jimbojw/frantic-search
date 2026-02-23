@@ -58,13 +58,6 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     loyalty_lookup: data.loyalty_lookup,
     defense_lookup: data.defense_lookup,
     canonical_face: data.canonical_face,
-    lens_name: data.lens_name,
-    lens_chronology: data.lens_chronology,
-    lens_mana_curve: data.lens_mana_curve,
-    lens_complexity: data.lens_complexity,
-    lens_color_identity: data.lens_color_identity,
-    lens_type_map: data.lens_type_map,
-    lens_color_type: data.lens_color_type,
   }
 }
 

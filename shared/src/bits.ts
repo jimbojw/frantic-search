@@ -81,32 +81,6 @@ export const COLOR_NAMES: Record<string, number> = {
   m: COLOR_MULTICOLOR,
 };
 
-// --- Card Types (8 bits) ---
-// Bit order chosen for Gray code aesthetics: permanents first, then
-// non-permanents, with Legendary as the highest bit so the Gray sequence
-// mirrors non-legendary / legendary halves.
-export const CardType = {
-  Creature: 1 << 0,
-  Enchantment: 1 << 1,
-  Artifact: 1 << 2,
-  Land: 1 << 3,
-  Planeswalker: 1 << 4,
-  Instant: 1 << 5,
-  Sorcery: 1 << 6,
-  Legendary: 1 << 7,
-} as const;
-
-export const TYPE_FROM_WORD: Record<string, number> = {
-  creature: CardType.Creature,
-  enchantment: CardType.Enchantment,
-  artifact: CardType.Artifact,
-  land: CardType.Land,
-  planeswalker: CardType.Planeswalker,
-  instant: CardType.Instant,
-  sorcery: CardType.Sorcery,
-  legendary: CardType.Legendary,
-};
-
 // --- Format Legality (21 bits) ---
 export const Format = {
   Standard: 1 << 0,
