@@ -77,8 +77,10 @@ function popcount(v: number): number {
 function computeHistograms(deduped: number[], index: CardIndex): Histograms {
   const colorIdentity = [0, 0, 0, 0, 0, 0, 0]  // C, W, U, B, R, G, M
   const manaValue = [0, 0, 0, 0, 0, 0, 0, 0]    // 0..6, 7+
+  const cardType = [0, 0, 0, 0, 0, 0, 0, 0]     // Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd
   for (let i = 0; i < deduped.length; i++) {
-    const ci = index.colorIdentity[deduped[i]]
+    const idx = deduped[i]
+    const ci = index.colorIdentity[idx]
     if (ci === 0) {
       colorIdentity[0]++
     } else {
@@ -89,10 +91,20 @@ function computeHistograms(deduped: number[], index: CardIndex): Histograms {
       if (ci & Color.Green) colorIdentity[5]++
       if (popcount(ci) >= 2) colorIdentity[6]++
     }
-    const mv = Math.floor(index.manaValue[deduped[i]])
+    const mv = Math.floor(index.manaValue[idx])
     manaValue[Math.min(mv, 7)]++
+
+    const tl = index.typeLinesLower[idx]
+    if (tl.includes('legendary'))   cardType[0]++
+    if (tl.includes('creature'))    cardType[1]++
+    if (tl.includes('instant'))     cardType[2]++
+    if (tl.includes('sorcery'))     cardType[3]++
+    if (tl.includes('artifact'))    cardType[4]++
+    if (tl.includes('enchantment')) cardType[5]++
+    if (tl.includes('planeswalker'))cardType[6]++
+    if (tl.includes('land'))        cardType[7]++
   }
-  return { colorIdentity, manaValue }
+  return { colorIdentity, manaValue, cardType }
 }
 
 function post(msg: FromWorker, transfer?: Transferable[]): void {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, Show } from 'solid-js'
-import type { Histograms, BreakdownNode } from '@frantic-search/shared'
+import { For } from 'solid-js'
+import type { Histograms } from '@frantic-search/shared'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 
 type BarDef = {
@@ -23,7 +23,11 @@ const COLOR_BARS: BarDef[] = [
 const MV_LABELS = ['0', '1', '2', '3', '4', '5', '6', '7+']
 const MV_TERMS = ['mv=0', 'mv=1', 'mv=2', 'mv=3', 'mv=4', 'mv=5', 'mv=6', 'mv>=7']
 
-const MV_BAR_COLOR = '#60a5fa' // blue-400
+const TYPE_LABELS = ['Lgn', 'Cre', 'Ins', 'Sor', 'Art', 'Enc', 'Plw', 'Lnd']
+const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:artifact', 't:enchantment', 't:planeswalker', 't:land']
+
+const MV_BAR_COLOR = '#60a5fa'    // blue-400
+const TYPE_BAR_COLOR = '#34d399'  // emerald-400
 
 function BarRow(props: {
   label: () => any
@@ -73,59 +77,59 @@ function BarRow(props: {
 
 export default function ResultsBreakdown(props: {
   histograms: Histograms
-  breakdown: BreakdownNode
-  expanded: boolean
-  onToggle: () => void
   onAppendQuery: (term: string) => void
 }) {
   const colorMax = () => Math.max(...props.histograms.colorIdentity)
   const mvMax = () => Math.max(...props.histograms.manaValue)
+  const typeMax = () => Math.max(...props.histograms.cardType)
 
   return (
-    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm mb-3">
-      <div
-        onClick={() => props.onToggle()}
-        class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-      >
-        <svg class={`size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform ${props.expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
-          <path d="M8 5l8 7-8 7z" />
-        </svg>
-        <span class="font-mono text-xs text-gray-500 dark:text-gray-400">STATS</span>
+    <div class="grid grid-cols-3 gap-4 px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+      <div>
+        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Color Identity</p>
+        <For each={COLOR_BARS}>
+          {(bar, i) => (
+            <BarRow
+              label={bar.label}
+              count={props.histograms.colorIdentity[i()]}
+              maxCount={colorMax()}
+              background={bar.background}
+              onDrill={() => props.onAppendQuery(bar.drillTerm)}
+              onExclude={() => props.onAppendQuery(bar.excludeTerm)}
+            />
+          )}
+        </For>
       </div>
-      <Show when={props.expanded}>
-        <div class="grid grid-cols-2 gap-4 px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
-          <div>
-            <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Color Identity</p>
-            <For each={COLOR_BARS}>
-              {(bar, i) => (
-                <BarRow
-                  label={bar.label}
-                  count={props.histograms.colorIdentity[i()]}
-                  maxCount={colorMax()}
-                  background={bar.background}
-                  onDrill={() => props.onAppendQuery(bar.drillTerm)}
-                  onExclude={() => props.onAppendQuery(bar.excludeTerm)}
-                />
-              )}
-            </For>
-          </div>
-          <div>
-            <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Mana Value</p>
-            <For each={MV_LABELS}>
-              {(label, i) => (
-                <BarRow
-                  label={() => <span class="font-mono text-xs">{label}</span>}
-                  count={props.histograms.manaValue[i()]}
-                  maxCount={mvMax()}
-                  background={MV_BAR_COLOR}
-                  onDrill={() => props.onAppendQuery(MV_TERMS[i()])}
-                  onExclude={() => props.onAppendQuery('-' + MV_TERMS[i()])}
-                />
-              )}
-            </For>
-          </div>
-        </div>
-      </Show>
+      <div>
+        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Mana Value</p>
+        <For each={MV_LABELS}>
+          {(label, i) => (
+            <BarRow
+              label={() => <span class="font-mono text-xs">{label}</span>}
+              count={props.histograms.manaValue[i()]}
+              maxCount={mvMax()}
+              background={MV_BAR_COLOR}
+              onDrill={() => props.onAppendQuery(MV_TERMS[i()])}
+              onExclude={() => props.onAppendQuery('-' + MV_TERMS[i()])}
+            />
+          )}
+        </For>
+      </div>
+      <div>
+        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Card Type</p>
+        <For each={TYPE_LABELS}>
+          {(label, i) => (
+            <BarRow
+              label={() => <span class="font-mono text-xs">{label}</span>}
+              count={props.histograms.cardType[i()]}
+              maxCount={typeMax()}
+              background={TYPE_BAR_COLOR}
+              onDrill={() => props.onAppendQuery(TYPE_TERMS[i()])}
+              onExclude={() => props.onAppendQuery('-' + TYPE_TERMS[i()])}
+            />
+          )}
+        </For>
+      </div>
     </div>
   )
 }

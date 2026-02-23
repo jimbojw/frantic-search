@@ -144,18 +144,8 @@ function App() {
       return next
     })
   }
-  const [resultsExpanded, setResultsExpanded] = createSignal(
-    localStorage.getItem('frantic-results-expanded') !== 'false'
-  )
-  function toggleResults() {
-    setResultsExpanded(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-results-expanded', String(next))
-      return next
-    })
-  }
   const [resultsOptionsExpanded, setResultsOptionsExpanded] = createSignal(
-    localStorage.getItem('frantic-results-options-expanded') === 'true'
+    localStorage.getItem('frantic-results-options-expanded') !== 'false'
   )
   function toggleResultsOptions() {
     setResultsOptionsExpanded(prev => {
@@ -435,17 +425,6 @@ function App() {
 
         <Show when={workerStatus() === 'ready' && display()}>
           {(d) => (<>
-            <Show when={query().trim() && totalCards() > 0 ? histograms() : undefined}>
-              {(h) => (
-                <ResultsBreakdown
-                  histograms={h()}
-                  breakdown={breakdown()!}
-                  expanded={resultsExpanded()}
-                  onToggle={toggleResults}
-                  onAppendQuery={appendQuery}
-                />
-              )}
-            </Show>
             <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} expanded={mapExpanded()} onToggle={toggleMap} />
             <Show when={query().trim()} fallback={
               <div class="pt-4 text-center">
@@ -510,6 +489,14 @@ function App() {
                     </svg>
                   </div>
                   <Show when={resultsOptionsExpanded()}>
+                    <Show when={histograms()}>
+                      {(h) => (
+                        <ResultsBreakdown
+                          histograms={h()}
+                          onAppendQuery={appendQuery}
+                        />
+                      )}
+                    </Show>
                     <div class="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700">
                       <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-300">
                         Oracle text

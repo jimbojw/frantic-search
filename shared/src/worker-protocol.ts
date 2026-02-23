@@ -46,6 +46,7 @@ export type BreakdownNode = {
 export type Histograms = {
   colorIdentity: number[]  // [C, W, U, B, R, G, M] — length 7
   manaValue: number[]      // [0, 1, 2, ..., 6, 7+] — length 8
+  cardType: number[]       // [Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd] — length 8
 }
 
 export type FromWorker =
