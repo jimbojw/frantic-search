@@ -152,6 +152,16 @@ function App() {
       return next
     })
   }
+  const [resultsOptionsExpanded, setResultsOptionsExpanded] = createSignal(
+    localStorage.getItem('frantic-results-options-expanded') === 'true'
+  )
+  function toggleResultsOptions() {
+    setResultsOptionsExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-results-options-expanded', String(next))
+      return next
+    })
+  }
   const [inputFocused, setInputFocused] = createSignal(false)
 
   const facesOf = createMemo(() => {
@@ -455,31 +465,6 @@ function App() {
                   </p>
                 </div>
               }>
-                <div class="flex items-center justify-between mb-3">
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    <a
-                      href={scryfallUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                    >
-                      Scryfall ↗
-                    </a>
-                  </p>
-                  <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-500 dark:text-gray-400">
-                    Oracle text
-                    <span class="relative inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={showOracleText()}
-                        onChange={(e) => setShowOracleText(e.currentTarget.checked)}
-                        class="peer sr-only"
-                      />
-                      <span class="block h-5 w-9 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-blue-500 transition-colors" />
-                      <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
-                    </span>
-                  </label>
-                </div>
                 <Show when={histograms()}>
                   {(h) => (
                     <ResultsBreakdown
@@ -491,49 +476,81 @@ function App() {
                     />
                   )}
                 </Show>
-                <ul class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
-                  <For each={visibleIndices()}>
-                    {(ci) => {
-                      const faces = () => facesOf().get(ci) ?? []
-                      const name = () => fullCardName(d(), faces())
-                      return (
-                        <li class="group px-4 py-2 text-sm flex items-start gap-3">
-                          <ArtCrop
-                            scryfallId={d().scryfall_ids[ci]}
-                            colorIdentity={d().color_identity[ci]}
-                            thumbHash={d().thumb_hashes[ci]}
+                <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+                  <div
+                    onClick={() => toggleResultsOptions()}
+                    class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <svg class={`size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform ${resultsOptionsExpanded() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+                      <path d="M8 5l8 7-8 7z" />
+                    </svg>
+                    <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex-1">RESULTS</span>
+                    <svg class="size-3.5 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                  </div>
+                  <Show when={resultsOptionsExpanded()}>
+                    <div class="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+                      <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-300">
+                        Oracle text
+                        <span class="relative inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={showOracleText()}
+                            onChange={(e) => setShowOracleText(e.currentTarget.checked)}
+                            class="peer sr-only"
                           />
-                          <div class="min-w-0 flex-1">
-                            <Show when={faces().length > 1} fallback={
-                              <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
-                            }>
-                              <div class="flex items-center gap-1.5 min-w-0">
-                                <button
-                                  type="button"
-                                  onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                  class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
-                                >
-                                  {name()}
-                                </button>
-                                <CopyButton text={name()} />
-                              </div>
-                              <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
-                                <For each={faces()}>
-                                  {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={showOracleText()} />}
-                                </For>
-                              </div>
-                            </Show>
-                          </div>
-                        </li>
-                      )
-                    }}
-                  </For>
-                  <Show when={totalCards() > 200}>
-                    <li class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic">
-                      …and {(totalCards() - 200).toLocaleString()} more
-                    </li>
+                          <span class="block h-5 w-9 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-blue-500 transition-colors" />
+                          <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
+                        </span>
+                      </label>
+                    </div>
                   </Show>
-                </ul>
+                  <ul class="divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-800">
+                    <For each={visibleIndices()}>
+                      {(ci) => {
+                        const faces = () => facesOf().get(ci) ?? []
+                        const name = () => fullCardName(d(), faces())
+                        return (
+                          <li class="group px-4 py-2 text-sm flex items-start gap-3">
+                            <ArtCrop
+                              scryfallId={d().scryfall_ids[ci]}
+                              colorIdentity={d().color_identity[ci]}
+                              thumbHash={d().thumb_hashes[ci]}
+                            />
+                            <div class="min-w-0 flex-1">
+                              <Show when={faces().length > 1} fallback={
+                                <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
+                              }>
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                    class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
+                                  >
+                                    {name()}
+                                  </button>
+                                  <CopyButton text={name()} />
+                                </div>
+                                <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                                  <For each={faces()}>
+                                    {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={showOracleText()} />}
+                                  </For>
+                                </div>
+                              </Show>
+                            </div>
+                          </li>
+                        )
+                      }}
+                    </For>
+                    <Show when={totalCards() > 200}>
+                      <li class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic">
+                        …and {(totalCards() - 200).toLocaleString()} more
+                      </li>
+                    </Show>
+                  </ul>
+                </div>
               </Show>
             </Show>
           )}

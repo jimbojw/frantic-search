@@ -1,6 +1,6 @@
 # Spec 026: Results Box with Options Drawer
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 021 (Inline Query Breakdown), Spec 025 (Results Breakdown)
 
