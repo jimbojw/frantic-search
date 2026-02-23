@@ -10,7 +10,7 @@ Pre-compute four **lens orderings** in the ETL pipeline so the Density Map visua
 
 ## Background
 
-The planned Density Map (Spec 029) maps every unique card in the dataset onto a 2D canvas via a space-filling curve. The user selects a **Lens** that determines the 1D sort order before the curve mapping. Four baseline lenses are planned:
+The planned Density Map (Spec 029) maps every unique card in the dataset onto a 2D canvas via a space-filling curve. The user selects a **Lens** that determines the 1D sort order before the curve mapping. Five baseline lenses are planned:
 
 | Lens | Sort key | Purpose |
 |---|---|---|
@@ -18,6 +18,7 @@ The planned Density Map (Spec 029) maps every unique card in the dataset onto a 
 | Chronology | Release date | Reveals patterns in color distribution and power across MTG's history |
 | Mana Curve | Converted mana cost | Groups cards into distinct MV territories |
 | Complexity | Mechanical text weight | Highlights vanilla cards versus mechanically complex ones |
+| Color Map | Color identity (Gray code) | Groups cards by color identity with smooth single-bit transitions between adjacent groups |
 
 Each lens is a **permutation array**: a `number[]` of canonical face indices, one entry per unique card, arranged so that `lens[0]` is the card that belongs at position 0 on the curve, `lens[1]` at position 1, and so on. The density map iterates the array positionally and writes pixels — no sorting, no key extraction, no date parsing.
 
@@ -99,6 +100,14 @@ This composite metric captures several dimensions of complexity in a single, wei
 
 A card with no mechanical text at all (e.g., a vanilla creature with a simple cost) has a low complexity score. Name is excluded because it reflects flavor, not mechanics. Power, toughness, loyalty, and defense are excluded because their string representations are too short to meaningfully differentiate. Tiebreaker: name.
 
+#### Color Map
+
+Sorted by the **Gray code rank** of the card's color identity bitmask. A 5-bit reflected binary Gray code maps each of the 32 possible color identities (2^5 combinations of WUBRG) to a rank 0–31, such that adjacent ranks differ by exactly one color. This produces 32 contiguous bands on the density map with smooth single-bit transitions between neighboring groups.
+
+The Gray code rank for a bitmask `v` is computed as `v ^ (v >> 1)`, inverted: given the Gray-coded sequence, the rank of identity `v` is its position in the sequence. Equivalently, the sort key is the Gray code encoding of `v`, which is `v ^ (v >> 1)`.
+
+The sort key is `grayRank(color_identity)`. First tiebreaker: CMC. Second tiebreaker: name. This sub-sorts cards within each color identity band by mana cost, providing additional structure within the bands.
+
 ## Changes
 
 ### 1. ETL: Card interface (`etl/src/process.ts`)
@@ -127,10 +136,11 @@ interface CardLensEntry {
   cmc: number
   manaCostLength: number
   complexity: number
+  colorIdentity: number
 }
 ```
 
-`name` is the card's combined name (lowercased for sorting). `manaCostLength` is the string length of the primary face's `mana_cost` field. `complexity` is the sum of byte lengths of `mana_cost`, `type_line`, and `oracle_text` across all faces of the card.
+`name` is the card's combined name (lowercased for sorting). `manaCostLength` is the string length of the primary face's `mana_cost` field. `complexity` is the sum of byte lengths of `mana_cost`, `type_line`, and `oracle_text` across all faces of the card. `colorIdentity` is the card's color identity bitmask (from `encodeColors(card.color_identity)`).
 
 ### 3. ETL: Compute lens orderings (after main loop)
 
@@ -154,6 +164,11 @@ const byManaCurve = [...lensEntries]
 const byComplexity = [...lensEntries]
   .sort((a, b) => a.complexity - b.complexity || cmp.compare(a.name, b.name))
   .map(e => e.canonicalFace)
+
+const gray = (v: number) => v ^ (v >> 1)
+const byColorIdentity = [...lensEntries]
+  .sort((a, b) => gray(a.colorIdentity) - gray(b.colorIdentity) || a.cmc - b.cmc || cmp.compare(a.name, b.name))
+  .map(e => e.canonicalFace)
 ```
 
 Assign these to the `ColumnarData` object before writing `columns.json`.
@@ -168,6 +183,7 @@ export interface ColumnarData {
   lens_chronology: number[]
   lens_mana_curve: number[]
   lens_complexity: number[]
+  lens_color_identity: number[]
 }
 ```
 
@@ -182,12 +198,13 @@ export type DisplayColumns = {
   lens_chronology: number[]
   lens_mana_curve: number[]
   lens_complexity: number[]
+  lens_color_identity: number[]
 }
 ```
 
 ### 6. Worker: Extract lens columns (`app/src/worker.ts`)
 
-Add the four fields to `extractDisplayColumns`:
+Add the five fields to `extractDisplayColumns`:
 
 ```typescript
 function extractDisplayColumns(data: ColumnarData): DisplayColumns {
@@ -197,6 +214,7 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     lens_chronology: data.lens_chronology,
     lens_mana_curve: data.lens_mana_curve,
     lens_complexity: data.lens_complexity,
+    lens_color_identity: data.lens_color_identity,
   }
 }
 ```
@@ -205,7 +223,7 @@ No signature change — the lens arrays come from `ColumnarData`, not `CardIndex
 
 ### 7. ColumnarData initialization (`etl/src/process.ts`)
 
-Add the four fields to the `data` object initialization with empty arrays. They are populated after the main loop.
+Add the five fields to the `data` object initialization with empty arrays. They are populated after the main loop.
 
 ## Wire size impact
 
@@ -217,17 +235,19 @@ Each lens array contains ~30,000 entries. Each entry is a canonical face index (
 | `lens_chronology` | ~30,000 | ~6 bytes | ~180 KB |
 | `lens_mana_curve` | ~30,000 | ~6 bytes | ~180 KB |
 | `lens_complexity` | ~30,000 | ~6 bytes | ~180 KB |
+| `lens_color_identity` | ~30,000 | ~6 bytes | ~180 KB |
 
-Combined: ~720 KB added to `columns.json` (~9% increase over the current ~8 MB). The `DisplayColumns` init transfer grows by the same amount — small relative to the existing ~6 MB payload.
+Combined: ~900 KB added to `columns.json` (~11% increase over the current ~8 MB). The `DisplayColumns` init transfer grows by the same amount — small relative to the existing ~6 MB payload.
 
 ## Acceptance Criteria
 
-1. Running `npm run etl -- process` produces a `columns.json` that includes `lens_name`, `lens_chronology`, `lens_mana_curve`, and `lens_complexity` arrays.
+1. Running `npm run etl -- process` produces a `columns.json` that includes `lens_name`, `lens_chronology`, `lens_mana_curve`, `lens_complexity`, and `lens_color_identity` arrays.
 2. Each lens array contains exactly one entry per unique card (i.e., its length equals the number of distinct `canonical_face` values).
 3. Every entry in a lens array is a valid canonical face index (i.e., `canonical_face[entry] === entry`).
 4. `lens_name` is sorted alphabetically by card name (case-insensitive).
 5. `lens_chronology` is sorted by release date (earliest first), with name as tiebreaker.
 6. `lens_mana_curve` is sorted by CMC (lowest first), then by mana cost string length (shortest first), then by name.
 7. `lens_complexity` is sorted by total byte length of `mana_cost` + `type_line` + `oracle_text` across all faces (lowest first), with name as tiebreaker.
-8. The worker's `ready` message includes all four lens arrays in `DisplayColumns`.
-9. Existing features (search, histograms, breakdown, card detail) continue to work unchanged.
+8. `lens_color_identity` is sorted by Gray code rank of the color identity bitmask (0–31), then by CMC (lowest first), then by name.
+9. The worker's `ready` message includes all five lens arrays in `DisplayColumns`.
+10. Existing features (search, histograms, breakdown, card detail) continue to work unchanged.

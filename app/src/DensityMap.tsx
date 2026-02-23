@@ -4,12 +4,13 @@ import type { DisplayColumns } from '@frantic-search/shared'
 import { Color } from '@frantic-search/shared'
 import { gilbertCurve } from './gilbert'
 
-type LensKey = 'lens_name' | 'lens_chronology' | 'lens_mana_curve' | 'lens_complexity'
+type LensKey = 'lens_name' | 'lens_chronology' | 'lens_mana_curve' | 'lens_complexity' | 'lens_color_identity'
 
 const PANELS: { key: LensKey; label: string }[] = [
   { key: 'lens_name', label: 'Alphabetical' },
   { key: 'lens_chronology', label: 'Chronology' },
   { key: 'lens_mana_curve', label: 'Mana Curve' },
+  { key: 'lens_color_identity', label: 'Color Map' },
   { key: 'lens_complexity', label: 'Complexity' },
 ]
 
@@ -241,21 +242,24 @@ export default function DensityMap(props: {
       </div>
       <Show when={props.expanded}>
         <div class="px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
-          <div class="grid grid-cols-2 gap-2">
-            {PANELS.map((panel, i) => (
-              <div>
-                <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{panel.label}</p>
-                <canvas
-                  ref={(el) => { canvasRefs[i] = el }}
-                  class="w-full rounded-sm"
-                  style={{
-                    "aspect-ratio": "1",
-                    "image-rendering": "pixelated",
-                    background: "black",
-                  }}
-                />
-              </div>
-            ))}
+          <div class="grid grid-cols-3 gap-2">
+            {PANELS.map((panel, i) => {
+              const gridClass = i === 3 ? 'col-start-2' : i === 4 ? 'col-start-3' : ''
+              return (
+                <div class={gridClass}>
+                  <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{panel.label}</p>
+                  <canvas
+                    ref={(el) => { canvasRefs[i] = el }}
+                    class="w-full rounded-sm"
+                    style={{
+                      "aspect-ratio": "1",
+                      "image-rendering": "pixelated",
+                      background: "black",
+                    }}
+                  />
+                </div>
+              )
+            })}
           </div>
           <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
             <input

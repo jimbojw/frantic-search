@@ -31,6 +31,7 @@ export type DisplayColumns = {
   lens_chronology: number[]
   lens_mana_curve: number[]
   lens_complexity: number[]
+  lens_color_identity: number[]
 }
 
 export type BreakdownNode = {

@@ -67,12 +67,12 @@ The STATS panel (Spec 025) and RESULTS list are **unchanged** — no tab interfa
 
 ### 2×2 Canvas Grid
 
-All four lens orderings are displayed simultaneously in a **2×2 grid** of canvases. There is no lens selection UI — all four visualizations are always visible.
+All five lens orderings are displayed simultaneously in a grid of canvases. There is no lens selection UI — all five visualizations are always visible. The layout is a **3-column grid** with two rows: three canvases in the first row and two in the second row (centered).
 
-| | Column 1 | Column 2 |
-|---|---|---|
-| Row 1 | Alphabetical | Chronology |
-| Row 2 | Mana Curve | Complexity |
+| | Column 1 | Column 2 | Column 3 |
+|---|---|---|---|
+| Row 1 | Alphabetical | Chronology | Mana Curve |
+| Row 2 | | Color Map | Complexity |
 
 The Gilbert curve operates on a logical grid of side length `side = ceil(sqrt(N))`, where `N` is the number of unique cards. Each logical cell maps to a 2×2 pixel block, so the canvas resolution is `2*side × 2*side`. With ~33,000 cards and `side` ≈ 183, each canvas is ~366×366 pixels.
 
@@ -112,14 +112,15 @@ These are combined with the canvas width to produce the `pixelOffset` array used
 
 ### Lenses
 
-All four lens orderings from Spec 028 are rendered simultaneously — one per canvas in the 2×2 grid. There is no lens selection UI or `localStorage` state for active lens.
+All five lens orderings from Spec 028 are rendered simultaneously — one per canvas in the grid. There is no lens selection UI or `localStorage` state for active lens.
 
 | Label | `DisplayColumns` field | Grid position |
 |---|---|---|
-| Alphabetical | `lens_name` | Top-left |
-| Chronology | `lens_chronology` | Top-right |
-| Mana Curve | `lens_mana_curve` | Bottom-left |
-| Complexity | `lens_complexity` | Bottom-right |
+| Alphabetical | `lens_name` | Row 1, Col 1 |
+| Chronology | `lens_chronology` | Row 1, Col 2 |
+| Mana Curve | `lens_mana_curve` | Row 1, Col 3 |
+| Color Map | `lens_color_identity` | Row 2, Col 2 (centered) |
+| Complexity | `lens_complexity` | Row 2, Col 3 (centered) |
 
 ### Color encoding
 
@@ -189,11 +190,11 @@ The rendering is split into two phases with different frequencies.
 
 ### Phase 1: Layout (on mount or color toggle)
 
-Runs once at mount time for all four canvases. The Gilbert curve is computed once and shared across all four.
+Runs once at mount time for all five canvases. The Gilbert curve is computed once and shared across all five.
 
 1. Let `N` = lens array length (unique card count). Let `side = ceil(sqrt(N))`. Canvas resolution is `canvasRes = 2 * side`.
 2. Compute the Gilbert curve for `side × side` → `curveX`, `curveY` arrays (shared).
-3. For each of the four canvases, using its corresponding lens array:
+3. For each of the five canvases, using its corresponding lens array:
    a. For each position `p` in `0..N-1`:
       - Look up `(x, y) = (curveX[p], curveY[p])`.
       - Compute `baseOffset = (2*y * canvasRes + 2*x) * 4` — byte offset of the TL sub-pixel in `ImageData.data`. The stride between rows is `canvasRes * 4`.
@@ -241,11 +242,11 @@ Runs on every query result. Only touches the alpha channel of the four sub-pixel
 | Operation | Frequency | Cost |
 |---|---|---|
 | Gilbert curve (~33,489 positions) | Once at mount | < 5 ms |
-| Layout (all 4 canvases) | Once at mount | ~12 ms (4 × ~3 ms per canvas) |
-| Match update (all 4 canvases) | Per keystroke | < 8 ms (4 × ~2 ms per canvas) |
-| `putImageData` (all 4) | Per keystroke | < 3 ms (4 × ~0.7 ms for ~366×366) |
+| Layout (all 5 canvases) | Once at mount | ~15 ms (5 × ~3 ms per canvas) |
+| Match update (all 5 canvases) | Per keystroke | < 10 ms (5 × ~2 ms per canvas) |
+| `putImageData` (all 5) | Per keystroke | < 4 ms (5 × ~0.7 ms for ~366×366) |
 
-Total per-keystroke cost: < 11 ms across all four canvases. Within the frame budget but warrants profiling — the 4× increase in pixel writes and the 4× larger `putImageData` transfer are the main cost drivers.
+Total per-keystroke cost: < 14 ms across all five canvases. Within the frame budget but warrants profiling.
 
 ## Data Dependencies
 
@@ -304,7 +305,7 @@ The output is collected into `curveX: Uint16Array` and `curveY: Uint16Array` arr
 
 ### No query (landing page)
 
-All four canvases render all cards at full alpha. The user sees the full card pool colored by identity (or solid white in monochrome mode), shaped by each lens simultaneously. This is the "explore" mode — the user can compare structural patterns across all four orderings at a glance.
+All five canvases render all cards at full alpha. The user sees the full card pool colored by identity (or solid white in monochrome mode), shaped by each lens simultaneously. This is the "explore" mode — the user can compare structural patterns across all five orderings at a glance.
 
 ### Zero results
 
@@ -326,16 +327,16 @@ If the worker has not yet posted the `ready` message (display columns are null),
 
 1. The density map is rendered as a standalone box, visible on the landing page as soon as the worker is ready (before any query is entered).
 2. When a query is active, the page layout is: STATS → MAP → RESULTS. The STATS and RESULTS boxes retain their existing conditional rendering.
-3. The MAP box contains a **2×2 grid** of four canvases: Alphabetical (top-left), Chronology (top-right), Mana Curve (bottom-left), Complexity (bottom-right). Each has a label above it.
-4. Each canvas is a square with resolution `2 * ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill half the available width while maintaining a square aspect ratio. Each card occupies a 2×2 pixel block.
+3. The MAP box contains a **3-column grid** of five canvases (3 top, 2 bottom centered): Alphabetical, Chronology, Mana Curve (row 1), Color Map, Complexity (row 2). Each has a label above it.
+4. Each canvas is a square with resolution `2 * ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill one-third of the available width while maintaining a square aspect ratio. Each card occupies a 2×2 pixel block.
 5. Each canvas background is solid black (`rgba(0, 0, 0, 1)`).
 6. Every unique card in the dataset occupies exactly one 2×2 block per canvas, mapped via a Gilbert curve computed for the logical grid dimensions (`ceil(sqrt(N))`).
-7. The Gilbert curve is computed once at mount time, shared across all four canvases, and cached. It is not pre-computed in the ETL pipeline.
-8. There is no lens selection UI. All four orderings are always visible.
+7. The Gilbert curve is computed once at mount time, shared across all five canvases, and cached. It is not pre-computed in the ETL pipeline.
+8. There is no lens selection UI. All five orderings are always visible.
 9. Each card's 2×2 block displays its individual color identity colors (see Color encoding). Mono-colored and colorless cards use a uniform block. Two-color cards use two columns. Three-color cards fill three sub-pixels with their colors and the fourth with colorless grey. Four-color cards fill all four sub-pixels. Five-color cards use magenta.
-10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes for all four canvases. Default: checked. Persisted to `localStorage`.
-11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost) across all four canvases. When no query is active, all cards render at alpha 255.
-12. The match display updates on every keystroke without perceptible delay (< 16 ms total for all four canvases).
+10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes for all five canvases. Default: checked. Persisted to `localStorage`.
+11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost) across all five canvases. When no query is active, all cards render at alpha 255.
+12. The match display updates on every keystroke without perceptible delay (< 16 ms total for all five canvases).
 13. Canvas positions beyond the card count are solid black.
 14. The existing STATS panel (histograms) and RESULTS list continue to work unchanged.
 15. The canvas fill rate is >99% (near-zero wasted positions).

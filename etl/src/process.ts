@@ -208,6 +208,7 @@ export function processCards(verbose: boolean): void {
     lens_chronology: [],
     lens_mana_curve: [],
     lens_complexity: [],
+    lens_color_identity: [],
   };
 
   let filtered = 0;
@@ -254,6 +255,7 @@ export function processCards(verbose: boolean): void {
       cmc: card.cmc ?? 0,
       manaCostLength,
       complexity,
+      colorIdentity: encodeColors(card.color_identity),
     });
   }
 
@@ -267,6 +269,7 @@ export function processCards(verbose: boolean): void {
   data.lens_chronology = lenses.lens_chronology;
   data.lens_mana_curve = lenses.lens_mana_curve;
   data.lens_complexity = lenses.lens_complexity;
+  data.lens_color_identity = lenses.lens_color_identity;
 
   log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
   log(`Lens orderings: ${lensEntries.length} unique cards`, verbose);
