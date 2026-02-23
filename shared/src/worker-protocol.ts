@@ -27,6 +27,10 @@ export type DisplayColumns = {
   loyalty_lookup: string[]
   defense_lookup: string[]
   canonical_face: number[]
+  lens_name: number[]
+  lens_chronology: number[]
+  lens_mana_curve: number[]
+  lens_complexity: number[]
 }
 
 export type BreakdownNode = {

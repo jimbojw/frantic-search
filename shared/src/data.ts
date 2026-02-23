@@ -25,4 +25,9 @@ export interface ColumnarData {
   toughness_lookup: string[];
   loyalty_lookup: string[];
   defense_lookup: string[];
+
+  lens_name: number[];
+  lens_chronology: number[];
+  lens_mana_curve: number[];
+  lens_complexity: number[];
 }

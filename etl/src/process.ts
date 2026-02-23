@@ -9,6 +9,7 @@ import {
   type ColumnarData,
 } from "@frantic-search/shared";
 import { normalizeOracleText } from "./tilde";
+import { computeLensOrderings, type CardLensEntry } from "./lenses";
 
 // ---------------------------------------------------------------------------
 // Scryfall card shape (fields we care about)
@@ -41,6 +42,8 @@ interface Card {
   defense?: string;
   legalities?: Record<string, string>;
   card_faces?: CardFace[];
+  released_at?: string;
+  cmc?: number;
 }
 
 const FILTERED_LAYOUTS = new Set([
@@ -201,9 +204,14 @@ export function processCards(verbose: boolean): void {
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
+    lens_name: [],
+    lens_chronology: [],
+    lens_mana_curve: [],
+    lens_complexity: [],
   };
 
   let filtered = 0;
+  const lensEntries: CardLensEntry[] = [];
 
   for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
     const card = cards[cardIdx];
@@ -217,15 +225,32 @@ export function processCards(verbose: boolean): void {
     const leg = encodeLegalities(card.legalities);
     const faceRowStart = data.names.length;
 
+    let complexity = 0;
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
         pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, manifest,
           powerDict, toughnessDict, loyaltyDict, defenseDict);
+        complexity +=
+          (face.mana_cost ?? "").length +
+          (face.type_line ?? "").length +
+          (face.oracle_text ?? "").length;
       }
     } else {
       pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, manifest,
         powerDict, toughnessDict, loyaltyDict, defenseDict);
+      complexity =
+        (card.mana_cost ?? "").length +
+        (card.type_line ?? "").length +
+        (card.oracle_text ?? "").length;
     }
+
+    lensEntries.push({
+      canonicalFace: faceRowStart,
+      name: card.name ?? "",
+      releasedAt: card.released_at ?? "",
+      cmc: card.cmc ?? 0,
+      complexity,
+    });
   }
 
   data.power_lookup = powerDict.lookup();
@@ -233,7 +258,14 @@ export function processCards(verbose: boolean): void {
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
 
+  const lenses = computeLensOrderings(lensEntries);
+  data.lens_name = lenses.lens_name;
+  data.lens_chronology = lenses.lens_chronology;
+  data.lens_mana_curve = lenses.lens_mana_curve;
+  data.lens_complexity = lenses.lens_complexity;
+
   log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
+  log(`Lens orderings: ${lensEntries.length} unique cards`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
   ensureDistDir();
