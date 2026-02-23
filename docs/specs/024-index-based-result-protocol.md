@@ -224,4 +224,4 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 6. `CardDetail` resolves a scryfallId to a canonical index via the reverse map and performs column lookups locally.
 7. The "…and N more" indicator uses `indices.length` as the total card count.
 8. `CardResult` and `CardFace` are removed from the wire protocol types.
-9. Existing features (breakdown, bug report, Scryfall link, oracle text toggle, copy button) continue to work unchanged.
+9. Existing features (breakdown, bug report, oracle text toggle, copy button) continue to work unchanged.

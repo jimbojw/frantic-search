@@ -207,8 +207,8 @@ The `label` field continues to hold the human-readable label as before (e.g., `t
 The following elements from the current breakdown (Spec 009) are removed:
 
 - **"Query breakdown" header.** The panel needs no title — its position directly under the input makes its purpose self-evident.
-- **"show breakdown" / "hide breakdown" toggle links** in the results header and empty-state area. The breakdown is always visible (unless the user collapses the drawer). The result count and Scryfall link remain in the results header.
-- **"Syntax help" and "Report a problem" footer links** inside the breakdown panel. These are available elsewhere (help icon in the input, report link in the results header).
+- **"show breakdown" / "hide breakdown" toggle links** in the results header and empty-state area. The breakdown is always visible (unless the user collapses the drawer).
+- **"Syntax help" and "Report a problem" footer links** inside the breakdown panel. These are available elsewhere (help icon in the input).
 
 ## Implementation Plan
 
@@ -266,3 +266,7 @@ Wrap the search input and breakdown in a shared container. Conditionally apply b
 11. When collapsed, the summary line remains visible below the input (with connected styling), showing the card/face counts. Only the per-term rows are hidden.
 12. The `BreakdownNode` type includes a `type` field matching the AST node type.
 13. The old toggle links ("show/hide breakdown"), panel header, and panel footer are removed.
+
+## Implementation Notes
+
+- 2026-02-22: The summary label was simplified to always read **MATCHES** regardless of query structure (instead of ALL/ANY/FINAL as originally designed). The structural distinction added cognitive overhead without clear user benefit — "MATCHES" is universally understandable. The acceptance criteria above (items 2–4, 7) still describe the original ALL/ANY/FINAL labels for historical context; the as-built behavior uses MATCHES everywhere.

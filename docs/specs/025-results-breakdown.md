@@ -27,7 +27,7 @@ Color identity and mana value are the two most fundamental axes for filtering Ma
 
 ### Placement and chrome
 
-The results breakdown sits between the results header row (Scryfall link, oracle text toggle) and the results list. It is wrapped in a collapsible container with the same visual language as the query breakdown: a toggle row with a chevron and a label.
+The results breakdown sits between the search input header and the RESULTS box (Spec 026). It is wrapped in a collapsible container with the same visual language as the query breakdown: a toggle row with a chevron and a label.
 
 - **Label:** "STATS" appears next to the chevron on the toggle row.
 - **Chevron:** Points right (▸) when collapsed, rotates 90° (▾) when expanded.
@@ -313,7 +313,7 @@ New component with props:
 ### 5. Integration (`app/src/App.tsx`)
 
 - Add `resultsExpanded` signal, persisted to `localStorage` under `frantic-results-expanded`.
-- Render `<ResultsBreakdown>` between the results header and the `<ul>` results list.
+- Render `<ResultsBreakdown>` between the search input header and the RESULTS box (Spec 026).
 - Wire `onAppendQuery` to append the term to the current query, parenthesizing when the breakdown root is OR: `setQuery(q => breakdown()?.type === 'OR' ? '(' + q + ') ' + term : q + ' ' + term)`.
 
 ### 6. Styling
