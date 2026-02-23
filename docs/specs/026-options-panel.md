@@ -10,15 +10,15 @@ Wrap the card results list in a unified "RESULTS" container with a collapsible o
 
 ## Background
 
-The search input and MATCHES breakdown already form a single contiguous visual element — the input is the top of the box and the MATCHES summary line is the bottom. The results list, by contrast, has a loose header row (Scryfall link, Oracle Text toggle) sitting above a separately-bordered card list. With the STATS panel (Spec 025) between them, the area between the input and the results feels disjointed.
+The search input and MATCHES breakdown already form a single contiguous visual element — the input is the top of the box and the MATCHES summary line is the bottom. The results list, by contrast, has a loose header row (Scryfall link, Oracle Text toggle) sitting above a separately-bordered card list.
 
-This spec unifies the results list and its options into a single bordered container, mirroring the input/MATCHES pattern:
+This spec unifies the results list, histograms, and display options into a single bordered container, mirroring the input/MATCHES pattern:
 
 - The **RESULTS** toggle row is the "lid" of the container.
-- The **options drawer** expands below the lid when toggled.
+- The **drawer** expands below the lid when toggled, containing the histograms (Spec 025) and the Oracle Text toggle.
 - The **card rows** fill the rest of the container.
 
-This creates a clean vertical rhythm: Input+MATCHES → STATS → RESULTS (options + cards).
+This creates a clean vertical rhythm: Input+MATCHES → MAP → RESULTS (histograms + options + cards).
 
 ## Design
 
@@ -32,15 +32,16 @@ The full vertical stack when a query has results:
 │  [MATCHES breakdown — collapsible]                  │
 └─────────────────────────────────────────────────────┘
 
-┌─ STATS ─────────────────────────────────────────────┐
-│ ▸ STATS                                             │
-│  (collapsible histograms)                           │
+┌─ MAP ───────────────────────────────────────────────┐
+│  (density map canvases — visible even without query)│
 └─────────────────────────────────────────────────────┘
 
 ┌─ RESULTS ───────────────────────────────────────────┐
-│ ▸ RESULTS                                      [⚙]  │
+│ ▾ RESULTS                                      [⚙]  │
 ├─────────────────────────────────────────────────────┤
-│  (when expanded)                                    │
+│  (when expanded — default)                          │
+│  [Color Identity] [Mana Value] [Card Type]          │
+│  (histograms — Spec 025)                            │
 │  Oracle text                            [toggle]    │
 ├─────────────────────────────────────────────────────┤
 │  Card row 1                                         │
@@ -62,19 +63,23 @@ The toggle row sits at the top of the RESULTS container. It has three elements:
 
 Clicking **anywhere on the toggle row** expands or collapses the options drawer. The entire row is the click target, not just the chevron or gear.
 
-### Options drawer
+### Drawer contents
 
-When expanded, the options area appears between the toggle row and the first card row, separated by `border-t` dividers above and below. It contains the Oracle Text toggle:
+When expanded, the drawer area appears between the toggle row and the first card row, separated by `border-t` dividers. It contains two sections:
+
+1. **Histograms** (Spec 025) — a three-column grid of bar charts (Color Identity, Mana Value, Card Type).
+2. **Oracle Text toggle** — below the histograms.
 
 ```
 │ ▾ RESULTS                                      [⚙]  │
 ├─────────────────────────────────────────────────────┤
+│  [Color Identity] [Mana Value] [Card Type]          │
 │  Oracle text                            [=====○]    │
 ├─────────────────────────────────────────────────────┤
 │  Card row 1                                         │
 ```
 
-When collapsed, the toggle row connects directly to the first card row:
+When collapsed, the toggle row connects directly to the first card row — both histograms and the Oracle Text toggle are hidden:
 
 ```
 │ ▸ RESULTS                                      [⚙]  │
@@ -86,17 +91,17 @@ The toggle styling reuses the existing switch: `peer sr-only` input, colored tra
 
 ### Default state
 
-The options drawer **begins collapsed**. Most users will not need to toggle oracle text frequently, so the collapsed default keeps the common case compact. The expanded/collapsed state is persisted to `localStorage` under the key `frantic-results-options-expanded`, using the same pattern as the other collapsible sections.
+The drawer **begins expanded**. The histograms provide immediate value on every query — the user sees the color, mana value, and type distributions at a glance. The expanded/collapsed state is persisted to `localStorage` under the key `frantic-results-options-expanded`.
 
-Since `localStorage` returns `null` for a never-set key, the initialization logic is:
+Since `localStorage` returns `null` for a never-set key, the initialization logic defaults to expanded:
 
 ```typescript
 const [resultsOptionsExpanded, setResultsOptionsExpanded] = createSignal(
-  localStorage.getItem('frantic-results-options-expanded') === 'true'
+  localStorage.getItem('frantic-results-options-expanded') !== 'false'
 )
 ```
 
-This evaluates to `false` when the key is absent (new user) or explicitly `'false'`, and `true` only when the user has previously expanded and left it open. This differs from MATCHES and STATS, which default to expanded (`!== 'false'`).
+This evaluates to `true` when the key is absent (new user) or explicitly `'true'`, and `false` only when the user has previously collapsed the drawer.
 
 ### Contiguous container
 
@@ -132,18 +137,18 @@ Replace the current structure:
 
 ```
 <div> (results header — Scryfall link + Oracle toggle) </div>
-<ResultsBreakdown />  (STATS)
+<ResultsBreakdown />  (standalone STATS box)
 <ul> (card rows) </ul>
 ```
 
 With:
 
 ```
-<ResultsBreakdown />  (STATS — moves above RESULTS)
 <div> (RESULTS box — single rounded container)
   <ResultsToggleRow />  (RESULTS label + gear icon, click to expand/collapse)
   <Show when={resultsOptionsExpanded}>
-    <OptionsDrawer />   (Oracle Text toggle)
+    <ResultsBreakdown />  (histograms — Spec 025)
+    <OptionsDrawer />     (Oracle Text toggle)
   </Show>
   <ul> (card rows — no own border/rounding)
   </ul>
@@ -152,11 +157,11 @@ With:
 
 ### 2. State and persistence (`app/src/App.tsx`)
 
-Add a `resultsOptionsExpanded` signal initialized from `localStorage` (defaulting to `false`):
+Add a `resultsOptionsExpanded` signal initialized from `localStorage` (defaulting to `true`):
 
 ```typescript
 const [resultsOptionsExpanded, setResultsOptionsExpanded] = createSignal(
-  localStorage.getItem('frantic-results-options-expanded') === 'true'
+  localStorage.getItem('frantic-results-options-expanded') !== 'false'
 )
 function toggleResultsOptions() {
   setResultsOptionsExpanded(prev => {
@@ -178,7 +183,9 @@ Render inline in `App.tsx` (or extract to a small component). The row contains:
 
 ### 4. Options drawer
 
-When `resultsOptionsExpanded` is true, render a `border-t` section between the toggle row and the card list containing the Oracle Text toggle (moved from the old header row, styling preserved).
+When `resultsOptionsExpanded` is true, render a `border-t` section between the toggle row and the card list containing:
+1. The `ResultsBreakdown` component (histograms — Spec 025).
+2. The Oracle Text toggle (moved from the old header row, styling preserved).
 
 ### 5. Card list
 
@@ -193,12 +200,13 @@ The existing `<ul>` loses its own `rounded-xl border shadow-sm` classes. These m
 
 1. When a query produces results, the card list is wrapped in a single bordered container with a "RESULTS" toggle row at the top.
 2. The RESULTS toggle row shows a chevron, the label "RESULTS", and a right-aligned gear icon.
-3. Clicking anywhere on the RESULTS toggle row expands or collapses the options drawer.
-4. The options drawer begins collapsed for new users (no `localStorage` entry).
+3. Clicking anywhere on the RESULTS toggle row expands or collapses the drawer.
+4. The drawer **begins expanded** for new users (no `localStorage` entry).
 5. The expanded/collapsed state is persisted to `localStorage` under `frantic-results-options-expanded`.
-6. When expanded, the options drawer appears between the toggle row and the first card row, containing the Oracle Text toggle.
-7. The RESULTS container (toggle row + options + card rows) is visually contiguous — one `rounded-xl` border, shared background, no gaps.
-8. The STATS panel (Results Breakdown) appears above the RESULTS box, not inside it.
-9. The standalone Scryfall link is removed from the results area.
-10. The "Try on Scryfall ↗" link in the zero-results state is unchanged.
-11. The RESULTS box is not rendered on the landing page, zero-results state, or non-search views.
+6. When expanded, the drawer appears between the toggle row and the first card row, containing the histograms (Spec 025) and the Oracle Text toggle — in that order.
+7. Collapsing the drawer hides both the histograms and the Oracle Text toggle.
+8. The RESULTS container (toggle row + drawer + card rows) is visually contiguous — one `rounded-xl` border, shared background, no gaps.
+9. There is no standalone "STATS" box — the histograms live entirely within the RESULTS drawer.
+10. The standalone Scryfall link is removed from the results area.
+11. The "Try on Scryfall ↗" link in the zero-results state is unchanged.
+12. The RESULTS box is not rendered on the landing page, zero-results state, or non-search views.

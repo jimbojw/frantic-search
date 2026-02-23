@@ -10,7 +10,7 @@ Add a **Density Map** component that renders the entire Magic: The Gathering car
 
 ## Background
 
-The STATS panel (Spec 025) currently contains two horizontal bar charts — Color Identity and Mana Value — that summarize the result set as aggregated counts. The density map complements these by showing the **individual card level**: every card in the dataset is visible at all times, and the user's query literally illuminates the matching subset.
+The histograms inside the RESULTS drawer (Spec 025) summarize the result set as aggregated counts across color identity, mana value, and card type. The density map complements these by showing the **individual card level**: every card in the dataset is visible at all times, and the user's query literally illuminates the matching subset.
 
 The visualization is a **Dense Pixel Display** — a technique for rendering large datasets without aggregation. Each card maps to a 2×2 pixel block, allowing multicolor cards to display their individual color identities rather than collapsing to a single multicolor indicator. A space-filling curve preserves 1D locality in 2D, so cards that are adjacent in the selected sort order form contiguous clusters on the canvas rather than disconnected horizontal stripes.
 
@@ -26,9 +26,9 @@ The visualization is a **Dense Pixel Display** — a technique for rendering lar
 
 ### Placement: Standalone MAP box
 
-The density map is a **standalone component** rendered as its own box in the main content area, between the STATS panel and the RESULTS list. It is **not** a tab inside STATS.
+The density map is a **standalone component** rendered as its own box in the main content area, between the search input and the RESULTS list.
 
-The MAP box is visible as soon as the worker posts the `ready` message — even on the landing page before the user has typed a query. This lets users explore the full card pool immediately. The STATS and RESULTS boxes retain their existing conditional rendering (only shown when a query has results).
+The MAP box is visible as soon as the worker posts the `ready` message — even on the landing page before the user has typed a query. This lets users explore the full card pool immediately. The RESULTS box retains its existing conditional rendering (only shown when a query has results).
 
 ```
 Landing page (no query):
@@ -52,18 +52,16 @@ With query:
 
   ┌─ TERMS / Input / MATCHES ─────────┐
   └────────────────────────────────────┘
-  ┌─ STATS ────────────────────────────┐
-  │  Color Identity │ Mana Value       │
-  └────────────────────────────────────┘
   ┌─ MAP ──────────────────────────────┐
-  │  (2×2 grid as above)               │
+  │  (canvas grid as above)            │
   └────────────────────────────────────┘
   ┌─ RESULTS ──────────────────────────┐
+  │  (histograms + Oracle Text toggle) │
   │  Card list…                        │
   └────────────────────────────────────┘
 ```
 
-The STATS panel (Spec 025) and RESULTS list are **unchanged** — no tab interface, no new props.
+The RESULTS box (Spec 026) is **unchanged** — the histograms (Spec 025) live inside the RESULTS drawer, not in the density map.
 
 ### 2×2 Canvas Grid
 
@@ -284,7 +282,7 @@ Internal state (signals):
 
 ## Integration with App.tsx
 
-The `DensityMap` component is rendered directly in `App.tsx`, between the STATS panel and the RESULTS list. It is gated only on `display()` being available (worker ready), **not** on having query results:
+The `DensityMap` component is rendered directly in `App.tsx`, between the search input and the RESULTS list. It is gated only on `display()` being available (worker ready), **not** on having query results:
 
 ```tsx
 <Show when={display()}>
@@ -294,7 +292,7 @@ The `DensityMap` component is rendered directly in `App.tsx`, between the STATS 
 </Show>
 ```
 
-The STATS panel (`ResultsBreakdown`) and the RESULTS list retain their existing conditional rendering — they only appear when a query produces results. **No changes to `ResultsBreakdown`.**
+The RESULTS box (including the histograms inside its drawer) retains its existing conditional rendering — it only appears when a query produces results. **No changes to `ResultsBreakdown`.**
 
 ## Gilbert Curve Implementation
 
@@ -329,7 +327,7 @@ If the worker has not yet posted the `ready` message (display columns are null),
 ## Acceptance Criteria
 
 1. The density map is rendered as a standalone box, visible on the landing page as soon as the worker is ready (before any query is entered).
-2. When a query is active, the page layout is: STATS → MAP → RESULTS. The STATS and RESULTS boxes retain their existing conditional rendering.
+2. When a query is active, the page layout is: MAP → RESULTS (with histograms inside the RESULTS drawer). The RESULTS box retains its existing conditional rendering.
 3. The MAP box contains a **3-column grid** of seven canvases: Alphabetical, Chronology, Mana Curve (row 1), Color Map, Type Map, Color × Type (row 2), Complexity (row 3, centered). Each has a label above it.
 4. Each canvas is a square with resolution `2 * ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill one-third of the available width while maintaining a square aspect ratio. Each card occupies a 2×2 pixel block.
 5. Each canvas background is solid black (`rgba(0, 0, 0, 1)`).
@@ -341,5 +339,5 @@ If the worker has not yet posted the `ready` message (display columns are null),
 11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost) across all seven canvases. When no query is active, all cards render at alpha 255.
 12. The match display updates on every keystroke without perceptible delay (< 19 ms total for all seven canvases).
 13. Canvas positions beyond the card count are solid black.
-14. The existing STATS panel (histograms) and RESULTS list continue to work unchanged.
+14. The RESULTS box (including histograms in its drawer) continues to work unchanged.
 15. The canvas fill rate is >99% (near-zero wasted positions).

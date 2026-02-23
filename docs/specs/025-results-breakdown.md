@@ -6,13 +6,13 @@
 
 ## Goal
 
-Add a collapsible "Results Breakdown" panel above the results table that visualizes the distribution of matching cards across two dimensions: **color identity** and **mana value**. Each dimension is rendered as a horizontal bar chart. Bars are clickable to drill into a subset (append a filter) or removable via an × button to exclude that subset (append a negated filter).
+Add a collapsible "Results Breakdown" panel above the results table that visualizes the distribution of matching cards across three dimensions: **color identity**, **mana value**, and **card type**. Each dimension is rendered as a horizontal bar chart. Bars are clickable to drill into a subset (append a filter) or removable via an × button to exclude that subset (append a negated filter).
 
 ## Background
 
 The inline query breakdown (Spec 021) shows how the *query* decomposes — which terms matched how many cards. The results breakdown shows how the *result set* decomposes — what the matching cards look like along key axes. Together they give the user a complete picture: the query breakdown explains *why* these results appeared, and the results breakdown summarizes *what* was found.
 
-Color identity and mana value are the two most fundamental axes for filtering Magic cards. Showing their distributions lets users quickly assess a result set ("mostly green, clustered at 3–4 mana") and refine it with a single click.
+Color identity, mana value, and card type are the three most fundamental axes for filtering Magic cards. Showing their distributions lets users quickly assess a result set ("mostly green creatures, clustered at 3–4 mana") and refine it with a single click.
 
 ### Precedents
 
@@ -25,34 +25,37 @@ Color identity and mana value are the two most fundamental axes for filtering Ma
 
 ## Design
 
-### Placement and chrome
+### Placement
 
-The results breakdown sits between the search input header and the RESULTS box (Spec 026). It is wrapped in a collapsible container with the same visual language as the query breakdown: a toggle row with a chevron and a label.
+The histograms are rendered **inside the RESULTS drawer** (Spec 026), between the RESULTS toggle row and the Oracle Text toggle. They do not have their own collapsible container or toggle row — they share the RESULTS drawer's expanded/collapsed state. When the RESULTS drawer is collapsed, the histograms are hidden; when expanded, they are visible.
 
-- **Label:** "STATS" appears next to the chevron on the toggle row.
-- **Chevron:** Points right (▸) when collapsed, rotates 90° (▾) when expanded.
-- **Toggle target:** Clicking anywhere on the toggle row expands/collapses the panel.
-- **Persistence:** Collapsed/expanded state is stored in `localStorage` under `frantic-results-expanded`.
+This eliminates the standalone "STATS" box that previously occupied its own vertical space between the search input and the RESULTS container.
 
 ### Layout
 
-When expanded, the panel shows two horizontal bar charts side by side:
+When the RESULTS drawer is expanded, the histograms appear as three horizontal bar charts side by side:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ ▸ STATS                                                     │
-├─────────────────────────────────────────────────────────────┤
-│  Color Identity                │  Mana Value                  │
-│                                │                              │
-│ {C} │ ████░░░░░░░░░░░░░░  ×  │  0 │ ██░░░░░░░░░░░░░░░░  ×  │
-│ {W} │ ███████░░░░░░░░░░░  ×  │  1 │ ████░░░░░░░░░░░░░░  ×  │
-│ {U} │ ██████░░░░░░░░░░░░  ×  │  2 │ ██████░░░░░░░░░░░░  ×  │
-│ {B} │ ███████░░░░░░░░░░░  ×  │  3 │ ████████░░░░░░░░░░  ×  │
-│ {R} │ █████░░░░░░░░░░░░░  ×  │  4 │ ██████░░░░░░░░░░░░  ×  │
-│ {G} │ ██░░░░░░░░░░░░░░░░  ×  │  5 │ █████░░░░░░░░░░░░░  ×  │
-│ {M} │ ███████████░░░░░░░  ×  │  6 │ ███░░░░░░░░░░░░░░░  ×  │
-│                                │ 7+ │ ██░░░░░░░░░░░░░░░░  ×  │
-└─────────────────────────────────────────────────────────────┘
+┌─ RESULTS ────────────────────────────────────────────────────────────────────────┐
+│ ▾ RESULTS                                                                   [⚙]  │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  Color Identity             │  Mana Value              │  Card Type               │
+│                             │                          │                          │
+│ {C} │ ████░░░░░░░░░░  ×   │  0 │ ██░░░░░░░░░░░░  ×  │ Lgn │ ██████░░░░░░  ×   │
+│ {W} │ ███████░░░░░░░  ×   │  1 │ ████░░░░░░░░░░  ×  │ Cre │ █████████░░░  ×   │
+│ {U} │ ██████░░░░░░░░  ×   │  2 │ ██████░░░░░░░░  ×  │ Ins │ █████░░░░░░░  ×   │
+│ {B} │ ███████░░░░░░░  ×   │  3 │ ████████░░░░░░  ×  │ Sor │ ████░░░░░░░░  ×   │
+│ {R} │ █████░░░░░░░░░  ×   │  4 │ ██████░░░░░░░░  ×  │ Art │ ███░░░░░░░░░  ×   │
+│ {G} │ ██░░░░░░░░░░░░  ×   │  5 │ █████░░░░░░░░░  ×  │ Enc │ ███░░░░░░░░░  ×   │
+│ {M} │ ███████████░░░  ×   │  6 │ ███░░░░░░░░░░░  ×  │ Plw │ █░░░░░░░░░░░  ×   │
+│                             │ 7+ │ ██░░░░░░░░░░░░  ×  │ Lnd │ ██░░░░░░░░░░  ×   │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  Oracle text                                                        [=====○]    │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  Card row 1                                                                      │
+│  Card row 2                                                                      │
+│  …                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Each row has three columns:
@@ -115,6 +118,27 @@ Eight rows. Labels are plain monospace numerals (`font-mono text-xs`), not mana 
 
 All bars use a single neutral color (e.g., `blue-400` / `blue-500`).
 
+### Card type chart
+
+Eight rows. Labels are abbreviated type names in monospace text (`font-mono text-xs`):
+
+| Label | Meaning | Counting rule |
+|---|---|---|
+| Lgn | Legendary | `typeLinesLower[i].includes('legendary')` |
+| Cre | Creature | `typeLinesLower[i].includes('creature')` |
+| Ins | Instant | `typeLinesLower[i].includes('instant')` |
+| Sor | Sorcery | `typeLinesLower[i].includes('sorcery')` |
+| Art | Artifact | `typeLinesLower[i].includes('artifact')` |
+| Enc | Enchantment | `typeLinesLower[i].includes('enchantment')` |
+| Plw | Planeswalker | `typeLinesLower[i].includes('planeswalker')` |
+| Lnd | Land | `typeLinesLower[i].includes('land')` |
+
+Like color identity, the type bars are **not mutually exclusive**. A Legendary Creature increments both the Legendary and Creature bars. An Enchantment Creature increments both Enchantment and Creature. Each bar answers "how many results are this type?" independently.
+
+The histogram is computed from the **canonical face's type line** (same face used for mana value). For multi-face cards, only the front face's type line is checked. This is consistent with how the results list displays type lines and matches Scryfall's convention.
+
+All bars use a single neutral color (e.g., `emerald-400` / `emerald-500`), distinct from the mana value bars to visually separate the two charts.
+
 ### Interactions
 
 Each bar supports two actions, mirroring the query breakdown's drill-down and remove (Spec 023):
@@ -137,6 +161,14 @@ Clicking anywhere in a bar's row (the full possible width, not just the filled p
 | … | … | … |
 | 6 | `mv=6` | Mana value equals 6 |
 | 7+ | `mv>=7` | Mana value is 7 or greater |
+| Lgn (Legendary) | `t:legendary` | Type line includes "legendary" |
+| Cre (Creature) | `t:creature` | Type line includes "creature" |
+| Ins (Instant) | `t:instant` | Type line includes "instant" |
+| Sor (Sorcery) | `t:sorcery` | Type line includes "sorcery" |
+| Art (Artifact) | `t:artifact` | Type line includes "artifact" |
+| Enc (Enchantment) | `t:enchantment` | Type line includes "enchantment" |
+| Plw (Planeswalker) | `t:planeswalker` | Type line includes "planeswalker" |
+| Lnd (Land) | `t:land` | Type line includes "land" |
 
 The `>=` operator for colors means "identity includes this color" — it matches any card whose color identity contains the specified color (possibly among others). This is the correct semantic for "show me cards with red" as opposed to `ci=r` ("identity is exactly red") or `ci:r` ("identity fits within red", the Commander subset meaning).
 
@@ -155,6 +187,14 @@ Clicking the × button appends a **negated** filter term.
 | 1 | `-mv=1` |
 | … | … |
 | 7+ | `-mv>=7` |
+| Lgn (Legendary) | `-t:legendary` |
+| Cre (Creature) | `-t:creature` |
+| Ins (Instant) | `-t:instant` |
+| Sor (Sorcery) | `-t:sorcery` |
+| Art (Artifact) | `-t:artifact` |
+| Enc (Enchantment) | `-t:enchantment` |
+| Plw (Planeswalker) | `-t:planeswalker` |
+| Lnd (Land) | `-t:land` |
 
 This removes cards matching that bucket from the results. For example, clicking × on the Red bar appends `-ci>=r`, filtering out all cards with red in their identity.
 
@@ -182,7 +222,7 @@ The component receives the current `BreakdownNode` root to check its `type` fiel
 
 ### Layout mode
 
-The two charts always sit side by side in a two-column layout, regardless of viewport width. On narrow screens the charts simply get narrower — bars compress gracefully since they are percentage-width `<div>` elements. No stacking breakpoint is needed.
+The three charts always sit side by side in a three-column layout within the RESULTS drawer, regardless of viewport width. On narrow screens the charts simply get narrower — bars compress gracefully since they are percentage-width `<div>` elements. No stacking breakpoint is needed.
 
 ### Empty state
 
@@ -199,8 +239,9 @@ Histograms are computed in the WebWorker after deduplication, using data already
 **Algorithm:**
 
 ```
-colorCounts = [0, 0, 0, 0, 0, 0, 0]   // C, W, U, B, R, G, M
-mvCounts    = [0, 0, 0, 0, 0, 0, 0, 0]  // 0..6, 7+
+colorCounts = [0, 0, 0, 0, 0, 0, 0]                    // C, W, U, B, R, G, M
+mvCounts    = [0, 0, 0, 0, 0, 0, 0, 0]                  // 0..6, 7+
+typeCounts  = [0, 0, 0, 0, 0, 0, 0, 0]                  // Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd
 
 for each canonicalIndex in deduped:
   ci = index.colorIdentity[canonicalIndex]
@@ -217,11 +258,21 @@ for each canonicalIndex in deduped:
   mv = Math.floor(index.manaValue[canonicalIndex])
   bucket = Math.min(mv, 7)
   mvCounts[bucket]++
+
+  tl = index.typeLinesLower[canonicalIndex]
+  if tl.includes('legendary'):   typeCounts[0]++
+  if tl.includes('creature'):    typeCounts[1]++
+  if tl.includes('instant'):     typeCounts[2]++
+  if tl.includes('sorcery'):     typeCounts[3]++
+  if tl.includes('artifact'):    typeCounts[4]++
+  if tl.includes('enchantment'): typeCounts[5]++
+  if tl.includes('planeswalker'):typeCounts[6]++
+  if tl.includes('land'):        typeCounts[7]++
 ```
 
 The popcount can use the same bit-twiddling approach as the evaluator: `v = ci; v = (v & 0x55) + ((v >> 1) & 0x55); v = (v & 0x33) + ((v >> 2) & 0x33); v = (v + (v >> 4)) & 0x0f; if (v >= 2) colorCounts[6]++`.
 
-This is a single pass over the deduplicated indices — negligible cost relative to the evaluation itself.
+This is a single pass over the deduplicated indices — negligible cost relative to the evaluation itself. The type checks use `String.includes()` on the canonical face's lowercased type line, consistent with how the evaluator matches `t:` queries.
 
 ### Wire protocol
 
@@ -231,6 +282,7 @@ Add a `Histograms` type and include it in the `result` message.
 export type Histograms = {
   colorIdentity: number[]  // [C, W, U, B, R, G, M] — length 7
   manaValue: number[]      // [0, 1, 2, ..., 6, 7+] — length 8
+  cardType: number[]       // [Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd] — length 8
 }
 ```
 
@@ -247,7 +299,7 @@ Update `FromWorker`:
   }
 ```
 
-The histogram arrays are small (7 + 8 = 15 numbers), adding negligible serialization cost to `postMessage`.
+The histogram arrays are small (7 + 8 + 8 = 23 numbers), adding negligible serialization cost to `postMessage`.
 
 ### Main-thread state
 
@@ -284,7 +336,7 @@ Add `Histograms` type. Add `histograms` field to the `result` variant of `FromWo
 
 ### 2. Worker aggregation (`app/src/worker.ts`)
 
-After `index.deduplicateMatches`, iterate over deduplicated indices to build `colorIdentity` and `manaValue` count arrays. Include the histograms in the posted result message.
+After `index.deduplicateMatches`, iterate over deduplicated indices to build `colorIdentity`, `manaValue`, and `cardType` count arrays. Include the histograms in the posted result message.
 
 ### 3. Main-thread state (`app/src/App.tsx`)
 
@@ -292,28 +344,24 @@ Add `histograms` signal. Set it on `result` messages, clear on empty query. Pass
 
 ### 4. ResultsBreakdown component (`app/src/ResultsBreakdown.tsx`)
 
-New component with props:
+Component with props:
 
 ```typescript
 {
   histograms: Histograms
   breakdown: BreakdownNode
-  expanded: boolean
-  onToggle: () => void
   onAppendQuery: (term: string) => void
 }
 ```
 
-- Renders the collapsible container with chevron and "STATS" label. The toggle row is at the **top**, with chart content below.
-- Renders two `BarChart` sub-components (color identity, mana value).
+- Renders three bar chart columns (color identity, mana value, card type) in a `grid-cols-3` layout. **No own toggle row or collapsible wrapper** — visibility is controlled by the RESULTS drawer (Spec 026).
 - Each bar row: label, full-width clickable area (drill-down), × button.
 - Bar widths computed as percentages of the chart-local maximum.
 - Uses `breakdown.type` to determine whether to parenthesize on append (see "Append mechanics").
 
 ### 5. Integration (`app/src/App.tsx`)
 
-- Add `resultsExpanded` signal, persisted to `localStorage` under `frantic-results-expanded`.
-- Render `<ResultsBreakdown>` between the search input header and the RESULTS box (Spec 026).
+- Render `<ResultsBreakdown>` inside the RESULTS drawer (Spec 026), above the Oracle Text toggle. It is visible when the RESULTS drawer is expanded and hidden when collapsed.
 - Wire `onAppendQuery` to append the term to the current query, parenthesizing when the breakdown root is OR: `setQuery(q => breakdown()?.type === 'OR' ? '(' + q + ') ' + term : q + ' ' + term)`.
 
 ### 6. Styling
@@ -327,19 +375,19 @@ New component with props:
 
 ### Single result
 
-When only one card matches, the histograms still render. One color bar and one MV bar will have height 1 (100% width); all others will be 0.
+When only one card matches, the histograms still render. One color bar, one MV bar, and one or more type bars will have height 1 (100% width); all others will be 0.
 
 ### All results in one bucket
 
 If every matching card has MV=3, the "3" bar fills to 100% and all others show empty. This is informative — it tells the user the result set is homogeneous in mana value.
 
-### Multicolored overcounting
+### Multi-category overcounting
 
-The color identity bars intentionally overcount. If 100 cards match and all are exactly Boros (W|R), the W bar shows 100, the R bar shows 100, and the M bar shows 100. This is not a bug — each bar answers a different question about the result set. The bars are not expected to sum to the total.
+The color identity and card type bars intentionally overcount. If 100 cards match and all are exactly Boros (W|R), the W bar shows 100, the R bar shows 100, and the M bar shows 100. If all are Legendary Creatures, the Lgn bar shows 100 and the Cre bar shows 100. This is not a bug — each bar answers a different question about the result set. The bars within a chart are not expected to sum to the total.
 
-### MV of back faces
+### Back faces
 
-The worker aggregates using the canonical face index (front face). For double-faced cards, the front face's mana value is used. This matches Scryfall's convention: the "mana value" of a DFC is its front face's mana value.
+The worker aggregates using the canonical face index (front face). For double-faced cards, the front face's mana value and type line are used. This matches Scryfall's convention: the "mana value" of a DFC is its front face's mana value, and the front face is the primary identity.
 
 ### Large result sets
 
@@ -347,19 +395,20 @@ With no query (all ~30,000 cards), the histograms compute over all cards. The si
 
 ## Acceptance Criteria
 
-1. When a query produces results, a collapsible "STATS" panel appears above the results list.
-2. Expanding the panel reveals two horizontal bar charts: Color Identity (7 bars) and Mana Value (8 bars).
+1. When a query produces results and the RESULTS drawer is expanded, the histograms are visible inside the RESULTS container, above the Oracle Text toggle.
+2. The histograms show three horizontal bar charts side by side: Color Identity (7 bars), Mana Value (8 bars), and Card Type (8 bars).
 3. Color Identity bars are labeled with mana symbols ({C}, {W}, {U}, {B}, {R}, {G}) rendered via `mana-font`, and a WUBRG gradient square for {M}. Multicolored cards increment multiple bars (individual colors and M).
 4. Mana Value bars are labeled 0–6 and 7+. Values are bucketed by `floor(manaValue)`.
-5. Bar widths are proportional to the maximum count within each chart.
-6. Each color bar is tinted using the hex constants from `app/src/color-identity.ts` (`CI_W`, `CI_U`, `CI_B`, `CI_R`, `CI_G`, `CI_COLORLESS`). The multicolored bar uses the WUBRG gradient from `CI_BACKGROUNDS[31]`.
-7. Clicking anywhere in a bar's row (full width, including zero-count bars) appends the corresponding filter to the query (`ci>=r`, `mv=3`, etc.).
-8. Clicking the × button appends the negated filter (`-ci>=r`, `-mv=3`, etc.).
-8a. When the current query's breakdown root is an OR node, the existing query is wrapped in parentheses before appending (e.g., `(t:enchantment OR t:artifact) ci>=r`).
-9. The colorless bar uses `ci:c` / `-ci:c` (not `ci>=c`).
-10. The multicolored bar uses `ci:m` / `-ci:m`.
-11. The 7+ bar uses `mv>=7` / `-mv>=7`.
-12. Histograms are computed in the WebWorker, not the main thread.
-13. The collapsed/expanded state is persisted to `localStorage`.
-14. The panel is not rendered when the result set is empty.
-15. The two charts always sit side by side, compressing on narrow viewports rather than stacking.
+5. Card Type bars are labeled Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd. Multi-typed cards (e.g., Legendary Creature) increment multiple bars.
+6. Bar widths are proportional to the maximum count within each chart.
+7. Each color bar is tinted using the hex constants from `app/src/color-identity.ts` (`CI_W`, `CI_U`, `CI_B`, `CI_R`, `CI_G`, `CI_COLORLESS`). The multicolored bar uses the WUBRG gradient from `CI_BACKGROUNDS[31]`. Mana value and card type bars each use their own distinct neutral color.
+8. Clicking anywhere in a bar's row (full width, including zero-count bars) appends the corresponding filter to the query (`ci>=r`, `mv=3`, `t:creature`, etc.).
+9. Clicking the × button appends the negated filter (`-ci>=r`, `-mv=3`, `-t:creature`, etc.).
+9a. When the current query's breakdown root is an OR node, the existing query is wrapped in parentheses before appending (e.g., `(t:enchantment OR t:artifact) ci>=r`).
+10. The colorless bar uses `ci:c` / `-ci:c` (not `ci>=c`).
+11. The multicolored bar uses `ci:m` / `-ci:m`.
+12. The 7+ bar uses `mv>=7` / `-mv>=7`.
+13. Histograms are computed in the WebWorker, not the main thread.
+14. The histograms do not have their own collapsible container — they share the RESULTS drawer's expanded/collapsed state (Spec 026).
+15. The histograms are not rendered when the result set is empty (the RESULTS container is not shown).
+16. The three charts always sit side by side, compressing on narrow viewports rather than stacking.
