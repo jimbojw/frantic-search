@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, QueryNodeResult } from '@frantic-search/shared'
-import { CardIndex, NodeCache, parse, seededSort, collectBareWords } from '@frantic-search/shared'
+import type { ColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
+import { CardIndex, NodeCache, Color, parse, seededSort, collectBareWords } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
@@ -61,6 +61,33 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   }
 }
 
+function popcount(v: number): number {
+  v = (v & 0x55) + ((v >> 1) & 0x55)
+  v = (v & 0x33) + ((v >> 2) & 0x33)
+  return (v + (v >> 4)) & 0x0f
+}
+
+function computeHistograms(deduped: number[], index: CardIndex): Histograms {
+  const colorIdentity = [0, 0, 0, 0, 0, 0, 0]  // C, W, U, B, R, G, M
+  const manaValue = [0, 0, 0, 0, 0, 0, 0, 0]    // 0..6, 7+
+  for (let i = 0; i < deduped.length; i++) {
+    const ci = index.colorIdentity[deduped[i]]
+    if (ci === 0) {
+      colorIdentity[0]++
+    } else {
+      if (ci & Color.White) colorIdentity[1]++
+      if (ci & Color.Blue) colorIdentity[2]++
+      if (ci & Color.Black) colorIdentity[3]++
+      if (ci & Color.Red) colorIdentity[4]++
+      if (ci & Color.Green) colorIdentity[5]++
+      if (popcount(ci) >= 2) colorIdentity[6]++
+    }
+    const mv = Math.floor(index.manaValue[deduped[i]])
+    manaValue[Math.min(mv, 7)]++
+  }
+  return { colorIdentity, manaValue }
+}
+
 function post(msg: FromWorker, transfer?: Transferable[]): void {
   self.postMessage(msg, transfer ?? [])
 }
@@ -101,9 +128,10 @@ async function init(): Promise<void> {
       .filter(w => w.length > 0)
     seededSort(deduped, msg.query, index.combinedNamesNormalized, bareWords)
 
+    const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)
     const resultMsg: FromWorker & { type: 'result' } = {
-      type: 'result', queryId: msg.queryId, indices, totalMatches, breakdown,
+      type: 'result', queryId: msg.queryId, indices, totalMatches, breakdown, histograms,
     }
     post(resultMsg, [indices.buffer])
   }

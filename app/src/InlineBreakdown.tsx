@@ -12,20 +12,8 @@ function getBreakdownCase(node: BreakdownNode): BreakdownCase {
   return 'nested'
 }
 
-function getSummaryLabel(node: BreakdownNode): string {
-  const c = getBreakdownCase(node)
-  if (c === 'single') return ''
-  if (c === 'flat-and') return 'ALL'
-  if (c === 'flat-or') return 'ANY'
-  let hasAnd = false, hasOr = false
-  function scan(n: BreakdownNode) {
-    if (n.type === 'AND') hasAnd = true
-    if (n.type === 'OR') hasOr = true
-    n.children?.forEach(scan)
-  }
-  scan(node)
-  if (hasAnd && hasOr) return 'FINAL'
-  return hasAnd ? 'ALL' : 'ANY'
+function getSummaryLabel(_node: BreakdownNode): string {
+  return 'MATCHES'
 }
 
 function reconstructQuery(node: BreakdownNode): string {

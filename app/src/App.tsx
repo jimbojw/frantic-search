@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show } from 'solid-js'
-import type { FromWorker, DisplayColumns, BreakdownNode } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import InlineBreakdown from './InlineBreakdown'
+import ResultsBreakdown from './ResultsBreakdown'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import { ManaCost, OracleText } from './card-symbols'
@@ -130,6 +131,7 @@ function App() {
   const [totalMatches, setTotalMatches] = createSignal(0)
   const [showOracleText, setShowOracleText] = createSignal(false)
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
+  const [histograms, setHistograms] = createSignal<Histograms | null>(null)
   const [breakdownExpanded, setBreakdownExpanded] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
   )
@@ -137,6 +139,16 @@ function App() {
     setBreakdownExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-breakdown-expanded', String(next))
+      return next
+    })
+  }
+  const [resultsExpanded, setResultsExpanded] = createSignal(
+    localStorage.getItem('frantic-results-expanded') !== 'false'
+  )
+  function toggleResults() {
+    setResultsExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-results-expanded', String(next))
       return next
     })
   }
@@ -181,6 +193,7 @@ function App() {
           setIndices(msg.indices)
           setTotalMatches(msg.totalMatches)
           setBreakdown(msg.breakdown)
+          setHistograms(msg.histograms)
         }
         break
     }
@@ -195,6 +208,7 @@ function App() {
       setIndices(new Uint32Array(0))
       setTotalMatches(0)
       setBreakdown(null)
+      setHistograms(null)
     }
   })
 
@@ -270,6 +284,15 @@ function App() {
     setView('search')
     setCardId('')
     window.scrollTo(0, 0)
+  }
+
+  function appendQuery(term: string) {
+    setQuery(q => {
+      const trimmed = q.trim()
+      if (!trimmed) return term
+      const needsParens = breakdown()?.type === 'OR'
+      return needsParens ? `(${trimmed}) ${term}` : `${trimmed} ${term}`
+    })
   }
 
   return (
@@ -457,6 +480,17 @@ function App() {
                     </span>
                   </label>
                 </div>
+                <Show when={histograms()}>
+                  {(h) => (
+                    <ResultsBreakdown
+                      histograms={h()}
+                      breakdown={breakdown()!}
+                      expanded={resultsExpanded()}
+                      onToggle={toggleResults}
+                      onAppendQuery={appendQuery}
+                    />
+                  )}
+                </Show>
                 <ul class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
                   <For each={visibleIndices()}>
                     {(ci) => {

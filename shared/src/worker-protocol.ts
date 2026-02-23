@@ -36,8 +36,13 @@ export type BreakdownNode = {
   children?: BreakdownNode[]
 }
 
+export type Histograms = {
+  colorIdentity: number[]  // [C, W, U, B, R, G, M] — length 7
+  manaValue: number[]      // [0, 1, 2, ..., 6, 7+] — length 8
+}
+
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'error'; error: string }
-  | { type: 'result'; queryId: number; indices: Uint32Array; totalMatches: number; breakdown: BreakdownNode }
+  | { type: 'result'; queryId: number; indices: Uint32Array; totalMatches: number; breakdown: BreakdownNode; histograms: Histograms }

@@ -1,6 +1,6 @@
 # Spec 025: Results Breakdown
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 024 (Index-Based Result Protocol), Spec 021 (Inline Query Breakdown), Spec 023 (Breakdown Remove Node)
 
@@ -29,7 +29,7 @@ Color identity and mana value are the two most fundamental axes for filtering Ma
 
 The results breakdown sits between the results header row (Scryfall link, oracle text toggle) and the results list. It is wrapped in a collapsible container with the same visual language as the query breakdown: a toggle row with a chevron and a label.
 
-- **Label:** "RESULTS" appears next to the chevron on the toggle row.
+- **Label:** "STATS" appears next to the chevron on the toggle row.
 - **Chevron:** Points right (▸) when collapsed, rotates 90° (▾) when expanded.
 - **Toggle target:** Clicking anywhere on the toggle row expands/collapses the panel.
 - **Persistence:** Collapsed/expanded state is stored in `localStorage` under `frantic-results-expanded`.
@@ -40,7 +40,7 @@ When expanded, the panel shows two horizontal bar charts side by side:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ ▸ RESULTS                                                   │
+│ ▸ STATS                                                     │
 ├─────────────────────────────────────────────────────────────┤
 │  Color Identity                │  Mana Value                  │
 │                                │                              │
@@ -71,7 +71,7 @@ Bars with zero count are rendered as empty (no fill) but the row remains visible
 
 ### Color identity chart
 
-Seven rows: one per color, one for colorless, and one for multicolored. Labels are rendered as **mana symbols** using the `mana-font` CSS icon font (e.g., `<i class="ms ms-c ms-cost" />` for colorless), matching the mana symbol rendering used elsewhere in the app (`card-symbols.tsx`):
+Seven rows: one per color, one for colorless, and one for multicolored. Most labels are rendered as **mana symbols** using the `mana-font` CSS icon font (e.g., `<i class="ms ms-c ms-cost" />` for colorless), matching the mana symbol rendering used elsewhere in the app (`card-symbols.tsx`). The multicolored label is a small rounded square filled with the WUBRG gradient (same visual as the color identity stripe on 5-color card thumbnails):
 
 | Label | Symbol class | Meaning | Counting rule |
 |---|---|---|---|
@@ -81,7 +81,7 @@ Seven rows: one per color, one for colorless, and one for multicolored. Labels a
 | {B} | `ms-b` | Black | `color_identity & Color.Black` |
 | {R} | `ms-r` | Red | `color_identity & Color.Red` |
 | {G} | `ms-g` | Green | `color_identity & Color.Green` |
-| {M} | `ms-multicolor` | Multicolored | `popcount(color_identity) >= 2` |
+| {M} | *(small rounded square with WUBRG gradient)* | Multicolored | `popcount(color_identity) >= 2` |
 
 A multicolored card (e.g., Boros, with identity W|R) increments **both** the W and R buckets, **and** the M bucket. The colorless bucket only counts cards with identity exactly 0. The seven bars therefore do not sum to the total result count — multicolored cards are counted multiple times, and that is intentional. Each bar answers a different question: the five color bars answer "how many results include this color?", the colorless bar answers "how many results have no color?", and the multicolored bar answers "how many results have two or more colors?"
 
@@ -304,7 +304,7 @@ New component with props:
 }
 ```
 
-- Renders the collapsible container with chevron and "RESULTS" label. The toggle row is at the **top**, with chart content below.
+- Renders the collapsible container with chevron and "STATS" label. The toggle row is at the **top**, with chart content below.
 - Renders two `BarChart` sub-components (color identity, mana value).
 - Each bar row: label, full-width clickable area (drill-down), × button.
 - Bar widths computed as percentages of the chart-local maximum.
@@ -347,9 +347,9 @@ With no query (all ~30,000 cards), the histograms compute over all cards. The si
 
 ## Acceptance Criteria
 
-1. When a query produces results, a collapsible "RESULTS" panel appears above the results list.
+1. When a query produces results, a collapsible "STATS" panel appears above the results list.
 2. Expanding the panel reveals two horizontal bar charts: Color Identity (7 bars) and Mana Value (8 bars).
-3. Color Identity bars are labeled with mana symbols ({C}, {W}, {U}, {B}, {R}, {G}, {M}) rendered via `mana-font`. Multicolored cards increment multiple bars (individual colors and M).
+3. Color Identity bars are labeled with mana symbols ({C}, {W}, {U}, {B}, {R}, {G}) rendered via `mana-font`, and a WUBRG gradient square for {M}. Multicolored cards increment multiple bars (individual colors and M).
 4. Mana Value bars are labeled 0–6 and 7+. Values are bucketed by `floor(manaValue)`.
 5. Bar widths are proportional to the maximum count within each chart.
 6. Each color bar is tinted using the hex constants from `app/src/color-identity.ts` (`CI_W`, `CI_U`, `CI_B`, `CI_R`, `CI_G`, `CI_COLORLESS`). The multicolored bar uses the WUBRG gradient from `CI_BACKGROUNDS[31]`.

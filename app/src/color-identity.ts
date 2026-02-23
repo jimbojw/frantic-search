@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-const CI_W = '#E8D44D'
-const CI_U = '#4A90D9'
-const CI_B = '#6B5B6B'
-const CI_R = '#D94040'
-const CI_G = '#3A9A5A'
+export const CI_W = '#E8D44D'
+export const CI_U = '#4A90D9'
+export const CI_B = '#6B5B6B'
+export const CI_R = '#D94040'
+export const CI_G = '#3A9A5A'
 export const CI_COLORLESS = '#C0BCB0'
 
 function stripes(...colors: string[]): string {
