@@ -102,20 +102,27 @@ describe("computeLensOrderings", () => {
       expect(result.lens_mana_curve).toEqual([1, 2, 0]);
     });
 
-    test("uses manaCostLength as first tiebreaker within same cmc", () => {
-      // {1}{G} = 6 chars, {2} = 3 chars — same CMC but different structure
-      // Name order would be: Alpha (0), Zebra (1)
-      // manaCostLength order: Zebra/{2} (3) before Alpha/{1}{G} (6)
+    test("uses Gray code rank of color identity as first tiebreaker within same cmc", () => {
+      // W=1 → gray(1)=1, U=2 → gray(2)=3, so W sorts before U
+      const W = 1, U = 2;
       const entries = [
-        entry(0, "Alpha", { cmc: 2, manaCostLength: 6 }),  // {1}{G}
-        entry(1, "Zebra", { cmc: 2, manaCostLength: 3 }),  // {2}
+        entry(0, "Blue Card", { cmc: 2, colorIdentity: U }),
+        entry(1, "White Card", { cmc: 2, colorIdentity: W }),
       ];
       const result = computeLensOrderings(entries);
-      // manaCostLength wins: Zebra (len 3) before Alpha (len 6)
       expect(result.lens_mana_curve).toEqual([1, 0]);
     });
 
-    test("uses name as tiebreaker when cmc and manaCostLength are equal", () => {
+    test("uses manaCostLength as second tiebreaker within same cmc and identity", () => {
+      const entries = [
+        entry(0, "Alpha", { cmc: 2, manaCostLength: 6 }),
+        entry(1, "Zebra", { cmc: 2, manaCostLength: 3 }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_mana_curve).toEqual([1, 0]);
+    });
+
+    test("uses name as final tiebreaker when cmc, identity, and manaCostLength are equal", () => {
       const entries = [
         entry(0, "Zebra Bolt", { cmc: 3, manaCostLength: 6 }),
         entry(1, "Alpha Strike", { cmc: 3, manaCostLength: 6 }),

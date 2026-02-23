@@ -51,18 +51,19 @@ export function computeLensOrderings(entries: CardLensEntry[]): LensOrderings {
     false,
   );
 
+  const gray = (v: number) => v ^ (v >> 1);
+
   const lens_mana_curve = [...entries]
     .sort(
       (a, b) =>
         a.cmc - b.cmc ||
+        gray(a.colorIdentity) - gray(b.colorIdentity) ||
         a.manaCostLength - b.manaCostLength ||
         cmp.compare(a.name, b.name),
     )
     .map((e) => e.canonicalFace);
 
   const lens_complexity = sortedFaces(entries, (e) => e.complexity, true);
-
-  const gray = (v: number) => v ^ (v >> 1);
   const lens_color_identity = [...entries]
     .sort(
       (a, b) =>

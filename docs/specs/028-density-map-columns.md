@@ -78,7 +78,7 @@ Sorted by Scryfall's `released_at` date string. The ETL may encode this however 
 
 #### Mana Curve
 
-Sorted by Scryfall's `cmc` field (a number, e.g., `3` or `4.5`). A missing value defaults to `0`. First tiebreaker: **mana cost string length** of the card's primary face (canonical face). This groups cards with similar mana cost structures within the same CMC bucket — e.g., `{1}{G}` (length 6) and `{1}{R}` (length 6) sort near each other, while `{2}` (length 3) sorts earlier in the CMC-2 bucket. A missing mana cost defaults to length `0`. Second tiebreaker: name.
+Sorted by Scryfall's `cmc` field (a number, e.g., `3` or `4.5`). A missing value defaults to `0`. First tiebreaker: **Gray code rank** of color identity (same encoding as the Color Map lens), which groups cards by color with smooth single-bit transitions within each CMC bucket. Second tiebreaker: **mana cost string length** of the card's primary face (canonical face) — this further groups cards with similar mana cost structures (e.g., `{1}{G}` and `{1}{R}` together, while `{2}` sorts earlier). A missing mana cost defaults to length `0`. Third tiebreaker: name.
 
 #### Complexity
 
@@ -158,7 +158,7 @@ const byChronology = [...lensEntries]
   .map(e => e.canonicalFace)
 
 const byManaCurve = [...lensEntries]
-  .sort((a, b) => a.cmc - b.cmc || a.manaCostLength - b.manaCostLength || cmp.compare(a.name, b.name))
+  .sort((a, b) => a.cmc - b.cmc || gray(a.colorIdentity) - gray(b.colorIdentity) || a.manaCostLength - b.manaCostLength || cmp.compare(a.name, b.name))
   .map(e => e.canonicalFace)
 
 const byComplexity = [...lensEntries]
@@ -246,7 +246,7 @@ Combined: ~900 KB added to `columns.json` (~11% increase over the current ~8 MB)
 3. Every entry in a lens array is a valid canonical face index (i.e., `canonical_face[entry] === entry`).
 4. `lens_name` is sorted alphabetically by card name (case-insensitive).
 5. `lens_chronology` is sorted by release date (earliest first), with name as tiebreaker.
-6. `lens_mana_curve` is sorted by CMC (lowest first), then by mana cost string length (shortest first), then by name.
+6. `lens_mana_curve` is sorted by CMC (lowest first), then by Gray code rank of color identity, then by mana cost string length (shortest first), then by name.
 7. `lens_complexity` is sorted by total byte length of `mana_cost` + `type_line` + `oracle_text` across all faces (lowest first), with name as tiebreaker.
 8. `lens_color_identity` is sorted by Gray code rank of the color identity bitmask (0–31), then by CMC (lowest first), then by name.
 9. The worker's `ready` message includes all five lens arrays in `DisplayColumns`.
