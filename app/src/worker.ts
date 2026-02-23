@@ -63,6 +63,8 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     lens_mana_curve: data.lens_mana_curve,
     lens_complexity: data.lens_complexity,
     lens_color_identity: data.lens_color_identity,
+    lens_type_map: data.lens_type_map,
+    lens_color_type: data.lens_color_type,
   }
 }
 

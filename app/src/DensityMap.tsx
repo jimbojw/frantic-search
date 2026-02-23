@@ -4,13 +4,16 @@ import type { DisplayColumns } from '@frantic-search/shared'
 import { Color } from '@frantic-search/shared'
 import { gilbertCurve } from './gilbert'
 
-type LensKey = 'lens_name' | 'lens_chronology' | 'lens_mana_curve' | 'lens_complexity' | 'lens_color_identity'
+type LensKey = 'lens_name' | 'lens_chronology' | 'lens_mana_curve' | 'lens_complexity'
+  | 'lens_color_identity' | 'lens_type_map' | 'lens_color_type'
 
 const PANELS: { key: LensKey; label: string }[] = [
   { key: 'lens_name', label: 'Alphabetical' },
   { key: 'lens_chronology', label: 'Chronology' },
   { key: 'lens_mana_curve', label: 'Mana Curve' },
   { key: 'lens_color_identity', label: 'Color Map' },
+  { key: 'lens_type_map', label: 'Type Map' },
+  { key: 'lens_color_type', label: 'Color × Type' },
   { key: 'lens_complexity', label: 'Complexity' },
 ]
 
@@ -244,7 +247,7 @@ export default function DensityMap(props: {
         <div class="px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
           <div class="grid grid-cols-3 gap-2">
             {PANELS.map((panel, i) => {
-              const gridClass = i === 3 ? 'col-start-2' : i === 4 ? 'col-start-3' : ''
+              const gridClass = i === 6 ? 'col-start-2' : ''
               return (
                 <div class={gridClass}>
                   <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{panel.label}</p>

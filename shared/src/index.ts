@@ -5,6 +5,8 @@ export {
   COLOR_NAMES,
   COLOR_COLORLESS,
   COLOR_MULTICOLOR,
+  CardType,
+  TYPE_FROM_WORD,
   Format,
   FORMAT_NAMES,
 } from "./bits";

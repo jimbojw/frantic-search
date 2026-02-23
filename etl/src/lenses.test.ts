@@ -15,6 +15,7 @@ function entry(
     manaCostLength: overrides.manaCostLength ?? 0,
     complexity: overrides.complexity ?? 0,
     colorIdentity: overrides.colorIdentity ?? 0,
+    typeIdentity: overrides.typeIdentity ?? 0,
   };
 }
 
@@ -26,6 +27,8 @@ describe("computeLensOrderings", () => {
     expect(result.lens_mana_curve).toEqual([]);
     expect(result.lens_complexity).toEqual([]);
     expect(result.lens_color_identity).toEqual([]);
+    expect(result.lens_type_map).toEqual([]);
+    expect(result.lens_color_type).toEqual([]);
   });
 
   test("single entry returns that entry for all lenses", () => {
@@ -36,6 +39,8 @@ describe("computeLensOrderings", () => {
     expect(result.lens_mana_curve).toEqual([5]);
     expect(result.lens_complexity).toEqual([5]);
     expect(result.lens_color_identity).toEqual([5]);
+    expect(result.lens_type_map).toEqual([5]);
+    expect(result.lens_color_type).toEqual([5]);
   });
 
   describe("lens_name (alphabetical)", () => {
@@ -221,6 +226,74 @@ describe("computeLensOrderings", () => {
     });
   });
 
+  describe("lens_type_map", () => {
+    // CardType bits: Creature=1, Enchantment=2, Artifact=4, Land=8,
+    // Planeswalker=16, Instant=32, Sorcery=64, Legendary=128
+    // gray(1)=1, gray(32)=48, gray(64)=96 — Creature sorts earliest
+    const CREATURE = 1, INSTANT = 32, SORCERY = 64;
+
+    test("sorts by Gray code rank of type identity", () => {
+      const entries = [
+        entry(0, "A Sorcery", { typeIdentity: SORCERY }),
+        entry(1, "A Creature", { typeIdentity: CREATURE }),
+        entry(2, "An Instant", { typeIdentity: INSTANT }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_type_map).toEqual([1, 2, 0]);
+    });
+
+    test("uses Gray color identity as first tiebreaker within same type", () => {
+      const W = 1, U = 2;
+      const entries = [
+        entry(0, "Blue Creature", { typeIdentity: CREATURE, colorIdentity: U }),
+        entry(1, "White Creature", { typeIdentity: CREATURE, colorIdentity: W }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_type_map).toEqual([1, 0]);
+    });
+
+    test("uses cmc as second tiebreaker", () => {
+      const entries = [
+        entry(0, "Expensive", { typeIdentity: CREATURE, cmc: 5 }),
+        entry(1, "Cheap", { typeIdentity: CREATURE, cmc: 1 }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_type_map).toEqual([1, 0]);
+    });
+  });
+
+  describe("lens_color_type", () => {
+    const CREATURE = 1, INSTANT = 32;
+    const W = 1, U = 2;
+
+    test("sorts by Gray color identity first", () => {
+      const entries = [
+        entry(0, "Blue Card", { colorIdentity: U }),
+        entry(1, "White Card", { colorIdentity: W }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_color_type).toEqual([1, 0]);
+    });
+
+    test("uses Gray type identity as first tiebreaker within same color", () => {
+      const entries = [
+        entry(0, "Red Instant", { colorIdentity: W, typeIdentity: INSTANT }),
+        entry(1, "Red Creature", { colorIdentity: W, typeIdentity: CREATURE }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_color_type).toEqual([1, 0]);
+    });
+
+    test("uses cmc as second tiebreaker", () => {
+      const entries = [
+        entry(0, "Expensive", { colorIdentity: W, typeIdentity: CREATURE, cmc: 5 }),
+        entry(1, "Cheap", { colorIdentity: W, typeIdentity: CREATURE, cmc: 1 }),
+      ];
+      const result = computeLensOrderings(entries);
+      expect(result.lens_color_type).toEqual([1, 0]);
+    });
+  });
+
   describe("independence of lenses", () => {
     test("each lens produces a different ordering", () => {
       const entries = [
@@ -248,6 +321,8 @@ describe("computeLensOrderings", () => {
     expect(result.lens_mana_curve).toHaveLength(3);
     expect(result.lens_complexity).toHaveLength(3);
     expect(result.lens_color_identity).toHaveLength(3);
+    expect(result.lens_type_map).toHaveLength(3);
+    expect(result.lens_color_type).toHaveLength(3);
   });
 
   test("output contains only canonical face indices from input", () => {
@@ -263,5 +338,7 @@ describe("computeLensOrderings", () => {
     expect([...result.lens_mana_curve].sort(numSort)).toEqual([7, 42, 99]);
     expect([...result.lens_complexity].sort(numSort)).toEqual([7, 42, 99]);
     expect([...result.lens_color_identity].sort(numSort)).toEqual([7, 42, 99]);
+    expect([...result.lens_type_map].sort(numSort)).toEqual([7, 42, 99]);
+    expect([...result.lens_color_type].sort(numSort)).toEqual([7, 42, 99]);
   });
 });

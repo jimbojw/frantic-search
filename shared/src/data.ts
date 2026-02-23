@@ -31,4 +31,6 @@ export interface ColumnarData {
   lens_mana_curve: number[];
   lens_complexity: number[];
   lens_color_identity: number[];
+  lens_type_map: number[];
+  lens_color_type: number[];
 }

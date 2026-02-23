@@ -5,6 +5,7 @@ import { log } from "./log";
 import { loadManifest } from "./thumbhash";
 import {
   COLOR_FROM_LETTER,
+  TYPE_FROM_WORD,
   FORMAT_NAMES,
   type ColumnarData,
 } from "@frantic-search/shared";
@@ -75,6 +76,16 @@ function encodeColors(colors: string[] | undefined): number {
   let mask = 0;
   for (const c of colors) {
     mask |= COLOR_FROM_LETTER[c] ?? 0;
+  }
+  return mask;
+}
+
+function encodeTypes(typeLine: string | undefined): number {
+  if (!typeLine) return 0;
+  const left = typeLine.split(" \u2014 ")[0];
+  let mask = 0;
+  for (const word of left.toLowerCase().split(/\s+/)) {
+    mask |= TYPE_FROM_WORD[word] ?? 0;
   }
   return mask;
 }
@@ -209,6 +220,8 @@ export function processCards(verbose: boolean): void {
     lens_mana_curve: [],
     lens_complexity: [],
     lens_color_identity: [],
+    lens_type_map: [],
+    lens_color_type: [],
   };
 
   let filtered = 0;
@@ -228,6 +241,7 @@ export function processCards(verbose: boolean): void {
 
     let complexity = 0;
     let manaCostLength = 0;
+    let typeIdentity = 0;
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       manaCostLength = (card.card_faces[0].mana_cost ?? "").length;
       for (const face of card.card_faces) {
@@ -237,6 +251,7 @@ export function processCards(verbose: boolean): void {
           (face.mana_cost ?? "").length +
           (face.type_line ?? "").length +
           (face.oracle_text ?? "").length;
+        typeIdentity |= encodeTypes(face.type_line);
       }
     } else {
       manaCostLength = (card.mana_cost ?? "").length;
@@ -246,6 +261,7 @@ export function processCards(verbose: boolean): void {
         (card.mana_cost ?? "").length +
         (card.type_line ?? "").length +
         (card.oracle_text ?? "").length;
+      typeIdentity = encodeTypes(card.type_line);
     }
 
     lensEntries.push({
@@ -256,6 +272,7 @@ export function processCards(verbose: boolean): void {
       manaCostLength,
       complexity,
       colorIdentity: encodeColors(card.color_identity),
+      typeIdentity,
     });
   }
 
@@ -270,6 +287,8 @@ export function processCards(verbose: boolean): void {
   data.lens_mana_curve = lenses.lens_mana_curve;
   data.lens_complexity = lenses.lens_complexity;
   data.lens_color_identity = lenses.lens_color_identity;
+  data.lens_type_map = lenses.lens_type_map;
+  data.lens_color_type = lenses.lens_color_type;
 
   log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
   log(`Lens orderings: ${lensEntries.length} unique cards`, verbose);

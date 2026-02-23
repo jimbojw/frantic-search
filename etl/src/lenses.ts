@@ -8,6 +8,7 @@ export interface CardLensEntry {
   manaCostLength: number;
   complexity: number;
   colorIdentity: number;
+  typeIdentity: number;
 }
 
 export interface LensOrderings {
@@ -16,6 +17,8 @@ export interface LensOrderings {
   lens_mana_curve: number[];
   lens_complexity: number[];
   lens_color_identity: number[];
+  lens_type_map: number[];
+  lens_color_type: number[];
 }
 
 const cmp = new Intl.Collator("en", { sensitivity: "base" });
@@ -73,5 +76,28 @@ export function computeLensOrderings(entries: CardLensEntry[]): LensOrderings {
     )
     .map((e) => e.canonicalFace);
 
-  return { lens_name, lens_chronology, lens_mana_curve, lens_complexity, lens_color_identity };
+  const lens_type_map = [...entries]
+    .sort(
+      (a, b) =>
+        gray(a.typeIdentity) - gray(b.typeIdentity) ||
+        gray(a.colorIdentity) - gray(b.colorIdentity) ||
+        a.cmc - b.cmc ||
+        cmp.compare(a.name, b.name),
+    )
+    .map((e) => e.canonicalFace);
+
+  const lens_color_type = [...entries]
+    .sort(
+      (a, b) =>
+        gray(a.colorIdentity) - gray(b.colorIdentity) ||
+        gray(a.typeIdentity) - gray(b.typeIdentity) ||
+        a.cmc - b.cmc ||
+        cmp.compare(a.name, b.name),
+    )
+    .map((e) => e.canonicalFace);
+
+  return {
+    lens_name, lens_chronology, lens_mana_curve, lens_complexity,
+    lens_color_identity, lens_type_map, lens_color_type,
+  };
 }
