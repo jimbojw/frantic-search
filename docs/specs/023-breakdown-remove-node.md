@@ -1,6 +1,6 @@
 # Spec 023: Breakdown Remove Node
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 021 (Inline Query Breakdown)
 
