@@ -11,6 +11,7 @@ import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import { ManaCost, OracleText } from './card-symbols'
+import DensityMap from './DensityMap'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -423,9 +424,21 @@ function App() {
         </Show>
 
         <Show when={workerStatus() === 'ready' && display()}>
-          {(d) => (
+          {(d) => (<>
+            <Show when={query().trim() && totalCards() > 0 ? histograms() : undefined}>
+              {(h) => (
+                <ResultsBreakdown
+                  histograms={h()}
+                  breakdown={breakdown()!}
+                  expanded={resultsExpanded()}
+                  onToggle={toggleResults}
+                  onAppendQuery={appendQuery}
+                />
+              )}
+            </Show>
+            <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} />
             <Show when={query().trim()} fallback={
-              <div class="pt-8 text-center">
+              <div class="pt-4 text-center">
                 <p class="text-sm text-gray-400 dark:text-gray-600">
                   Type a query to search
                 </p>
@@ -448,7 +461,7 @@ function App() {
               </div>
             }>
               <Show when={totalCards() > 0} fallback={
-                <div class="pt-8 text-center">
+                <div class="pt-4 text-center">
                   <p class="text-sm text-gray-400 dark:text-gray-600">
                     No cards found
                   </p>
@@ -472,17 +485,6 @@ function App() {
                   </p>
                 </div>
               }>
-                <Show when={histograms()}>
-                  {(h) => (
-                    <ResultsBreakdown
-                      histograms={h()}
-                      breakdown={breakdown()!}
-                      expanded={resultsExpanded()}
-                      onToggle={toggleResults}
-                      onAppendQuery={appendQuery}
-                    />
-                  )}
-                </Show>
                 <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
                   <div
                     onClick={() => toggleResultsOptions()}
@@ -560,7 +562,7 @@ function App() {
                 </div>
               </Show>
             </Show>
-          )}
+          </>)}
         </Show>
       </main>
       </Show>

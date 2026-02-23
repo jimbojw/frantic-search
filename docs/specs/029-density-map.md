@@ -2,11 +2,11 @@
 
 **Status:** Draft
 
-**Depends on:** Spec 025 (Results Breakdown), Spec 028 (Density Map Lens Orderings)
+**Depends on:** Spec 028 (Density Map Lens Orderings)
 
 ## Goal
 
-Add a **Density Map** tab to the STATS panel that renders the entire Magic: The Gathering card pool (~30,000 cards) simultaneously on a 2D canvas. Each card is a single pixel. Matching cards light up on every keystroke, giving the user instant macro-level feedback on the shape and distribution of their query results.
+Add a **Density Map** component that renders the entire Magic: The Gathering card pool (~30,000 cards) simultaneously on a 2D canvas. Each card is a single pixel. Matching cards light up on every keystroke, giving the user instant macro-level feedback on the shape and distribution of their query results.
 
 ## Background
 
@@ -24,33 +24,47 @@ The visualization is a **Dense Pixel Display** — a technique for rendering lar
 
 ## Design
 
-### Placement: Tabbed STATS panel
+### Placement: Standalone MAP box
 
-The STATS panel gains two tabs: **Distributions** (the existing histograms) and **Density Map** (the new visualization). The tabs sit inside the expanded panel, below the toggle row.
+The density map is a **standalone component** rendered as its own box in the main content area, between the STATS panel and the RESULTS list. It is **not** a tab inside STATS.
+
+The MAP box is visible as soon as the worker posts the `ready` message — even on the landing page before the user has typed a query. This lets users explore the full card pool immediately. The STATS and RESULTS boxes retain their existing conditional rendering (only shown when a query has results).
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ ▸ STATS                                                  │
-├─────────────────────────────────────────────────────────┤
-│  [Distributions]  [Density Map]                          │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │                                                    │  │
-│  │            ~174 × ~174 canvas                      │  │
-│  │                                                    │  │
-│  └────────────────────────────────────────────────────┘  │
-│                                                          │
-│  Lens: (Alphabetical) (Chronology) (Mana Curve)          │
-│        (Complexity)                                      │
-│                                                          │
-│  ☐ Color by identity                                     │
-└─────────────────────────────────────────────────────────┘
+Landing page (no query):
+
+  ┌─ TERMS / Input / MATCHES ─┐
+  │                            │
+  └────────────────────────────┘
+  ┌─ MAP ──────────────────────┐
+  │  ┌──────────────────────┐  │
+  │  │   ~174 × ~174 canvas │  │
+  │  └──────────────────────┘  │
+  │  (Alphabetical) (Chrono…)  │
+  │  ☐ Color by identity       │
+  └────────────────────────────┘
+
+With query:
+
+  ┌─ TERMS / Input / MATCHES ─┐
+  │                            │
+  └────────────────────────────┘
+  ┌─ STATS ────────────────────┐
+  │  Color Identity │ Mana Val │
+  └────────────────────────────┘
+  ┌─ MAP ──────────────────────┐
+  │  ┌──────────────────────┐  │
+  │  │   ~174 × ~174 canvas │  │
+  │  └──────────────────────┘  │
+  │  (Alphabetical) (Chrono…)  │
+  │  ☐ Color by identity       │
+  └────────────────────────────┘
+  ┌─ RESULTS ──────────────────┐
+  │  Card list…                │
+  └────────────────────────────┘
 ```
 
-- The toggle row ("▸ STATS") is unchanged — it still collapses/expands the entire panel.
-- The tab bar appears immediately below the toggle row's border, inside the expanded content.
-- Tab selection is stored in `localStorage` alongside the existing expanded/collapsed state.
-- When the STATS panel is collapsed, the active tab has no visible effect.
+The STATS panel (Spec 025) and RESULTS list are **unchanged** — no tab interface, no new props.
 
 ### Canvas
 
@@ -233,46 +247,19 @@ Internal state (signals):
 - `activeLens` — which lens is selected (persisted to `localStorage`).
 - `colorByIdentity` — whether to use color or monochrome (persisted to `localStorage`).
 
-## Integration with STATS Panel
+## Integration with App.tsx
 
-The `ResultsBreakdown` component (`app/src/ResultsBreakdown.tsx`) is updated to support tabs.
+The `DensityMap` component is rendered directly in `App.tsx`, between the STATS panel and the RESULTS list. It is gated only on `display()` being available (worker ready), **not** on having query results:
 
-### Props change
-
-`ResultsBreakdown` gains new props for the density map:
-
-```typescript
-{
-  // …existing props (histograms, breakdown, expanded, onToggle, onAppendQuery)…
-  display: DisplayColumns
-  indices: Uint32Array
-  hasQuery: boolean
-}
+```tsx
+<Show when={display()}>
+  {(d) => (
+    <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} />
+  )}
+</Show>
 ```
 
-### Tab state
-
-A new signal `activeTab` (persisted to `localStorage` under `frantic-stats-tab`) tracks which tab is visible. Values: `'distributions'` | `'density-map'`. Default: `'distributions'`.
-
-### Tab bar rendering
-
-Inside the expanded panel, before the chart content:
-
-```
-<div class="flex gap-1 px-3 pt-2">
-  <TabButton label="Distributions" active={activeTab() === 'distributions'} ... />
-  <TabButton label="Density Map" active={activeTab() === 'density-map'} ... />
-</div>
-```
-
-Tab buttons use `font-mono text-[10px]` styling, matching the existing chart header labels. The active tab is visually distinguished (e.g., darker text, bottom border or background tint).
-
-### Conditional content
-
-- When `activeTab() === 'distributions'`: render the existing two-column histogram grid.
-- When `activeTab() === 'density-map'`: render `<DensityMap>`.
-
-The inactive tab's content is not rendered (unmounted), not just hidden. This avoids maintaining a canvas element in the DOM when not visible.
+The STATS panel (`ResultsBreakdown`) and the RESULTS list retain their existing conditional rendering — they only appear when a query produces results. **No changes to `ResultsBreakdown`.**
 
 ## Gilbert Curve Implementation
 
@@ -302,22 +289,22 @@ With `side = ceil(sqrt(N))`, at most `side * side - N` positions are empty (at m
 
 ### Display columns not yet loaded
 
-If the worker has not yet posted the `ready` message (display columns are null), the density map tab is not rendered. The STATS panel only shows the tab bar once display columns are available.
+If the worker has not yet posted the `ready` message (display columns are null), the density map is not rendered. The `<Show when={display()}>` guard in `App.tsx` handles this.
 
 ## Acceptance Criteria
 
-1. The STATS panel has two tabs: "Distributions" and "Density Map". Tab selection is persisted to `localStorage`.
-2. The Density Map tab renders a square `<canvas>` with side length `ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill the available width while maintaining a square aspect ratio.
-3. The canvas background is solid black (`rgba(0, 0, 0, 1)`).
-4. Every unique card in the dataset occupies exactly one pixel, mapped via a Gilbert curve computed for the exact canvas dimensions.
-5. The Gilbert curve is computed once at mount time and cached. It is not pre-computed in the ETL pipeline.
-6. Four lens chips are rendered below the canvas: Alphabetical, Chronology (default), Mana Curve, Complexity. The active lens is visually highlighted and persisted to `localStorage`.
-7. Switching lenses repaints the canvas with the new ordering.
-8. Pixel RGB is determined by color identity: W (gold), U (blue), B (desaturated violet), R (red), G (green), C (grey), M (bright magenta). Multicolor is 2+ colors in identity.
-9. A "Color by identity" checkbox toggles between colored and monochrome (white) modes. Default: checked. Persisted to `localStorage`.
-10. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost). When no query is active, all cards render at alpha 255.
-11. The match display updates on every keystroke without perceptible delay.
-12. Canvas positions beyond the card count are solid black.
-13. The existing Distributions tab (histograms) continues to work unchanged.
-14. The inactive tab's content is unmounted, not hidden.
+1. The density map is rendered as a standalone box, visible on the landing page as soon as the worker is ready (before any query is entered).
+2. When a query is active, the page layout is: STATS → MAP → RESULTS. The STATS and RESULTS boxes retain their existing conditional rendering.
+3. The density map renders a square `<canvas>` with side length `ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill the available width while maintaining a square aspect ratio.
+4. The canvas background is solid black (`rgba(0, 0, 0, 1)`).
+5. Every unique card in the dataset occupies exactly one pixel, mapped via a Gilbert curve computed for the exact canvas dimensions.
+6. The Gilbert curve is computed once at mount time and cached. It is not pre-computed in the ETL pipeline.
+7. Four lens chips are rendered below the canvas: Alphabetical, Chronology (default), Mana Curve, Complexity. The active lens is visually highlighted and persisted to `localStorage`.
+8. Switching lenses repaints the canvas with the new ordering.
+9. Pixel RGB is determined by color identity: W (gold), U (blue), B (desaturated violet), R (red), G (green), C (grey), M (bright magenta). Multicolor is 2+ colors in identity.
+10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes. Default: checked. Persisted to `localStorage`.
+11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost). When no query is active, all cards render at alpha 255.
+12. The match display updates on every keystroke without perceptible delay.
+13. Canvas positions beyond the card count are solid black.
+14. The existing STATS panel (histograms) and RESULTS list continue to work unchanged.
 15. The canvas fill rate is >99% (near-zero wasted positions).
