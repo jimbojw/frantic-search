@@ -63,6 +63,9 @@ function gitHash(): string {
 
 export default defineConfig({
   base: './',
+  test: {
+    environment: 'node',
+  },
   define: {
     __APP_VERSION__: JSON.stringify(gitHash()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
