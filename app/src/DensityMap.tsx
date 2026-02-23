@@ -26,21 +26,43 @@ const CI_COLORS: [number, number, number][] = [
   [255, 0, 200],   // Multicolor
 ]
 
+type RGB = [number, number, number]
+
 function popcount(v: number): number {
   v = (v & 0x55) + ((v >> 1) & 0x55)
   v = (v & 0x33) + ((v >> 2) & 0x33)
   return (v + (v >> 4)) & 0x0f
 }
 
-function colorForIdentity(ci: number): [number, number, number] {
-  if (ci === 0) return CI_COLORS[0]
-  if (popcount(ci) >= 2) return CI_COLORS[6]
-  if (ci & Color.White) return CI_COLORS[1]
-  if (ci & Color.Blue) return CI_COLORS[2]
-  if (ci & Color.Black) return CI_COLORS[3]
-  if (ci & Color.Red) return CI_COLORS[4]
-  if (ci & Color.Green) return CI_COLORS[5]
-  return CI_COLORS[0]
+function colorsForBlock(ci: number): [RGB, RGB, RGB, RGB] {
+  const pc = popcount(ci)
+
+  if (pc === 0) {
+    const c = CI_COLORS[0]
+    return [c, c, c, c]
+  }
+  if (pc === 1) {
+    let c: RGB
+    if (ci & Color.White) c = CI_COLORS[1]
+    else if (ci & Color.Blue) c = CI_COLORS[2]
+    else if (ci & Color.Black) c = CI_COLORS[3]
+    else if (ci & Color.Red) c = CI_COLORS[4]
+    else c = CI_COLORS[5]
+    return [c, c, c, c]
+  }
+  if (pc === 5) {
+    const c = CI_COLORS[6]
+    return [c, c, c, c]
+  }
+
+  const colors: RGB[] = []
+  for (let bit = 0; bit < 5; bit++) {
+    if (ci & (1 << bit)) colors.push(CI_COLORS[bit + 1])
+  }
+
+  if (pc === 2) return [colors[0], colors[1], colors[0], colors[1]]
+  if (pc === 3) return [colors[0], colors[1], colors[2], CI_COLORS[0]]
+  return [colors[0], colors[1], colors[2], colors[3]]
 }
 
 interface CanvasState {
@@ -48,7 +70,8 @@ interface CanvasState {
   ctx: CanvasRenderingContext2D
   imageData: ImageData
   pixelCardIndex: Uint32Array
-  pixelOffset: Uint32Array
+  pixelBaseOffset: Uint32Array
+  stride: number
 }
 
 export default function DensityMap(props: {
@@ -74,24 +97,33 @@ export default function DensityMap(props: {
     return curveCache
   }
 
+  function writePixel(data: Uint8ClampedArray, offset: number, r: number, g: number, b: number) {
+    data[offset] = r
+    data[offset + 1] = g
+    data[offset + 2] = b
+    data[offset + 3] = 255
+  }
+
   function layoutAll() {
     const N = props.display.lens_name.length
     const side = Math.ceil(Math.sqrt(N))
+    const canvasRes = side * 2
     const curve = getCurve(side)
     const useColor = colorByIdentity()
+    const stride = canvasRes * 4
 
     states.length = 0
     for (let i = 0; i < PANELS.length; i++) {
       const canvas = canvasRefs[i]
       const ctx = canvas.getContext('2d')!
-      canvas.width = side
-      canvas.height = side
+      canvas.width = canvasRes
+      canvas.height = canvasRes
 
       const lens = props.display[PANELS[i].key]
-      const imageData = ctx.createImageData(side, side)
+      const imageData = ctx.createImageData(canvasRes, canvasRes)
       const data = imageData.data
       const pixelCardIndex = new Uint32Array(N)
-      const pixelOffset = new Uint32Array(N)
+      const pixelBaseOffset = new Uint32Array(N)
 
       for (let j = 3; j < data.length; j += 4) {
         data[j] = 255
@@ -101,26 +133,27 @@ export default function DensityMap(props: {
         const cardIdx = lens[p]
         const x = curve.curveX[p]
         const y = curve.curveY[p]
-        const offset = (y * side + x) * 4
+        const base = (2 * y * canvasRes + 2 * x) * 4
 
         pixelCardIndex[p] = cardIdx
-        pixelOffset[p] = offset
+        pixelBaseOffset[p] = base
 
         if (useColor) {
-          const [r, g, b] = colorForIdentity(props.display.color_identity[cardIdx])
-          data[offset] = r
-          data[offset + 1] = g
-          data[offset + 2] = b
+          const [tl, tr, bl, br] = colorsForBlock(props.display.color_identity[cardIdx])
+          writePixel(data, base, tl[0], tl[1], tl[2])
+          writePixel(data, base + 4, tr[0], tr[1], tr[2])
+          writePixel(data, base + stride, bl[0], bl[1], bl[2])
+          writePixel(data, base + stride + 4, br[0], br[1], br[2])
         } else {
-          data[offset] = 255
-          data[offset + 1] = 255
-          data[offset + 2] = 255
+          writePixel(data, base, 255, 255, 255)
+          writePixel(data, base + 4, 255, 255, 255)
+          writePixel(data, base + stride, 255, 255, 255)
+          writePixel(data, base + stride + 4, 255, 255, 255)
         }
-        data[offset + 3] = 255
       }
 
       ctx.putImageData(imageData, 0, 0)
-      states.push({ canvas, ctx, imageData, pixelCardIndex, pixelOffset })
+      states.push({ canvas, ctx, imageData, pixelCardIndex, pixelBaseOffset, stride })
     }
   }
 
@@ -142,14 +175,24 @@ export default function DensityMap(props: {
     for (const s of states) {
       const data = s.imageData.data
       const N = s.pixelCardIndex.length
+      const st = s.stride
 
       if (!hasQuery) {
         for (let p = 0; p < N; p++) {
-          data[s.pixelOffset[p] + 3] = ALPHA_MATCH
+          const base = s.pixelBaseOffset[p]
+          data[base + 3] = ALPHA_MATCH
+          data[base + 7] = ALPHA_MATCH
+          data[base + st + 3] = ALPHA_MATCH
+          data[base + st + 7] = ALPHA_MATCH
         }
       } else {
         for (let p = 0; p < N; p++) {
-          data[s.pixelOffset[p] + 3] = matchLookup![s.pixelCardIndex[p]] ? ALPHA_MATCH : ALPHA_GHOST
+          const alpha = matchLookup![s.pixelCardIndex[p]] ? ALPHA_MATCH : ALPHA_GHOST
+          const base = s.pixelBaseOffset[p]
+          data[base + 3] = alpha
+          data[base + 7] = alpha
+          data[base + st + 3] = alpha
+          data[base + st + 7] = alpha
         }
       }
 

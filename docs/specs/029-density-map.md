@@ -6,13 +6,13 @@
 
 ## Goal
 
-Add a **Density Map** component that renders the entire Magic: The Gathering card pool (~30,000 cards) simultaneously on a 2D canvas. Each card is a single pixel. Matching cards light up on every keystroke, giving the user instant macro-level feedback on the shape and distribution of their query results.
+Add a **Density Map** component that renders the entire Magic: The Gathering card pool (~30,000 cards) simultaneously on a 2D canvas. Each card is a 2×2 pixel block. Matching cards light up on every keystroke, giving the user instant macro-level feedback on the shape and distribution of their query results.
 
 ## Background
 
 The STATS panel (Spec 025) currently contains two horizontal bar charts — Color Identity and Mana Value — that summarize the result set as aggregated counts. The density map complements these by showing the **individual card level**: every card in the dataset is visible at all times, and the user's query literally illuminates the matching subset.
 
-The visualization is a **Dense Pixel Display** — a technique for rendering large datasets without aggregation. Each card maps to one pixel. A space-filling curve preserves 1D locality in 2D, so cards that are adjacent in the selected sort order form contiguous clusters on the canvas rather than disconnected horizontal stripes.
+The visualization is a **Dense Pixel Display** — a technique for rendering large datasets without aggregation. Each card maps to a 2×2 pixel block, allowing multicolor cards to display their individual color identities rather than collapsing to a single multicolor indicator. A space-filling curve preserves 1D locality in 2D, so cards that are adjacent in the selected sort order form contiguous clusters on the canvas rather than disconnected horizontal stripes.
 
 ### Precedents
 
@@ -74,7 +74,7 @@ All four lens orderings are displayed simultaneously in a **2×2 grid** of canva
 | Row 1 | Alphabetical | Chronology |
 | Row 2 | Mana Curve | Complexity |
 
-Each canvas is a square with side length `ceil(sqrt(N))`, where `N` is the number of unique cards (the length of any lens array from Spec 028). With ~33,000 cards, this produces a ~183×183 canvas.
+The Gilbert curve operates on a logical grid of side length `side = ceil(sqrt(N))`, where `N` is the number of unique cards. Each logical cell maps to a 2×2 pixel block, so the canvas resolution is `2*side × 2*side`. With ~33,000 cards and `side` ≈ 183, each canvas is ~366×366 pixels.
 
 Each canvas is rendered at this native resolution and scaled up via CSS to fill half the available width, preserving the square aspect ratio. The CSS property `image-rendering: pixelated` disables bilinear interpolation.
 
@@ -123,7 +123,17 @@ All four lens orderings from Spec 028 are rendered simultaneously — one per ca
 
 ### Color encoding
 
-Each pixel's RGB channels are determined by the card's **color identity** bitmask (from `DisplayColumns.color_identity`).
+Each card occupies a **2×2 pixel block**. The four sub-pixels are labeled in reading order:
+
+```
+┌────┬────┐
+│ TL │ TR │
+├────┼────┤
+│ BL │ BR │
+└────┴────┘
+```
+
+#### Single-color palette
 
 | Identity | RGB | Hex | Notes |
 |---|---|---|---|
@@ -133,17 +143,25 @@ Each pixel's RGB channels are determined by the card's **color identity** bitmas
 | R (Red) | 217, 64, 64 | `#D94040` | Standard red |
 | G (Green) | 58, 154, 90 | `#3A9A5A` | Standard green |
 | C (Colorless) | 180, 176, 168 | `#B4B0A8` | Warm grey |
-| M (Multicolor) | 255, 0, 200 | `#FF00C8` | Bright magenta — intentionally loud |
+| M (Five-color) | 255, 0, 200 | `#FF00C8` | Bright magenta — only for all-five-color cards |
 
-Mono-colored cards use the corresponding color. Multi-colored cards (2+ colors in identity) use the multicolor magenta. Colorless cards (identity bitmask = 0) use grey.
+#### Block fill rules by popcount
 
-The pixel color is resolved by checking the `color_identity` value:
+Colors are assigned to sub-pixels in **WUBRG order** (the canonical MTG color wheel ordering). The individual colors present in the identity bitmask are extracted in bit order: W (bit 0), U (bit 1), B (bit 2), R (bit 3), G (bit 4).
 
-```
-if identity === 0 → Colorless
-else if popcount(identity) >= 2 → Multicolor
-else → the single set bit determines W/U/B/R/G
-```
+| Popcount | Example | TL | TR | BL | BR |
+|---|---|---|---|---|---|
+| 0 (Colorless) | Artifacts, lands | C | C | C | C |
+| 1 (Mono) | `ci=W` | W | W | W | W |
+| 2 (Guild) | `ci=WU` | W | U | W | U |
+| 3 (Shard/Wedge) | `ci=WUB` | W | U | B | C |
+| 4 (Nephilim) | `ci=WUBR` | W | U | B | R |
+| 5 (WUBRG) | Five-color | M | M | M | M |
+
+- **Two colors:** Two columns. The first color (in WUBRG order) fills the left column; the second fills the right column.
+- **Three colors:** Reading order for the three colors; the fourth sub-pixel (BR) uses the **colorless grey** (`#B4B0A8`) as a neutral fill.
+- **Four colors:** Reading order.
+- **Five colors:** All four sub-pixels use magenta. This is the only case that loses individual color information (~50–100 cards).
 
 ### Color toggle
 
@@ -173,31 +191,45 @@ The rendering is split into two phases with different frequencies.
 
 Runs once at mount time for all four canvases. The Gilbert curve is computed once and shared across all four.
 
-1. Let `N` = lens array length (unique card count). Let `side = ceil(sqrt(N))`.
+1. Let `N` = lens array length (unique card count). Let `side = ceil(sqrt(N))`. Canvas resolution is `canvasRes = 2 * side`.
 2. Compute the Gilbert curve for `side × side` → `curveX`, `curveY` arrays (shared).
 3. For each of the four canvases, using its corresponding lens array:
    a. For each position `p` in `0..N-1`:
       - Look up `(x, y) = (curveX[p], curveY[p])`.
-      - Compute `offset = (y * side + x) * 4` — the byte offset into `ImageData.data`.
-      - Store `cardIndex = lens[p]` and `offset` in a lookup structure.
+      - Compute `baseOffset = (2*y * canvasRes + 2*x) * 4` — byte offset of the TL sub-pixel in `ImageData.data`. The stride between rows is `canvasRes * 4`.
+      - Store `cardIndex = lens[p]` and `baseOffset` in a lookup structure.
    b. Pre-fill the `ImageData` buffer:
       - Fill the entire buffer with `rgba(0, 0, 0, 255)` (solid black background).
-      - For each position `p` in `0..N-1`, write the RGB values based on `color_identity[cardIndex]` (or white if monochrome). Set alpha to 255 (full brightness — the empty-query default).
+      - For each position `p` in `0..N-1`, resolve the 2×2 block colors from `color_identity[cardIndex]` (see Color encoding) and write RGB+alpha to the four sub-pixel offsets. In monochrome mode, all four sub-pixels are white.
 
 Per-canvas lookup stored as two parallel arrays:
 - `pixelCardIndex: Uint32Array[N]` — maps position → canonical face index
-- `pixelOffset: Uint32Array[N]` — maps position → byte offset in `ImageData.data`
+- `pixelBaseOffset: Uint32Array[N]` — maps position → byte offset of the TL sub-pixel in `ImageData.data`
+
+The four sub-pixel offsets for position `p` are derived from the base offset:
+```
+const stride = canvasRes * 4
+TL = baseOffset
+TR = baseOffset + 4
+BL = baseOffset + stride
+BR = baseOffset + stride + 4
+```
 
 ### Phase 2: Match update (on every keystroke)
 
-Runs on every query result. Only touches the alpha channel.
+Runs on every query result. Only touches the alpha channel of the four sub-pixels per card.
 
 1. Build a match lookup from the current `indices: Uint32Array` (the worker's result). A `Uint8Array` of length `faceCount` works well: set `matchLookup[i] = 1` for each index in `indices`, `0` otherwise.
-2. Iterate positions `0..N-1`:
+2. Iterate positions `0..N-1`, writing the same alpha to all four sub-pixels:
    ```
+   const stride = canvasRes * 4
    for (let p = 0; p < N; p++) {
      const alpha = matchLookup[pixelCardIndex[p]] ? 255 : 25
-     imageData.data[pixelOffset[p] + 3] = alpha
+     const base = pixelBaseOffset[p]
+     data[base + 3] = alpha
+     data[base + 7] = alpha
+     data[base + stride + 3] = alpha
+     data[base + stride + 7] = alpha
    }
    ```
 3. Put the `ImageData` to the canvas: `ctx.putImageData(imageData, 0, 0)`.
@@ -209,11 +241,11 @@ Runs on every query result. Only touches the alpha channel.
 | Operation | Frequency | Cost |
 |---|---|---|
 | Gilbert curve (~33,489 positions) | Once at mount | < 5 ms |
-| Layout (all 4 canvases) | Once at mount | ~8 ms (4 × ~2 ms per canvas) |
-| Match update (all 4 canvases) | Per keystroke | < 4 ms (4 × ~1 ms per canvas) |
-| `putImageData` (all 4) | Per keystroke | < 0.8 ms (4 × ~0.2 ms) |
+| Layout (all 4 canvases) | Once at mount | ~12 ms (4 × ~3 ms per canvas) |
+| Match update (all 4 canvases) | Per keystroke | < 8 ms (4 × ~2 ms per canvas) |
+| `putImageData` (all 4) | Per keystroke | < 3 ms (4 × ~0.7 ms for ~366×366) |
 
-Total per-keystroke cost: < 5 ms across all four canvases. Well within the frame budget.
+Total per-keystroke cost: < 11 ms across all four canvases. Within the frame budget but warrants profiling — the 4× increase in pixel writes and the 4× larger `putImageData` transfer are the main cost drivers.
 
 ## Data Dependencies
 
@@ -280,7 +312,7 @@ When a query matches nothing, all cards drop to ghost alpha (25). The canvas app
 
 ### Single result
 
-One pixel at full brightness against a dim silhouette. Visually striking — the user can see exactly where one card sits in the ordering.
+One 2×2 block at full brightness against a dim silhouette. Visually striking — the user can see exactly where one card sits in the ordering.
 
 ### Near-full canvas
 
@@ -295,15 +327,15 @@ If the worker has not yet posted the `ready` message (display columns are null),
 1. The density map is rendered as a standalone box, visible on the landing page as soon as the worker is ready (before any query is entered).
 2. When a query is active, the page layout is: STATS → MAP → RESULTS. The STATS and RESULTS boxes retain their existing conditional rendering.
 3. The MAP box contains a **2×2 grid** of four canvases: Alphabetical (top-left), Chronology (top-right), Mana Curve (bottom-left), Complexity (bottom-right). Each has a label above it.
-4. Each canvas is a square with side length `ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill half the available width while maintaining a square aspect ratio.
+4. Each canvas is a square with resolution `2 * ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill half the available width while maintaining a square aspect ratio. Each card occupies a 2×2 pixel block.
 5. Each canvas background is solid black (`rgba(0, 0, 0, 1)`).
-6. Every unique card in the dataset occupies exactly one pixel per canvas, mapped via a Gilbert curve computed for the exact canvas dimensions.
+6. Every unique card in the dataset occupies exactly one 2×2 block per canvas, mapped via a Gilbert curve computed for the logical grid dimensions (`ceil(sqrt(N))`).
 7. The Gilbert curve is computed once at mount time, shared across all four canvases, and cached. It is not pre-computed in the ETL pipeline.
 8. There is no lens selection UI. All four orderings are always visible.
-9. Pixel RGB is determined by color identity: W (gold), U (blue), B (desaturated violet), R (red), G (green), C (grey), M (bright magenta). Multicolor is 2+ colors in identity.
+9. Each card's 2×2 block displays its individual color identity colors (see Color encoding). Mono-colored and colorless cards use a uniform block. Two-color cards use two columns. Three-color cards fill three sub-pixels with their colors and the fourth with colorless grey. Four-color cards fill all four sub-pixels. Five-color cards use magenta.
 10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes for all four canvases. Default: checked. Persisted to `localStorage`.
 11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost) across all four canvases. When no query is active, all cards render at alpha 255.
-12. The match display updates on every keystroke without perceptible delay (< 5 ms total for all four canvases).
+12. The match display updates on every keystroke without perceptible delay (< 16 ms total for all four canvases).
 13. Canvas positions beyond the card count are solid black.
 14. The existing STATS panel (histograms) and RESULTS list continue to work unchanged.
 15. The canvas fill rate is >99% (near-zero wasted positions).
