@@ -64,10 +64,10 @@ function BarRow(props: {
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); props.onExclude() }}
-        class="w-5 shrink-0 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+        class="size-6 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
         aria-label="Exclude"
       >
-        <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </button>

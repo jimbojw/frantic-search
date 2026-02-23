@@ -528,8 +528,25 @@ function App() {
                         />
                       )}
                     </Show>
-                    <div class="flex items-center justify-between px-3 py-2 border-t border-gray-200 dark:border-gray-700">
-                      <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-300">
+                    <div class="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+                      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                        <a
+                          href={scryfallUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        >
+                          Try on Scryfall ↗
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => navigateToReport()}
+                          class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        >
+                          Report a problem
+                        </button>
+                      </div>
+                      <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         Oracle text
                         <span class="relative inline-flex items-center">
                           <input

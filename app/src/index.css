@@ -5,3 +5,7 @@
 html {
   background-color: #030712;
 }
+
+button, [role="button"] {
+  cursor: pointer;
+}
