@@ -21,6 +21,7 @@ export interface ColumnarData {
   scryfall_ids: string[];
   thumb_hashes: string[];
   layouts: string[];
+  flags: number[];
   power_lookup: string[];
   toughness_lookup: string[];
   loyalty_lookup: string[];

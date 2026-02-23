@@ -1,6 +1,6 @@
 # Spec 032: The `is:` Operator
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine)
 
@@ -69,9 +69,38 @@ These compare the face's layout string directly.
 |---|---|
 | `is:bear` | Type line contains `Creature`, AND power = 2, AND toughness = 2, AND mana value = 2 |
 
-### Summary: 21 keywords
+### Flag checks (via `flags` bitmask column)
 
-`permanent`, `spell`, `historic`, `party`, `outlaw`, `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner`, `bear`.
+These require a new `flags` column in `ColumnarData`, populated by the ETL pipeline.
+
+| Keyword | Flag bit | Scryfall source field |
+|---|---|---|
+| `is:reserved` | `CardFlag.Reserved` | `reserved === true` |
+| `is:funny` | `CardFlag.Funny` | `security_stamp === "acorn"` OR `border_color === "silver"` |
+| `is:universesbeyond` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` |
+
+### Curated land cycle lists (via name lookup)
+
+These are hardcoded sets of oracle card names. The evaluator checks `namesLower[i]` against each set.
+
+| Keyword | Cards |
+|---|---|
+| `is:dual` | Badlands, Bayou, Plateau, Savannah, Scrubland, Taiga, Tropical Island, Tundra, Underground Sea, Volcanic Island |
+| `is:shockland` | Blood Crypt, Breeding Pool, Godless Shrine, Hallowed Fountain, Overgrown Tomb, Sacred Foundry, Steam Vents, Stomping Ground, Temple Garden, Watery Grave |
+| `is:fetchland` | Arid Mesa, Bloodstained Mire, Flooded Strand, Marsh Flats, Misty Rainforest, Polluted Delta, Scalding Tarn, Verdant Catacombs, Windswept Heath, Wooded Foothills |
+| `is:checkland` | Clifftop Retreat, Dragonskull Summit, Drowned Catacomb, Glacial Fortress, Hinterland Harbor, Isolated Chapel, Rootbound Crag, Sulfur Falls, Sunpetal Grove, Woodland Cemetery |
+| `is:fastland` | Blackcleave Cliffs, Blooming Marsh, Botanical Sanctum, Concealed Courtyard, Copperline Gorge, Darkslick Shores, Inspiring Vantage, Razorverge Thicket, Seachrome Coast, Spirebluff Canal |
+| `is:painland` | Adarkar Wastes, Battlefield Forge, Brushland, Caves of Koilos, Karplusan Forest, Llanowar Wastes, Shivan Reef, Sulfurous Springs, Underground River, Yavimaya Coast |
+| `is:slowland` | Deathcap Glade, Deserted Beach, Dreamroot Cascade, Haunted Ridge, Overgrown Farmland, Rockfall Vale, Shattered Sanctum, Shipwreck Marsh, Stormcarved Coast, Sundown Pass |
+| `is:bounceland` | Arid Archway, Azorius Chancery, Boros Garrison, Coral Atoll, Dimir Aqueduct, Dormant Volcano, Everglades, Golgari Rot Farm, Gruul Turf, Guildless Commons, Izzet Boilerworks, Jungle Basin, Karoo, Orzhov Basilica, Rakdos Carnarium, Selesnya Sanctuary, Simic Growth Chamber |
+
+### Summary: 32 keywords
+
+**Tier 1 (existing data):** `permanent`, `spell`, `historic`, `party`, `outlaw`, `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner`, `bear`.
+
+**Tier 2 (flags column):** `reserved`, `funny`, `universesbeyond`.
+
+**Tier 3 (curated name lists):** `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland`.
 
 Unknown `is:` values match zero cards (consistent with how the evaluator handles unknown fields).
 
@@ -112,23 +141,36 @@ Empty oracle text does NOT qualify as French vanilla — that's regular `is:vani
 | `type_lines` | `permanent`, `spell`, `historic`, `party`, `outlaw`, `commander`, `brawler`, `bear`, `frenchvanilla` |
 | `oracle_texts` | `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner` |
 | `layouts` | `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `spell` |
+| `names` | `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland` |
 | `powers` + `power_lookup` | `bear` |
 | `toughnesses` + `toughness_lookup` | `bear` |
 | `mana_costs` (via mana value) | `bear` |
 
+### New column: `flags`
+
+A `flags` bitmask column (`number[]`) added to `ColumnarData`. Each card's flags are encoded during ETL from Scryfall card-level fields.
+
+```typescript
+// shared/src/bits.ts
+export const CardFlag = {
+  Reserved: 1 << 0,
+  Funny: 1 << 1,
+  UniversesBeyond: 1 << 2,
+} as const;
+```
+
+The ETL extracts `reserved` (boolean), `security_stamp` (string), and `border_color` (string) from each Scryfall oracle card object. `is:funny` uses `security_stamp === "acorn"` (Unfinity-era acorn-stamped cards) OR `border_color === "silver"` (pre-Unfinity Un-set cards). It does NOT use `set_type === "funny"` because funny sets (Unfinity, Unfinity Sticker Sheets) contain tournament-legal cards with black borders and no acorn stamp. Flags are card-level properties, duplicated across faces of multi-face cards.
+
 ### CardIndex changes
 
-`CardIndex` currently does not expose the `layouts` column. Add:
+Add `layouts` and `flags`:
 
 ```typescript
 readonly layouts: string[];
+readonly flags: number[];
 ```
 
-Populated directly from `data.layouts` in the constructor — no transformation needed.
-
-### No new columns
-
-All 21 keywords are computable from data already in `ColumnarData`. No ETL changes.
+Both populated directly from `ColumnarData` — no transformation needed.
 
 ## Evaluator Changes
 
@@ -206,7 +248,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 
 ## Acceptance Criteria
 
-1. All 21 keywords listed in § Supported Keywords produce correct results against the synthetic card pool.
+1. All 32 keywords listed in § Supported Keywords produce correct results against the synthetic card pool.
 2. Unknown `is:` values match zero cards without throwing.
 3. `is:` with operators other than `:` and `=` matches zero cards.
 4. Negation (`-is:spell`) works correctly via the existing `NOT` node mechanism.
@@ -215,12 +257,13 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 7. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
 8. `is:partner` matches cards with the Partner keyword but not cards that merely contain the substring "partner" in other text.
 9. Layout-based keywords correctly match across both faces of multi-face cards.
-10. No ETL or schema changes are required — all evaluation uses existing `ColumnarData` columns.
+10. `is:reserved`, `is:funny`, and `is:universesbeyond` correctly check flag bits from the `flags` column.
+11. Land cycle keywords match exactly the curated card name lists.
+12. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, and `set_type` fields.
 
 ## Out of Scope
 
 - **Printing-level attributes:** `is:foil`, `is:etched`, `is:glossy`, `is:nonfoil`, `is:fullart`, `is:textless`, `is:promo`, `is:digital`, `is:oversized`.
 - **Rarity:** `is:common`, `is:uncommon`, `is:rare`, `is:mythic`. Rarity is printing-level, not oracle-level.
-- **Curated land cycles:** `is:shockland`, `is:fetchland`, `is:checkland`, etc. These require maintained card lists, not data-driven evaluation.
-- **Set/distribution metadata:** `is:reprint`, `is:reserved`, `is:funny`, `is:universesbeyond`. These require new columns (possible future spec).
+- **Reprint status:** `is:reprint`. Printing-level; misleading at the oracle level.
 - **Alchemy/digital:** `is:alchemy`, `is:rebalanced`. Frantic Search indexes paper oracle cards.

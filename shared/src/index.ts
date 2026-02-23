@@ -7,6 +7,7 @@ export {
   COLOR_MULTICOLOR,
   Format,
   FORMAT_NAMES,
+  CardFlag,
 } from "./bits";
 
 export type { ColumnarData } from "./data";

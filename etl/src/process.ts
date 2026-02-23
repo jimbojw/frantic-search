@@ -6,6 +6,7 @@ import { loadManifest } from "./thumbhash";
 import {
   COLOR_FROM_LETTER,
   FORMAT_NAMES,
+  CardFlag,
   type ColumnarData,
 } from "@frantic-search/shared";
 import { normalizeOracleText } from "./tilde";
@@ -40,6 +41,9 @@ interface Card {
   loyalty?: string;
   defense?: string;
   legalities?: Record<string, string>;
+  reserved?: boolean;
+  security_stamp?: string;
+  border_color?: string;
   card_faces?: CardFace[];
 }
 
@@ -74,6 +78,14 @@ function encodeColors(colors: string[] | undefined): number {
     mask |= COLOR_FROM_LETTER[c] ?? 0;
   }
   return mask;
+}
+
+function encodeFlags(card: Card): number {
+  let flags = 0;
+  if (card.reserved) flags |= CardFlag.Reserved;
+  if (card.security_stamp === "acorn" || card.border_color === "silver") flags |= CardFlag.Funny;
+  if (card.security_stamp === "triangle") flags |= CardFlag.UniversesBeyond;
+  return flags;
 }
 
 function encodeLegalities(legalities: Record<string, string> | undefined): { legal: number; banned: number; restricted: number } {
@@ -159,6 +171,7 @@ function pushFaceRow(
   data.scryfall_ids.push(card.id ?? "");
   data.thumb_hashes.push(manifest[card.id ?? ""] ?? "");
   data.layouts.push(card.layout ?? "normal");
+  data.flags.push(encodeFlags(card));
 }
 
 export function processCards(verbose: boolean): void {
@@ -197,6 +210,7 @@ export function processCards(verbose: boolean): void {
     scryfall_ids: [],
     thumb_hashes: [],
     layouts: [],
+    flags: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],

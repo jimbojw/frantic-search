@@ -130,3 +130,10 @@ export const FORMAT_NAMES: Record<string, number> = {
   premodern: Format.Premodern,
   predh: Format.Predh,
 };
+
+// --- Card Flags (bitmask) ---
+export const CardFlag = {
+  Reserved: 1 << 0,
+  Funny: 1 << 1,
+  UniversesBeyond: 1 << 2,
+} as const;

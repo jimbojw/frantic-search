@@ -8,7 +8,7 @@ import {
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
-import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, FORMAT_NAMES } from "../bits";
+import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, FORMAT_NAMES, CardFlag } from "../bits";
 import { parseManaSymbols, manaContains } from "./mana";
 
 const SEP = "\x1E";
@@ -28,6 +28,7 @@ const FIELD_ALIASES: Record<string, string> = {
   legal: "legal", f: "legal", format: "legal",
   banned: "banned",
   restricted: "restricted",
+  is: "is",
 };
 
 function popcount(buf: Uint8Array, len: number): number {
@@ -52,6 +53,234 @@ function getStringColumn(canonical: string, index: CardIndex): string[] | null {
     case "oracle": return index.oracleTextsLower;
     case "type": return index.typeLinesLower;
     default: return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// is: keyword evaluation (Spec 032)
+// ---------------------------------------------------------------------------
+
+const PERMANENT_TYPES = ["artifact", "battle", "creature", "enchantment", "land", "planeswalker"];
+
+const DFC_LAYOUTS = new Set(["transform", "modal_dfc", "meld"]);
+
+const PARTY_TYPES = ["cleric", "rogue", "warrior", "wizard"];
+
+// ---------------------------------------------------------------------------
+// Curated land cycle name sets (Spec 032)
+// ---------------------------------------------------------------------------
+
+const LAND_CYCLES: Record<string, Set<string>> = {
+  dual: new Set([
+    "badlands", "bayou", "plateau", "savannah", "scrubland",
+    "taiga", "tropical island", "tundra", "underground sea", "volcanic island",
+  ]),
+  shockland: new Set([
+    "blood crypt", "breeding pool", "godless shrine", "hallowed fountain",
+    "overgrown tomb", "sacred foundry", "steam vents", "stomping ground",
+    "temple garden", "watery grave",
+  ]),
+  fetchland: new Set([
+    "arid mesa", "bloodstained mire", "flooded strand", "marsh flats",
+    "misty rainforest", "polluted delta", "scalding tarn", "verdant catacombs",
+    "windswept heath", "wooded foothills",
+  ]),
+  checkland: new Set([
+    "clifftop retreat", "dragonskull summit", "drowned catacomb", "glacial fortress",
+    "hinterland harbor", "isolated chapel", "rootbound crag", "sulfur falls",
+    "sunpetal grove", "woodland cemetery",
+  ]),
+  fastland: new Set([
+    "blackcleave cliffs", "blooming marsh", "botanical sanctum", "concealed courtyard",
+    "copperline gorge", "darkslick shores", "inspiring vantage", "razorverge thicket",
+    "seachrome coast", "spirebluff canal",
+  ]),
+  painland: new Set([
+    "adarkar wastes", "battlefield forge", "brushland", "caves of koilos",
+    "karplusan forest", "llanowar wastes", "shivan reef", "sulfurous springs",
+    "underground river", "yavimaya coast",
+  ]),
+  slowland: new Set([
+    "deathcap glade", "deserted beach", "dreamroot cascade", "haunted ridge",
+    "overgrown farmland", "rockfall vale", "shattered sanctum", "shipwreck marsh",
+    "stormcarved coast", "sundown pass",
+  ]),
+  bounceland: new Set([
+    "arid archway", "azorius chancery", "boros garrison", "coral atoll",
+    "dimir aqueduct", "dormant volcano", "everglades", "golgari rot farm",
+    "gruul turf", "guildless commons", "izzet boilerworks", "jungle basin",
+    "karoo", "orzhov basilica", "rakdos carnarium", "selesnya sanctuary",
+    "simic growth chamber",
+  ]),
+};
+const OUTLAW_TYPES = ["assassin", "mercenary", "pirate", "rogue", "warlock"];
+
+const FRENCH_VANILLA_KEYWORDS = [
+  "absorb", "afflict", "annihilator", "bushido", "cascade", "changeling",
+  "convoke", "crew", "cumulative upkeep", "cycling", "dash", "deathtouch",
+  "defender", "devoid", "double strike", "emerge", "enchant", "equip",
+  "escape", "evoke", "exalted", "exploit", "extort", "fabricate",
+  "first strike", "flanking", "flash", "flashback", "flying", "forecast",
+  "foretell", "frenzy", "graft", "haste", "hexproof", "horsemanship",
+  "indestructible", "intimidate", "kicker", "landfall", "lifelink",
+  "living weapon", "madness", "menace", "miracle", "modular", "morph",
+  "mutate", "ninjutsu", "offering", "outlast", "partner", "persist",
+  "phasing", "poisonous", "protection", "prowess", "rampage", "reach",
+  "rebound", "reconfigure", "regenerate", "renown", "replicate", "retrace",
+  "riot", "scavenge", "shadow", "shroud", "skulk", "soulbond", "spectacle",
+  "split second", "storm", "sunburst", "surge", "suspend", "totem armor",
+  "trample", "training", "transfigure", "transmute", "tribute", "undying",
+  "unearth", "unleash", "vanishing", "vigilance", "ward", "wither",
+];
+
+function isFrenchVanilla(oracleTextLower: string, typeLineLower: string): boolean {
+  if (!typeLineLower.includes("creature")) return false;
+  if (oracleTextLower.length === 0) return false;
+  const lines = oracleTextLower.split("\n");
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.length === 0) continue;
+    const parts = line.split(", ");
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.length === 0) continue;
+      if (!FRENCH_VANILLA_KEYWORDS.some(kw => trimmed === kw || trimmed.startsWith(kw + " "))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+const PARTNER_RE = /(?:^|\n)partner(?:\n|$)/;
+
+function evalIsKeyword(
+  keyword: string,
+  index: CardIndex,
+  buf: Uint8Array,
+  n: number,
+): void {
+  switch (keyword) {
+    case "permanent":
+      for (let i = 0; i < n; i++) {
+        buf[i] = PERMANENT_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+      }
+      break;
+    case "spell":
+      for (let i = 0; i < n; i++) {
+        buf[i] = !index.typeLinesLower[i].includes("land") ? 1 : 0;
+      }
+      break;
+    case "historic":
+      for (let i = 0; i < n; i++) {
+        const tl = index.typeLinesLower[i];
+        buf[i] = (tl.includes("artifact") || tl.includes("legendary") || tl.includes("saga")) ? 1 : 0;
+      }
+      break;
+    case "party":
+      for (let i = 0; i < n; i++) {
+        buf[i] = PARTY_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+      }
+      break;
+    case "outlaw":
+      for (let i = 0; i < n; i++) {
+        buf[i] = OUTLAW_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+      }
+      break;
+    case "split":
+    case "flip":
+    case "adventure":
+    case "leveler":
+    case "saga":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.layouts[i] === keyword ? 1 : 0;
+      }
+      break;
+    case "transform":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.layouts[i] === "transform" ? 1 : 0;
+      }
+      break;
+    case "modal":
+    case "mdfc":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.layouts[i] === "modal_dfc" ? 1 : 0;
+      }
+      break;
+    case "dfc":
+      for (let i = 0; i < n; i++) {
+        buf[i] = DFC_LAYOUTS.has(index.layouts[i]) ? 1 : 0;
+      }
+      break;
+    case "meld":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.layouts[i] === "meld" ? 1 : 0;
+      }
+      break;
+    case "vanilla":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.oracleTextsLower[i].length === 0 ? 1 : 0;
+      }
+      break;
+    case "frenchvanilla":
+      for (let i = 0; i < n; i++) {
+        buf[i] = isFrenchVanilla(index.oracleTextsLower[i], index.typeLinesLower[i]) ? 1 : 0;
+      }
+      break;
+    case "commander":
+    case "brawler":
+      for (let i = 0; i < n; i++) {
+        const tl = index.typeLinesLower[i];
+        const isLegendary = tl.includes("legendary");
+        const isCreatureOrPW = tl.includes("creature") || tl.includes("planeswalker");
+        const hasCommanderText = index.oracleTextsLower[i].includes("can be your commander");
+        buf[i] = (isLegendary && isCreatureOrPW) || hasCommanderText ? 1 : 0;
+      }
+      break;
+    case "companion":
+      for (let i = 0; i < n; i++) {
+        buf[i] = index.oracleTextsLower[i].includes("companion —") ? 1 : 0;
+      }
+      break;
+    case "partner":
+      for (let i = 0; i < n; i++) {
+        buf[i] = PARTNER_RE.test(index.oracleTextsLower[i]) ? 1 : 0;
+      }
+      break;
+    case "bear":
+      for (let i = 0; i < n; i++) {
+        const isPow2 = Number(index.powerLookup[index.powers[i]]) === 2;
+        const isTou2 = Number(index.toughnessLookup[index.toughnesses[i]]) === 2;
+        const isCmc2 = index.manaValue[i] === 2;
+        const isCreature = index.typeLinesLower[i].includes("creature");
+        buf[i] = (isPow2 && isTou2 && isCmc2 && isCreature) ? 1 : 0;
+      }
+      break;
+    case "reserved":
+      for (let i = 0; i < n; i++) {
+        buf[i] = (index.flags[i] & CardFlag.Reserved) !== 0 ? 1 : 0;
+      }
+      break;
+    case "funny":
+      for (let i = 0; i < n; i++) {
+        buf[i] = (index.flags[i] & CardFlag.Funny) !== 0 ? 1 : 0;
+      }
+      break;
+    case "universesbeyond":
+      for (let i = 0; i < n; i++) {
+        buf[i] = (index.flags[i] & CardFlag.UniversesBeyond) !== 0 ? 1 : 0;
+      }
+      break;
+    default: {
+      const cycle = LAND_CYCLES[keyword];
+      if (cycle) {
+        for (let i = 0; i < n; i++) {
+          buf[i] = cycle.has(index.namesLower[i]) ? 1 : 0;
+        }
+      } else {
+        buf.fill(0, 0, n);
+      }
+    }
   }
 }
 
@@ -215,6 +444,14 @@ function evalLeafField(
       for (let i = 0; i < n; i++) {
         buf[i] = (col[i] & formatBit) !== 0 ? 1 : 0;
       }
+      break;
+    }
+    case "is": {
+      if (op !== ":" && op !== "=") {
+        buf.fill(0, 0, n);
+        break;
+      }
+      evalIsKeyword(valLower, index, buf, n);
       break;
     }
     default:
