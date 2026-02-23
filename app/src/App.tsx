@@ -7,6 +7,7 @@ import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import InlineBreakdown from './InlineBreakdown'
 import ResultsBreakdown from './ResultsBreakdown'
+import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import { ManaCost, OracleText } from './card-symbols'
@@ -159,6 +160,16 @@ function App() {
     setResultsOptionsExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-results-options-expanded', String(next))
+      return next
+    })
+  }
+  const [termsExpanded, setTermsExpanded] = createSignal(
+    localStorage.getItem('frantic-terms-expanded') === 'true'
+  )
+  function toggleTerms() {
+    setTermsExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-terms-expanded', String(next))
       return next
     })
   }
@@ -349,7 +360,13 @@ function App() {
         </div>
 
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
-          <div class="relative">
+          <TermsDrawer
+            expanded={termsExpanded()}
+            onToggle={toggleTerms}
+            onChipClick={appendQuery}
+            onHelpClick={navigateToHelp}
+          />
+          <div class="relative border-t border-gray-200 dark:border-gray-700">
             <input
               type="text"
               placeholder='Search cards… e.g. "t:creature c:green"'
@@ -362,7 +379,7 @@ function App() {
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
               disabled={workerStatus() === 'error'}
-              class="w-full bg-transparent px-4 py-3 pl-11 pr-11 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+              class="w-full bg-transparent px-4 py-3 pl-11 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
             />
             <svg
               class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
@@ -374,16 +391,6 @@ function App() {
             >
               <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-            <button
-              type="button"
-              onClick={() => navigateToHelp()}
-              aria-label="Syntax help"
-              class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
-              </svg>
-            </button>
           </div>
           <Show when={breakdown()}>
             {(bd) => (

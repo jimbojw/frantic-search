@@ -1,6 +1,6 @@
 # Spec 027: Terms Drawer
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 026 (Results Box with Options Drawer)
 
@@ -48,7 +48,8 @@ The TERMS drawer is the **topmost element** inside the search input container. I
 
 - **Label:** "TERMS" appears next to the chevron on the toggle row.
 - **Chevron:** Points right (▸) when collapsed, rotates 90° (▾) when expanded. Same SVG and transition as STATS and RESULTS.
-- **Toggle target:** Clicking anywhere on the toggle row expands/collapses the drawer.
+- **Help link:** A right-aligned "Syntax help" text link sits at the far end of the toggle row. Clicking it navigates to the syntax help view. The click uses `stopPropagation` so it does not toggle the drawer. This replaces the `?` icon that previously sat inside the search input field.
+- **Toggle target:** Clicking anywhere on the toggle row (except the Help link) expands/collapses the drawer.
 - **Separator:** A `border-b` divider always separates the TERMS toggle row from the input field below, regardless of whether the drawer is expanded or collapsed.
 
 ### Visibility
@@ -219,7 +220,7 @@ The input wrapper gains a `border-t` to create the separator between the TERMS t
 1. A collapsible "TERMS" toggle row appears above the search input field, inside the same bordered container.
 2. The TERMS toggle row is visible on the landing page (before any query is typed), on active queries, and on zero-results — but not on help, card detail, or bug report views.
 3. A `border-b` separator always divides the TERMS toggle row from the input field below.
-4. Clicking anywhere on the toggle row expands or collapses the drawer.
+4. Clicking anywhere on the toggle row (except the Help link) expands or collapses the drawer.
 5. The drawer begins collapsed for new users (no `localStorage` entry).
 6. The expanded/collapsed state is persisted to `localStorage` under `frantic-terms-expanded`.
 7. When expanded, the drawer shows two columns: format chips (left, 6 chips) and type chips (right, 7 chips). No column headers are rendered.
@@ -227,3 +228,4 @@ The input wrapper gains a `border-t` to create the separator between the TERMS t
 9. Clicking a chip appends the corresponding term to the current query using the standard append logic (parenthesizing when the breakdown root is OR).
 10. The two-column layout mirrors the STATS panel grid and compresses on narrow viewports rather than stacking.
 11. All styling (toggle row, chevron, label, content grid) is consistent with the existing STATS and RESULTS drawers.
+12. A right-aligned "Syntax help" text link in the TERMS toggle row navigates to the syntax help view. The `?` icon previously inside the search input field is removed.
