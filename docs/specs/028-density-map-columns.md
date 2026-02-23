@@ -77,7 +77,7 @@ Sorted by Scryfall's `released_at` date string. The ETL may encode this however 
 
 #### Mana Curve
 
-Sorted by Scryfall's `cmc` field (a number, e.g., `3` or `4.5`). A missing value defaults to `0`. Tiebreaker: name.
+Sorted by Scryfall's `cmc` field (a number, e.g., `3` or `4.5`). A missing value defaults to `0`. First tiebreaker: **mana cost string length** of the card's primary face (canonical face). This groups cards with similar mana cost structures within the same CMC bucket — e.g., `{1}{G}` (length 6) and `{1}{R}` (length 6) sort near each other, while `{2}` (length 3) sorts earlier in the CMC-2 bucket. A missing mana cost defaults to length `0`. Second tiebreaker: name.
 
 #### Complexity
 
@@ -125,11 +125,12 @@ interface CardLensEntry {
   name: string
   releasedAt: string
   cmc: number
+  manaCostLength: number
   complexity: number
 }
 ```
 
-`name` is the card's combined name (lowercased for sorting). `complexity` is the sum of byte lengths of `mana_cost`, `type_line`, and `oracle_text` across all faces of the card.
+`name` is the card's combined name (lowercased for sorting). `manaCostLength` is the string length of the primary face's `mana_cost` field. `complexity` is the sum of byte lengths of `mana_cost`, `type_line`, and `oracle_text` across all faces of the card.
 
 ### 3. ETL: Compute lens orderings (after main loop)
 
@@ -147,7 +148,7 @@ const byChronology = [...lensEntries]
   .map(e => e.canonicalFace)
 
 const byManaCurve = [...lensEntries]
-  .sort((a, b) => a.cmc - b.cmc || cmp.compare(a.name, b.name))
+  .sort((a, b) => a.cmc - b.cmc || a.manaCostLength - b.manaCostLength || cmp.compare(a.name, b.name))
   .map(e => e.canonicalFace)
 
 const byComplexity = [...lensEntries]
@@ -226,7 +227,7 @@ Combined: ~720 KB added to `columns.json` (~9% increase over the current ~8 MB).
 3. Every entry in a lens array is a valid canonical face index (i.e., `canonical_face[entry] === entry`).
 4. `lens_name` is sorted alphabetically by card name (case-insensitive).
 5. `lens_chronology` is sorted by release date (earliest first), with name as tiebreaker.
-6. `lens_mana_curve` is sorted by CMC (lowest first), with name as tiebreaker.
+6. `lens_mana_curve` is sorted by CMC (lowest first), then by mana cost string length (shortest first), then by name.
 7. `lens_complexity` is sorted by total byte length of `mana_cost` + `type_line` + `oracle_text` across all faces (lowest first), with name as tiebreaker.
 8. The worker's `ready` message includes all four lens arrays in `DisplayColumns`.
 9. Existing features (search, histograms, breakdown, card detail) continue to work unchanged.

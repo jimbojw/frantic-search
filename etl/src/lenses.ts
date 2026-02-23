@@ -5,6 +5,7 @@ export interface CardLensEntry {
   name: string;
   releasedAt: string;
   cmc: number;
+  manaCostLength: number;
   complexity: number;
 }
 
@@ -48,7 +49,14 @@ export function computeLensOrderings(entries: CardLensEntry[]): LensOrderings {
     false,
   );
 
-  const lens_mana_curve = sortedFaces(entries, (e) => e.cmc, true);
+  const lens_mana_curve = [...entries]
+    .sort(
+      (a, b) =>
+        a.cmc - b.cmc ||
+        a.manaCostLength - b.manaCostLength ||
+        cmp.compare(a.name, b.name),
+    )
+    .map((e) => e.canonicalFace);
 
   const lens_complexity = sortedFaces(entries, (e) => e.complexity, true);
 

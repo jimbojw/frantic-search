@@ -226,7 +226,9 @@ export function processCards(verbose: boolean): void {
     const faceRowStart = data.names.length;
 
     let complexity = 0;
+    let manaCostLength = 0;
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
+      manaCostLength = (card.card_faces[0].mana_cost ?? "").length;
       for (const face of card.card_faces) {
         pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, manifest,
           powerDict, toughnessDict, loyaltyDict, defenseDict);
@@ -236,6 +238,7 @@ export function processCards(verbose: boolean): void {
           (face.oracle_text ?? "").length;
       }
     } else {
+      manaCostLength = (card.mana_cost ?? "").length;
       pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, manifest,
         powerDict, toughnessDict, loyaltyDict, defenseDict);
       complexity =
@@ -249,6 +252,7 @@ export function processCards(verbose: boolean): void {
       name: card.name ?? "",
       releasedAt: card.released_at ?? "",
       cmc: card.cmc ?? 0,
+      manaCostLength,
       complexity,
     });
   }

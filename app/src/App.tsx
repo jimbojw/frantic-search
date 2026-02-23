@@ -164,6 +164,16 @@ function App() {
       return next
     })
   }
+  const [mapExpanded, setMapExpanded] = createSignal(
+    localStorage.getItem('frantic-map-expanded') !== 'false'
+  )
+  function toggleMap() {
+    setMapExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-map-expanded', String(next))
+      return next
+    })
+  }
   const [termsExpanded, setTermsExpanded] = createSignal(
     localStorage.getItem('frantic-terms-expanded') === 'true'
   )
@@ -436,7 +446,7 @@ function App() {
                 />
               )}
             </Show>
-            <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} />
+            <DensityMap display={d()} indices={indices()} hasQuery={query().trim() !== ''} expanded={mapExpanded()} onToggle={toggleMap} />
             <Show when={query().trim()} fallback={
               <div class="pt-4 text-center">
                 <p class="text-sm text-gray-400 dark:text-gray-600">

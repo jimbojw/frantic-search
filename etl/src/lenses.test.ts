@@ -12,6 +12,7 @@ function entry(
     name,
     releasedAt: overrides.releasedAt ?? "2020-01-01",
     cmc: overrides.cmc ?? 0,
+    manaCostLength: overrides.manaCostLength ?? 0,
     complexity: overrides.complexity ?? 0,
   };
 }
@@ -98,10 +99,23 @@ describe("computeLensOrderings", () => {
       expect(result.lens_mana_curve).toEqual([1, 2, 0]);
     });
 
-    test("uses name as tiebreaker for same cmc", () => {
+    test("uses manaCostLength as first tiebreaker within same cmc", () => {
+      // {1}{G} = 6 chars, {2} = 3 chars — same CMC but different structure
+      // Name order would be: Alpha (0), Zebra (1)
+      // manaCostLength order: Zebra/{2} (3) before Alpha/{1}{G} (6)
       const entries = [
-        entry(0, "Zebra Bolt", { cmc: 3 }),
-        entry(1, "Alpha Strike", { cmc: 3 }),
+        entry(0, "Alpha", { cmc: 2, manaCostLength: 6 }),  // {1}{G}
+        entry(1, "Zebra", { cmc: 2, manaCostLength: 3 }),  // {2}
+      ];
+      const result = computeLensOrderings(entries);
+      // manaCostLength wins: Zebra (len 3) before Alpha (len 6)
+      expect(result.lens_mana_curve).toEqual([1, 0]);
+    });
+
+    test("uses name as tiebreaker when cmc and manaCostLength are equal", () => {
+      const entries = [
+        entry(0, "Zebra Bolt", { cmc: 3, manaCostLength: 6 }),
+        entry(1, "Alpha Strike", { cmc: 3, manaCostLength: 6 }),
       ];
       const result = computeLensOrderings(entries);
       expect(result.lens_mana_curve).toEqual([1, 0]);

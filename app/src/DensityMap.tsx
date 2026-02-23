@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createEffect, onMount } from 'solid-js'
+import { createSignal, createEffect, Show } from 'solid-js'
 import type { DisplayColumns } from '@frantic-search/shared'
 import { Color } from '@frantic-search/shared'
 import { gilbertCurve } from './gilbert'
 
 type LensKey = 'lens_name' | 'lens_chronology' | 'lens_mana_curve' | 'lens_complexity'
 
-const LENSES: { key: LensKey; label: string }[] = [
+const PANELS: { key: LensKey; label: string }[] = [
   { key: 'lens_name', label: 'Alphabetical' },
   { key: 'lens_chronology', label: 'Chronology' },
   { key: 'lens_mana_curve', label: 'Mana Curve' },
@@ -16,7 +16,6 @@ const LENSES: { key: LensKey; label: string }[] = [
 const ALPHA_MATCH = 255
 const ALPHA_GHOST = 25
 
-// RGB palette optimized for visibility against black background
 const CI_COLORS: [number, number, number][] = [
   [180, 176, 168], // Colorless
   [248, 225, 80],  // W
@@ -44,26 +43,29 @@ function colorForIdentity(ci: number): [number, number, number] {
   return CI_COLORS[0]
 }
 
+interface CanvasState {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  imageData: ImageData
+  pixelCardIndex: Uint32Array
+  pixelOffset: Uint32Array
+}
+
 export default function DensityMap(props: {
   display: DisplayColumns
   indices: Uint32Array
   hasQuery: boolean
+  expanded: boolean
+  onToggle: () => void
 }) {
-  let canvasRef!: HTMLCanvasElement
+  const canvasRefs: HTMLCanvasElement[] = []
+  const states: CanvasState[] = []
 
-  const [activeLens, setActiveLens] = createSignal<LensKey>(
-    (localStorage.getItem('frantic-density-lens') as LensKey) || 'lens_chronology'
-  )
   const [colorByIdentity, setColorByIdentity] = createSignal(
     localStorage.getItem('frantic-density-color') !== 'false'
   )
 
-  let side = 0
   let curveCache: { side: number; curveX: Uint16Array; curveY: Uint16Array } | null = null
-  let imageData: ImageData | null = null
-  let pixelCardIndex: Uint32Array | null = null
-  let pixelOffset: Uint32Array | null = null
-  let ctx: CanvasRenderingContext2D | null = null
 
   function getCurve(s: number) {
     if (curveCache && curveCache.side === s) return curveCache
@@ -72,112 +74,111 @@ export default function DensityMap(props: {
     return curveCache
   }
 
-  function layout() {
-    if (!ctx) return
-
-    const lens = props.display[activeLens()]
-    const N = lens.length
-    side = Math.ceil(Math.sqrt(N))
-
-    canvasRef.width = side
-    canvasRef.height = side
-
+  function layoutAll() {
+    const N = props.display.lens_name.length
+    const side = Math.ceil(Math.sqrt(N))
     const curve = getCurve(side)
-    imageData = ctx.createImageData(side, side)
-    const data = imageData.data
-
-    pixelCardIndex = new Uint32Array(N)
-    pixelOffset = new Uint32Array(N)
-
-    // Fill entire buffer black with alpha 255
-    for (let i = 3; i < data.length; i += 4) {
-      data[i] = 255
-    }
-
     const useColor = colorByIdentity()
-    for (let p = 0; p < N; p++) {
-      const cardIdx = lens[p]
-      const x = curve.curveX[p]
-      const y = curve.curveY[p]
-      const offset = (y * side + x) * 4
 
-      pixelCardIndex[p] = cardIdx
-      pixelOffset[p] = offset
+    states.length = 0
+    for (let i = 0; i < PANELS.length; i++) {
+      const canvas = canvasRefs[i]
+      const ctx = canvas.getContext('2d')!
+      canvas.width = side
+      canvas.height = side
 
-      if (useColor) {
-        const [r, g, b] = colorForIdentity(props.display.color_identity[cardIdx])
-        data[offset] = r
-        data[offset + 1] = g
-        data[offset + 2] = b
-      } else {
-        data[offset] = 255
-        data[offset + 1] = 255
-        data[offset + 2] = 255
+      const lens = props.display[PANELS[i].key]
+      const imageData = ctx.createImageData(side, side)
+      const data = imageData.data
+      const pixelCardIndex = new Uint32Array(N)
+      const pixelOffset = new Uint32Array(N)
+
+      for (let j = 3; j < data.length; j += 4) {
+        data[j] = 255
       }
-      data[offset + 3] = 255
-    }
 
-    ctx.putImageData(imageData, 0, 0)
+      for (let p = 0; p < N; p++) {
+        const cardIdx = lens[p]
+        const x = curve.curveX[p]
+        const y = curve.curveY[p]
+        const offset = (y * side + x) * 4
+
+        pixelCardIndex[p] = cardIdx
+        pixelOffset[p] = offset
+
+        if (useColor) {
+          const [r, g, b] = colorForIdentity(props.display.color_identity[cardIdx])
+          data[offset] = r
+          data[offset + 1] = g
+          data[offset + 2] = b
+        } else {
+          data[offset] = 255
+          data[offset + 1] = 255
+          data[offset + 2] = 255
+        }
+        data[offset + 3] = 255
+      }
+
+      ctx.putImageData(imageData, 0, 0)
+      states.push({ canvas, ctx, imageData, pixelCardIndex, pixelOffset })
+    }
   }
 
   function updateMatches() {
-    if (!ctx || !imageData || !pixelCardIndex || !pixelOffset) return
+    if (states.length === 0) return
 
-    const data = imageData.data
-    const N = pixelCardIndex.length
     const indices = props.indices
+    const hasQuery = props.hasQuery
+    const faceCount = props.display.names.length
 
-    if (!props.hasQuery) {
-      for (let p = 0; p < N; p++) {
-        data[pixelOffset[p] + 3] = ALPHA_MATCH
-      }
-    } else {
-      const faceCount = props.display.names.length
-      const matchLookup = new Uint8Array(faceCount)
+    let matchLookup: Uint8Array | null = null
+    if (hasQuery) {
+      matchLookup = new Uint8Array(faceCount)
       for (let i = 0; i < indices.length; i++) {
         matchLookup[indices[i]] = 1
       }
-      for (let p = 0; p < N; p++) {
-        data[pixelOffset[p] + 3] = matchLookup[pixelCardIndex[p]] ? ALPHA_MATCH : ALPHA_GHOST
-      }
     }
 
-    ctx.putImageData(imageData, 0, 0)
+    for (const s of states) {
+      const data = s.imageData.data
+      const N = s.pixelCardIndex.length
+
+      if (!hasQuery) {
+        for (let p = 0; p < N; p++) {
+          data[s.pixelOffset[p] + 3] = ALPHA_MATCH
+        }
+      } else {
+        for (let p = 0; p < N; p++) {
+          data[s.pixelOffset[p] + 3] = matchLookup![s.pixelCardIndex[p]] ? ALPHA_MATCH : ALPHA_GHOST
+        }
+      }
+
+      s.ctx.putImageData(s.imageData, 0, 0)
+    }
   }
 
-  onMount(() => {
-    ctx = canvasRef.getContext('2d')!
-    layout()
-    updateMatches()
-  })
-
   createEffect(() => {
-    // Re-layout when lens or color mode changes
-    const _lens = activeLens()
+    const expanded = props.expanded
     const _color = colorByIdentity()
-    void _lens
     void _color
-    if (ctx) {
-      layout()
-      updateMatches()
-    }
+    if (!expanded) return
+    queueMicrotask(() => {
+      if (canvasRefs[0]) {
+        layoutAll()
+        updateMatches()
+      }
+    })
   })
 
   createEffect(() => {
-    // Update matches when indices or hasQuery changes
     const _indices = props.indices
     const _hasQuery = props.hasQuery
     void _indices
     void _hasQuery
-    if (ctx && pixelCardIndex) {
+    if (states.length > 0) {
       updateMatches()
     }
   })
-
-  function selectLens(key: LensKey) {
-    setActiveLens(key)
-    localStorage.setItem('frantic-density-lens', key)
-  }
 
   function toggleColor(checked: boolean) {
     setColorByIdentity(checked)
@@ -186,42 +187,44 @@ export default function DensityMap(props: {
 
   return (
     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm mb-3">
-      <div class="px-3 py-2">
-        <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-2">MAP</p>
-        <canvas
-          ref={canvasRef}
-          class="w-full rounded-sm"
-          style={{
-            "aspect-ratio": "1",
-            "image-rendering": "pixelated",
-            background: "black",
-          }}
-        />
-        <div class="flex flex-wrap gap-1 mt-2">
-          {LENSES.map((lens) => (
-            <button
-              type="button"
-              onClick={() => selectLens(lens.key)}
-              class={`px-2 py-0.5 rounded-full text-[10px] font-mono transition-colors ${
-                activeLens() === lens.key
-                  ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-              }`}
-            >
-              {lens.label}
-            </button>
-          ))}
-        </div>
-        <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={colorByIdentity()}
-            onChange={(e) => toggleColor(e.currentTarget.checked)}
-            class="rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500/30"
-          />
-          <span class="text-[10px] font-mono text-gray-500 dark:text-gray-400">Color by identity</span>
-        </label>
+      <div
+        onClick={() => props.onToggle()}
+        class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      >
+        <svg class={`size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform ${props.expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+          <path d="M8 5l8 7-8 7z" />
+        </svg>
+        <span class="font-mono text-xs text-gray-500 dark:text-gray-400">MAP</span>
       </div>
+      <Show when={props.expanded}>
+        <div class="px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+          <div class="grid grid-cols-2 gap-2">
+            {PANELS.map((panel, i) => (
+              <div>
+                <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{panel.label}</p>
+                <canvas
+                  ref={(el) => { canvasRefs[i] = el }}
+                  class="w-full rounded-sm"
+                  style={{
+                    "aspect-ratio": "1",
+                    "image-rendering": "pixelated",
+                    background: "black",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={colorByIdentity()}
+              onChange={(e) => toggleColor(e.currentTarget.checked)}
+              class="rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500/30"
+            />
+            <span class="text-[10px] font-mono text-gray-500 dark:text-gray-400">Color by identity</span>
+          </label>
+        </div>
+      </Show>
     </div>
   )
 }

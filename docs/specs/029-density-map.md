@@ -33,44 +33,50 @@ The MAP box is visible as soon as the worker posts the `ready` message — even 
 ```
 Landing page (no query):
 
-  ┌─ TERMS / Input / MATCHES ─┐
-  │                            │
-  └────────────────────────────┘
-  ┌─ MAP ──────────────────────┐
-  │  ┌──────────────────────┐  │
-  │  │   ~174 × ~174 canvas │  │
-  │  └──────────────────────┘  │
-  │  (Alphabetical) (Chrono…)  │
-  │  ☐ Color by identity       │
-  └────────────────────────────┘
+  ┌─ TERMS / Input / MATCHES ─────────┐
+  │                                    │
+  └────────────────────────────────────┘
+  ┌─ MAP ──────────────────────────────┐
+  │  Alphabetical      Chronology      │
+  │  ┌──────────┐      ┌──────────┐   │
+  │  │  canvas  │      │  canvas  │   │
+  │  └──────────┘      └──────────┘   │
+  │  Mana Curve        Complexity      │
+  │  ┌──────────┐      ┌──────────┐   │
+  │  │  canvas  │      │  canvas  │   │
+  │  └──────────┘      └──────────┘   │
+  │  ☐ Color by identity               │
+  └────────────────────────────────────┘
 
 With query:
 
-  ┌─ TERMS / Input / MATCHES ─┐
-  │                            │
-  └────────────────────────────┘
-  ┌─ STATS ────────────────────┐
-  │  Color Identity │ Mana Val │
-  └────────────────────────────┘
-  ┌─ MAP ──────────────────────┐
-  │  ┌──────────────────────┐  │
-  │  │   ~174 × ~174 canvas │  │
-  │  └──────────────────────┘  │
-  │  (Alphabetical) (Chrono…)  │
-  │  ☐ Color by identity       │
-  └────────────────────────────┘
-  ┌─ RESULTS ──────────────────┐
-  │  Card list…                │
-  └────────────────────────────┘
+  ┌─ TERMS / Input / MATCHES ─────────┐
+  └────────────────────────────────────┘
+  ┌─ STATS ────────────────────────────┐
+  │  Color Identity │ Mana Value       │
+  └────────────────────────────────────┘
+  ┌─ MAP ──────────────────────────────┐
+  │  (2×2 grid as above)               │
+  └────────────────────────────────────┘
+  ┌─ RESULTS ──────────────────────────┐
+  │  Card list…                        │
+  └────────────────────────────────────┘
 ```
 
 The STATS panel (Spec 025) and RESULTS list are **unchanged** — no tab interface, no new props.
 
-### Canvas
+### 2×2 Canvas Grid
 
-A single `<canvas>` element whose resolution is **determined by the data**. The canvas is a square with side length `ceil(sqrt(N))`, where `N` is the number of unique cards in the dataset (the length of any lens array from Spec 028). With ~30,000 cards, this produces a ~174×174 canvas — 30,276 total positions, of which only ~276 are empty (>99% fill rate).
+All four lens orderings are displayed simultaneously in a **2×2 grid** of canvases. There is no lens selection UI — all four visualizations are always visible.
 
-The canvas is rendered at this native resolution and scaled up via CSS to fill the available panel width, preserving the square aspect ratio. The CSS property `image-rendering: pixelated` disables bilinear interpolation, so each logical pixel renders as a crisp block at any display size.
+| | Column 1 | Column 2 |
+|---|---|---|
+| Row 1 | Alphabetical | Chronology |
+| Row 2 | Mana Curve | Complexity |
+
+Each canvas is a square with side length `ceil(sqrt(N))`, where `N` is the number of unique cards (the length of any lens array from Spec 028). With ~33,000 cards, this produces a ~183×183 canvas.
+
+Each canvas is rendered at this native resolution and scaled up via CSS to fill half the available width, preserving the square aspect ratio. The CSS property `image-rendering: pixelated` disables bilinear interpolation.
 
 ```css
 canvas {
@@ -81,7 +87,7 @@ canvas {
 }
 ```
 
-The canvas resolution adapts automatically if the card pool grows. No hardcoded dimension.
+Each canvas has a small label above it (`font-mono text-[10px]`), matching the existing chart header style. The canvas resolution adapts automatically if the card pool grows. No hardcoded dimension.
 
 ### Space-filling curve: Gilbert
 
@@ -106,21 +112,14 @@ These are combined with the canvas width to produce the `pixelOffset` array used
 
 ### Lenses
 
-Below the canvas, a row of **lens chips** lets the user select the active sort ordering. Each chip corresponds to a lens array from Spec 028:
+All four lens orderings from Spec 028 are rendered simultaneously — one per canvas in the 2×2 grid. There is no lens selection UI or `localStorage` state for active lens.
 
-| Chip label | `DisplayColumns` field | Default? |
+| Label | `DisplayColumns` field | Grid position |
 |---|---|---|
-| Alphabetical | `lens_name` | |
-| Chronology | `lens_chronology` | Yes |
-| Mana Curve | `lens_mana_curve` | |
-| Complexity | `lens_complexity` | |
-
-Clicking a chip:
-1. Sets it as the active lens (visually highlighted).
-2. Rebuilds the pixel offset lookup (see Rendering Pipeline below).
-3. Repaints the entire canvas (both RGB and alpha).
-
-The selected lens is stored in `localStorage`.
+| Alphabetical | `lens_name` | Top-left |
+| Chronology | `lens_chronology` | Top-right |
+| Mana Curve | `lens_mana_curve` | Bottom-left |
+| Complexity | `lens_complexity` | Bottom-right |
 
 ### Color encoding
 
@@ -148,7 +147,7 @@ else → the single set bit determines W/U/B/R/G
 
 ### Color toggle
 
-A checkbox labeled **"Color by identity"** sits below the lens chips. When unchecked, all cards render as white (`rgb(255, 255, 255)`) regardless of identity. This monochrome mode lets the user focus on the spatial distribution of matches without the visual noise of color. Default: checked (color on).
+A checkbox labeled **"Color by identity"** sits below the 2×2 grid. When unchecked, all cards render as white (`rgb(255, 255, 255)`) regardless of identity. This monochrome mode lets the user focus on the spatial distribution of matches without the visual noise of color. Default: checked (color on).
 
 When toggled, the canvas repaints RGB values but does not recompute the match set or pixel offsets.
 
@@ -170,21 +169,22 @@ The ghost grid at alpha 25 maintains context: the user always sees the full shap
 
 The rendering is split into two phases with different frequencies.
 
-### Phase 1: Layout (on lens switch or first mount)
+### Phase 1: Layout (on mount or color toggle)
 
-Runs once per lens selection. Pre-computes a mapping from linear position to pixel byte offset in the `ImageData` buffer.
+Runs once at mount time for all four canvases. The Gilbert curve is computed once and shared across all four.
 
-1. Read the active lens array from `DisplayColumns` (e.g., `lens_chronology`). Let `N` = lens array length (unique card count). Let `side = ceil(sqrt(N))`.
-2. If not already cached for this `side`, compute the Gilbert curve for `side × side` → `curveX`, `curveY` arrays.
-3. For each position `p` in `0..N-1`:
-   - Look up `(x, y) = (curveX[p], curveY[p])`.
-   - Compute `offset = (y * side + x) * 4` — the byte offset into `ImageData.data`.
-   - Store `cardIndex = lens[p]` and `offset` in a lookup structure.
-4. Pre-fill the `ImageData` buffer:
-   - Fill the entire buffer with `rgba(0, 0, 0, 255)` (solid black background).
-   - For each position `p` in `0..N-1`, write the RGB values based on `color_identity[cardIndex]` (or white if monochrome). Set alpha to 255 (full brightness — the empty-query default).
+1. Let `N` = lens array length (unique card count). Let `side = ceil(sqrt(N))`.
+2. Compute the Gilbert curve for `side × side` → `curveX`, `curveY` arrays (shared).
+3. For each of the four canvases, using its corresponding lens array:
+   a. For each position `p` in `0..N-1`:
+      - Look up `(x, y) = (curveX[p], curveY[p])`.
+      - Compute `offset = (y * side + x) * 4` — the byte offset into `ImageData.data`.
+      - Store `cardIndex = lens[p]` and `offset` in a lookup structure.
+   b. Pre-fill the `ImageData` buffer:
+      - Fill the entire buffer with `rgba(0, 0, 0, 255)` (solid black background).
+      - For each position `p` in `0..N-1`, write the RGB values based on `color_identity[cardIndex]` (or white if monochrome). Set alpha to 255 (full brightness — the empty-query default).
 
-Store the lookup as two parallel arrays:
+Per-canvas lookup stored as two parallel arrays:
 - `pixelCardIndex: Uint32Array[N]` — maps position → canonical face index
 - `pixelOffset: Uint32Array[N]` — maps position → byte offset in `ImageData.data`
 
@@ -208,12 +208,12 @@ Runs on every query result. Only touches the alpha channel.
 
 | Operation | Frequency | Cost |
 |---|---|---|
-| Gilbert curve (~30,276 positions) | Once at mount | < 5 ms |
-| Layout (lens switch) | Per lens change | ~2 ms (iterate ~30K positions, write RGB + alpha) |
-| Match update | Per keystroke | < 1 ms (iterate ~30K positions, write alpha byte) |
-| `putImageData` | Per keystroke | < 0.2 ms (~174×174 = ~120 KB) |
+| Gilbert curve (~33,489 positions) | Once at mount | < 5 ms |
+| Layout (all 4 canvases) | Once at mount | ~8 ms (4 × ~2 ms per canvas) |
+| Match update (all 4 canvases) | Per keystroke | < 4 ms (4 × ~1 ms per canvas) |
+| `putImageData` (all 4) | Per keystroke | < 0.8 ms (4 × ~0.2 ms) |
 
-Total per-keystroke cost: < 1.5 ms. Well within the frame budget. The smaller canvas (174×174 vs 256×256) also reduces the `putImageData` cost by ~55%.
+Total per-keystroke cost: < 5 ms across all four canvases. Well within the frame budget.
 
 ## Data Dependencies
 
@@ -229,7 +229,7 @@ All data consumed by the density map is already available on the main thread aft
 
 ## Component Structure
 
-A new `DensityMap` component (`app/src/DensityMap.tsx`) encapsulates the canvas, lens chips, and color toggle. It receives props from `App.tsx`:
+A new `DensityMap` component (`app/src/DensityMap.tsx`) encapsulates the 2×2 canvas grid and color toggle. It receives props from `App.tsx`:
 
 ```typescript
 {
@@ -244,7 +244,6 @@ A new `DensityMap` component (`app/src/DensityMap.tsx`) encapsulates the canvas,
 - `hasQuery` — whether the user has an active query (controls full-alpha vs ghost-grid mode).
 
 Internal state (signals):
-- `activeLens` — which lens is selected (persisted to `localStorage`).
 - `colorByIdentity` — whether to use color or monochrome (persisted to `localStorage`).
 
 ## Integration with App.tsx
@@ -273,7 +272,7 @@ The output is collected into `curveX: Uint16Array` and `curveY: Uint16Array` arr
 
 ### No query (landing page)
 
-The density map renders all cards at full alpha. The user sees the full card pool colored by identity (or solid white in monochrome mode), shaped by the active lens. This is the "explore" mode — switching lenses shows different structural patterns in the dataset.
+All four canvases render all cards at full alpha. The user sees the full card pool colored by identity (or solid white in monochrome mode), shaped by each lens simultaneously. This is the "explore" mode — the user can compare structural patterns across all four orderings at a glance.
 
 ### Zero results
 
@@ -295,16 +294,16 @@ If the worker has not yet posted the `ready` message (display columns are null),
 
 1. The density map is rendered as a standalone box, visible on the landing page as soon as the worker is ready (before any query is entered).
 2. When a query is active, the page layout is: STATS → MAP → RESULTS. The STATS and RESULTS boxes retain their existing conditional rendering.
-3. The density map renders a square `<canvas>` with side length `ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill the available width while maintaining a square aspect ratio.
-4. The canvas background is solid black (`rgba(0, 0, 0, 1)`).
-5. Every unique card in the dataset occupies exactly one pixel, mapped via a Gilbert curve computed for the exact canvas dimensions.
-6. The Gilbert curve is computed once at mount time and cached. It is not pre-computed in the ETL pipeline.
-7. Four lens chips are rendered below the canvas: Alphabetical, Chronology (default), Mana Curve, Complexity. The active lens is visually highlighted and persisted to `localStorage`.
-8. Switching lenses repaints the canvas with the new ordering.
+3. The MAP box contains a **2×2 grid** of four canvases: Alphabetical (top-left), Chronology (top-right), Mana Curve (bottom-left), Complexity (bottom-right). Each has a label above it.
+4. Each canvas is a square with side length `ceil(sqrt(N))` (where N = unique card count), `image-rendering: pixelated`, scaled to fill half the available width while maintaining a square aspect ratio.
+5. Each canvas background is solid black (`rgba(0, 0, 0, 1)`).
+6. Every unique card in the dataset occupies exactly one pixel per canvas, mapped via a Gilbert curve computed for the exact canvas dimensions.
+7. The Gilbert curve is computed once at mount time, shared across all four canvases, and cached. It is not pre-computed in the ETL pipeline.
+8. There is no lens selection UI. All four orderings are always visible.
 9. Pixel RGB is determined by color identity: W (gold), U (blue), B (desaturated violet), R (red), G (green), C (grey), M (bright magenta). Multicolor is 2+ colors in identity.
-10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes. Default: checked. Persisted to `localStorage`.
-11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost). When no query is active, all cards render at alpha 255.
-12. The match display updates on every keystroke without perceptible delay.
+10. A "Color by identity" checkbox toggles between colored and monochrome (white) modes for all four canvases. Default: checked. Persisted to `localStorage`.
+11. When a query is active, matching cards render at alpha 255; non-matching cards render at alpha 25 (ghost) across all four canvases. When no query is active, all cards render at alpha 255.
+12. The match display updates on every keystroke without perceptible delay (< 5 ms total for all four canvases).
 13. Canvas positions beyond the card count are solid black.
 14. The existing STATS panel (histograms) and RESULTS list continue to work unchanged.
 15. The canvas fill rate is >99% (near-zero wasted positions).
