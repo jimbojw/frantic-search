@@ -225,7 +225,7 @@ The `:` operator means "at least these colors" for `color:` (bitwise superset: `
 
 ### Numeric field matching
 
-Power, toughness, loyalty, and defense are dict-encoded. To evaluate a comparison, resolve the dict index back to its string via the lookup table, attempt numeric parse, and compare. Non-numeric values (`*`, `X`, `1+*`) fail numeric comparisons gracefully (no match).
+Power, toughness, loyalty, and defense are dict-encoded. To evaluate a comparison, resolve the dict index to a numeric value via a pre-computed numeric lookup array on `CardIndex`. Variable and special stat strings (`*`, `1+*`, `X`, `?`, `∞`) are converted to numbers at index construction time — see Spec 034 for the full conversion rules. Faces with no stat (empty string in the dictionary) map to `NaN` and are excluded from all comparisons.
 
 ## Evaluation Pipeline
 
