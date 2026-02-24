@@ -196,6 +196,7 @@ function App() {
     })
   }
   const [inputFocused, setInputFocused] = createSignal(false)
+  const [hasEverFocused, setHasEverFocused] = createSignal(false)
 
   const facesOf = createMemo(() => {
     const d = display()
@@ -217,7 +218,7 @@ function App() {
 
   const totalCards = () => indices().length
 
-  const headerCollapsed = () => inputFocused() || query().trim() !== ''
+  const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused()
   const scryfallUrl = () => `https://scryfall.com/search?q=${encodeURIComponent(query().trim())}`
 
   const worker = new SearchWorker()
@@ -333,6 +334,7 @@ function App() {
     setQuery('')
     setView('search')
     setCardId('')
+    setHasEverFocused(false)
     window.scrollTo(0, 0)
   }
 
@@ -368,14 +370,14 @@ function App() {
           type="button"
           onClick={() => navigateHome()}
           aria-label="Go to home"
-          class="mb-4 h-14 w-full overflow-hidden rounded-xl shadow-md bg-cover bg-[center_20%] block text-left border-0 p-0 cursor-pointer transition-opacity hover:opacity-95 active:opacity-90"
+          class={`mb-4 w-full overflow-hidden rounded-xl shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-4 bg-[center_23%]' : 'h-14 bg-[center_20%]'}`}
           style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
         >
           <img
             src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
             alt="Frantic Search card art by Mitchell Malloy"
             onLoad={() => setHeaderArtLoaded(true)}
-            class="h-full w-full object-cover object-[center_20%] pointer-events-none"
+            class={`h-full w-full object-cover pointer-events-none ${headerCollapsed() ? 'object-[center_23%]' : 'object-[center_20%]'}`}
             classList={{ 'opacity-0': !headerArtLoaded(), 'opacity-100': headerArtLoaded() }}
             style="transition: opacity 300ms ease-in"
           />
@@ -390,13 +392,13 @@ function App() {
         </div>
 
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
-          <TermsDrawer
-            expanded={termsExpanded()}
-            onToggle={toggleTerms}
-            onChipClick={appendQuery}
-            onHelpClick={navigateToHelp}
-          />
-          <div class="relative border-t border-gray-200 dark:border-gray-700">
+          <Show when={termsExpanded()}>
+            <TermsDrawer
+              onChipClick={appendQuery}
+              onHelpClick={navigateToHelp}
+            />
+          </Show>
+          <div class={`relative ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <input
               type="text"
               placeholder='Search cards… e.g. "t:creature c:green"'
@@ -406,10 +408,10 @@ function App() {
               spellcheck={false}
               value={query()}
               onInput={(e) => setQuery(e.currentTarget.value)}
-              onFocus={() => setInputFocused(true)}
+              onFocus={() => { setInputFocused(true); setHasEverFocused(true) }}
               onBlur={() => setInputFocused(false)}
               disabled={workerStatus() === 'error'}
-              class="w-full bg-transparent px-4 py-3 pl-11 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+              class="w-full bg-transparent px-4 py-3 pl-11 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
             />
             <svg
               class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
@@ -421,6 +423,16 @@ function App() {
             >
               <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
+            <button
+              type="button"
+              onClick={toggleTerms}
+              class={`absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+              aria-label="Toggle search filters"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
+              </svg>
+            </button>
           </div>
           <Show when={breakdown()}>
             {(bd) => (
