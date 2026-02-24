@@ -31,4 +31,4 @@ npm run dev    # starts the app dev server
 
 ## License
 
-ISC
+See [LICENSE](./LICENSE)
