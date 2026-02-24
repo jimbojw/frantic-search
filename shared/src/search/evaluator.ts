@@ -10,6 +10,7 @@ import {
 import type { CardIndex } from "./card-index";
 import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, FORMAT_NAMES, CardFlag } from "../bits";
 import { parseManaSymbols, manaContains } from "./mana";
+import { parseStatValue } from "./stats";
 
 const SEP = "\x1E";
 
@@ -250,8 +251,8 @@ function evalIsKeyword(
       break;
     case "bear":
       for (let i = 0; i < n; i++) {
-        const isPow2 = Number(index.powerLookup[index.powers[i]]) === 2;
-        const isTou2 = Number(index.toughnessLookup[index.toughnesses[i]]) === 2;
+        const isPow2 = index.numericPowerLookup[index.powers[i]] === 2;
+        const isTou2 = index.numericToughnessLookup[index.toughnesses[i]] === 2;
         const isCmc2 = index.manaValue[i] === 2;
         const isCreature = index.typeLinesLower[i].includes("creature");
         if (isPow2 && isTou2 && isCmc2 && isCreature) buf[cf[i]] = 1;
@@ -376,20 +377,18 @@ function evalLeafField(
     case "toughness":
     case "loyalty":
     case "defense": {
-      const lookup = canonical === "power" ? index.powerLookup
-        : canonical === "toughness" ? index.toughnessLookup
-        : canonical === "loyalty" ? index.loyaltyLookup
-        : index.defenseLookup;
+      const numericLookup = canonical === "power" ? index.numericPowerLookup
+        : canonical === "toughness" ? index.numericToughnessLookup
+        : canonical === "loyalty" ? index.numericLoyaltyLookup
+        : index.numericDefenseLookup;
       const idxCol = canonical === "power" ? index.powers
         : canonical === "toughness" ? index.toughnesses
         : canonical === "loyalty" ? index.loyalties
         : index.defenses;
-      const queryNum = Number(val);
+      const queryNum = parseStatValue(val);
       if (isNaN(queryNum)) break;
       for (let i = 0; i < n; i++) {
-        const raw = lookup[idxCol[i]];
-        if (!raw) continue;
-        const cardNum = Number(raw);
+        const cardNum = numericLookup[idxCol[i]];
         if (isNaN(cardNum)) continue;
         let match = false;
         switch (op) {

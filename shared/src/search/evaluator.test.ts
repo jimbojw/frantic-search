@@ -322,10 +322,31 @@ describe("evaluate", () => {
   });
 
   test("power field numeric comparison", () => {
-    expect(matchCount("pow=0")).toBe(1);
+    expect(matchCount("pow=0")).toBe(2);   // Birds (0) + Tarmogoyf (* → 0)
     expect(matchCount("pow=2")).toBe(1);
     expect(matchCount("pow>=2")).toBe(2);
-    expect(matchCount("pow<2")).toBe(1);
+    expect(matchCount("pow<2")).toBe(2);   // Birds (0) + Tarmogoyf (* → 0)
+  });
+
+  test("* power treated as 0 for comparisons (Spec 034)", () => {
+    expect(matchCount("pow=0")).toBe(2);   // Birds (0) + Tarmogoyf (* → 0)
+    expect(matchCount("pow<=0")).toBe(2);
+    expect(matchCount("pow>0")).toBe(2);   // Thalia (2) + Ayara (3/4)
+    expect(matchCount("pow!=0")).toBe(2);
+  });
+
+  test("1+* toughness treated as 1 for comparisons (Spec 034)", () => {
+    // toughnessDict = ["", "1", "1+*", "3", "4"]
+    // Row 0 Birds: tou=1, Row 4 Tarmogoyf: tou=1+*→1, Row 6 Thalia: tou=3(!?)
+    // Actually: Row 0 Birds tou idx 1 → "1", Row 4 Tarmogoyf tou idx 2 → "1+*" → 1
+    // tou=1 matches Birds (1) + Tarmogoyf (1+* → 1)
+    expect(matchCount("tou=1")).toBe(2);
+  });
+
+  test("query value x/y treated as 0 (Spec 034)", () => {
+    expect(matchCount("pow=x")).toBe(2);   // same as pow=0
+    expect(matchCount("pow=y")).toBe(2);
+    expect(matchCount("pow=X")).toBe(2);
   });
 
   test("mana symbol contains (braced)", () => {

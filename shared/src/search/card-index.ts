@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData } from "../data";
 import { parseManaSymbols, computeCmc } from "./mana";
+import { parseStatValue } from "./stats";
 
 const REMINDER_TEXT_RE = /\([^)]*\)/g;
 
@@ -36,6 +37,10 @@ export class CardIndex {
   readonly toughnessLookup: string[];
   readonly loyaltyLookup: string[];
   readonly defenseLookup: string[];
+  readonly numericPowerLookup: number[];
+  readonly numericToughnessLookup: number[];
+  readonly numericLoyaltyLookup: number[];
+  readonly numericDefenseLookup: number[];
   private readonly _facesOf: Map<number, number[]>;
 
   constructor(data: ColumnarData) {
@@ -72,6 +77,10 @@ export class CardIndex {
     this.toughnessLookup = data.toughness_lookup;
     this.loyaltyLookup = data.loyalty_lookup;
     this.defenseLookup = data.defense_lookup;
+    this.numericPowerLookup = data.power_lookup.map(parseStatValue);
+    this.numericToughnessLookup = data.toughness_lookup.map(parseStatValue);
+    this.numericLoyaltyLookup = data.loyalty_lookup.map(parseStatValue);
+    this.numericDefenseLookup = data.defense_lookup.map(parseStatValue);
 
     this._facesOf = new Map();
     for (let i = 0; i < this.faceCount; i++) {
