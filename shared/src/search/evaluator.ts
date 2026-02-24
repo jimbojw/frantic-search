@@ -160,31 +160,32 @@ function evalIsKeyword(
   buf: Uint8Array,
   n: number,
 ): void {
+  const cf = index.canonicalFace;
   switch (keyword) {
     case "permanent":
       for (let i = 0; i < n; i++) {
-        buf[i] = PERMANENT_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+        if (PERMANENT_TYPES.some(t => index.typeLinesLower[i].includes(t))) buf[cf[i]] = 1;
       }
       break;
     case "spell":
       for (let i = 0; i < n; i++) {
-        buf[i] = !index.typeLinesLower[i].includes("land") ? 1 : 0;
+        if (!index.typeLinesLower[i].includes("land")) buf[cf[i]] = 1;
       }
       break;
     case "historic":
       for (let i = 0; i < n; i++) {
         const tl = index.typeLinesLower[i];
-        buf[i] = (tl.includes("artifact") || tl.includes("legendary") || tl.includes("saga")) ? 1 : 0;
+        if (tl.includes("artifact") || tl.includes("legendary") || tl.includes("saga")) buf[cf[i]] = 1;
       }
       break;
     case "party":
       for (let i = 0; i < n; i++) {
-        buf[i] = PARTY_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+        if (PARTY_TYPES.some(t => index.typeLinesLower[i].includes(t))) buf[cf[i]] = 1;
       }
       break;
     case "outlaw":
       for (let i = 0; i < n; i++) {
-        buf[i] = OUTLAW_TYPES.some(t => index.typeLinesLower[i].includes(t)) ? 1 : 0;
+        if (OUTLAW_TYPES.some(t => index.typeLinesLower[i].includes(t))) buf[cf[i]] = 1;
       }
       break;
     case "split":
@@ -193,38 +194,38 @@ function evalIsKeyword(
     case "leveler":
     case "saga":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.layouts[i] === keyword ? 1 : 0;
+        if (index.layouts[i] === keyword) buf[cf[i]] = 1;
       }
       break;
     case "transform":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.layouts[i] === "transform" ? 1 : 0;
+        if (index.layouts[i] === "transform") buf[cf[i]] = 1;
       }
       break;
     case "modal":
     case "mdfc":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.layouts[i] === "modal_dfc" ? 1 : 0;
+        if (index.layouts[i] === "modal_dfc") buf[cf[i]] = 1;
       }
       break;
     case "dfc":
       for (let i = 0; i < n; i++) {
-        buf[i] = DFC_LAYOUTS.has(index.layouts[i]) ? 1 : 0;
+        if (DFC_LAYOUTS.has(index.layouts[i])) buf[cf[i]] = 1;
       }
       break;
     case "meld":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.layouts[i] === "meld" ? 1 : 0;
+        if (index.layouts[i] === "meld") buf[cf[i]] = 1;
       }
       break;
     case "vanilla":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.oracleTextsLower[i].length === 0 ? 1 : 0;
+        if (index.oracleTextsLower[i].length === 0) buf[cf[i]] = 1;
       }
       break;
     case "frenchvanilla":
       for (let i = 0; i < n; i++) {
-        buf[i] = isFrenchVanilla(index.oracleTextsLower[i], index.typeLinesLower[i]) ? 1 : 0;
+        if (isFrenchVanilla(index.oracleTextsLower[i], index.typeLinesLower[i])) buf[cf[i]] = 1;
       }
       break;
     case "commander":
@@ -234,17 +235,17 @@ function evalIsKeyword(
         const isLegendary = tl.includes("legendary");
         const isCreatureOrPW = tl.includes("creature") || tl.includes("planeswalker");
         const hasCommanderText = index.oracleTextsLower[i].includes("can be your commander");
-        buf[i] = (isLegendary && isCreatureOrPW) || hasCommanderText ? 1 : 0;
+        if ((isLegendary && isCreatureOrPW) || hasCommanderText) buf[cf[i]] = 1;
       }
       break;
     case "companion":
       for (let i = 0; i < n; i++) {
-        buf[i] = index.oracleTextsLower[i].includes("companion —") ? 1 : 0;
+        if (index.oracleTextsLower[i].includes("companion —")) buf[cf[i]] = 1;
       }
       break;
     case "partner":
       for (let i = 0; i < n; i++) {
-        buf[i] = PARTNER_RE.test(index.oracleTextsLower[i]) ? 1 : 0;
+        if (PARTNER_RE.test(index.oracleTextsLower[i])) buf[cf[i]] = 1;
       }
       break;
     case "bear":
@@ -253,35 +254,37 @@ function evalIsKeyword(
         const isTou2 = Number(index.toughnessLookup[index.toughnesses[i]]) === 2;
         const isCmc2 = index.manaValue[i] === 2;
         const isCreature = index.typeLinesLower[i].includes("creature");
-        buf[i] = (isPow2 && isTou2 && isCmc2 && isCreature) ? 1 : 0;
+        if (isPow2 && isTou2 && isCmc2 && isCreature) buf[cf[i]] = 1;
       }
       break;
     case "reserved":
       for (let i = 0; i < n; i++) {
-        buf[i] = (index.flags[i] & CardFlag.Reserved) !== 0 ? 1 : 0;
+        if ((index.flags[i] & CardFlag.Reserved) !== 0) buf[cf[i]] = 1;
       }
       break;
     case "funny":
       for (let i = 0; i < n; i++) {
-        buf[i] = (index.flags[i] & CardFlag.Funny) !== 0 ? 1 : 0;
+        if ((index.flags[i] & CardFlag.Funny) !== 0) buf[cf[i]] = 1;
       }
       break;
     case "universesbeyond":
       for (let i = 0; i < n; i++) {
-        buf[i] = (index.flags[i] & CardFlag.UniversesBeyond) !== 0 ? 1 : 0;
+        if ((index.flags[i] & CardFlag.UniversesBeyond) !== 0) buf[cf[i]] = 1;
       }
       break;
     default: {
       const cycle = LAND_CYCLES[keyword];
       if (cycle) {
         for (let i = 0; i < n; i++) {
-          buf[i] = cycle.has(index.namesLower[i]) ? 1 : 0;
+          if (cycle.has(index.namesLower[i])) buf[cf[i]] = 1;
         }
-      } else {
-        buf.fill(0, 0, n);
       }
     }
   }
+}
+
+function fillCanonical(buf: Uint8Array, cf: number[], n: number): void {
+  for (let i = 0; i < n; i++) if (cf[i] === i) buf[i] = 1;
 }
 
 function evalLeafField(
@@ -291,15 +294,15 @@ function evalLeafField(
 ): void {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
+  const cf = index.canonicalFace;
   const op = node.operator;
   const val = node.value;
 
   if (val === "") {
-    buf.fill(1, 0, n);
+    fillCanonical(buf, cf, n);
     return;
   }
   if (!canonical) {
-    buf.fill(0, 0, n);
     return;
   }
 
@@ -310,7 +313,7 @@ function evalLeafField(
     case "type": {
       const col = getStringColumn(canonical, index)!;
       for (let i = 0; i < n; i++) {
-        buf[i] = col[i].includes(valLower) ? 1 : 0;
+        if (col[i].includes(valLower)) buf[cf[i]] = 1;
       }
       break;
     }
@@ -319,7 +322,7 @@ function evalLeafField(
         ? index.oracleTextsTildeLower
         : index.oracleTextsLower;
       for (let i = 0; i < n; i++) {
-        buf[i] = col[i].includes(valLower) ? 1 : 0;
+        if (col[i].includes(valLower)) buf[cf[i]] = 1;
       }
       break;
     }
@@ -329,14 +332,14 @@ function evalLeafField(
       const queryMask = parseColorValue(val);
 
       if (queryMask === COLOR_COLORLESS) {
-        for (let i = 0; i < n; i++) buf[i] = col[i] === 0 ? 1 : 0;
+        for (let i = 0; i < n; i++) if (col[i] === 0) buf[cf[i]] = 1;
         break;
       }
       if (queryMask === COLOR_MULTICOLOR) {
         for (let i = 0; i < n; i++) {
           let v = col[i]; v = (v & 0x55) + ((v >> 1) & 0x55);
           v = (v & 0x33) + ((v >> 2) & 0x33); v = (v + (v >> 4)) & 0x0f;
-          buf[i] = v >= 2 ? 1 : 0;
+          if (v >= 2) buf[cf[i]] = 1;
         }
         break;
       }
@@ -347,25 +350,25 @@ function evalLeafField(
       const effectiveOp = op === ":" ? colonOp : op;
       switch (effectiveOp) {
         case ">=":
-          for (let i = 0; i < n; i++) buf[i] = (col[i] & queryMask) === queryMask ? 1 : 0;
+          for (let i = 0; i < n; i++) if ((col[i] & queryMask) === queryMask) buf[cf[i]] = 1;
           break;
         case "=":
-          for (let i = 0; i < n; i++) buf[i] = col[i] === queryMask ? 1 : 0;
+          for (let i = 0; i < n; i++) if (col[i] === queryMask) buf[cf[i]] = 1;
           break;
         case "<=":
-          for (let i = 0; i < n; i++) buf[i] = (col[i] & ~queryMask) === 0 ? 1 : 0;
+          for (let i = 0; i < n; i++) if ((col[i] & ~queryMask) === 0) buf[cf[i]] = 1;
           break;
         case "!=":
-          for (let i = 0; i < n; i++) buf[i] = col[i] !== queryMask ? 1 : 0;
+          for (let i = 0; i < n; i++) if (col[i] !== queryMask) buf[cf[i]] = 1;
           break;
         case ">":
-          for (let i = 0; i < n; i++) buf[i] = (col[i] & queryMask) === queryMask && col[i] !== queryMask ? 1 : 0;
+          for (let i = 0; i < n; i++) if ((col[i] & queryMask) === queryMask && col[i] !== queryMask) buf[cf[i]] = 1;
           break;
         case "<":
-          for (let i = 0; i < n; i++) buf[i] = (col[i] & ~queryMask) === 0 && col[i] !== queryMask ? 1 : 0;
+          for (let i = 0; i < n; i++) if ((col[i] & ~queryMask) === 0 && col[i] !== queryMask) buf[cf[i]] = 1;
           break;
         default:
-          buf.fill(0, 0, n);
+          break;
       }
       break;
     }
@@ -377,56 +380,52 @@ function evalLeafField(
         : canonical === "toughness" ? index.toughnessLookup
         : canonical === "loyalty" ? index.loyaltyLookup
         : index.defenseLookup;
-      const indices = canonical === "power" ? index.powers
+      const idxCol = canonical === "power" ? index.powers
         : canonical === "toughness" ? index.toughnesses
         : canonical === "loyalty" ? index.loyalties
         : index.defenses;
       const queryNum = Number(val);
-      if (isNaN(queryNum)) {
-        buf.fill(0, 0, n);
-        break;
-      }
+      if (isNaN(queryNum)) break;
       for (let i = 0; i < n; i++) {
-        const raw = lookup[indices[i]];
-        if (!raw) { buf[i] = 0; continue; }
+        const raw = lookup[idxCol[i]];
+        if (!raw) continue;
         const cardNum = Number(raw);
-        if (isNaN(cardNum)) { buf[i] = 0; continue; }
+        if (isNaN(cardNum)) continue;
+        let match = false;
         switch (op) {
-          case ":": case "=": buf[i] = cardNum === queryNum ? 1 : 0; break;
-          case "!=": buf[i] = cardNum !== queryNum ? 1 : 0; break;
-          case ">":  buf[i] = cardNum > queryNum ? 1 : 0; break;
-          case "<":  buf[i] = cardNum < queryNum ? 1 : 0; break;
-          case ">=": buf[i] = cardNum >= queryNum ? 1 : 0; break;
-          case "<=": buf[i] = cardNum <= queryNum ? 1 : 0; break;
-          default: buf[i] = 0;
+          case ":": case "=": match = cardNum === queryNum; break;
+          case "!=": match = cardNum !== queryNum; break;
+          case ">":  match = cardNum > queryNum; break;
+          case "<":  match = cardNum < queryNum; break;
+          case ">=": match = cardNum >= queryNum; break;
+          case "<=": match = cardNum <= queryNum; break;
         }
+        if (match) buf[cf[i]] = 1;
       }
       break;
     }
     case "manavalue": {
       const queryNum = Number(val);
-      if (isNaN(queryNum)) {
-        buf.fill(0, 0, n);
-        break;
-      }
+      if (isNaN(queryNum)) break;
       const cmcCol = index.manaValue;
       for (let i = 0; i < n; i++) {
+        let match = false;
         switch (op) {
-          case ":": case "=": buf[i] = cmcCol[i] === queryNum ? 1 : 0; break;
-          case "!=": buf[i] = cmcCol[i] !== queryNum ? 1 : 0; break;
-          case ">":  buf[i] = cmcCol[i] > queryNum ? 1 : 0; break;
-          case "<":  buf[i] = cmcCol[i] < queryNum ? 1 : 0; break;
-          case ">=": buf[i] = cmcCol[i] >= queryNum ? 1 : 0; break;
-          case "<=": buf[i] = cmcCol[i] <= queryNum ? 1 : 0; break;
-          default: buf[i] = 0;
+          case ":": case "=": match = cmcCol[i] === queryNum; break;
+          case "!=": match = cmcCol[i] !== queryNum; break;
+          case ">":  match = cmcCol[i] > queryNum; break;
+          case "<":  match = cmcCol[i] < queryNum; break;
+          case ">=": match = cmcCol[i] >= queryNum; break;
+          case "<=": match = cmcCol[i] <= queryNum; break;
         }
+        if (match) buf[cf[i]] = 1;
       }
       break;
     }
     case "mana": {
       const querySymbols = parseManaSymbols(valLower);
       for (let i = 0; i < n; i++) {
-        buf[i] = manaContains(index.manaSymbols[i], querySymbols) ? 1 : 0;
+        if (manaContains(index.manaSymbols[i], querySymbols)) buf[cf[i]] = 1;
       }
       break;
     }
@@ -434,28 +433,22 @@ function evalLeafField(
     case "banned":
     case "restricted": {
       const formatBit = FORMAT_NAMES[valLower];
-      if (formatBit === undefined) {
-        buf.fill(0, 0, n);
-        break;
-      }
+      if (formatBit === undefined) break;
       const col = canonical === "legal" ? index.legalitiesLegal
         : canonical === "banned" ? index.legalitiesBanned
         : index.legalitiesRestricted;
       for (let i = 0; i < n; i++) {
-        buf[i] = (col[i] & formatBit) !== 0 ? 1 : 0;
+        if ((col[i] & formatBit) !== 0) buf[cf[i]] = 1;
       }
       break;
     }
     case "is": {
-      if (op !== ":" && op !== "=") {
-        buf.fill(0, 0, n);
-        break;
-      }
+      if (op !== ":" && op !== "=") break;
       evalIsKeyword(valLower, index, buf, n);
       break;
     }
     default:
-      buf.fill(0, 0, n);
+      break;
   }
 }
 
@@ -466,6 +459,7 @@ function evalLeafRegex(
 ): void {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
+  const cf = index.canonicalFace;
 
   let col: string[] | null;
   if (canonical === "oracle" && node.pattern.includes("~")) {
@@ -474,42 +468,40 @@ function evalLeafRegex(
     col = canonical ? getStringColumn(canonical, index) : null;
   }
 
-  if (!col) {
-    buf.fill(0, 0, n);
-    return;
-  }
+  if (!col) return;
 
   let re: RegExp;
   try {
     re = new RegExp(node.pattern, "i");
   } catch {
-    buf.fill(0, 0, n);
     return;
   }
 
   for (let i = 0; i < n; i++) {
-    buf[i] = re.test(col[i]) ? 1 : 0;
+    if (re.test(col[i])) buf[cf[i]] = 1;
   }
 }
 
 function evalLeafBareWord(value: string, quoted: boolean, index: CardIndex, buf: Uint8Array): void {
+  const cf = index.canonicalFace;
   if (quoted) {
     const valLower = value.toLowerCase();
     for (let i = 0; i < index.faceCount; i++) {
-      buf[i] = index.combinedNamesLower[i].includes(valLower) ? 1 : 0;
+      if (index.combinedNamesLower[i].includes(valLower)) buf[cf[i]] = 1;
     }
   } else {
     const valNormalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
     for (let i = 0; i < index.faceCount; i++) {
-      buf[i] = index.combinedNamesNormalized[i].includes(valNormalized) ? 1 : 0;
+      if (index.combinedNamesNormalized[i].includes(valNormalized)) buf[cf[i]] = 1;
     }
   }
 }
 
 function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): void {
+  const cf = index.canonicalFace;
   const valLower = node.value.toLowerCase();
   for (let i = 0; i < index.faceCount; i++) {
-    buf[i] = (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) ? 1 : 0;
+    if (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) buf[cf[i]] = 1;
   }
 }
 
@@ -576,12 +568,14 @@ export class NodeCache {
     const root = this.internTree(ast);
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
-    const matchingIndices: number[] = [];
+    const count = root.computed!.matchCount;
+    const indices = new Uint32Array(count);
     const buf = root.computed!.buf;
+    let j = 0;
     for (let i = 0; i < this.index.faceCount; i++) {
-      if (buf[i]) matchingIndices.push(i);
+      if (buf[i]) indices[j++] = i;
     }
-    return { result, matchingIndices };
+    return { result, indices };
   }
 
   private internTree(ast: ASTNode): InternedNode {
@@ -666,8 +660,9 @@ export class NodeCache {
         this.computeTree(childInterned, timings);
         const childBuf = childInterned.computed!.buf;
         const buf = new Uint8Array(n);
+        const cf = this.index.canonicalFace;
         const t0 = performance.now();
-        for (let i = 0; i < n; i++) buf[i] = childBuf[i] ^ 1;
+        for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childBuf[i] ^ 1) : 0;
         const ms = performance.now() - t0;
         interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
         timings.set(interned.key, { cached: false, evalMs: ms });
@@ -676,8 +671,9 @@ export class NodeCache {
       case "AND": {
         if (ast.children.length === 0) {
           const buf = new Uint8Array(n);
-          buf.fill(1, 0, n);
-          interned.computed = { buf, matchCount: n, productionMs: 0 };
+          const cf = this.index.canonicalFace;
+          fillCanonical(buf, cf, n);
+          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: 0 };
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }

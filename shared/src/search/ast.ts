@@ -90,5 +90,5 @@ export interface QueryNodeResult {
 
 export interface EvalOutput {
   result: QueryNodeResult;
-  matchingIndices: number[];
+  indices: Uint32Array;
 }

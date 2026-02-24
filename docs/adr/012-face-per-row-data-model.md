@@ -36,8 +36,8 @@ Multi-face layouts that produce multiple rows: `transform`, `modal_dfc`, `advent
 
 - **Positive:** Every face has its own `name`, `type_line`, `oracle_text`, `mana_cost`, `power`, `toughness`, `colors`, etc. No missing data.
 - **Positive:** The evaluator requires no changes to its core logic — it scans face rows identically to how it scanned card rows. Boolean AND/OR/NOT and the buffer pool are untouched.
-- **Positive:** Per-face evaluation matches Scryfall's documented behavior: conditions must be satisfiable on the same face.
+- **Positive:** ~~Per-face evaluation matches Scryfall's documented behavior: conditions must be satisfiable on the same face.~~ **Corrected by Spec 033:** Empirical testing showed Scryfall promotes each leaf to card level (any face matches → card matches), then combines with AND/OR/NOT. The evaluator now writes matches to canonical face slots, giving card-level semantics.
 - **Positive:** Filtering non-searchable layouts reduces total row count despite the face expansion (~33–34k face rows vs ~36.7k cards previously).
 - **Negative:** Card-level fields (legalities, color identity) are duplicated across faces of the same card, slightly increasing data size for multi-face cards.
-- **Negative:** Callers must deduplicate face-level results to avoid showing the same card twice. `CardIndex.deduplicateMatches()` provides this, but consumers must remember to call it.
-- **Negative:** The `matchCount` in `EvalResult` nodes reflects face-level matches, not card-level. The query debugger UX will need to account for this distinction.
+- ~~**Negative:** Callers must deduplicate face-level results to avoid showing the same card twice.~~ Resolved by Spec 033: the evaluator only sets canonical face slots, so results are inherently deduplicated.
+- ~~**Negative:** The `matchCount` in `EvalResult` nodes reflects face-level matches, not card-level.~~ Resolved by Spec 033: `matchCount` now reflects card count.

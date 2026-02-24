@@ -131,10 +131,9 @@ async function init(): Promise<void> {
     if (msg.type !== 'search') return
 
     const ast = parse(msg.query)
-    const { result, matchingIndices } = cache.evaluate(ast)
-    const totalMatches = matchingIndices.length
+    const { result, indices: rawIndices } = cache.evaluate(ast)
     const breakdown = toBreakdown(result)
-    const deduped = index.deduplicateMatches(matchingIndices)
+    const deduped = Array.from(rawIndices)
     const bareWords = collectBareWords(ast)
       .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
       .filter(w => w.length > 0)
@@ -143,7 +142,7 @@ async function init(): Promise<void> {
     const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)
     const resultMsg: FromWorker & { type: 'result' } = {
-      type: 'result', queryId: msg.queryId, indices, totalMatches, breakdown, histograms,
+      type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
     }
     post(resultMsg, [indices.buffer])
   }

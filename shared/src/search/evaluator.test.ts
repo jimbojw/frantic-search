@@ -237,7 +237,7 @@ describe("evaluate", () => {
   test("oracle text field substring", () => {
     expect(matchCount("o:flying")).toBe(1);
     expect(matchCount("o:damage")).toBe(2);
-    expect(matchCount("o:target")).toBe(5);
+    expect(matchCount("o:target")).toBe(4);
   });
 
   test("color field with : (superset)", () => {
@@ -258,7 +258,7 @@ describe("evaluate", () => {
     expect(matchCount("c:red")).toBe(2);
     expect(matchCount("c:blue")).toBe(2);
     expect(matchCount("c:white")).toBe(2);
-    expect(matchCount("c:black")).toBe(3);
+    expect(matchCount("c:black")).toBe(2);
   });
 
   test("guild names work as color values", () => {
@@ -299,32 +299,32 @@ describe("evaluate", () => {
   });
 
   test("type field matches card types", () => {
-    expect(matchCount("t:creature")).toBe(5);
+    expect(matchCount("t:creature")).toBe(4);
     expect(matchCount("t:instant")).toBe(4);
     expect(matchCount("t:artifact")).toBe(1);
   });
 
   test("type field matches supertypes", () => {
-    expect(matchCount("t:legendary")).toBe(3);
+    expect(matchCount("t:legendary")).toBe(2);
   });
 
   test("type field matches subtypes", () => {
-    expect(matchCount("t:elf")).toBe(3);
+    expect(matchCount("t:elf")).toBe(2);
     expect(matchCount("t:human")).toBe(1);
   });
 
   test("type field matches partial words", () => {
-    expect(matchCount("t:legend")).toBe(3);
+    expect(matchCount("t:legend")).toBe(2);
   });
 
   test("type field with quoted multi-word matches type_line substring", () => {
-    expect(matchCount('t:"legendary creature"')).toBe(3);
+    expect(matchCount('t:"legendary creature"')).toBe(2);
   });
 
   test("power field numeric comparison", () => {
     expect(matchCount("pow=0")).toBe(1);
     expect(matchCount("pow=2")).toBe(1);
-    expect(matchCount("pow>=2")).toBe(3);
+    expect(matchCount("pow>=2")).toBe(2);
     expect(matchCount("pow<2")).toBe(1);
   });
 
@@ -380,7 +380,7 @@ describe("evaluate", () => {
 
   test("negation with -", () => {
     expect(matchCount("-t:creature")).toBe(5);
-    expect(matchCount("t:creature -c:w")).toBe(4);
+    expect(matchCount("t:creature -c:w")).toBe(3);
   });
 
   test("parenthesized group", () => {
@@ -391,12 +391,12 @@ describe("evaluate", () => {
     expect(matchCount("rarity:common")).toBe(0);
   });
 
-  test("empty value matches all face rows", () => {
-    expect(matchCount("c:")).toBe(10);
+  test("empty value matches all cards", () => {
+    expect(matchCount("c:")).toBe(9);
   });
 
-  test("empty input matches all face rows", () => {
-    expect(matchCount("")).toBe(10);
+  test("empty input matches all cards", () => {
+    expect(matchCount("")).toBe(9);
   });
 
   test("result tree has children with matchCounts", () => {
@@ -405,37 +405,37 @@ describe("evaluate", () => {
     expect(result.matchCount).toBe(2);
     expect(result.children).toHaveLength(2);
     expect(result.children![0].matchCount).toBe(2);
-    expect(result.children![1].matchCount).toBe(5);
+    expect(result.children![1].matchCount).toBe(4);
   });
 
-  test("matchingIndices contains indices of matching cards", () => {
+  test("indices contains canonical face indices of matching cards", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("c:g t:creature"));
-    expect(matchingIndices).toEqual([0, 4]);
+    const { indices } = cache.evaluate(parse("c:g t:creature"));
+    expect(Array.from(indices)).toEqual([0, 4]);
   });
 
-  test("matchingIndices for single match", () => {
+  test("indices for single match", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse('!"Lightning Bolt"'));
-    expect(matchingIndices).toEqual([1]);
+    const { indices } = cache.evaluate(parse('!"Lightning Bolt"'));
+    expect(Array.from(indices)).toEqual([1]);
   });
 
-  test("matchingIndices empty when no matches", () => {
+  test("indices empty when no matches", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("rarity:common"));
-    expect(matchingIndices).toEqual([]);
+    const { indices } = cache.evaluate(parse("rarity:common"));
+    expect(Array.from(indices)).toEqual([]);
   });
 
-  test("legal:commander matches all face rows legal in commander", () => {
-    expect(matchCount("legal:commander")).toBe(10);
+  test("legal:commander matches all cards legal in commander", () => {
+    expect(matchCount("legal:commander")).toBe(9);
   });
 
-  test("legal:legacy matches face rows legal in legacy", () => {
-    expect(matchCount("legal:legacy")).toBe(8);
+  test("legal:legacy matches cards legal in legacy", () => {
+    expect(matchCount("legal:legacy")).toBe(7);
   });
 
   test("f: alias works for legal:", () => {
-    expect(matchCount("f:modern")).toBe(6);
+    expect(matchCount("f:modern")).toBe(5);
   });
 
   test("edh is an alias for commander", () => {
@@ -452,7 +452,7 @@ describe("evaluate", () => {
   });
 
   test("legal + type combo", () => {
-    expect(matchCount("legal:legacy t:creature")).toBe(5);
+    expect(matchCount("legal:legacy t:creature")).toBe(4);
   });
 
   test("unknown format matches zero", () => {
@@ -461,13 +461,13 @@ describe("evaluate", () => {
 
   test("regex on oracle text", () => {
     expect(matchCount("o:/damage/")).toBe(2);
-    expect(matchCount("o:/target/")).toBe(5);
+    expect(matchCount("o:/target/")).toBe(4);
   });
 
   test("regex on type line", () => {
-    expect(matchCount("t:/legendary.*elf/")).toBe(2);
+    expect(matchCount("t:/legendary.*elf/")).toBe(1);
     expect(matchCount("t:/legendary.*human/")).toBe(1);
-    expect(matchCount("t:/creature/")).toBe(5);
+    expect(matchCount("t:/creature/")).toBe(4);
   });
 
   test("regex on name", () => {
@@ -487,40 +487,31 @@ describe("evaluate", () => {
   // Multi-face card (DFC) tests
   // -------------------------------------------------------------------------
 
-  test("query matching only back face returns a face-level match", () => {
+  test("query matching only back face returns canonical face index", () => {
     expect(matchCount("t:phyrexian")).toBe(1);
-  });
-
-  test("back face match appears in matchingIndices", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("t:phyrexian"));
-    expect(matchingIndices).toEqual([8]);
+    const { indices } = cache.evaluate(parse("t:phyrexian"));
+    expect(Array.from(indices)).toEqual([7]);
   });
 
-  test("deduplicateMatches collapses back face to canonical (front) face", () => {
+  test("query matching both faces produces one result at canonical face", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("t:phyrexian"));
-    const deduped = index.deduplicateMatches(matchingIndices);
-    expect(deduped).toEqual([7]);
+    const { indices } = cache.evaluate(parse("t:elf t:legendary"));
+    expect(Array.from(indices)).toEqual([7]);
   });
 
-  test("query matching both faces deduplicates to one result", () => {
-    const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("t:elf t:legendary"));
-    expect(matchingIndices).toEqual([7, 8]);
-    const deduped = index.deduplicateMatches(matchingIndices);
-    expect(deduped).toEqual([7]);
-  });
-
-  test("cross-face condition produces no match (per-face semantics)", () => {
+  test("cross-face conditions match when different faces satisfy different terms", () => {
+    // Ayara front: pow=3, tou=3. Ayara back: pow=4, tou=4.
+    // pow>=4 matches back face, but no face has tou<=2 → still 0
     expect(matchCount("pow>=4 tou<=2")).toBe(0);
   });
 
-  test("DFC face-specific color match", () => {
+  test("DFC card-level color match", () => {
+    // c:r matches Ayara back (BR) → canonical 7. t:elf matches Ayara front+back → canonical 7. AND → 7.
     expect(matchCount("c:r t:elf")).toBe(1);
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("c:r t:elf"));
-    expect(matchingIndices).toEqual([8]);
+    const { indices } = cache.evaluate(parse("c:r t:elf"));
+    expect(Array.from(indices)).toEqual([7]);
   });
 
   test("identity: colon uses subset semantics (fits in a commander deck)", () => {
@@ -528,8 +519,8 @@ describe("evaluate", () => {
     expect(matchCount("id:wu")).toBe(4);
     // identity:w → Thalia(W), Sol Ring(∅)
     expect(matchCount("id:w")).toBe(2);
-    // identity:br → Bolt(R), Sol Ring(∅), Ayara front(BR), Ayara back(BR), Dismember(B)
-    expect(matchCount("id:br")).toBe(5);
+    // identity:br → Bolt(R), Sol Ring(∅), Ayara(BR), Dismember(B)
+    expect(matchCount("id:br")).toBe(4);
   });
 
   test("identity: explicit >= still uses superset semantics", () => {
@@ -540,16 +531,16 @@ describe("evaluate", () => {
   });
 
   test("identity: subset combined with type narrows correctly", () => {
-    // id:br t:elf → Ayara front(BR, Elf) + Ayara back(BR, Elf) — both ⊆ {B,R}
-    expect(matchCount("id:br t:elf")).toBe(2);
+    // id:br t:elf → Ayara(BR, Elf) — ⊆ {B,R}
+    expect(matchCount("id:br t:elf")).toBe(1);
   });
 
   test("commander:, cmd:, and ci: are aliases with same subset colon semantics", () => {
     expect(matchCount("commander:wu")).toBe(4);
-    expect(matchCount("commander:br")).toBe(5);
+    expect(matchCount("commander:br")).toBe(4);
     expect(matchCount("commander:w")).toBe(2);
     expect(matchCount("cmd:w")).toBe(2);
-    expect(matchCount("cmd:br")).toBe(5);
+    expect(matchCount("cmd:br")).toBe(4);
     expect(matchCount("ci:wu")).toBe(4);
     expect(matchCount("ci:w")).toBe(2);
   });
@@ -562,7 +553,7 @@ describe("evaluate", () => {
     // "realmayara" spans the boundary between "Realm" and "Ayara" in
     // "Ayara, Widow of the Realm // Ayara, Furnace Queen"
     // Normalized: "ayarawidowoftherealmayarafurnacequeen" contains "realmayara"
-    expect(matchCount("realmayara")).toBe(2); // both faces of the DFC
+    expect(matchCount("realmayara")).toBe(1); // one card (DFC)
   });
 
   test("unquoted bare word still matches single-face cards via normalized name", () => {
@@ -572,7 +563,7 @@ describe("evaluate", () => {
 
   test("quoted bare word matches literal combined name", () => {
     // Quoted " // " matches the literal combined name "Ayara, Widow of the Realm // Ayara, Furnace Queen"
-    expect(matchCount('" // "')).toBe(2); // both faces of Ayara DFC
+    expect(matchCount('" // "')).toBe(1); // one card (DFC)
   });
 
   test("quoted bare word does not match normalized form", () => {
@@ -581,11 +572,11 @@ describe("evaluate", () => {
   });
 
   test("name: field searches combined name", () => {
-    expect(matchCount('name:" // "')).toBe(2);
+    expect(matchCount('name:" // "')).toBe(1);
   });
 
   test("exact name matches combined name", () => {
-    expect(matchCount('!"Ayara, Widow of the Realm // Ayara, Furnace Queen"')).toBe(2);
+    expect(matchCount('!"Ayara, Widow of the Realm // Ayara, Furnace Queen"')).toBe(1);
   });
 
   test("exact name matches individual face name for DFC", () => {
@@ -597,7 +588,7 @@ describe("evaluate", () => {
   });
 
   test("regex on name searches combined name", () => {
-    expect(matchCount("name:/realm.*furnace/")).toBe(2);
+    expect(matchCount("name:/realm.*furnace/")).toBe(1);
   });
 
   test("combined name: cross-field AND with face-specific field", () => {
@@ -635,8 +626,8 @@ describe("cmc / mana value", () => {
     expect(matchCount("cmc<=1")).toBe(4);
   });
 
-  test("cmc!=2 matches all rows except mana value 2", () => {
-    expect(matchCount("cmc!=2")).toBe(6);
+  test("cmc!=2 matches all cards except mana value 2", () => {
+    expect(matchCount("cmc!=2")).toBe(5);
   });
 
   test("mv: and manavalue: are aliases for cmc:", () => {
@@ -786,14 +777,13 @@ describe("tilde self-reference", () => {
 
   test("o:~ does NOT match cards without self-reference", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("o:~"));
-    expect(matchingIndices).not.toContain(0); // Birds
-    expect(matchingIndices).not.toContain(2); // Counterspell
-    expect(matchingIndices).not.toContain(3); // Sol Ring
-    expect(matchingIndices).not.toContain(5); // Azorius Charm
-    expect(matchingIndices).not.toContain(6); // Thalia
-    expect(matchingIndices).not.toContain(8); // Ayara back
-    expect(matchingIndices).not.toContain(9); // Dismember
+    const indices = Array.from(cache.evaluate(parse("o:~")).indices);
+    expect(indices).not.toContain(0); // Birds
+    expect(indices).not.toContain(2); // Counterspell
+    expect(indices).not.toContain(3); // Sol Ring
+    expect(indices).not.toContain(5); // Azorius Charm
+    expect(indices).not.toContain(6); // Thalia
+    expect(indices).not.toContain(9); // Dismember
   });
 
   test("o:flying (no tilde) uses original column, unchanged", () => {
@@ -814,16 +804,16 @@ describe("tilde self-reference", () => {
     expect(matchCount("o:/damage/")).toBe(2);
   });
 
-  test("matchingIndices for o:~ contains expected rows", () => {
+  test("indices for o:~ contains expected cards", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("o:~"));
-    expect(matchingIndices).toEqual([1, 4, 7]);
+    const indices = Array.from(cache.evaluate(parse("o:~")).indices);
+    expect(indices).toEqual([1, 4, 7]);
   });
 
   test("o:~ does NOT match when tilde is only inside reminder text", () => {
     const cache = new NodeCache(index);
-    const { matchingIndices } = cache.evaluate(parse("o:~"));
-    expect(matchingIndices).not.toContain(0); // Birds: ~ only in "(~ can't be blocked…)"
+    const indices = Array.from(cache.evaluate(parse("o:~")).indices);
+    expect(indices).not.toContain(0); // Birds: ~ only in "(~ can't be blocked…)"
   });
 });
 
@@ -853,7 +843,7 @@ describe("reminder text stripping", () => {
   });
 
   test("o:target is unchanged (all occurrences outside reminder text)", () => {
-    expect(matchCount("o:target")).toBe(5);
+    expect(matchCount("o:target")).toBe(4);
   });
 
   test("o:/reach/ regex does NOT match reminder text", () => {
@@ -1134,7 +1124,7 @@ function isMatchCount(query: string): number {
 
 function isMatchIndices(query: string): number[] {
   const cache = new NodeCache(isIndex);
-  return cache.evaluate(parse(query)).matchingIndices;
+  return Array.from(cache.evaluate(parse(query)).indices);
 }
 
 describe("is: operator", () => {
@@ -1142,15 +1132,15 @@ describe("is: operator", () => {
 
   test("is:permanent matches creatures, artifacts, enchantments, planeswalkers, lands", () => {
     const indices = isMatchIndices("is:permanent");
-    // Non-permanent: Instants(1,2,5,9,17), Sorcery(26)
+    // Non-permanent single-face cards
     expect(indices).not.toContain(1);  // Lightning Bolt (Instant)
     expect(indices).not.toContain(2);  // Counterspell (Instant)
     expect(indices).not.toContain(5);  // Azorius Charm (Instant)
     expect(indices).not.toContain(9);  // Dismember (Instant)
-    expect(indices).not.toContain(17); // Swift End (Instant — Adventure)
     expect(indices).not.toContain(26); // Incubation (Sorcery)
     expect(indices).toContain(0);  // Birds (Creature)
     expect(indices).toContain(3);  // Sol Ring (Artifact)
+    expect(indices).toContain(16); // Murderous Rider (Creature face of adventure card — card is permanent)
     expect(indices).toContain(18); // Nicol Bolas (Planeswalker)
     expect(indices).toContain(20); // Urza's Saga (Enchantment)
     expect(indices).toContain(27); // Underground Sea (Land)
@@ -1158,18 +1148,16 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    // 32 total - 3 lands (Underground Sea #27, Steam Vents #30, Scalding Tarn #31)
-    expect(isMatchCount("is:spell")).toBe(29);
+    // 28 total cards - 3 lands (Underground Sea #27, Steam Vents #30, Scalding Tarn #31)
+    expect(isMatchCount("is:spell")).toBe(25);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
     const indices = isMatchIndices("is:historic");
     expect(indices).toContain(3);  // Sol Ring (Artifact)
     expect(indices).toContain(6);  // Thalia (Legendary)
-    expect(indices).toContain(7);  // Ayara front (Legendary)
-    expect(indices).toContain(8);  // Ayara back (Legendary)
-    expect(indices).toContain(18); // Nicol Bolas PW (Legendary)
-    expect(indices).toContain(19); // Nicol Bolas creature (Legendary)
+    expect(indices).toContain(7);  // Ayara (Legendary)
+    expect(indices).toContain(18); // Nicol Bolas (Legendary)
     expect(indices).toContain(20); // Urza's Saga
     expect(indices).toContain(23); // Gisela (Legendary)
     expect(indices).toContain(25); // Akroma (Legendary)
@@ -1194,23 +1182,22 @@ describe("is: operator", () => {
 
   test("is:transform matches transform layout", () => {
     const indices = isMatchIndices("is:transform");
-    expect(indices).toContain(7);  // Ayara front
-    expect(indices).toContain(8);  // Ayara back
-    expect(indices).toContain(21); // Delver front
-    expect(indices).toContain(22); // Delver back
+    expect(indices).toContain(7);  // Ayara
+    expect(indices).toContain(21); // Delver
     expect(indices).not.toContain(18); // Nicol Bolas (modal_dfc)
-    expect(isMatchCount("is:transform")).toBe(4);
+    expect(isMatchCount("is:transform")).toBe(2);
   });
 
   test("is:modal and is:mdfc match modal_dfc layout", () => {
-    expect(isMatchCount("is:modal")).toBe(2);   // Nicol Bolas front+back
-    expect(isMatchCount("is:mdfc")).toBe(2);
+    expect(isMatchCount("is:modal")).toBe(1);   // Nicol Bolas
+    expect(isMatchCount("is:mdfc")).toBe(1);
     expect(isMatchIndices("is:modal")).toEqual(isMatchIndices("is:mdfc"));
   });
 
   test("is:dfc matches transform, modal_dfc, and meld", () => {
     const indices = isMatchIndices("is:dfc");
     expect(indices).toContain(7);  // Ayara (transform)
+    expect(indices).toContain(21); // Delver (transform)
     expect(indices).toContain(18); // Nicol Bolas (modal_dfc)
     expect(indices).toContain(23); // Gisela (meld)
     expect(indices).not.toContain(16); // Murderous Rider (adventure)
@@ -1224,9 +1211,8 @@ describe("is: operator", () => {
 
   test("is:adventure matches adventure layout", () => {
     const indices = isMatchIndices("is:adventure");
-    expect(indices).toContain(16); // Murderous Rider
-    expect(indices).toContain(17); // Swift End
-    expect(isMatchCount("is:adventure")).toBe(2);
+    expect(indices).toContain(16); // Murderous Rider (canonical face)
+    expect(isMatchCount("is:adventure")).toBe(1);
   });
 
   test("is:split matches split layout", () => {
@@ -1247,22 +1233,20 @@ describe("is: operator", () => {
   test("is:vanilla matches cards with empty oracle text", () => {
     const indices = isMatchIndices("is:vanilla");
     // Row 11: Runeclaw Bear has empty oracle text
-    // Row 19: Nicol Bolas back has empty oracle text
+    // Row 19: Nicol Bolas back has empty oracle text → canonical 18
     expect(indices).toContain(11);
-    expect(indices).toContain(19);
+    expect(indices).toContain(18);
     expect(indices).not.toContain(10); // Grizzly Bears has non-empty text
   });
 
   test("is:commander matches legendary creatures and planeswalkers", () => {
     const indices = isMatchIndices("is:commander");
     expect(indices).toContain(6);  // Thalia (Legendary Creature)
-    expect(indices).toContain(7);  // Ayara front (Legendary Creature)
-    expect(indices).toContain(8);  // Ayara back (Legendary Creature)
+    expect(indices).toContain(7);  // Ayara (Legendary Creature)
     expect(indices).toContain(13); // Rograkh (Legendary Creature)
     expect(indices).toContain(14); // Halana and Alena — has "can be your commander"
     expect(indices).toContain(15); // Lurrus (Legendary Creature)
-    expect(indices).toContain(18); // Nicol Bolas PW (Legendary Planeswalker)
-    expect(indices).toContain(19); // Nicol Bolas creature (Legendary Creature)
+    expect(indices).toContain(18); // Nicol Bolas (Legendary Planeswalker / Legendary Creature)
     expect(indices).toContain(23); // Gisela (Legendary Creature)
     expect(indices).toContain(25); // Akroma (Legendary Creature)
     expect(indices).not.toContain(0);  // Birds (non-legendary creature)
@@ -1303,7 +1287,9 @@ describe("is: operator", () => {
   test("is:frenchvanilla matches creatures with only keyword abilities", () => {
     const indices = isMatchIndices("is:frenchvanilla");
     expect(indices).toContain(12); // Slippery Bogle: "Hexproof" (after reminder strip)
-    expect(indices).toContain(22); // Insectile Aberration: "Flying"
+    expect(indices).toContain(16); // Murderous Rider: "Lifelink"
+    expect(indices).toContain(21); // Delver (via Insectile Aberration back face: "Flying")
+    expect(indices).toContain(23); // Gisela: "Flying, first strike, lifelink"
     expect(indices).toContain(25); // Akroma: "Flying, first strike, vigilance, trample, haste, protection from black and from red"
     expect(indices).not.toContain(11); // Runeclaw Bear: empty text (that's vanilla, not french vanilla)
     expect(indices).not.toContain(24); // Stoneforge: has non-keyword text
@@ -1336,7 +1322,7 @@ describe("is: operator", () => {
   });
 
   test("negation -is:spell works", () => {
-    // is:spell matches 29 (32 total - 3 lands), so -is:spell matches 3
+    // is:spell matches 25 (28 total cards - 3 lands), so -is:spell matches 3
     expect(isMatchCount("-is:spell")).toBe(3);
   });
 
@@ -1369,14 +1355,12 @@ describe("is: operator", () => {
     expect(isMatchCount("is:Transform")).toBe(isMatchCount("is:transform"));
   });
 
-  test("layout keywords work across both faces of DFC", () => {
-    // Ayara is transform: both faces match
+  test("layout keywords produce one result per DFC card", () => {
     const indices = isMatchIndices("is:transform");
-    expect(indices).toContain(7);
-    expect(indices).toContain(8);
-    // Dedup gives one card
-    const deduped = isIndex.deduplicateMatches(indices.filter(i => i === 7 || i === 8));
-    expect(deduped).toEqual([7]);
+    expect(indices).toContain(7);  // Ayara (canonical face)
+    expect(indices).toContain(21); // Delver (canonical face)
+    expect(indices).not.toContain(8);  // back face never in results
+    expect(indices).not.toContain(22); // back face never in results
   });
 
   // --- Flag checks ---
@@ -1400,7 +1384,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(31); // 32 total - 1 funny
+    expect(indices.length).toBe(27); // 28 total cards - 1 funny
   });
 
   // --- Land cycle checks ---

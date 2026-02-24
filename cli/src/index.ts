@@ -52,8 +52,8 @@ cli
     const { data, index } = loadIndex(options.data);
     const cache = new NodeCache(index);
     const ast = parse(query);
-    const { result, matchingIndices } = cache.evaluate(ast);
-    const cardFaces = index.deduplicateMatches(matchingIndices);
+    const { result, indices } = cache.evaluate(ast);
+    const cardFaces = Array.from(indices);
 
     switch (options.output) {
       case "names":

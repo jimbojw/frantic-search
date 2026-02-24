@@ -162,7 +162,6 @@ function App() {
   const [workerError, setWorkerError] = createSignal('')
   const [display, setDisplay] = createSignal<DisplayColumns | null>(null)
   const [indices, setIndices] = createSignal<Uint32Array>(new Uint32Array(0))
-  const [totalMatches, setTotalMatches] = createSignal(0)
   const [showOracleText, setShowOracleText] = createSignal(false)
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
   const [histograms, setHistograms] = createSignal<Histograms | null>(null)
@@ -235,7 +234,6 @@ function App() {
       case 'result':
         if (msg.queryId === latestQueryId) {
           setIndices(msg.indices)
-          setTotalMatches(msg.totalMatches)
           setBreakdown(msg.breakdown)
           setHistograms(msg.histograms)
         }
@@ -250,7 +248,6 @@ function App() {
       worker.postMessage({ type: 'search', queryId: latestQueryId, query: query() })
     } else if (!q) {
       setIndices(new Uint32Array(0))
-      setTotalMatches(0)
       setBreakdown(null)
       setHistograms(null)
     }
@@ -363,7 +360,7 @@ function App() {
         />
       </Show>
       <Show when={view() === 'report'}>
-        <BugReport query={query()} breakdown={breakdown()} resultCount={totalMatches()} />
+        <BugReport query={query()} breakdown={breakdown()} resultCount={totalCards()} />
       </Show>
       <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
@@ -430,7 +427,6 @@ function App() {
               <InlineBreakdown
                 breakdown={bd()}
                 cardCount={totalCards()}
-                faceCount={totalMatches()}
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
                 onNodeClick={(q) => { flushPendingCommit(); setQuery(q) }}

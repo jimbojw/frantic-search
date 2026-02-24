@@ -377,7 +377,7 @@ test("trailing operator", () => {
 5. All supported fields and operators from the table above are exercised by at least one test case.
 6. The lexer + parser together are under 300 lines of code (excluding tests).
 7. For a multi-face card, a query matching only the back face produces a deduplicated result containing the card's primary face index.
-8. For a multi-face card, a query with conditions that no single face satisfies (but different faces satisfy different conditions) produces no match.
+8. ~~For a multi-face card, a query with conditions that no single face satisfies (but different faces satisfy different conditions) produces no match.~~ Superseded by Spec 033: cross-face conditions now match at card level.
 
 ## Implementation Notes
 
@@ -421,3 +421,11 @@ test("trailing operator", () => {
   component-wise ≥ check. Bare shorthand (`m:rr`, `m:2rr`) and mixed forms
   (`m:r{r}`, `m:{r}r`) now work correctly, matching Scryfall's behavior.
   `CardIndex` pre-computes mana symbol maps at construction time.
+- 2026-02-23: Card-level evaluation semantics (Spec 033). The original
+  description of Scryfall's per-face evaluation was incorrect — empirically,
+  Scryfall promotes each leaf condition to card level (any face matches →
+  card matches) then combines with AND/OR/NOT. Leaf evaluators now write to
+  `buf[canonicalFace[i]]` instead of `buf[i]`, ensuring only canonical face
+  slots carry data. `matchCount` reflects card count, not face count.
+  `deduplicateMatches` removed. `evaluate()` returns a pre-allocated
+  `Uint32Array` of canonical face indices. Acceptance criterion 8 struck.

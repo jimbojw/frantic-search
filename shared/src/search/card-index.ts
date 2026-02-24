@@ -88,17 +88,4 @@ export class CardIndex {
   facesOf(canonicalIndex: number): number[] {
     return this._facesOf.get(canonicalIndex) ?? [];
   }
-
-  deduplicateMatches(faceIndices: number[]): number[] {
-    const seen = new Set<number>();
-    const result: number[] = [];
-    for (const fi of faceIndices) {
-      const cf = this.canonicalFace[fi];
-      if (!seen.has(cf)) {
-        seen.add(cf);
-        result.push(cf);
-      }
-    }
-    return result;
-  }
 }

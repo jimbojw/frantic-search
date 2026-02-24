@@ -97,7 +97,6 @@ function BreakdownTreeNode(props: { node: BreakdownNode; root: BreakdownNode; de
 export default function InlineBreakdown(props: {
   breakdown: BreakdownNode
   cardCount: number
-  faceCount: number
   expanded: boolean
   onToggle: () => void
   onNodeClick: (query: string) => void
@@ -134,7 +133,7 @@ export default function InlineBreakdown(props: {
           <Show when={label()}>{label()}</Show>
         </span>
         <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
-          {props.cardCount.toLocaleString()} cards ({props.faceCount.toLocaleString()} faces)
+          {props.cardCount.toLocaleString()} cards
         </span>
       </div>
     </div>
