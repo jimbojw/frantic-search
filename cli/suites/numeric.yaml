@@ -1,0 +1,40 @@
+- name: "Star power satisfies pow<2 (Spec 034)"
+  query: "pow<2 t:creature"
+  scryfall_query: "pow<2 t:creature include:extras"
+  assertions:
+    contains:
+      - "Tarmogoyf"
+      - "Birds of Paradise"
+    count_min: 1000
+
+- name: "Star power equals zero (Spec 034)"
+  query: "pow=0 t:creature"
+  scryfall_query: "pow=0 t:creature include:extras"
+  assertions:
+    contains:
+      - "Birds of Paradise"
+      - "Ornithopter"
+    count_min: 500
+
+- name: "Query value x treated as 0 (Spec 034)"
+  query: "pow=x t:creature"
+  scryfall_query: "pow=x t:creature include:extras"
+  assertions:
+    contains:
+      - "Birds of Paradise"
+    count_min: 500
+
+- name: "1+* power parsed as 1 (Spec 034)"
+  query: "pow=1 t:creature"
+  scryfall_query: "pow=1 t:creature include:extras"
+  assertions:
+    contains:
+      - "Nighthawk Scavenger"
+    count_min: 1000
+
+- name: "1d4+1 loyalty divergence (Spec 034)"
+  query: "loy=2"
+  scryfall_query: "loy=2 include:extras"
+  assertions:
+    count_min: 5
+  divergence: "1d4+1 is parsed as 2 locally vs 141 on Scryfall (Spec 034)"

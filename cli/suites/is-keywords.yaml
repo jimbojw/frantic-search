@@ -1,0 +1,60 @@
+- name: "is:shockland returns exactly 10 cards (Spec 032)"
+  query: "is:shockland"
+  assertions:
+    count: 10
+    contains:
+      - "Blood Crypt"
+      - "Breeding Pool"
+      - "Watery Grave"
+
+- name: "is:fetchland returns exactly 10 cards (Spec 032)"
+  query: "is:fetchland"
+  assertions:
+    count: 10
+    contains:
+      - "Scalding Tarn"
+      - "Misty Rainforest"
+      - "Polluted Delta"
+
+- name: "is:dual returns exactly 10 cards (Spec 032)"
+  query: "is:dual"
+  assertions:
+    count: 10
+    contains:
+      - "Underground Sea"
+      - "Tropical Island"
+      - "Tundra"
+
+- name: "is:bear requires creature + 2/2 + cmc 2 (Spec 032)"
+  query: "is:bear"
+  scryfall_query: "is:bear include:extras"
+  assertions:
+    contains:
+      - "Grizzly Bears"
+      - "Bear Cub"
+    excludes:
+      - "Tarmogoyf"
+    count_min: 100
+
+- name: "is:companion finds companion creatures (Spec 032)"
+  query: "is:companion"
+  scryfall_query: "is:companion include:extras"
+  assertions:
+    contains:
+      - "Lurrus of the Dream-Den"
+      - "Yorion, Sky Nomad"
+    count_min: 10
+
+- name: "is:vanilla finds creatures with no oracle text (Spec 032)"
+  query: "is:vanilla t:creature"
+  scryfall_query: "is:vanilla t:creature include:extras"
+  assertions:
+    contains:
+      - "Grizzly Bears"
+      - "Isamaru, Hound of Konda"
+    count_min: 100
+
+- name: "Unknown is: keyword matches nothing (Spec 032)"
+  query: "is:nonsense"
+  assertions:
+    count: 0

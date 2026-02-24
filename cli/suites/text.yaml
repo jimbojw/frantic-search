@@ -1,0 +1,20 @@
+- name: "Name search finds partial match"
+  query: "lightning"
+  scryfall_query: "lightning include:extras"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+      - "Lightning Helix"
+    count_min: 50
+
+- name: "Oracle text search"
+  query: "o:\"destroy target creature\""
+  scryfall_query: "o:\"destroy target creature\" include:extras"
+  assertions:
+    count_min: 100
+
+- name: "Type line search for legendary creature"
+  query: "t:legendary t:creature t:elf"
+  scryfall_query: "t:legendary t:creature t:elf include:extras"
+  assertions:
+    count_min: 30

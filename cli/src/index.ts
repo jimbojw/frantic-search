@@ -82,5 +82,14 @@ cli
     }
   });
 
+cli
+  .command("compliance", "Run compliance suite against local engine or Scryfall")
+  .option("--verify", "Verify assertions against the Scryfall API instead of the local engine")
+  .option("--data <path>", "Path to columns.json (local mode only)", { default: COLUMNS_PATH })
+  .action(async (options: { verify?: boolean; data: string }) => {
+    const { runCompliance } = await import("./compliance/run");
+    await runCompliance({ verify: !!options.verify, data: options.data });
+  });
+
 cli.help();
 cli.parse();

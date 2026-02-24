@@ -1,0 +1,23 @@
+- name: "Color identity subset: ci<=uw"
+  query: "ci<=uw t:creature"
+  scryfall_query: "ci<=uw t:creature include:extras"
+  assertions:
+    contains:
+      - "Spell Queller"
+    excludes:
+      - "Tarmogoyf"
+    count_min: 1000
+
+- name: "Exact color identity: ci=wubrg"
+  query: "ci=wubrg"
+  scryfall_query: "ci=wubrg include:extras"
+  assertions:
+    count_min: 50
+
+- name: "Colorless identity"
+  query: "ci=c t:creature"
+  scryfall_query: "ci=c t:creature include:extras"
+  assertions:
+    contains:
+      - "Ornithopter"
+    count_min: 200

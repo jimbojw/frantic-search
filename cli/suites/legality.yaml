@@ -1,0 +1,13 @@
+- name: "Format legality: f:vintage finds legal cards"
+  query: "f:vintage t:artifact cmc=0"
+  scryfall_query: "f:vintage t:artifact cmc=0 include:extras"
+  assertions:
+    contains:
+      - "Ornithopter"
+    count_min: 50
+
+- name: "Banned in standard"
+  query: "banned:standard"
+  scryfall_query: "banned:standard include:extras"
+  assertions:
+    count_min: 5

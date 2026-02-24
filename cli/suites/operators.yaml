@@ -1,0 +1,27 @@
+- name: "Cross-face AND: instant + creature via Adventure (Spec 033)"
+  query: "t:instant t:creature f:modern"
+  scryfall_query: "t:instant t:creature f:modern"
+  assertions:
+    count_min: 1
+    contains:
+      - "Bonecrusher Giant"
+
+- name: "Cross-face AND: MDFC land + creature (Spec 033)"
+  query: "is:mdfc t:land t:creature"
+  scryfall_query: "is:mdfc t:land t:creature include:extras"
+  assertions:
+    count_min: 10
+
+- name: "NOT excludes all faces: -t:creature (Spec 033)"
+  query: "-t:creature t:instant"
+  scryfall_query: "-t:creature t:instant include:extras"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+      - "Counterspell"
+    count_min: 500
+
+- name: "OR combines card-level results"
+  query: "(is:shockland OR is:fetchland)"
+  assertions:
+    count: 20

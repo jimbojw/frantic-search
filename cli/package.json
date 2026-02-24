@@ -12,7 +12,8 @@
   "description": "CLI tools for Frantic Search query engine",
   "dependencies": {
     "@frantic-search/shared": "*",
-    "cac": "^6.7.14"
+    "cac": "^6.7.14",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

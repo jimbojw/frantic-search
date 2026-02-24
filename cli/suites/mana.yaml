@@ -1,0 +1,16 @@
+- name: "Mana value exactly 0"
+  query: "cmc=0 t:artifact"
+  scryfall_query: "cmc=0 t:artifact include:extras"
+  assertions:
+    contains:
+      - "Ornithopter"
+      - "Mox Pearl"
+    count_min: 100
+
+- name: "Mana value greater than 10"
+  query: "cmc>10 t:creature"
+  scryfall_query: "cmc>10 t:creature include:extras"
+  assertions:
+    contains:
+      - "Emrakul, the Aeons Torn"
+    count_min: 10
