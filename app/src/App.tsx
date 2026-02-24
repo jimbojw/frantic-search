@@ -328,6 +328,29 @@ function App() {
   }
 
   function navigateHome() {
+    const isAtHome =
+      view() === 'search' &&
+      !query().trim() &&
+      !cardId() &&
+      !hasEverFocused()
+
+    if (isAtHome) {
+      // Already at home — hard refresh (unregister SW, reload)
+      history.replaceState(null, '', location.pathname)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister()
+          }
+          window.location.reload()
+        })
+      } else {
+        window.location.reload()
+      }
+      return
+    }
+
+    // Not at home — soft reset to initial state
     cancelPendingCommit()
     saveScrollPosition()
     history.pushState(null, '', location.pathname)
