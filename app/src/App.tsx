@@ -419,6 +419,7 @@ function App() {
             <TermsDrawer
               onChipClick={appendQuery}
               onHelpClick={navigateToHelp}
+              onClose={toggleTerms}
             />
           </Show>
           <div class={`relative ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
