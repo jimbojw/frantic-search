@@ -1,6 +1,6 @@
 # Spec 034: Numeric Stat Value Parsing
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine)
 
