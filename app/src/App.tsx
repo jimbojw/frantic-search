@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createEffect, createMemo, For, Show } from 'solid-js'
+import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
@@ -212,13 +212,23 @@ function App() {
     return d ? buildScryfallIndex(d.scryfall_ids, d.canonical_face) : new Map<string, number>()
   })
 
+  const RESULT_BATCH = 100
+  const [visibleCount, setVisibleCount] = createSignal(RESULT_BATCH)
+
+  createEffect(() => {
+    indices()
+    setVisibleCount(RESULT_BATCH)
+  })
+
   const visibleIndices = createMemo(() => {
     const idx = indices()
-    const len = Math.min(idx.length, 200)
+    const len = Math.min(idx.length, visibleCount())
     const result: number[] = new Array(len)
     for (let i = 0; i < len; i++) result[i] = idx[i]
     return result
   })
+
+  const hasMore = () => indices().length > visibleCount()
 
   const totalCards = () => indices().length
 
@@ -640,9 +650,19 @@ function App() {
                           )
                         }}
                       </For>
-                      <Show when={totalCards() > 200}>
-                        <li class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic">
-                          …and {(totalCards() - 200).toLocaleString()} more
+                      <Show when={hasMore()}>
+                        <li
+                          ref={(el) => {
+                            const obs = new IntersectionObserver(
+                              ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + RESULT_BATCH) },
+                              { rootMargin: '600px' },
+                            )
+                            obs.observe(el)
+                            onCleanup(() => obs.disconnect())
+                          }}
+                          class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic"
+                        >
+                          …and {(totalCards() - visibleCount()).toLocaleString()} more
                         </li>
                       </Show>
                     </ul>
