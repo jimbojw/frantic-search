@@ -70,7 +70,7 @@ cli
   });
 
 cli
-  .command("thumbhash", "Generate ThumbHash placeholders for card art crops")
+  .command("thumbhash", "Generate ThumbHash placeholders for art crops and card images")
   .option("--timeout <seconds>", "Maximum seconds to spend downloading", {
     default: 500,
   })
@@ -91,7 +91,7 @@ cli
 cli
   .command(
     "restore",
-    "Restore ThumbHash manifest from previous deployment or local columns data",
+    "Restore ThumbHash manifests from previous deployment or local columns data",
   )
   .option("--site-url <url>", "URL of the deployed site to fetch columns.json from")
   .option("--verbose", "Print detailed progress", { default: false })

@@ -16,7 +16,7 @@ describe("reconstructManifest", () => {
     });
   });
 
-  test("skips entries with empty thumb_hashes", () => {
+  test("skips entries with empty hashes", () => {
     const result = reconstructManifest(
       ["id-a", "id-b", "id-c"],
       ["hash-a", "", "hash-c"],
@@ -38,7 +38,7 @@ describe("reconstructManifest", () => {
     });
   });
 
-  test("handles mismatched array lengths (thumb_hashes shorter)", () => {
+  test("handles mismatched array lengths (hashes shorter)", () => {
     const result = reconstructManifest(
       ["id-a", "id-b", "id-c"],
       ["hash-a"],
@@ -56,6 +56,17 @@ describe("reconstructManifest", () => {
 
   test("returns empty object for empty arrays", () => {
     expect(reconstructManifest([], [])).toEqual({});
+  });
+
+  test("works for card image hashes same as art crop hashes", () => {
+    const result = reconstructManifest(
+      ["id-a", "id-b"],
+      ["card-hash-a", "card-hash-b"],
+    );
+    expect(result).toEqual({
+      "id-a": "card-hash-a",
+      "id-b": "card-hash-b",
+    });
   });
 });
 

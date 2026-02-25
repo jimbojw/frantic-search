@@ -609,7 +609,7 @@ function App() {
                               <ArtCrop
                                 scryfallId={d().scryfall_ids[ci]}
                                 colorIdentity={d().color_identity[ci]}
-                                thumbHash={d().thumb_hashes[ci]}
+                                thumbHash={d().art_crop_thumb_hashes[ci]}
                               />
                               <div class="min-w-0 flex-1">
                                 <Show when={faces().length > 1} fallback={

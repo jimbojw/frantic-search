@@ -42,22 +42,41 @@ describe("pruneManifest", () => {
 
 describe("manifest file round-trip", () => {
   let tmpDir: string;
-  let manifestPath: string;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "thumbhash-test-"));
-    manifestPath = path.join(tmpDir, "manifest.json");
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("save then load preserves data", async () => {
-    const { saveManifest: save, loadManifest: load } = await mockPaths(
-      tmpDir,
-      manifestPath,
-    );
+  function helpers(manifestPath: string) {
+    return {
+      load(): Manifest {
+        try {
+          const raw = fs.readFileSync(manifestPath, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+            return parsed as Manifest;
+          }
+        } catch {
+          // Missing or corrupt — start fresh
+        }
+        return {};
+      },
+      save(manifest: Manifest): void {
+        fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+        const tmp = manifestPath + ".tmp";
+        fs.writeFileSync(tmp, JSON.stringify(manifest) + "\n");
+        fs.renameSync(tmp, manifestPath);
+      },
+    };
+  }
+
+  test("save then load preserves data", () => {
+    const manifestPath = path.join(tmpDir, "art-crop-thumbhash-manifest.json");
+    const { save, load } = helpers(manifestPath);
     const original: Manifest = {
       "abc-123": "dGVzdA==",
       "def-456": "b3RoZXI=",
@@ -67,53 +86,23 @@ describe("manifest file round-trip", () => {
     expect(loaded).toEqual(original);
   });
 
-  test("load returns empty object when file missing", async () => {
-    const { loadManifest: load } = await mockPaths(tmpDir, manifestPath);
+  test("load returns empty object when file missing", () => {
+    const manifestPath = path.join(tmpDir, "art-crop-thumbhash-manifest.json");
+    const { load } = helpers(manifestPath);
     expect(load()).toEqual({});
   });
 
-  test("load returns empty object when file is corrupt", async () => {
+  test("load returns empty object when file is corrupt", () => {
+    const manifestPath = path.join(tmpDir, "art-crop-thumbhash-manifest.json");
     fs.writeFileSync(manifestPath, "not json!!!");
-    const { loadManifest: load } = await mockPaths(tmpDir, manifestPath);
+    const { load } = helpers(manifestPath);
     expect(load()).toEqual({});
   });
 
-  test("load returns empty object when file contains an array", async () => {
+  test("load returns empty object when file contains an array", () => {
+    const manifestPath = path.join(tmpDir, "art-crop-thumbhash-manifest.json");
     fs.writeFileSync(manifestPath, "[1,2,3]");
-    const { loadManifest: load } = await mockPaths(tmpDir, manifestPath);
+    const { load } = helpers(manifestPath);
     expect(load()).toEqual({});
   });
 });
-
-/**
- * Re-import the module with overridden path constants via vi.mock would be
- * fragile since the paths are imported at the top level. Instead, this helper
- * creates thin wrappers that operate on the given paths directly, mirroring
- * the real implementation logic.
- */
-function mockPaths(dir: string, manifestPath: string) {
-  return {
-    loadManifest(): Manifest {
-      try {
-        const raw = fs.readFileSync(manifestPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-        ) {
-          return parsed as Manifest;
-        }
-      } catch {
-        // Missing or corrupt — start fresh
-      }
-      return {};
-    },
-    saveManifest(manifest: Manifest): void {
-      fs.mkdirSync(dir, { recursive: true });
-      const tmp = manifestPath + ".tmp";
-      fs.writeFileSync(tmp, JSON.stringify(manifest) + "\n");
-      fs.renameSync(tmp, manifestPath);
-    },
-  };
-}

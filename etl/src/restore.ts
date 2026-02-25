@@ -2,7 +2,13 @@
 import fs from "node:fs";
 import axios from "axios";
 import { COLUMNS_PATH } from "./paths";
-import { loadManifest, saveManifest, type Manifest } from "./thumbhash";
+import {
+  loadArtCropManifest,
+  loadCardManifest,
+  saveArtCropManifest,
+  saveCardManifest,
+  type Manifest,
+} from "./thumbhash";
 import { log } from "./log";
 
 export function reconstructManifest(
@@ -30,6 +36,9 @@ export function mergeManifests(
 
 interface ColumnsData {
   scryfall_ids?: string[];
+  art_crop_thumb_hashes?: string[];
+  card_thumb_hashes?: string[];
+  // Migration fallback: old column name
   thumb_hashes?: string[];
 }
 
@@ -60,6 +69,44 @@ function readLocalColumnsData(verbose: boolean): ColumnsData | null {
   }
 }
 
+function restoreOneManifest(
+  label: string,
+  scryfallIds: string[],
+  hashes: string[] | undefined,
+  loadExisting: () => Manifest,
+  save: (m: Manifest) => void,
+  verbose: boolean,
+): void {
+  if (!Array.isArray(hashes)) {
+    log(`No ${label} column found — skipping`, verbose);
+    return;
+  }
+
+  const restored = reconstructManifest(scryfallIds, hashes);
+  const restoredCount = Object.keys(restored).length;
+  log(`Reconstructed ${restoredCount} ${label} entries from columns data`, verbose);
+
+  if (restoredCount === 0) {
+    log(`No ${label} entries to restore`, true);
+    return;
+  }
+
+  const existing = loadExisting();
+  const existingCount = Object.keys(existing).length;
+  log(`Existing ${label} manifest has ${existingCount} entries`, verbose);
+
+  const merged = mergeManifests(existing, restored);
+  const mergedCount = Object.keys(merged).length;
+  const added = mergedCount - existingCount;
+
+  save(merged);
+  log(
+    `Restored ${label} manifest: ${mergedCount} total entries` +
+      (added > 0 ? ` (${added} new from previous deployment)` : " (no new entries)"),
+    true,
+  );
+}
+
 export interface RestoreOptions {
   siteUrl?: string;
   verbose: boolean;
@@ -76,33 +123,30 @@ export async function restoreManifest(options: RestoreOptions): Promise<void> {
     return;
   }
 
-  const { scryfall_ids, thumb_hashes } = columnsData;
-  if (!Array.isArray(scryfall_ids) || !Array.isArray(thumb_hashes)) {
-    log("Warning: columns data missing scryfall_ids or thumb_hashes — skipping restore", true);
+  const { scryfall_ids } = columnsData;
+  if (!Array.isArray(scryfall_ids)) {
+    log("Warning: columns data missing scryfall_ids — skipping restore", true);
     return;
   }
 
-  const restored = reconstructManifest(scryfall_ids, thumb_hashes);
-  const restoredCount = Object.keys(restored).length;
-  log(`Reconstructed ${restoredCount} ThumbHash entries from columns data`, verbose);
+  // Art crop: prefer new column name, fall back to old name
+  const artCropHashes = columnsData.art_crop_thumb_hashes ?? columnsData.thumb_hashes;
 
-  if (restoredCount === 0) {
-    log("No ThumbHash entries to restore", true);
-    return;
-  }
+  restoreOneManifest(
+    "art crop",
+    scryfall_ids,
+    artCropHashes,
+    loadArtCropManifest,
+    saveArtCropManifest,
+    verbose,
+  );
 
-  const existing = loadManifest();
-  const existingCount = Object.keys(existing).length;
-  log(`Existing manifest has ${existingCount} entries`, verbose);
-
-  const merged = mergeManifests(existing, restored);
-  const mergedCount = Object.keys(merged).length;
-  const added = mergedCount - existingCount;
-
-  saveManifest(merged);
-  log(
-    `Restored manifest: ${mergedCount} total entries` +
-      (added > 0 ? ` (${added} new from previous deployment)` : " (no new entries)"),
-    true,
+  restoreOneManifest(
+    "card image",
+    scryfall_ids,
+    columnsData.card_thumb_hashes,
+    loadCardManifest,
+    saveCardManifest,
+    verbose,
   );
 }

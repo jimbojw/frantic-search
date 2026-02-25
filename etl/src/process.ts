@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
-import { loadManifest } from "./thumbhash";
+import { loadArtCropManifest, loadCardManifest } from "./thumbhash";
 import {
   COLOR_FROM_LETTER,
   FORMAT_NAMES,
@@ -139,7 +139,8 @@ function pushFaceRow(
   cardIdx: number,
   canonicalFace: number,
   leg: { legal: number; banned: number; restricted: number },
-  manifest: Record<string, string>,
+  artCropManifest: Record<string, string>,
+  cardManifest: Record<string, string>,
   powerDict: DictEncoder,
   toughnessDict: DictEncoder,
   loyaltyDict: DictEncoder,
@@ -169,7 +170,9 @@ function pushFaceRow(
   data.card_index.push(cardIdx);
   data.canonical_face.push(canonicalFace);
   data.scryfall_ids.push(card.id ?? "");
-  data.thumb_hashes.push(manifest[card.id ?? ""] ?? "");
+  const id = card.id ?? "";
+  data.art_crop_thumb_hashes.push(artCropManifest[id] ?? "");
+  data.card_thumb_hashes.push(cardManifest[id] ?? "");
   data.layouts.push(card.layout ?? "normal");
   data.flags.push(encodeFlags(card));
 }
@@ -181,8 +184,10 @@ export function processCards(verbose: boolean): void {
 
   log(`Processing ${cards.length} cards…`, verbose);
 
-  const manifest = loadManifest();
-  log(`ThumbHash manifest: ${Object.keys(manifest).length} entries`, verbose);
+  const artCropManifest = loadArtCropManifest();
+  const cardManifest = loadCardManifest();
+  log(`Art crop ThumbHash manifest: ${Object.keys(artCropManifest).length} entries`, verbose);
+  log(`Card image ThumbHash manifest: ${Object.keys(cardManifest).length} entries`, verbose);
 
   const powerDict = new DictEncoder();
   const toughnessDict = new DictEncoder();
@@ -208,7 +213,8 @@ export function processCards(verbose: boolean): void {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
-    thumb_hashes: [],
+    art_crop_thumb_hashes: [],
+    card_thumb_hashes: [],
     layouts: [],
     flags: [],
     power_lookup: [],
@@ -233,12 +239,12 @@ export function processCards(verbose: boolean): void {
 
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
-        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, manifest,
-          powerDict, toughnessDict, loyaltyDict, defenseDict);
+        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, artCropManifest,
+          cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
       }
     } else {
-      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, manifest,
-        powerDict, toughnessDict, loyaltyDict, defenseDict);
+      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, artCropManifest,
+        cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
     }
   }
 

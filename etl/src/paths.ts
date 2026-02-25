@@ -11,7 +11,9 @@ export const ORACLE_CARDS_PATH = path.join(RAW_DIR, "oracle-cards.json");
 export const META_PATH = path.join(RAW_DIR, "meta.json");
 export const COLUMNS_PATH = path.join(DIST_DIR, "columns.json");
 export const THUMBHASH_DIR = path.join(PROJECT_ROOT, "data", "thumbhash");
-export const MANIFEST_PATH = path.join(THUMBHASH_DIR, "manifest.json");
+export const ART_CROP_MANIFEST_PATH = path.join(THUMBHASH_DIR, "art-crop-thumbhash-manifest.json");
+export const CARD_MANIFEST_PATH = path.join(THUMBHASH_DIR, "card-thumbhash-manifest.json");
+export const LEGACY_MANIFEST_PATH = path.join(THUMBHASH_DIR, "manifest.json");
 
 const LocalMetaSchema = z.object({
   updated_at: z.string(),

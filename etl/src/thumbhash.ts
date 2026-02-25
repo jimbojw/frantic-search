@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import path from "node:path";
 import axios from "axios";
 import sharp from "sharp";
 import { rgbaToThumbHash } from "thumbhash";
-import { ORACLE_CARDS_PATH, THUMBHASH_DIR, MANIFEST_PATH } from "./paths";
+import {
+  ORACLE_CARDS_PATH,
+  THUMBHASH_DIR,
+  ART_CROP_MANIFEST_PATH,
+  CARD_MANIFEST_PATH,
+  LEGACY_MANIFEST_PATH,
+} from "./paths";
 import { log } from "./log";
 
 const FILTERED_LAYOUTS = new Set([
@@ -26,9 +31,9 @@ interface OracleCard {
 
 export type Manifest = Record<string, string>;
 
-export function loadManifest(): Manifest {
+function readManifestFile(filePath: string): Manifest {
   try {
-    const raw = fs.readFileSync(MANIFEST_PATH, "utf-8");
+    const raw = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
       return parsed as Manifest;
@@ -39,11 +44,30 @@ export function loadManifest(): Manifest {
   return {};
 }
 
-export function saveManifest(manifest: Manifest): void {
+export function loadArtCropManifest(): Manifest {
+  const manifest = readManifestFile(ART_CROP_MANIFEST_PATH);
+  if (Object.keys(manifest).length > 0) return manifest;
+  // Migration fallback: try old name
+  return readManifestFile(LEGACY_MANIFEST_PATH);
+}
+
+export function loadCardManifest(): Manifest {
+  return readManifestFile(CARD_MANIFEST_PATH);
+}
+
+function writeManifestFile(filePath: string, manifest: Manifest): void {
   fs.mkdirSync(THUMBHASH_DIR, { recursive: true });
-  const tmp = MANIFEST_PATH + ".tmp";
+  const tmp = filePath + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(manifest) + "\n");
-  fs.renameSync(tmp, MANIFEST_PATH);
+  fs.renameSync(tmp, filePath);
+}
+
+export function saveArtCropManifest(manifest: Manifest): void {
+  writeManifestFile(ART_CROP_MANIFEST_PATH, manifest);
+}
+
+export function saveCardManifest(manifest: Manifest): void {
+  writeManifestFile(CARD_MANIFEST_PATH, manifest);
 }
 
 export function loadOracleIds(): string[] {
@@ -76,8 +100,11 @@ function artCropUrl(id: string): string {
   return `https://cards.scryfall.io/art_crop/front/${id[0]}/${id[1]}/${id}.jpg`;
 }
 
-async function downloadAndHash(id: string): Promise<string> {
-  const url = artCropUrl(id);
+function cardImageUrl(id: string): string {
+  return `https://cards.scryfall.io/normal/front/${id[0]}/${id[1]}/${id}.jpg`;
+}
+
+async function downloadAndHash(url: string): Promise<string> {
   const response = await axios.get(url, {
     responseType: "arraybuffer",
     timeout: 15_000,
@@ -96,6 +123,47 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+interface PhaseResult {
+  generated: number;
+  errors: number;
+}
+
+async function processPhase(
+  label: string,
+  manifest: Manifest,
+  missing: string[],
+  urlFn: (id: string) => string,
+  deadline: number,
+  delay: number,
+  verbose: boolean,
+): Promise<PhaseResult> {
+  let generated = 0;
+  let errors = 0;
+
+  for (const id of missing) {
+    if (Date.now() >= deadline) {
+      log(`${label}: timeout reached`, true);
+      break;
+    }
+
+    try {
+      manifest[id] = await downloadAndHash(urlFn(id));
+      generated++;
+      if (verbose && generated % 50 === 0) {
+        log(`  ${label}: ${generated} hashes generated…`, true);
+      }
+    } catch (err) {
+      errors++;
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`  Warning: ${id} — ${msg}`, verbose);
+    }
+
+    await sleep(delay);
+  }
+
+  return { generated, errors };
+}
+
 export interface ThumbHashOptions {
   timeout: number;
   delay: number;
@@ -107,58 +175,62 @@ export async function generateThumbHashes(
 ): Promise<void> {
   const { timeout, delay, verbose } = options;
 
-  const manifest = loadManifest();
-  log(`Loaded manifest with ${Object.keys(manifest).length} entries`, verbose);
+  const artCropManifest = loadArtCropManifest();
+  const cardManifest = loadCardManifest();
+  log(`Loaded art crop manifest with ${Object.keys(artCropManifest).length} entries`, verbose);
+  log(`Loaded card image manifest with ${Object.keys(cardManifest).length} entries`, verbose);
 
   const oracleIds = loadOracleIds();
   const validIds = new Set(oracleIds);
   log(`Loaded ${oracleIds.length} oracle card IDs`, verbose);
 
-  const pruned = pruneManifest(manifest, validIds);
-  if (pruned > 0) {
-    log(`Pruned ${pruned} stale entries`, true);
-  }
+  const artCropPruned = pruneManifest(artCropManifest, validIds);
+  const cardPruned = pruneManifest(cardManifest, validIds);
+  if (artCropPruned > 0) log(`Pruned ${artCropPruned} stale art crop entries`, true);
+  if (cardPruned > 0) log(`Pruned ${cardPruned} stale card image entries`, true);
 
-  const missing = oracleIds.filter((id) => !(id in manifest));
-  log(`${missing.length} cards missing ThumbHashes`, verbose);
+  const artCropMissing = oracleIds.filter((id) => !(id in artCropManifest));
+  const cardMissing = oracleIds.filter((id) => !(id in cardManifest));
+  log(`${artCropMissing.length} cards missing art crop ThumbHashes`, verbose);
+  log(`${cardMissing.length} cards missing card image ThumbHashes`, verbose);
 
-  if (missing.length === 0) {
+  if (artCropMissing.length === 0 && cardMissing.length === 0) {
     log("All cards have ThumbHashes — nothing to do", true);
-    saveManifest(manifest);
+    saveArtCropManifest(artCropManifest);
+    saveCardManifest(cardManifest);
     return;
   }
 
   const deadline = Date.now() + timeout * 1000;
-  let generated = 0;
-  let errors = 0;
 
-  for (const id of missing) {
-    if (Date.now() >= deadline) {
-      log(`Timeout reached after ${timeout}s`, true);
-      break;
-    }
+  const artResult = await processPhase(
+    "Art crops", artCropManifest, artCropMissing,
+    artCropUrl, deadline, delay, verbose,
+  );
 
-    try {
-      manifest[id] = await downloadAndHash(id);
-      generated++;
-      if (verbose && generated % 50 === 0) {
-        log(`  ${generated} hashes generated…`, true);
-      }
-    } catch (err) {
-      errors++;
-      const msg = err instanceof Error ? err.message : String(err);
-      log(`  Warning: ${id} — ${msg}`, verbose);
-    }
+  const cardResult = await processPhase(
+    "Card images", cardManifest, cardMissing,
+    cardImageUrl, deadline, delay, verbose,
+  );
 
-    await sleep(delay);
-  }
+  saveArtCropManifest(artCropManifest);
+  saveCardManifest(cardManifest);
 
-  saveManifest(manifest);
-  const total = Object.keys(manifest).length;
-  const remaining = oracleIds.length - total;
+  const artTotal = Object.keys(artCropManifest).length;
+  const cardTotal = Object.keys(cardManifest).length;
+  const artRemaining = oracleIds.length - artTotal;
+  const cardRemaining = oracleIds.length - cardTotal;
+  const totalErrors = artResult.errors + cardResult.errors;
+
   log(
-    `Done: ${generated} new, ${total} total, ${pruned} pruned, ${remaining} remaining` +
-      (errors > 0 ? `, ${errors} errors` : ""),
+    `Art crops: ${artResult.generated} new, ${artTotal} total, ${artCropPruned} pruned, ${artRemaining} remaining`,
     true,
   );
+  log(
+    `Card images: ${cardResult.generated} new, ${cardTotal} total, ${cardPruned} pruned, ${cardRemaining} remaining`,
+    true,
+  );
+  if (totalErrors > 0) {
+    log(`${totalErrors} total errors (${artResult.errors} art crop, ${cardResult.errors} card image)`, true);
+  }
 }
