@@ -64,6 +64,12 @@ jobs:
       - name: Generate ThumbHashes
         run: npm run etl -- thumbhash --verbose
 
+      - name: Upload ThumbHash manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: thumbhash-manifests
+          path: data/thumbhash/
+
       - name: Process card data
         run: npm run etl -- process
 
