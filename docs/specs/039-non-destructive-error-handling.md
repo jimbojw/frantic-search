@@ -320,6 +320,18 @@ function BreakdownRow(props: { label: string; count: number; error?: string; ind
 
 Error nodes are still clickable (to isolate the term) and removable (via the × button), consistent with NOP behavior.
 
+### 8a. Summary bar error count
+
+The summary bar (the always-visible `MATCHES … N cards` footer) shows the count of ignored terms when errors are present:
+
+```
+▶ MATCHES · 1 ignored                    4 cards
+```
+
+The `· N ignored` text is styled in `text-red-500` / `dark:text-red-400` to match the error indicator color in `BreakdownRow`. It only appears when the error count is > 0, so there is no visual overhead for valid queries.
+
+The count is computed by `countErrors(breakdown)`, which recursively counts leaf-level error nodes (nodes with `error` set and no children). This avoids double-counting propagated errors — e.g., `-ci:cb` is one ignored term, not two (the NOT inherits the child's error, but the collapsed NOT-leaf has no children in the breakdown tree).
+
 ### 9. Flat breakdown filtering
 
 `InlineBreakdown` currently filters out NOP children in the flat-AND/flat-OR display case:
@@ -525,7 +537,7 @@ A query like `foo: OR` produces `OR(FIELD(foo, :, ""), NOP)`. The FIELD node err
 
 - **Error recovery for bare invalid regex.** As noted in § Edge Cases, a bare invalid regex like `/[/` desugars into an OR of three REGEX_FIELD children. All children error, but the parent OR evaluates to empty set rather than propagating an error state. Fixing this requires moving regex expansion out of the parser. See Spec 036 § Out of Scope.
 - **Warning vs. error distinction.** This spec treats all problematic terms as errors. A future refinement could distinguish warnings (e.g., "unknown field, but the value looks intentional") from hard errors (e.g., "completely unparseable"). Not needed for the current UX goal.
-- **Error messages in the results header.** Scryfall shows a banner message for ignored terms. This spec provides per-node indicators in the breakdown tree, which is sufficient for the inline breakdown UX. A banner-style message could be added later if user testing shows the per-node indicator is insufficient.
+- ~~**Error messages in the results header.**~~ Resolved: the summary bar shows `· N ignored` in red when error nodes are present. This is lighter than Scryfall's banner but provides the same signal — the user knows terms were ignored even when the breakdown is collapsed.
 
 ## Acceptance Criteria
 

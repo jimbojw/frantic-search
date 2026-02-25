@@ -16,6 +16,12 @@ function getSummaryLabel(_node: BreakdownNode): string {
   return 'MATCHES'
 }
 
+function countErrors(node: BreakdownNode): number {
+  if (node.error && (!node.children || node.children.length === 0)) return 1
+  if (!node.children) return 0
+  return node.children.reduce((sum, c) => sum + countErrors(c), 0)
+}
+
 function reconstructQuery(node: BreakdownNode): string {
   if (!node.children) return node.label
   if (node.type === 'OR')
@@ -43,22 +49,26 @@ function reconstructWithout(root: BreakdownNode, exclude: BreakdownNode): string
   return filtered ? reconstructQuery(filtered) : ''
 }
 
-function BreakdownRow(props: { label: string; count: number; indent?: number; onClick?: () => void; onRemove?: () => void }) {
-  const isNop = () => props.count < 0
+function BreakdownRow(props: { label: string; count: number; error?: string; indent?: number; onClick?: () => void; onRemove?: () => void }) {
+  const isError = () => !!props.error
+  const isNop = () => !props.error && props.count < 0
   return (
     <div
       class="flex items-baseline justify-between gap-4 py-0.5"
       style={props.indent ? { "padding-left": `${props.indent * 1.25}rem` } : undefined}
     >
       <span
-        class={`font-mono text-xs truncate ${isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
+        class={`font-mono text-xs truncate ${isError() ? 'text-red-500 dark:text-red-400' : isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
         onClick={props.onClick}
       >
         {props.label}
       </span>
       <span class="flex items-center gap-2 shrink-0">
-        <span class={`font-mono text-xs tabular-nums ${isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
-          {isNop() ? '--' : props.count.toLocaleString()}
+        <span
+          class={`font-mono text-xs tabular-nums ${isError() ? 'text-red-500 dark:text-red-400' : isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}
+          title={props.error}
+        >
+          {isError() ? '!!' : isNop() ? '--' : props.count.toLocaleString()}
         </span>
         <Show when={props.onRemove}>
           <button
@@ -82,6 +92,7 @@ function BreakdownTreeNode(props: { node: BreakdownNode; root: BreakdownNode; de
       <BreakdownRow
         label={props.node.label}
         count={props.node.matchCount}
+        error={props.node.error}
         indent={props.depth}
         onClick={() => props.onNodeClick(reconstructQuery(props.node))}
         onRemove={props.depth > 0 ? () => props.onNodeRemove(reconstructWithout(props.root, props.node)) : undefined}
@@ -105,6 +116,7 @@ export default function InlineBreakdown(props: {
 }) {
   const displayCase = () => getBreakdownCase(props.breakdown)
   const label = () => getSummaryLabel(props.breakdown)
+  const errorCount = () => countErrors(props.breakdown)
 
   return (
     <div class="border-t border-gray-200 dark:border-gray-700">
@@ -115,10 +127,10 @@ export default function InlineBreakdown(props: {
           }>
             <Show when={displayCase() === 'single'} fallback={
               <For each={props.breakdown.children!.filter(c => c.type !== 'NOP')}>
-                {(child) => <BreakdownRow label={child.label} count={child.matchCount} onClick={() => props.onNodeClick(reconstructQuery(child))} onRemove={() => props.onNodeRemove(reconstructWithout(props.breakdown, child))} />}
+                {(child) => <BreakdownRow label={child.label} count={child.matchCount} error={child.error} onClick={() => props.onNodeClick(reconstructQuery(child))} onRemove={() => props.onNodeRemove(reconstructWithout(props.breakdown, child))} />}
               </For>
             }>
-              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} onClick={() => props.onNodeClick(reconstructQuery(props.breakdown))} onRemove={() => props.onNodeRemove('')} />
+              <BreakdownRow label={props.breakdown.label} count={props.breakdown.matchCount} error={props.breakdown.error} onClick={() => props.onNodeClick(reconstructQuery(props.breakdown))} onRemove={() => props.onNodeRemove('')} />
             </Show>
           </Show>
         </div>
@@ -132,6 +144,9 @@ export default function InlineBreakdown(props: {
             <path d="M8 5l8 7-8 7z" />
           </svg>
           <Show when={label()}>{label()}</Show>
+          <Show when={errorCount() > 0}>
+            <span class="text-red-500 dark:text-red-400">{`\u00b7 ${errorCount()} ignored`}</span>
+          </Show>
         </span>
         <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
           {props.cardCount.toLocaleString()} cards
