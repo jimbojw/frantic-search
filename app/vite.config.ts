@@ -24,9 +24,11 @@ function serveData(): Plugin {
           .slice(0, 8)
         columnsFilename = `columns.${hash}.json`
       }
+      const fileSize = fs.existsSync(dataFile) ? fs.statSync(dataFile).size : 0
       return {
         define: {
           __COLUMNS_FILENAME__: JSON.stringify(columnsFilename),
+          __COLUMNS_FILESIZE__: String(fileSize),
         },
       }
     },

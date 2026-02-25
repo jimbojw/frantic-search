@@ -161,6 +161,7 @@ function App() {
   const [view, setView] = createSignal<View>(parseView(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
+  const [dataProgress, setDataProgress] = createSignal(0)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
   const [display, setDisplay] = createSignal<DisplayColumns | null>(null)
@@ -231,9 +232,13 @@ function App() {
     const msg = e.data
     switch (msg.type) {
       case 'status':
-        setWorkerStatus(msg.status)
-        if (msg.status === 'ready') setDisplay(msg.display)
-        if (msg.status === 'error') setWorkerError(msg.error)
+        if (msg.status === 'progress') {
+          setDataProgress(msg.fraction)
+        } else {
+          setWorkerStatus(msg.status)
+          if (msg.status === 'ready') { setDataProgress(1); setDisplay(msg.display) }
+          if (msg.status === 'error') setWorkerError(msg.error)
+        }
         break
       case 'result':
         if (msg.queryId === latestQueryId) {
@@ -405,8 +410,7 @@ function App() {
             alt="Frantic Search card art by Mitchell Malloy"
             onLoad={() => setHeaderArtLoaded(true)}
             class={`h-full w-full object-cover pointer-events-none ${headerCollapsed() ? 'object-[center_23%]' : 'object-[center_20%]'}`}
-            classList={{ 'opacity-0': !headerArtLoaded(), 'opacity-100': headerArtLoaded() }}
-            style="transition: opacity 300ms ease-in"
+            style={{ opacity: headerArtLoaded() ? dataProgress() : 0, transition: 'opacity 100ms linear' }}
           />
         </button>
         <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>

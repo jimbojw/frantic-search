@@ -47,6 +47,7 @@ export type Histograms = {
 
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
+  | { type: 'status'; status: 'progress'; fraction: number }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'error'; error: string }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; histograms: Histograms }

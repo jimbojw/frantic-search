@@ -4,6 +4,7 @@ import { CardIndex, NodeCache, Color, parse, seededSort, collectBareWords } from
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
+declare const __COLUMNS_FILESIZE__: number
 
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -113,6 +114,33 @@ function post(msg: FromWorker, transfer?: Transferable[]): void {
   self.postMessage(msg, transfer ?? [])
 }
 
+async function readJsonWithProgress(response: Response): Promise<unknown> {
+  const body = response.body
+  if (!body || !__COLUMNS_FILESIZE__) return response.json()
+
+  const total = __COLUMNS_FILESIZE__
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let loaded = 0
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    loaded += value.byteLength
+    post({ type: 'status', status: 'progress', fraction: Math.min(loaded / total, 1) })
+  }
+
+  const merged = new Uint8Array(loaded)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  return JSON.parse(new TextDecoder().decode(merged))
+}
+
 async function init(): Promise<void> {
   post({ type: 'status', status: 'loading' })
 
@@ -123,7 +151,7 @@ async function init(): Promise<void> {
     if (!response.ok) {
       throw new Error(`Failed to fetch columns.json: ${response.status} ${response.statusText}`)
     }
-    data = await response.json() as ColumnarData
+    data = await readJsonWithProgress(response) as ColumnarData
   } catch (err) {
     post({ type: 'status', status: 'error', error: String(err) })
     return
