@@ -3,11 +3,7 @@ import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns } from '@frantic-search/shared'
 import { Format } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
-import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
-
-function normalImageUrl(scryfallId: string, face: 'front' | 'back'): string {
-  return `https://cards.scryfall.io/normal/${face}/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
-}
+import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },

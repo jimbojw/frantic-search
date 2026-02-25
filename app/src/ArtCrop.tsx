@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, onMount, onCleanup } from 'solid-js'
+import { createSignal } from 'solid-js'
 import { thumbHashToDataURL } from 'thumbhash'
 import { artCropUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
+import createInView from './createInView'
 
 const thumbHashCache = new Map<string, string>()
 
-function cachedThumbHashURL(b64: string): string {
+export function cachedThumbHashURL(b64: string): string {
   let url = thumbHashCache.get(b64)
   if (url) return url
   const bin = atob(b64)
@@ -17,23 +18,8 @@ function cachedThumbHashURL(b64: string): string {
 }
 
 export default function ArtCrop(props: { scryfallId: string; colorIdentity: number; thumbHash: string }) {
-  let containerRef: HTMLDivElement | undefined
-  const [inView, setInView] = createSignal(false)
+  const { ref, inView } = createInView()
   const [loaded, setLoaded] = createSignal(false)
-
-  onMount(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: '200px' },
-    )
-    if (containerRef) observer.observe(containerRef)
-    onCleanup(() => observer.disconnect())
-  })
 
   const gradient = () => CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS
 
@@ -44,7 +30,7 @@ export default function ArtCrop(props: { scryfallId: string; colorIdentity: numb
 
   return (
     <div
-      ref={containerRef}
+      ref={ref}
       class="w-[3em] pb-1 rounded-sm overflow-hidden shrink-0 mt-0.5"
       style={{
         background: background(),

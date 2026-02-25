@@ -30,3 +30,7 @@ export const CI_BACKGROUNDS: string[] = /* #__PURE__ */ (() => {
 export function artCropUrl(scryfallId: string): string {
   return `https://cards.scryfall.io/art_crop/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
 }
+
+export function normalImageUrl(scryfallId: string, face: 'front' | 'back' = 'front'): string {
+  return `https://cards.scryfall.io/normal/${face}/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
+}
