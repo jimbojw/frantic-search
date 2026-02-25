@@ -100,7 +100,7 @@ Single quotes behave identically to double quotes for `QUOTED` tokens. An apostr
 
 ```typescript
 type ASTNode =
-  | AndNode | OrNode | NotNode
+  | AndNode | OrNode | NotNode | NopNode
   | FieldNode | BareWordNode | ExactNameNode | RegexFieldNode;
 
 interface AndNode {
@@ -116,6 +116,10 @@ interface OrNode {
 interface NotNode {
   type: "NOT";
   child: ASTNode;
+}
+
+interface NopNode {
+  type: "NOP";
 }
 
 interface FieldNode {
@@ -144,6 +148,8 @@ interface RegexFieldNode {
 ```
 
 AST types are pure parser output. They carry no runtime or evaluation data.
+
+`NopNode` is the identity element for its parent operation. It is produced by the parser when an operand position is empty (e.g., trailing `OR`, leading `OR`, empty parentheses). See § Error Recovery for details.
 
 ### Evaluation Result Type
 
@@ -249,9 +255,10 @@ Within the loop, leaf evaluation uses the field type to select the right column 
 ### 4. Reduce (bottom-up)
 
 Walk the AST bottom-up. For each internal node, combine children byte-by-byte:
-- `AND`: `out[i] = a[i] & b[i]` (for each child).
-- `OR`: `out[i] = a[i] | b[i]`.
+- `AND`: `out[i] = a[i] & b[i]` (for each child). NOP children are skipped.
+- `OR`: `out[i] = a[i] | b[i]`. NOP children are skipped.
 - `NOT`: `out[i] = child[i] ^ 1`.
+- `NOP`: No buffer allocated. See § Error Recovery for full semantics.
 
 Process in chunks aligned to 4 or 8 bytes where possible, using `Uint32Array` or `DataView` for throughput. The exact chunking strategy can be tuned during implementation.
 
@@ -286,10 +293,26 @@ The parser must handle incomplete input gracefully, since it runs on every keyst
 
 - **Trailing operator:** `c:` (no value yet) → parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter).
 - **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
-- **Empty input:** → empty AND node (matches everything).
+- **Empty operand:** When `parseAndGroup` finds no term-starting tokens, it produces a `NopNode` instead of an empty AND. This arises from trailing `OR` (`a OR`), leading `OR` (`OR a`), double `OR` (`a OR OR b`), empty parentheses (`()`), and empty input.
 - **Unknown field:** `x:foo` → parse normally. The evaluator treats unrecognized fields as matching zero cards.
 
 The parser should never throw on user input. Malformed input produces a best-effort AST.
+
+### NOP node semantics
+
+`NOP` is the identity element for its parent operation. During the evaluator's combining step (§ Reduce), NOP children are skipped:
+
+- **Child of AND:** Skipped. `a AND NOP` evaluates to `a`. (AND identity = true.)
+- **Child of OR:** Skipped. `a OR NOP` evaluates to `a`. (OR identity = false.)
+- **Root-level NOP:** Matches nothing (0 results). This only occurs for truly empty input, which the app short-circuits before reaching the evaluator.
+
+After skipping NOP children, if an AND or OR node has only one remaining child, it collapses to that child's result. If all children are NOP, AND matches everything (vacuous conjunction) and OR matches nothing (vacuous disjunction).
+
+This fixes the bug where `a OR` previously produced an empty AND as the right operand. The empty AND matched all cards, causing `a OR <everything>` to return the entire card pool. With NOP, `a OR NOP` correctly evaluates to just `a`.
+
+### NOP in the query breakdown
+
+The breakdown tree includes NOP nodes so the user can see that their query has an unfinished operand. NOP nodes are displayed with the label `(no-op)` and a match count of `--` (not a number) to signal that the node contributes nothing to the result. This gives the user a visible indication that their query is incomplete without silently altering the query structure.
 
 ## File Organization
 
