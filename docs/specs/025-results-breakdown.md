@@ -33,22 +33,22 @@ This eliminates the standalone "STATS" box that previously occupied its own vert
 
 ### Layout
 
-When the RESULTS drawer is expanded, the histograms appear as three horizontal bar charts side by side:
+When the RESULTS drawer is expanded, the histograms appear as three horizontal bar charts side by side (mana value first, then color identity, then card type):
 
 ```
 ┌─ RESULTS ────────────────────────────────────────────────────────────────────────┐
 │ ▾ RESULTS                                                                   [⚙]  │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  Color Identity             │  Mana Value              │  Card Type               │
-│                             │                          │                          │
-│ {C} │ ████░░░░░░░░░░  ×   │  0 │ ██░░░░░░░░░░░░  ×  │ Lgn │ ██████░░░░░░  ×   │
-│ {W} │ ███████░░░░░░░  ×   │  1 │ ████░░░░░░░░░░  ×  │ Cre │ █████████░░░  ×   │
-│ {U} │ ██████░░░░░░░░  ×   │  2 │ ██████░░░░░░░░  ×  │ Ins │ █████░░░░░░░  ×   │
-│ {B} │ ███████░░░░░░░  ×   │  3 │ ████████░░░░░░  ×  │ Sor │ ████░░░░░░░░  ×   │
-│ {R} │ █████░░░░░░░░░  ×   │  4 │ ██████░░░░░░░░  ×  │ Art │ ███░░░░░░░░░  ×   │
-│ {G} │ ██░░░░░░░░░░░░  ×   │  5 │ █████░░░░░░░░░  ×  │ Enc │ ███░░░░░░░░░  ×   │
-│ {M} │ ███████████░░░  ×   │  6 │ ███░░░░░░░░░░░  ×  │ Plw │ █░░░░░░░░░░░  ×   │
-│                             │ 7+ │ ██░░░░░░░░░░░░  ×  │ Lnd │ ██░░░░░░░░░░  ×   │
+│  Mana Value              │  Color Identity             │  Card Type               │
+│                          │                             │                          │
+│  0 │ ██░░░░░░░░░░░░  ×  │ {C} │ ████░░░░░░░░░░  ×   │ Lgn │ ██████░░░░░░  ×   │
+│  1 │ ████░░░░░░░░░░  ×  │ {W} │ ███████░░░░░░░  ×   │ Cre │ █████████░░░  ×   │
+│  2 │ ██████░░░░░░░░  ×  │ {U} │ ██████░░░░░░░░  ×   │ Ins │ █████░░░░░░░  ×   │
+│  3 │ ████████░░░░░░  ×  │ {B} │ ███████░░░░░░░  ×   │ Sor │ ████░░░░░░░░  ×   │
+│  4 │ ██████░░░░░░░░  ×  │ {R} │ █████░░░░░░░░░  ×   │ Art │ ███░░░░░░░░░  ×   │
+│  5 │ █████░░░░░░░░░  ×  │ {G} │ ██░░░░░░░░░░░░  ×   │ Enc │ ███░░░░░░░░░  ×   │
+│  6 │ ███░░░░░░░░░░░  ×  │ {M} │ ███████████░░░  ×   │ Plw │ █░░░░░░░░░░░  ×   │
+│ 7+ │ ██░░░░░░░░░░░░  ×  │                             │ Lnd │ ██░░░░░░░░░░  ×   │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │  Oracle text                                                        [=====○]    │
 ├──────────────────────────────────────────────────────────────────────────────────┤
@@ -106,7 +106,7 @@ Mono-colored bars use their hex value as an inline `background-color` style. The
 
 ### Mana value chart
 
-Eight rows. Labels are plain monospace numerals (`font-mono text-xs`), not mana symbols:
+Eight rows. Labels are plain monospace numerals (`font-mono text-xs`):
 
 | Label | Meaning | Counting rule |
 |---|---|---|
@@ -354,7 +354,7 @@ Component with props:
 }
 ```
 
-- Renders three bar chart columns (color identity, mana value, card type) in a `grid-cols-3` layout. **No own toggle row or collapsible wrapper** — visibility is controlled by the RESULTS drawer (Spec 026).
+- Renders three bar chart columns (mana value, color identity, card type) in a `grid-cols-3` layout. **No own toggle row or collapsible wrapper** — visibility is controlled by the RESULTS drawer (Spec 026).
 - Each bar row: label, full-width clickable area (drill-down), × button.
 - Bar widths computed as percentages of the chart-local maximum.
 - Uses `breakdown.type` to determine whether to parenthesize on append (see "Append mechanics").
@@ -396,7 +396,7 @@ With no query (all ~30,000 cards), the histograms compute over all cards. The si
 ## Acceptance Criteria
 
 1. When a query produces results and the RESULTS drawer is expanded, the histograms are visible inside the RESULTS container, above the Oracle Text toggle.
-2. The histograms show three horizontal bar charts side by side: Color Identity (7 bars), Mana Value (8 bars), and Card Type (8 bars).
+2. The histograms show three horizontal bar charts side by side: Mana Value (8 bars), Color Identity (7 bars), and Card Type (8 bars).
 3. Color Identity bars are labeled with mana symbols ({C}, {W}, {U}, {B}, {R}, {G}) rendered via `mana-font`, and a WUBRG gradient square for {M}. Multicolored cards increment multiple bars (individual colors and M).
 4. Mana Value bars are labeled 0–6 and 7+. Values are bucketed by `floor(manaValue)`.
 5. Card Type bars are labeled Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd. Multi-typed cards (e.g., Legendary Creature) increment multiple bars.
@@ -410,5 +410,5 @@ With no query (all ~30,000 cards), the histograms compute over all cards. The si
 12. The 7+ bar uses `mv>=7` / `-mv>=7`.
 13. Histograms are computed in the WebWorker, not the main thread.
 14. The histograms do not have their own collapsible container — they share the RESULTS drawer's expanded/collapsed state (Spec 026).
-15. The histograms are not rendered when the result set is empty (the RESULTS container is not shown).
+15. The histograms are not rendered when the result set is empty. The RESULTS container remains visible (showing "No cards found") so that drilldown/exclusion affordances in the query breakdown remain accessible.
 16. The three charts always sit side by side, compressing on narrow viewports rather than stacking.
