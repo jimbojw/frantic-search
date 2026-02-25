@@ -110,11 +110,11 @@ jobs:
 
 #### ThumbHash manifest restoration
 
-The ThumbHash progressive backfill (Spec 017) depends on each build starting from the previous build's manifest. Two complementary mechanisms provide this:
+The ThumbHash progressive backfill (Spec 017) depends on each build starting from the previous build's manifests. Two separate manifests are maintained: `art-crop-thumbhash-manifest.json` (art crops) and `card-thumbhash-manifest.json` (card images). Two complementary mechanisms restore them:
 
-1. **Previous deployment fetch.** The `restore` command downloads `columns.json` from the live GitHub Pages site, reconstructs a ThumbHash manifest from its `scryfall_ids` and `thumb_hashes` arrays, and merges it with any existing on-disk manifest. This is the primary recovery mechanism — it survives cache eviction and works from a cold start.
+1. **Previous deployment fetch.** The `restore` command downloads `columns.json` from the live GitHub Pages site and reconstructs both ThumbHash manifests — one from `scryfall_ids` + `art_crop_thumb_hashes` and one from `scryfall_ids` + `card_thumb_hashes`. If the deployed `columns.json` still uses the old `thumb_hashes` column name, the restore command falls back to it (see Spec 017 § Migration). Each reconstructed manifest is merged with any existing on-disk manifest. This is the primary recovery mechanism — it survives cache eviction and works from a cold start.
 
-2. **`actions/cache`.** The ThumbHash cache step restores `data/thumbhash/` from the most recent prior run. When both sources are available, the cached manifest takes precedence for any overlapping entries (it may contain hashes generated after the last deploy).
+2. **`actions/cache`.** The ThumbHash cache step restores `data/thumbhash/` (containing both manifest files) from the most recent prior run. When both sources are available, the cached manifests take precedence for any overlapping entries (they may contain hashes generated after the last deploy).
 
 The `restore` step runs first with `continue-on-error: true` so that a fetch failure (first-ever deploy, Pages outage) does not block the build. The Vite build outputs `columns.json` at a stable (non-hashed) URL alongside the content-hashed copy used by the app, so the restore step always has a predictable URL to fetch.
 
@@ -154,8 +154,8 @@ GitHub Pages does not support server-side routing. Since this is a single-page a
 1. Pushing to `main` triggers the workflow and deploys the site to GitHub Pages.
 2. The daily schedule and manual dispatch also trigger successful builds.
 3. The Scryfall download is cached across runs; repeated pushes do not re-download unless Scryfall data has been updated.
-4. The ThumbHash manifest is restored from the previous deployment's `columns.json` and extended with new hashes each build.
-5. The ThumbHash manifest is also cached via `actions/cache` as a complementary fast path.
+4. Both ThumbHash manifests (art crop and card image) are restored from the previous deployment's `columns.json` and extended with new hashes each build.
+5. Both ThumbHash manifests are also cached via `actions/cache` as a complementary fast path.
 6. A stable-named `columns.json` (no content hash) is deployed alongside the hashed copy for use by the restore step.
 7. The restore step tolerates a missing or unreachable site (first deploy, outage) without failing the build.
 8. `columns.json` is present in the deployed site and loadable by the WebWorker.

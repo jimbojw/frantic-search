@@ -61,7 +61,8 @@ The display column set:
 | `defenses` | Defense (encoded index) |
 | `color_identity` | Art crop gradient, card detail |
 | `scryfall_ids` | Image URLs, Scryfall links |
-| `thumb_hashes` | ThumbHash placeholders |
+| `art_crop_thumb_hashes` | Art crop ThumbHash placeholders |
+| `card_thumb_hashes` | Card image ThumbHash placeholders |
 | `layouts` | Card detail front/back toggle |
 | `legalities_legal` | Legality grid |
 | `legalities_banned` | Legality grid |
@@ -97,7 +98,8 @@ export type DisplayColumns = {
   defenses: number[]
   color_identity: number[]
   scryfall_ids: string[]
-  thumb_hashes: string[]
+  art_crop_thumb_hashes: string[]
+  card_thumb_hashes: string[]
   layouts: string[]
   legalities_legal: number[]
   legalities_banned: number[]
@@ -225,3 +227,10 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 7. The "…and N more" indicator uses `indices.length` as the total card count.
 8. `CardResult` and `CardFace` are removed from the wire protocol types.
 9. Existing features (breakdown, bug report, oracle text toggle, copy button) continue to work unchanged.
+
+## Implementation Notes
+
+- 2026-02-25: Renamed `thumb_hashes` to `art_crop_thumb_hashes` and added
+  `card_thumb_hashes` to `DisplayColumns` for card image ThumbHash
+  placeholders (Spec 017). The new column supports future grid-view /
+  Images results.

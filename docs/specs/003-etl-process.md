@@ -104,6 +104,15 @@ Three `number[]` columns — `legalities_legal`, `legalities_banned`, `legalitie
 
 `powers`, `toughnesses`, `loyalties`, and `defenses` are dictionary-encoded: each unique string value (e.g., `"3"`, `"*"`, `"1+*"`) is assigned a `uint8` index. The per-face column stores the index; a separate lookup table stores the string-to-index mapping. Index 0 is reserved for missing values (the `""` sentinel). The dictionary is limited to 255 entries; exceeding this is a fatal error.
 
+### ThumbHash columns
+
+| Column              | Type       | Description                                         |
+|---------------------|------------|-----------------------------------------------------|
+| `art_crop_thumb_hashes` | `string[]` | Base64-encoded art crop ThumbHash, or `""` if unavailable |
+| `card_thumb_hashes`     | `string[]` | Base64-encoded card image ThumbHash, or `""` if unavailable |
+
+Both columns are aligned with `scryfall_ids`. Values are populated from the ThumbHash manifests produced by the `thumbhash` command (Spec 017). Cards not yet in a manifest get an empty string.
+
 ### Metadata columns
 
 | Column           | Type       | Description                                         |
@@ -143,3 +152,7 @@ With the current Scryfall dataset (~37,000 raw cards), the process filters ~3,50
 - 2026-02-20: Renamed output directory from `data/intermediate/` to `data/dist/`.
   The file is the final artifact consumed by the app and CLI, not an intermediate
   step. This aligns with the original directory layout in Spec 001.
+- 2026-02-25: Added `card_thumb_hashes` column for card image ThumbHashes
+  and renamed `thumb_hashes` to `art_crop_thumb_hashes` (Spec 017). The
+  process command now reads two manifests and populates both
+  `art_crop_thumb_hashes` (art crops) and `card_thumb_hashes` (card images).
