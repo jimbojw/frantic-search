@@ -54,6 +54,38 @@
       - "Isamaru, Hound of Konda"
     count_min: 100
 
+- name: "is:funny includes acorn-stamped, silver-bordered, and funny-set cards"
+  query: "is:funny"
+  scryfall_query: "is:funny"
+  assertions:
+    contains:
+      - "Blacker Lotus"
+      - "17-Year Cicadas"
+      - "Look at Me, I'm R&D"
+    count_min: 1300
+
+- name: "is:funny includes Mystery Booster playtest cards"
+  query: "is:funny"
+  scryfall_query: "is:funny"
+  assertions:
+    contains:
+      - "Abbot of the Sacred Meeple"
+      - "Abian, Luvion Usurper"
+
+- name: "is:funny excludes legal Unfinity cards"
+  query: "is:funny"
+  scryfall_query: "is:funny"
+  assertions:
+    excludes:
+      - "Aerialephant"
+      - "A Good Day to Pie"
+
+- name: "is:funny and format legality are mutually exclusive"
+  query: "is:funny f:commander"
+  scryfall_query: "is:funny f:commander"
+  assertions:
+    count: 0
+
 - name: "Unknown is: keyword matches nothing (Spec 032)"
   query: "is:nonsense"
   assertions:

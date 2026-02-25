@@ -76,7 +76,7 @@ These require a new `flags` column in `ColumnarData`, populated by the ETL pipel
 | Keyword | Flag bit | Scryfall source field |
 |---|---|---|
 | `is:reserved` | `CardFlag.Reserved` | `reserved === true` |
-| `is:funny` | `CardFlag.Funny` | `security_stamp === "acorn"` OR `border_color === "silver"` |
+| `is:funny` | `CardFlag.Funny` | See § Funny Flag Logic below |
 | `is:universesbeyond` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` |
 
 ### Curated land cycle lists (via name lookup)
@@ -159,7 +159,19 @@ export const CardFlag = {
 } as const;
 ```
 
-The ETL extracts `reserved` (boolean), `security_stamp` (string), and `border_color` (string) from each Scryfall oracle card object. `is:funny` uses `security_stamp === "acorn"` (Unfinity-era acorn-stamped cards) OR `border_color === "silver"` (pre-Unfinity Un-set cards). It does NOT use `set_type === "funny"` because funny sets (Unfinity, Unfinity Sticker Sheets) contain tournament-legal cards with black borders and no acorn stamp. Flags are card-level properties, duplicated across faces of multi-face cards.
+The ETL extracts `reserved` (boolean), `security_stamp` (string), `border_color` (string), `set_type` (string), `promo_types` (string array), and `legalities` (object) from each Scryfall oracle card object. Flags are card-level properties, duplicated across faces of multi-face cards.
+
+#### Funny Flag Logic
+
+A card is funny (`CardFlag.Funny`) if ANY of these conditions holds:
+
+1. `security_stamp === "acorn"` — Unfinity-era acorn-stamped cards.
+2. `border_color === "silver"` — pre-Unfinity Un-set cards.
+3. `border_color === "gold"` — gold-bordered casual/joke cards (e.g., Unfinity Promos).
+4. `set_type === "funny"` AND the card is not legal in any format — catches Unknown Event (UNK), Mystery Booster Playtest Cards (CMB1/CMB2), holiday promos, and other funny-set cards. The legality guard excludes the ~190 eternal-legal Unfinity/SUNF cards that Scryfall does not consider funny.
+5. `promo_types` includes `"playtest"` — catches playtest cards from non-funny set types (e.g., Mystery Booster 2 playtest cards in `set_type: "masters"`).
+
+Conditions 1–2 were the original implementation. Conditions 3–5 were added to close a ~860-card gap versus Scryfall's `is:funny` (1,419 results vs. the original 560). Empirically, `is:funny` and format legality are mutually exclusive on Scryfall: `is:funny f:commander` returns zero results.
 
 ### CardIndex changes
 
@@ -259,7 +271,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 9. Layout-based keywords correctly match across both faces of multi-face cards.
 10. `is:reserved`, `is:funny`, and `is:universesbeyond` correctly check flag bits from the `flags` column.
 11. Land cycle keywords match exactly the curated card name lists.
-12. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, and `set_type` fields.
+12. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, `border_color`, `set_type`, `promo_types`, and `legalities` fields.
 
 ## Out of Scope
 

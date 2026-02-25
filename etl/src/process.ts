@@ -44,6 +44,8 @@ interface Card {
   reserved?: boolean;
   security_stamp?: string;
   border_color?: string;
+  set_type?: string;
+  promo_types?: string[];
   card_faces?: CardFace[];
 }
 
@@ -80,10 +82,26 @@ function encodeColors(colors: string[] | undefined): number {
   return mask;
 }
 
+function isNotLegalAnywhere(legalities: Record<string, string> | undefined): boolean {
+  if (!legalities) return true;
+  for (const status of Object.values(legalities)) {
+    if (status === "legal" || status === "restricted" || status === "banned") return false;
+  }
+  return true;
+}
+
+function isFunny(card: Card): boolean {
+  if (card.security_stamp === "acorn") return true;
+  if (card.border_color === "silver" || card.border_color === "gold") return true;
+  if (card.set_type === "funny" && isNotLegalAnywhere(card.legalities)) return true;
+  if (card.promo_types?.includes("playtest")) return true;
+  return false;
+}
+
 function encodeFlags(card: Card): number {
   let flags = 0;
   if (card.reserved) flags |= CardFlag.Reserved;
-  if (card.security_stamp === "acorn" || card.border_color === "silver") flags |= CardFlag.Funny;
+  if (isFunny(card)) flags |= CardFlag.Funny;
   if (card.security_stamp === "triangle") flags |= CardFlag.UniversesBeyond;
   return flags;
 }
