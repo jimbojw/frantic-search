@@ -27,7 +27,6 @@ const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:ar
 const TYPE_VALUES = ['legendary', 'creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'land']
 
 const WUBRG_RE = /^[wubrg]+$/i
-const COLORS = ['w', 'u', 'b', 'r', 'g'] as const
 
 type ColorBarDef = {
   label: () => any
@@ -49,20 +48,6 @@ const COLOR_BARS: ColorBarDef[] = [
 // ---------------------------------------------------------------------------
 // Active state detection
 // ---------------------------------------------------------------------------
-
-function isColorDrillActive(breakdown: BreakdownNode | null, color: string): boolean {
-  if (!breakdown) return false
-  const node = findFieldNode(breakdown, CI_FIELDS, '>=', false)
-  if (!node) return false
-  return extractValue(node.label, '>=').toLowerCase().includes(color.toLowerCase())
-}
-
-function isColorExcludeActive(breakdown: BreakdownNode | null, color: string): boolean {
-  if (!breakdown) return false
-  const node = findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_RE.test(v))
-  if (!node) return false
-  return !extractValue(node.label, ':').toLowerCase().includes(color.toLowerCase())
-}
 
 function isSimpleActive(
   breakdown: BreakdownNode | null,

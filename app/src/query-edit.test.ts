@@ -25,6 +25,7 @@ function nodeLabel(node: ASTNode): string {
     case 'BARE': return node.value
     case 'EXACT': return `!"${node.value}"`
     case 'REGEX_FIELD': return `${node.field}${node.operator}/${node.pattern}/`
+    case 'NOP': return '(no-op)'
     case 'NOT': return 'NOT'
     case 'AND': return 'AND'
     case 'OR': return 'OR'
