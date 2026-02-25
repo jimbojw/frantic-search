@@ -90,3 +90,174 @@
   query: "is:nonsense"
   assertions:
     count: 0
+
+# --- Extended land cycles (Spec 040) ---
+
+- name: "is:scryland returns exactly 10 cards (Spec 040)"
+  query: "is:scryland"
+  assertions:
+    count: 10
+    contains:
+      - "Temple of Triumph"
+      - "Temple of Deceit"
+      - "Temple of Mystery"
+
+- name: "is:bikeland returns 8 cards (Spec 040)"
+  query: "is:bikeland"
+  assertions:
+    count: 8
+    contains:
+      - "Irrigated Farmland"
+      - "Canyon Slough"
+      - "Scattered Groves"
+
+- name: "is:cycleland is alias for is:bikeland (Spec 040)"
+  query: "is:cycleland"
+  assertions:
+    count: 8
+
+- name: "is:triome returns 10 cards (Spec 040)"
+  query: "is:triome"
+  assertions:
+    count: 10
+    contains:
+      - "Indatha Triome"
+      - "Raffine's Tower"
+      - "Zagoth Triome"
+
+- name: "is:tricycleland is alias for is:triome (Spec 040)"
+  query: "is:tricycleland"
+  assertions:
+    count: 10
+
+- name: "is:triland returns 10 cards (Spec 040)"
+  query: "is:triland"
+  assertions:
+    count: 10
+    contains:
+      - "Arcane Sanctum"
+      - "Savage Lands"
+      - "Mystic Monastery"
+
+- name: "is:bondland returns 10 cards (Spec 040)"
+  query: "is:bondland"
+  assertions:
+    count: 10
+    contains:
+      - "Luxury Suite"
+      - "Morphic Pool"
+
+- name: "is:canopyland returns 6 cards (Spec 040)"
+  query: "is:canopyland"
+  assertions:
+    count: 6
+    contains:
+      - "Horizon Canopy"
+      - "Fiery Islet"
+
+- name: "is:manland matches creature lands (Spec 040)"
+  query: "is:manland"
+  assertions:
+    contains:
+      - "Celestial Colonnade"
+      - "Mutavault"
+      - "Raging Ravine"
+    count_min: 45
+
+- name: "is:creatureland is alias for is:manland (Spec 040)"
+  query: "is:creatureland"
+  assertions:
+    count_min: 45
+
+- name: "is:filterland returns 22 cards (Spec 040)"
+  query: "is:filterland"
+  assertions:
+    count: 22
+    contains:
+      - "Cascade Bluffs"
+      - "Mystic Gate"
+
+- name: "is:gainland returns 15 cards (Spec 040)"
+  query: "is:gainland"
+  assertions:
+    count: 15
+    contains:
+      - "Tranquil Cove"
+      - "Bloodfell Caves"
+
+- name: "is:pathway returns 10 cards (Spec 040)"
+  query: "is:pathway"
+  assertions:
+    count: 10
+    contains:
+      - "Brightclimb Pathway"
+
+- name: "is:surveilland returns 10 cards (Spec 040)"
+  query: "is:surveilland"
+  assertions:
+    count: 10
+    contains:
+      - "Undercity Sewers"
+      - "Commercial District"
+
+- name: "is:shadowland returns 10 cards (Spec 040)"
+  query: "is:shadowland"
+  assertions:
+    count: 10
+    contains:
+      - "Choked Estuary"
+      - "Frostboil Snarl"
+
+- name: "is:snarl is alias for is:shadowland (Spec 040)"
+  query: "is:snarl"
+  assertions:
+    count: 10
+
+- name: "is:storageland returns 12 cards (Spec 040)"
+  query: "is:storageland"
+  assertions:
+    count: 12
+    contains:
+      - "Dreadship Reef"
+      - "Calciform Pools"
+
+- name: "is:tangoland returns 8 cards (Spec 040)"
+  query: "is:tangoland"
+  assertions:
+    count: 8
+    contains:
+      - "Prairie Stream"
+      - "Canopy Vista"
+
+- name: "is:battleland is alias for is:tangoland (Spec 040)"
+  query: "is:battleland"
+  assertions:
+    count: 8
+
+- name: "is:karoo is alias for is:bounceland (Spec 040)"
+  query: "is:karoo"
+  assertions:
+    count_min: 15
+    contains:
+      - "Azorius Chancery"
+      - "Boros Garrison"
+
+# --- is:hybrid and is:phyrexian (Spec 040) ---
+
+- name: "is:hybrid matches cards with hybrid mana symbols (Spec 040)"
+  query: "is:hybrid"
+  scryfall_query: "is:hybrid include:extras"
+  assertions:
+    contains:
+      - "Azorius Guildmage"
+      - "Kitchen Finks"
+    count_min: 500
+
+- name: "is:phyrexian matches cards with Phyrexian mana symbols (Spec 040)"
+  query: "is:phyrexian"
+  scryfall_query: "is:phyrexian include:extras"
+  assertions:
+    contains:
+      - "Dismember"
+      - "Gitaxian Probe"
+    count_min: 60

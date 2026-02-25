@@ -71,48 +71,147 @@ const PARTY_TYPES = ["cleric", "rogue", "warrior", "wizard"];
 // Curated land cycle name sets (Spec 032)
 // ---------------------------------------------------------------------------
 
+const _dual = new Set([
+  "badlands", "bayou", "plateau", "savannah", "scrubland",
+  "taiga", "tropical island", "tundra", "underground sea", "volcanic island",
+]);
+const _shockland = new Set([
+  "blood crypt", "breeding pool", "godless shrine", "hallowed fountain",
+  "overgrown tomb", "sacred foundry", "steam vents", "stomping ground",
+  "temple garden", "watery grave",
+]);
+const _fetchland = new Set([
+  "arid mesa", "bloodstained mire", "flooded strand", "marsh flats",
+  "misty rainforest", "polluted delta", "scalding tarn", "verdant catacombs",
+  "windswept heath", "wooded foothills",
+]);
+const _checkland = new Set([
+  "clifftop retreat", "dragonskull summit", "drowned catacomb", "glacial fortress",
+  "hinterland harbor", "isolated chapel", "rootbound crag", "sulfur falls",
+  "sunpetal grove", "woodland cemetery",
+]);
+const _fastland = new Set([
+  "blackcleave cliffs", "blooming marsh", "botanical sanctum", "concealed courtyard",
+  "copperline gorge", "darkslick shores", "inspiring vantage", "razorverge thicket",
+  "seachrome coast", "spirebluff canal",
+]);
+const _painland = new Set([
+  "adarkar wastes", "battlefield forge", "brushland", "caves of koilos",
+  "karplusan forest", "llanowar wastes", "shivan reef", "sulfurous springs",
+  "underground river", "yavimaya coast",
+]);
+const _slowland = new Set([
+  "deathcap glade", "deserted beach", "dreamroot cascade", "haunted ridge",
+  "overgrown farmland", "rockfall vale", "shattered sanctum", "shipwreck marsh",
+  "stormcarved coast", "sundown pass",
+]);
+const _bounceland = new Set([
+  "arid archway", "azorius chancery", "boros garrison", "coral atoll",
+  "dimir aqueduct", "dormant volcano", "everglades", "golgari rot farm",
+  "gruul turf", "guildless commons", "izzet boilerworks", "jungle basin",
+  "karoo", "orzhov basilica", "rakdos carnarium", "selesnya sanctuary",
+  "simic growth chamber",
+]);
+const _bikeland = new Set([
+  "canyon slough", "festering thicket", "fetid pools", "glittering massif",
+  "irrigated farmland", "rain-slicked copse", "scattered groves", "sheltered thicket",
+]);
+const _bondland = new Set([
+  "bountiful promenade", "luxury suite", "morphic pool", "rejuvenating springs",
+  "sea of clouds", "spectator seating", "spire garden", "training center",
+  "undergrowth stadium", "vault of champions",
+]);
+const _canopyland = new Set([
+  "fiery islet", "horizon canopy", "nurturing peatland",
+  "silent clearing", "sunbaked canyon", "waterlogged grove",
+]);
+const _creatureland = new Set([
+  "blinkmoth nexus", "cactus preserve", "cave of the frost dragon", "cavernous maw",
+  "celestial colonnade", "crawling barrens", "creeping tar pit", "den of the bugbear",
+  "dread statuary", "faceless haven", "faerie conclave", "forbidding watchtower",
+  "frostwalk bastion", "ghitu encampment", "hall of storm giants", "hissing quagmire",
+  "hive of the eye tyrant", "hostile desert", "inkmoth nexus", "lair of the hydra",
+  "lavaclaw reaches", "lumbering falls", "mishra's factory", "mishra's foundry",
+  "mobilized district", "mutavault", "nantuko monastery", "needle spires",
+  "raging ravine", "restless anchorage", "restless bivouac", "restless cottage",
+  "restless fortress", "restless prairie", "restless reef", "restless ridgeline",
+  "restless spire", "restless vents", "restless vinestalk", "rising chicane",
+  "shambling vent", "soulstone sanctuary", "spawning pool", "stalking stones",
+  "stirring wildwood", "svogthos, the restless tomb", "treetop village", "wandering fumarole",
+]);
+const _filterland = new Set([
+  "cascade bluffs", "cascading cataracts", "crystal quarry", "darkwater catacombs",
+  "desolate mire", "ferrous lake", "fetid heath", "fire-lit thicket",
+  "flooded grove", "graven cairns", "mossfire valley", "mystic gate",
+  "overflowing basin", "rugged prairie", "shadowblood ridge", "skycloud expanse",
+  "sungrass prairie", "sunken ruins", "sunscorched divide", "twilight mire",
+  "viridescent bog", "wooded bastion",
+]);
+const _gainland = new Set([
+  "akoum refuge", "bloodfell caves", "blossoming sands", "dismal backwater",
+  "graypelt refuge", "jungle hollow", "jwar isle refuge", "kazandu refuge",
+  "rugged highlands", "scoured barrens", "sejiri refuge", "swiftwater cliffs",
+  "thornwood falls", "tranquil cove", "wind-scarred crag",
+]);
+const _pathway = new Set([
+  "barkchannel pathway", "blightstep pathway", "branchloft pathway", "brightclimb pathway",
+  "clearwater pathway", "cragcrown pathway", "darkbore pathway", "hengegate pathway",
+  "needleverge pathway", "riverglide pathway",
+  "tidechannel pathway", "searstep pathway", "boulderloft pathway", "grimclimb pathway",
+  "murkwater pathway", "timbercrown pathway", "slitherbore pathway", "mistgate pathway",
+  "pillarverge pathway", "lavaglide pathway",
+]);
+const _scryland = new Set([
+  "temple of abandon", "temple of deceit", "temple of enlightenment", "temple of epiphany",
+  "temple of malady", "temple of malice", "temple of mystery", "temple of plenty",
+  "temple of silence", "temple of triumph",
+]);
+const _surveilland = new Set([
+  "commercial district", "elegant parlor", "hedge maze", "lush portico",
+  "meticulous archive", "raucous theater", "shadowy backstreet", "thundering falls",
+  "undercity sewers", "underground mortuary",
+]);
+const _shadowland = new Set([
+  "choked estuary", "foreboding ruins", "fortified village", "frostboil snarl",
+  "furycalm snarl", "game trail", "necroblossom snarl", "port town",
+  "shineshadow snarl", "vineglimmer snarl",
+]);
+const _storageland = new Set([
+  "bottomless vault", "calciform pools", "crucible of the spirit dragon", "dreadship reef",
+  "dwarven hold", "fungal reaches", "hollow trees", "icatian store",
+  "mage-ring network", "molten slagheap", "saltcrusted steppe", "sand silos",
+]);
+const _tangoland = new Set([
+  "canopy vista", "cinder glade", "prairie stream", "radiant summit",
+  "smoldering marsh", "sodden verdure", "sunken hollow", "vernal fen",
+]);
+const _tricycleland = new Set([
+  "indatha triome", "jetmir's garden", "ketria triome", "raffine's tower",
+  "raugrin triome", "savai triome", "spara's headquarters", "xander's lounge",
+  "zagoth triome", "ziatora's proving ground",
+]);
+const _triland = new Set([
+  "arcane sanctum", "crumbling necropolis", "frontier bivouac", "jungle shrine",
+  "mystic monastery", "nomad outpost", "opulent palace", "sandsteppe citadel",
+  "savage lands", "seaside citadel",
+]);
+
 const LAND_CYCLES: Record<string, Set<string>> = {
-  dual: new Set([
-    "badlands", "bayou", "plateau", "savannah", "scrubland",
-    "taiga", "tropical island", "tundra", "underground sea", "volcanic island",
-  ]),
-  shockland: new Set([
-    "blood crypt", "breeding pool", "godless shrine", "hallowed fountain",
-    "overgrown tomb", "sacred foundry", "steam vents", "stomping ground",
-    "temple garden", "watery grave",
-  ]),
-  fetchland: new Set([
-    "arid mesa", "bloodstained mire", "flooded strand", "marsh flats",
-    "misty rainforest", "polluted delta", "scalding tarn", "verdant catacombs",
-    "windswept heath", "wooded foothills",
-  ]),
-  checkland: new Set([
-    "clifftop retreat", "dragonskull summit", "drowned catacomb", "glacial fortress",
-    "hinterland harbor", "isolated chapel", "rootbound crag", "sulfur falls",
-    "sunpetal grove", "woodland cemetery",
-  ]),
-  fastland: new Set([
-    "blackcleave cliffs", "blooming marsh", "botanical sanctum", "concealed courtyard",
-    "copperline gorge", "darkslick shores", "inspiring vantage", "razorverge thicket",
-    "seachrome coast", "spirebluff canal",
-  ]),
-  painland: new Set([
-    "adarkar wastes", "battlefield forge", "brushland", "caves of koilos",
-    "karplusan forest", "llanowar wastes", "shivan reef", "sulfurous springs",
-    "underground river", "yavimaya coast",
-  ]),
-  slowland: new Set([
-    "deathcap glade", "deserted beach", "dreamroot cascade", "haunted ridge",
-    "overgrown farmland", "rockfall vale", "shattered sanctum", "shipwreck marsh",
-    "stormcarved coast", "sundown pass",
-  ]),
-  bounceland: new Set([
-    "arid archway", "azorius chancery", "boros garrison", "coral atoll",
-    "dimir aqueduct", "dormant volcano", "everglades", "golgari rot farm",
-    "gruul turf", "guildless commons", "izzet boilerworks", "jungle basin",
-    "karoo", "orzhov basilica", "rakdos carnarium", "selesnya sanctuary",
-    "simic growth chamber",
-  ]),
+  dual: _dual, shockland: _shockland, fetchland: _fetchland,
+  checkland: _checkland, fastland: _fastland, painland: _painland,
+  slowland: _slowland,
+  bounceland: _bounceland, karoo: _bounceland,
+  bikeland: _bikeland, cycleland: _bikeland, bicycleland: _bikeland,
+  bondland: _bondland, crowdland: _bondland, battlebondland: _bondland,
+  canopyland: _canopyland, canland: _canopyland,
+  creatureland: _creatureland, manland: _creatureland,
+  filterland: _filterland, gainland: _gainland, pathway: _pathway,
+  scryland: _scryland, surveilland: _surveilland,
+  shadowland: _shadowland, snarl: _shadowland,
+  storageland: _storageland,
+  tangoland: _tangoland, battleland: _tangoland,
+  tricycleland: _tricycleland, trikeland: _tricycleland, triome: _tricycleland,
+  triland: _triland,
 };
 const OUTLAW_TYPES = ["assassin", "mercenary", "pirate", "rogue", "warlock"];
 
@@ -154,6 +253,30 @@ function isFrenchVanilla(oracleTextLower: string, typeLineLower: string): boolea
 }
 
 const PARTNER_RE = /(?:^|\n)partner(?:\n|$)/;
+
+function hasHybridSymbol(text: string): boolean {
+  let i = 0;
+  while ((i = text.indexOf('{', i)) !== -1) {
+    const close = text.indexOf('}', i);
+    if (close === -1) break;
+    const sym = text.substring(i + 1, close);
+    const slash = sym.indexOf('/');
+    if (slash !== -1 && (sym[slash + 1] !== 'p' || slash + 2 !== sym.length)) return true;
+    i = close + 1;
+  }
+  return false;
+}
+
+function hasPhyrexianSymbol(text: string): boolean {
+  let i = 0;
+  while ((i = text.indexOf('{', i)) !== -1) {
+    const close = text.indexOf('}', i);
+    if (close === -1) break;
+    if (text.substring(i + 1, close).endsWith('/p')) return true;
+    i = close + 1;
+  }
+  return false;
+}
 
 function evalIsKeyword(
   keyword: string,
@@ -271,6 +394,18 @@ function evalIsKeyword(
     case "universesbeyond":
       for (let i = 0; i < n; i++) {
         if ((index.flags[i] & CardFlag.UniversesBeyond) !== 0) buf[cf[i]] = 1;
+      }
+      break;
+    case "hybrid":
+      for (let i = 0; i < n; i++) {
+        if (hasHybridSymbol(index.manaCostsLower[i])) buf[cf[i]] = 1;
+      }
+      break;
+    case "phyrexian":
+      for (let i = 0; i < n; i++) {
+        if (hasPhyrexianSymbol(index.manaCostsLower[i]) || hasPhyrexianSymbol(index.oracleTextsLower[i])) {
+          buf[cf[i]] = 1;
+        }
       }
       break;
     default: {

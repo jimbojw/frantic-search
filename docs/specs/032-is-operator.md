@@ -279,3 +279,11 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 - **Rarity:** `is:common`, `is:uncommon`, `is:rare`, `is:mythic`. Rarity is printing-level, not oracle-level.
 - **Reprint status:** `is:reprint`. Printing-level; misleading at the oracle level.
 - **Alchemy/digital:** `is:alchemy`, `is:rebalanced`. Frantic Search indexes paper oracle cards.
+
+## Implementation Notes
+
+- 2026-02-25: Spec 040 extended coverage with 14 additional land cycle keywords
+  (bikeland, bondland, canopyland, creatureland, filterland, gainland, pathway,
+  scryland, surveilland, shadowland, storageland, tangoland, tricycleland, triland),
+  aliases for new and existing cycles (karoo for bounceland), and two mana-cost-based
+  keywords (hybrid, phyrexian). Total keyword count: 32 → 51.

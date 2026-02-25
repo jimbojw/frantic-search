@@ -940,6 +940,13 @@ describe("reminder text stripping", () => {
 // Row #29 Gandalf the Grey         | -  | Legendary Creature — Avatar Wizard      | pow=3 tou=4 cmc=5 | normal  flags=UniversesBeyond
 // Row #30 Steam Vents              | -  | Land — Island Mountain                  | -      cmc=0      | normal  (shockland)
 // Row #31 Scalding Tarn            | -  | Land                                    | -      cmc=0      | normal  (fetchland)
+// --- Spec 040: extended is: keywords ---
+// Row #32 Temple of Triumph        | -  | Land                                    | -      cmc=0      | normal  (scryland)
+// Row #33 Irrigated Farmland       | -  | Land — Plains Island                    | -      cmc=0      | normal  (bikeland)
+// Row #34 Indatha Triome           | -  | Land — Plains Swamp Forest              | -      cmc=0      | normal  (triome)
+// Row #35 Hybrid-Phyrexian Test    | GW | Creature — Elf                          | pow=2 tou=2 cmc=2 | normal  (mana: {1}{G/W/P})
+// Row #36 Blinding Souleater       | -  | Artifact Creature — Cleric              | pow=1 tou=3 cmc=3 | normal  (oracle has {W/P} — Phyrexian in text only)
+// Row #37 Oracle Hybrid Test       | -  | Creature — Elf                          | pow=1 tou=1 cmc=1 | normal  (oracle has {G/U} — hybrid in text only)
 
 const isExtPowerDict = ["", "0", "*", "2", "3", "4", "1", "6"];
 const isExtToughnessDict = ["", "1", "1+*", "3", "4", "2", "6"];
@@ -960,6 +967,8 @@ const IS_TEST_DATA: ColumnarData = {
     "Incubation // Incongruity",
     "Underground Sea", "Steamflogger Boss", "Gandalf the Grey",
     "Steam Vents", "Scalding Tarn",
+    "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
+    "Blinding Souleater", "Oracle Hybrid Test",
   ],
   combined_names: [
     "Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf",
@@ -978,6 +987,8 @@ const IS_TEST_DATA: ColumnarData = {
     "Incubation // Incongruity",
     "Underground Sea", "Steamflogger Boss", "Gandalf the Grey",
     "Steam Vents", "Scalding Tarn",
+    "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
+    "Blinding Souleater", "Oracle Hybrid Test",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -994,6 +1005,8 @@ const IS_TEST_DATA: ColumnarData = {
     "{G/U}",
     "", "{2}{R}{R}", "{3}{U}{U}",
     "", "",
+    "", "", "", "{1}{G/W/P}",
+    "{3}", "{G}",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -1028,6 +1041,12 @@ const IS_TEST_DATA: ColumnarData = {
     "Gandalf the Grey enters with three loyalty counters.",
     "As Steam Vents enters the battlefield, you may pay 2 life. If you don't, it enters the battlefield tapped.\n{T}: Add {U} or {R}.",
     "{T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+    "{T}: Add {R} or {W}.",
+    "Cycling {2}\n{T}: Add {W} or {U}.",
+    "Cycling {3}\n{T}: Add {W}, {B}, or {G}.",
+    "",
+    "{W/P}, {T}: Tap target creature.",
+    "{G/U}: This creature gets +1/+1 until end of turn.",
   ],
   oracle_texts_tilde: [
     "Flying (~ can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -1048,6 +1067,11 @@ const IS_TEST_DATA: ColumnarData = {
     "",
     "", "", "",
     "", "",
+    "{T}: Add {R} or {W}.",
+    "Cycling {2}",
+    "{T}: Add {W}, {B}, or {G}.",
+    "",
+    "", "",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -1064,6 +1088,8 @@ const IS_TEST_DATA: ColumnarData = {
     Color.Green | Color.Blue,
     0, Color.Red, 0,
     0, 0,
+    0, 0, 0, Color.Green | Color.White,
+    0, Color.Green,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -1080,6 +1106,8 @@ const IS_TEST_DATA: ColumnarData = {
     Color.Green | Color.Blue,
     0, Color.Red, 0,
     0, 0,
+    0, 0, 0, Color.Green | Color.White,
+    0, Color.Green,
   ],
   type_lines: [
     "Creature — Elf",
@@ -1114,20 +1142,26 @@ const IS_TEST_DATA: ColumnarData = {
     "Legendary Creature — Avatar Wizard",
     "Land — Island Mountain",
     "Land",
+    "Land",
+    "Land — Plains Island",
+    "Land — Plains Swamp Forest",
+    "Creature — Elf",
+    "Artifact Creature — Cleric",
+    "Creature — Elf",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-  scryfall_ids:          Array(32).fill(""),
-  art_crop_thumb_hashes: Array(32).fill(""),
-  card_thumb_hashes:     Array(32).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
+  scryfall_ids:          Array(38).fill(""),
+  art_crop_thumb_hashes: Array(38).fill(""),
+  card_thumb_hashes:     Array(38).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -1142,6 +1176,8 @@ const IS_TEST_DATA: ColumnarData = {
     "normal",
     "split",
     "normal", "normal", "normal",
+    "normal", "normal",
+    "normal", "normal", "normal", "normal",
     "normal", "normal",
   ],
   flags: [
@@ -1158,6 +1194,8 @@ const IS_TEST_DATA: ColumnarData = {
     0,
     0,
     CardFlag.Reserved, CardFlag.Funny, CardFlag.UniversesBeyond,
+    0, 0,
+    0, 0, 0, 0,
     0, 0,
   ],
   power_lookup: isExtPowerDict,
@@ -1199,8 +1237,8 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    // 28 total cards - 3 lands (Underground Sea #27, Steam Vents #30, Scalding Tarn #31)
-    expect(isMatchCount("is:spell")).toBe(25);
+    // 34 total cards - 6 lands (#27, #30, #31, #32, #33, #34)
+    expect(isMatchCount("is:spell")).toBe(28);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -1328,9 +1366,10 @@ describe("is: operator", () => {
     const indices = isMatchIndices("is:bear");
     expect(indices).toContain(10); // Grizzly Bears: Creature, pow=2, tou=2, cmc=2
     expect(indices).toContain(11); // Runeclaw Bear: Creature, pow=2, tou=2, cmc=2
+    expect(indices).toContain(35); // Hybrid-Phyrexian Test: Creature, pow=2, tou=2, cmc=2
     expect(indices).not.toContain(6);  // Thalia: pow=2, tou=1 (not 2/2)
     expect(indices).not.toContain(24); // Stoneforge: pow=1, tou=2 (not 2/2)
-    expect(isMatchCount("is:bear")).toBe(2);
+    expect(isMatchCount("is:bear")).toBe(3);
   });
 
   // --- French vanilla ---
@@ -1373,8 +1412,8 @@ describe("is: operator", () => {
   });
 
   test("negation -is:spell works", () => {
-    // is:spell matches 25 (28 total cards - 3 lands), so -is:spell matches 3
-    expect(isMatchCount("-is:spell")).toBe(3);
+    // is:spell matches 28 (34 total cards - 6 lands), so -is:spell matches 6
+    expect(isMatchCount("-is:spell")).toBe(6);
   });
 
   test("negation -is:permanent excludes permanents", () => {
@@ -1396,7 +1435,7 @@ describe("is: operator", () => {
   });
 
   test("is:bear combined with color filter", () => {
-    expect(isMatchCount("is:bear c:g")).toBe(2);
+    expect(isMatchCount("is:bear c:g")).toBe(3); // Grizzly Bears, Runeclaw Bear, Hybrid-Phyrexian Test
     expect(isMatchCount("is:bear c:r")).toBe(0);
   });
 
@@ -1435,7 +1474,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(27); // 28 total cards - 1 funny
+    expect(indices.length).toBe(33); // 34 total cards - 1 funny
   });
 
   // --- Land cycle checks ---
@@ -1478,5 +1517,76 @@ describe("is: operator", () => {
   test("land cycle combined with is:reserved", () => {
     // Underground Sea is both a dual land and reserved
     expect(isMatchCount("is:dual is:reserved")).toBe(1);
+  });
+
+  // --- Extended land cycles (Spec 040) ---
+
+  test("is:scryland matches Temple of Triumph", () => {
+    expect(isMatchIndices("is:scryland")).toEqual([32]);
+  });
+
+  test("is:bikeland matches Irrigated Farmland", () => {
+    expect(isMatchIndices("is:bikeland")).toEqual([33]);
+  });
+
+  test("is:cycleland is an alias for is:bikeland", () => {
+    expect(isMatchIndices("is:cycleland")).toEqual(isMatchIndices("is:bikeland"));
+  });
+
+  test("is:bicycleland is an alias for is:bikeland", () => {
+    expect(isMatchIndices("is:bicycleland")).toEqual(isMatchIndices("is:bikeland"));
+  });
+
+  test("is:triome matches Indatha Triome", () => {
+    expect(isMatchIndices("is:triome")).toEqual([34]);
+  });
+
+  test("is:tricycleland is an alias for is:triome", () => {
+    expect(isMatchIndices("is:tricycleland")).toEqual(isMatchIndices("is:triome"));
+  });
+
+  test("is:trikeland is an alias for is:triome", () => {
+    expect(isMatchIndices("is:trikeland")).toEqual(isMatchIndices("is:triome"));
+  });
+
+  test("is:karoo is an alias for is:bounceland", () => {
+    expect(isMatchCount("is:karoo")).toBe(isMatchCount("is:bounceland"));
+  });
+
+  // --- is:hybrid and is:phyrexian (Spec 040) ---
+
+  test("is:hybrid checks mana cost only, not oracle text", () => {
+    const indices = isMatchIndices("is:hybrid");
+    expect(indices).toContain(26); // Incubation {G/U} in mana cost
+    expect(indices).toContain(35); // Hybrid-Phyrexian Test {1}{G/W/P} in mana cost
+    expect(indices).not.toContain(37); // Oracle Hybrid Test — {G/U} in oracle text only (not matched)
+    expect(indices).not.toContain(9);  // Dismember {1}{B/P}{B/P} — Phyrexian only
+    expect(indices).not.toContain(36); // Blinding Souleater — Phyrexian only in oracle
+    expect(indices).not.toContain(1);  // Lightning Bolt {R} — no hybrid
+  });
+
+  test("is:phyrexian matches cards with Phyrexian mana in cost or oracle text", () => {
+    const indices = isMatchIndices("is:phyrexian");
+    expect(indices).toContain(9);  // Dismember {1}{B/P}{B/P} in mana cost
+    expect(indices).toContain(35); // Hybrid-Phyrexian Test {1}{G/W/P} in mana cost
+    expect(indices).toContain(36); // Blinding Souleater — {W/P} in oracle text only
+    expect(indices).not.toContain(26); // Incubation {G/U} — hybrid only
+    expect(indices).not.toContain(37); // Oracle Hybrid Test — hybrid only in oracle
+    expect(indices).not.toContain(1);  // Lightning Bolt {R} — no Phyrexian
+  });
+
+  test("hybrid-phyrexian card matches both is:hybrid and is:phyrexian", () => {
+    const hybridIndices = isMatchIndices("is:hybrid");
+    const phyrexianIndices = isMatchIndices("is:phyrexian");
+    expect(hybridIndices).toContain(35);
+    expect(phyrexianIndices).toContain(35);
+  });
+
+  test("-is:hybrid excludes hybrid cards", () => {
+    const indices = isMatchIndices("-is:hybrid");
+    expect(indices).not.toContain(26);
+    expect(indices).not.toContain(35);
+    expect(indices).toContain(37); // Oracle-only hybrid is NOT excluded (not matched by is:hybrid)
+    expect(indices).toContain(1);
   });
 });
