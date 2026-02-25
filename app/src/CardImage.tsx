@@ -2,7 +2,7 @@
 import { createSignal } from 'solid-js'
 import { normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { cachedThumbHashURL } from './ArtCrop'
-import createInView from './createInView'
+import createQueuedImage from './createQueuedImage'
 
 export default function CardImage(props: {
   scryfallId: string
@@ -12,14 +12,14 @@ export default function CardImage(props: {
   onClick?: () => void
   'aria-label'?: string
 }) {
-  const { ref, inView } = createInView('400px')
+  const { ref, nearViewport, shouldLoad, onLoad, onError } = createQueuedImage()
   const [loaded, setLoaded] = createSignal(false)
   const [failed, setFailed] = createSignal(false)
 
   const gradient = () => CI_BACKGROUNDS[props.colorIdentity] ?? CI_COLORLESS
 
   const thumbBg = () => {
-    if (props.thumbHash) {
+    if (nearViewport() && props.thumbHash) {
       return `url(${cachedThumbHashURL(props.thumbHash)}) center/cover`
     }
     return undefined
@@ -41,10 +41,10 @@ export default function CardImage(props: {
         style={{ background: thumbBg() }}
       >
         <img
-          src={inView() && !failed() ? normalImageUrl(props.scryfallId) : undefined}
+          src={shouldLoad() && !failed() ? normalImageUrl(props.scryfallId) : undefined}
           alt=""
-          onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
+          onLoad={() => { setLoaded(true); onLoad() }}
+          onError={() => { setFailed(true); onError() }}
           class="w-full aspect-[488/680] object-cover"
           classList={{ 'opacity-0': !loaded(), 'opacity-100': loaded() }}
           style="transition: opacity 300ms ease-in"
