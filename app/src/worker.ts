@@ -141,6 +141,8 @@ async function readJsonWithProgress(response: Response): Promise<unknown> {
   return JSON.parse(new TextDecoder().decode(merged))
 }
 
+const sessionSalt = (Math.random() * 0xffffffff) >>> 0
+
 async function init(): Promise<void> {
   post({ type: 'status', status: 'loading' })
 
@@ -174,7 +176,7 @@ async function init(): Promise<void> {
     const bareWords = collectBareWords(ast)
       .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
       .filter(w => w.length > 0)
-    seededSort(deduped, msg.query, index.combinedNamesNormalized, bareWords)
+    seededSort(deduped, msg.query, index.combinedNamesNormalized, bareWords, sessionSalt)
 
     const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)

@@ -207,4 +207,24 @@ describe("seededSort", () => {
     expect(boosted.sort()).toEqual([0, 1]);
     expect(rest).toEqual([2]);
   });
+
+  test("different session salts produce different orderings for same seed", () => {
+    const indices = Array.from({ length: 20 }, (_, i) => i);
+    const longNames = indices.map(i => `card ${i}`);
+
+    const a = [...indices];
+    const b = [...indices];
+    seededSort(a, "same-seed", longNames, [], 0xDEADBEEF);
+    seededSort(b, "same-seed", longNames, [], 0xCAFEBABE);
+    expect(a).not.toEqual(b);
+  });
+
+  test("same session salt preserves within-session stability", () => {
+    const salt = 0x12345678;
+    const a = [0, 1, 2, 3];
+    const b = [0, 1, 2, 3];
+    seededSort(a, "query", namesLower, ["light"], salt);
+    seededSort(b, "query", namesLower, ["light"], salt);
+    expect(a).toEqual(b);
+  });
 });

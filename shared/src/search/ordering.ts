@@ -50,10 +50,11 @@ export function seededSort(
   seed: string,
   nameColumn: string[],
   bareWords: string[],
+  sessionSalt = 0,
 ): void {
   if (indices.length <= 1) return;
 
-  const seedHash = fnv1a(seed);
+  const seedHash = fnv1a(seed) ^ sessionSalt;
   const hasBareWords = bareWords.length > 0;
   const n = indices.length;
 
