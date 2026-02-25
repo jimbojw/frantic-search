@@ -7,6 +7,7 @@ import { defineConfig, type Plugin } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import checker from 'vite-plugin-checker'
 import pkg from '../package.json' with { type: 'json' }
 
 function serveData(): Plugin {
@@ -73,6 +74,7 @@ export default defineConfig({
   },
   plugins: [
     serveData(),
+    checker({ typescript: { tsconfigPath: './tsconfig.json', buildMode: true } }),
     tailwindcss(),
     solid(),
     VitePWA({
