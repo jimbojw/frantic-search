@@ -27,7 +27,7 @@ export default function TermsDrawer(props: {
 }) {
   return (
     <div class="relative px-3 pt-2 pb-2">
-      <div class="absolute right-0 top-2 flex flex-col gap-1">
+      <div class="absolute right-2 top-2 bottom-2 flex flex-col justify-between">
         <button
           type="button"
           onClick={() => props.onClose()}
@@ -45,13 +45,11 @@ export default function TermsDrawer(props: {
           aria-label="Syntax help"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-4">
-            <defs>
-              <mask id="terms-drawer-help-mask">
-                <circle cx="12" cy="12" r="12" fill="white" />
-                <text x="12" y="16" text-anchor="middle" fill="black" font-size="12" font-weight="600" font-family="system-ui, sans-serif">?</text>
-              </mask>
-            </defs>
-            <circle cx="12" cy="12" r="12" fill="currentColor" mask="url(#terms-drawer-help-mask)" />
+            <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="2" fill="none" />
+            <circle cx="12" cy="7.5" r="1.5" fill="currentColor" />
+            <rect x="10.5" y="11" width="3" height="7" rx="0.5" fill="currentColor" />
+            <rect x="9" y="11" width="3" height="1.5" rx="0.5" fill="currentColor" />
+            <rect x="9" y="16.5" width="6" height="1.5" rx="0.5" fill="currentColor" />
           </svg>
         </button>
       </div>
