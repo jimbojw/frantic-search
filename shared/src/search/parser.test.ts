@@ -23,6 +23,10 @@ function not(child: ASTNode): ASTNode {
   return { type: "NOT", child };
 }
 
+function nop(): ASTNode {
+  return { type: "NOP" };
+}
+
 function exact(v: string): ASTNode {
   return { type: "EXACT", value: v };
 }
@@ -32,8 +36,8 @@ function regexField(f: string, op: string, pattern: string): ASTNode {
 }
 
 describe("parse", () => {
-  test("empty input returns empty AND node", () => {
-    expect(parse("")).toMatchObject(and());
+  test("empty input returns NOP node", () => {
+    expect(parse("")).toMatchObject(nop());
   });
 
   test("single bare word", () => {
@@ -197,6 +201,40 @@ describe("parse", () => {
       for (const input of inputs) {
         expect(() => parse(input), `parse("${input}") should not throw`).not.toThrow();
       }
+    });
+  });
+
+  describe("NOP nodes", () => {
+    test("trailing OR produces NOP right operand", () => {
+      const ast = parse("a OR");
+      expect(ast).toMatchObject(or(bare("a"), nop()));
+    });
+
+    test("leading OR produces NOP left operand", () => {
+      const ast = parse("OR a");
+      expect(ast).toMatchObject(or(nop(), bare("a")));
+    });
+
+    test("double OR produces NOP between operands", () => {
+      const ast = parse("a OR OR b");
+      expect(ast).toMatchObject(or(bare("a"), nop(), bare("b")));
+    });
+
+    test("empty parentheses produce NOP", () => {
+      const ast = parse("()");
+      expect(ast).toMatchObject(nop());
+    });
+
+    test("dangling dash produces NOP", () => {
+      const ast = parse("-");
+      expect(ast).toMatchObject(nop());
+    });
+
+    test("dangling dash after term produces term (NOP skipped from AND)", () => {
+      const ast = parse("a -");
+      // parseAndGroup produces [bare("a"), nop()]
+      // but with children.length === 2, it returns AND([bare("a"), nop()])
+      expect(ast).toMatchObject(and(bare("a"), nop()));
     });
   });
 

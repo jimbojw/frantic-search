@@ -452,3 +452,12 @@ test("trailing operator", () => {
   slots carry data. `matchCount` reflects card count, not face count.
   `deduplicateMatches` removed. `evaluate()` returns a pre-allocated
   `Uint32Array` of canonical face indices. Acceptance criterion 8 struck.
+- 2026-02-25: NOP node implementation. Parser now emits `NopNode` instead
+  of empty AND (`{ type: "AND", children: [] }`) when an operand position
+  is empty (trailing OR, leading OR, double OR, empty parentheses, empty
+  input, dangling dash). In the evaluator, NOP children are skipped during
+  AND/OR reduction. After skipping: single remaining child collapses; all-NOP
+  AND matches everything (vacuous conjunction); all-NOP OR matches nothing.
+  Root-level NOP produces zero indices. NOP uses `matchCount: -1` as a
+  sentinel; the UI displays `--`. This fixes the bug where `a OR` returned
+  the entire card pool because the empty AND right operand matched all cards.

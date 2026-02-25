@@ -67,7 +67,7 @@ class Parser {
     while (this.isTermStart()) {
       children.push(this.parseTerm());
     }
-    if (children.length === 0) return { type: "AND", children: [] };
+    if (children.length === 0) return { type: "NOP" };
     if (children.length === 1) return children[0];
     return { type: "AND", children, span: compoundSpan(children) };
   }
@@ -87,7 +87,7 @@ class Parser {
   private parseTerm(): ASTNode {
     if (this.at(TokenType.DASH)) {
       const dash = this.advance();
-      if (!this.isAtomStart()) return { type: "NOT", child: { type: "AND", children: [] } };
+      if (!this.isAtomStart()) return { type: "NOP" };
       const child = this.parseAtom();
       const span = child.span ? { start: dash.start, end: child.span.end } : undefined;
       return { type: "NOT", child, span };
@@ -163,7 +163,7 @@ class Parser {
     }
 
     this.advance();
-    return { type: "AND", children: [] };
+    return { type: "NOP" };
   }
 }
 

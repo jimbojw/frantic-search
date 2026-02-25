@@ -12,6 +12,7 @@ function leafLabel(qnr: QueryNodeResult): string {
     case 'BARE': return n.value
     case 'EXACT': return `!"${n.value}"`
     case 'REGEX_FIELD': return `${n.field}${n.operator}/${n.pattern}/`
+    case 'NOP': return '(no-op)'
     case 'NOT': return 'NOT'
     case 'AND': return 'AND'
     case 'OR': return 'OR'
@@ -25,6 +26,9 @@ function isNotLeaf(qnr: QueryNodeResult): boolean {
 }
 
 function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
+  if (qnr.node.type === 'NOP') {
+    return { type: 'NOP', label: '(no-op)', matchCount: -1 }
+  }
   if (isNotLeaf(qnr)) {
     const childLabel = leafLabel(qnr.children![0])
     const node: BreakdownNode = { type: 'NOT', label: `-${childLabel}`, matchCount: qnr.matchCount }

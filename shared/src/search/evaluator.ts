@@ -541,6 +541,8 @@ export function nodeKey(ast: ASTNode): string {
       return `AND${SEP}${ast.children.map(nodeKey).join(SEP)}`;
     case "OR":
       return `OR${SEP}${ast.children.map(nodeKey).join(SEP)}`;
+    case "NOP":
+      return "NOP";
   }
 }
 
@@ -567,6 +569,9 @@ export class NodeCache {
     const root = this.internTree(ast);
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
+    if (ast.type === "NOP") {
+      return { result, indices: new Uint32Array(0) };
+    }
     const count = root.computed!.matchCount;
     const indices = new Uint32Array(count);
     const buf = root.computed!.buf;
@@ -588,6 +593,8 @@ export class NodeCache {
       case "NOT":
         this.internTree(ast.child);
         break;
+      case "NOP":
+        break;
     }
     return this.intern(ast);
   }
@@ -605,6 +612,8 @@ export class NodeCache {
           this.markCached(this.intern(child), timings);
         }
         break;
+      case "NOP":
+        break;
     }
   }
 
@@ -618,6 +627,11 @@ export class NodeCache {
     const n = this.index.faceCount;
 
     switch (ast.type) {
+      case "NOP": {
+        interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0 };
+        timings.set(interned.key, { cached: false, evalMs: 0 });
+        break;
+      }
       case "FIELD": {
         const buf = new Uint8Array(n);
         const t0 = performance.now();
@@ -668,7 +682,13 @@ export class NodeCache {
         break;
       }
       case "AND": {
-        if (ast.children.length === 0) {
+        const childInterneds = ast.children.map(c => {
+          const ci = this.intern(c);
+          this.computeTree(ci, timings);
+          return ci;
+        });
+        const live = childInterneds.filter(ci => ci.ast.type !== "NOP");
+        if (live.length === 0) {
           const buf = new Uint8Array(n);
           const cf = this.index.canonicalFace;
           fillCanonical(buf, cf, n);
@@ -676,17 +696,17 @@ export class NodeCache {
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
-        const childInterneds = ast.children.map(c => {
-          const ci = this.intern(c);
-          this.computeTree(ci, timings);
-          return ci;
-        });
+        if (live.length === 1) {
+          interned.computed = live[0].computed!;
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        const first = childInterneds[0].computed!.buf;
+        const first = live[0].computed!.buf;
         for (let i = 0; i < n; i++) buf[i] = first[i];
-        for (let c = 1; c < childInterneds.length; c++) {
-          const cb = childInterneds[c].computed!.buf;
+        for (let c = 1; c < live.length; c++) {
+          const cb = live[c].computed!.buf;
           for (let i = 0; i < n; i++) buf[i] &= cb[i];
         }
         const ms = performance.now() - t0;
@@ -700,9 +720,20 @@ export class NodeCache {
           this.computeTree(ci, timings);
           return ci;
         });
+        const live = childInterneds.filter(ci => ci.ast.type !== "NOP");
+        if (live.length === 0) {
+          interned.computed = { buf: new Uint8Array(n), matchCount: 0, productionMs: 0 };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+        if (live.length === 1) {
+          interned.computed = live[0].computed!;
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        for (const ci of childInterneds) {
+        for (const ci of live) {
           const cb = ci.computed!.buf;
           for (let i = 0; i < n; i++) buf[i] |= cb[i];
         }

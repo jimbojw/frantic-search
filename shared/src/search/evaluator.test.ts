@@ -182,6 +182,11 @@ describe("nodeKey", () => {
     const quoted = { type: "BARE" as const, value: "x", quoted: true };
     expect(nodeKey(unquoted)).not.toBe(nodeKey(quoted));
   });
+
+  test("NOP node has a stable key", () => {
+    const key = nodeKey({ type: "NOP" });
+    expect(key).toBe("NOP");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -416,8 +421,31 @@ describe("evaluate", () => {
     expect(matchCount("c:")).toBe(9);
   });
 
-  test("empty input matches all cards", () => {
-    expect(matchCount("")).toBe(9);
+  test("empty input (root NOP) produces zero indices and matchCount -1", () => {
+    const cache = new NodeCache(index);
+    const { result, indices } = cache.evaluate(parse(""));
+    expect(indices.length).toBe(0);
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("trailing OR: a OR evaluates to just a", () => {
+    expect(matchCount("bolt OR")).toBe(matchCount("bolt"));
+  });
+
+  test("leading OR: OR a evaluates to just a", () => {
+    expect(matchCount("OR bolt")).toBe(matchCount("bolt"));
+  });
+
+  test("double OR: a OR OR b skips middle NOP", () => {
+    expect(matchCount("c:r OR OR c:u")).toBe(matchCount("c:r OR c:u"));
+  });
+
+  test("empty parens produce NOP, skipped in AND", () => {
+    expect(matchCount("() c:r")).toBe(matchCount("c:r"));
+  });
+
+  test("NOP in OR with all NOP children matches nothing", () => {
+    expect(matchCount("OR")).toBe(0);
   });
 
   test("result tree has children with matchCounts", () => {

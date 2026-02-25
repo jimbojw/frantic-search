@@ -44,20 +44,21 @@ function reconstructWithout(root: BreakdownNode, exclude: BreakdownNode): string
 }
 
 function BreakdownRow(props: { label: string; count: number; indent?: number; onClick?: () => void; onRemove?: () => void }) {
+  const isNop = () => props.count < 0
   return (
     <div
       class="flex items-baseline justify-between gap-4 py-0.5"
       style={props.indent ? { "padding-left": `${props.indent * 1.25}rem` } : undefined}
     >
       <span
-        class={`font-mono text-xs truncate ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
+        class={`font-mono text-xs truncate ${isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
         onClick={props.onClick}
       >
         {props.label}
       </span>
       <span class="flex items-center gap-2 shrink-0">
-        <span class={`font-mono text-xs tabular-nums ${props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
-          {props.count.toLocaleString()}
+        <span class={`font-mono text-xs tabular-nums ${isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
+          {isNop() ? '--' : props.count.toLocaleString()}
         </span>
         <Show when={props.onRemove}>
           <button
@@ -113,7 +114,7 @@ export default function InlineBreakdown(props: {
             <BreakdownTreeNode node={props.breakdown} root={props.breakdown} depth={0} onNodeClick={props.onNodeClick} onNodeRemove={props.onNodeRemove} />
           }>
             <Show when={displayCase() === 'single'} fallback={
-              <For each={props.breakdown.children!}>
+              <For each={props.breakdown.children!.filter(c => c.type !== 'NOP')}>
                 {(child) => <BreakdownRow label={child.label} count={child.matchCount} onClick={() => props.onNodeClick(reconstructQuery(child))} onRemove={() => props.onNodeRemove(reconstructWithout(props.breakdown, child))} />}
               </For>
             }>

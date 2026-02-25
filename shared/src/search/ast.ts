@@ -85,10 +85,16 @@ export interface RegexFieldNode {
   span?: Span;
 }
 
+export interface NopNode {
+  type: "NOP";
+  span?: Span;
+}
+
 export type ASTNode =
   | AndNode
   | OrNode
   | NotNode
+  | NopNode
   | FieldNode
   | BareWordNode
   | ExactNameNode

@@ -30,7 +30,7 @@ export type DisplayColumns = {
 }
 
 export type BreakdownNode = {
-  type: 'AND' | 'OR' | 'NOT' | 'FIELD' | 'BARE' | 'EXACT' | 'REGEX_FIELD'
+  type: 'AND' | 'OR' | 'NOT' | 'NOP' | 'FIELD' | 'BARE' | 'EXACT' | 'REGEX_FIELD'
   label: string
   matchCount: number
   children?: BreakdownNode[]
