@@ -5,6 +5,7 @@ export {
   COLOR_NAMES,
   COLOR_COLORLESS,
   COLOR_MULTICOLOR,
+  COLOR_IMPOSSIBLE,
   Format,
   FORMAT_NAMES,
   CardFlag,

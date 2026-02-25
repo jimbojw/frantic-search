@@ -108,6 +108,7 @@ export interface QueryNodeResult {
   cached: boolean;
   productionMs: number;
   evalMs: number;
+  error?: string;
   children?: QueryNodeResult[];
 }
 

@@ -8,7 +8,7 @@ import {
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
-import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, FORMAT_NAMES, CardFlag } from "../bits";
+import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, COLOR_IMPOSSIBLE, FORMAT_NAMES, CardFlag } from "../bits";
 import { parseManaSymbols, manaContains } from "./mana";
 import { parseStatValue } from "./stats";
 
@@ -42,8 +42,16 @@ function parseColorValue(value: string): number {
   const named = COLOR_NAMES[value.toLowerCase()];
   if (named !== undefined) return named;
   let mask = 0;
+  let hasColorless = false;
   for (const ch of value.toUpperCase()) {
-    mask |= COLOR_FROM_LETTER[ch] ?? 0;
+    if (ch === "C") {
+      hasColorless = true;
+    } else {
+      mask |= COLOR_FROM_LETTER[ch] ?? 0;
+    }
+  }
+  if (hasColorless) {
+    return mask !== 0 ? COLOR_IMPOSSIBLE : COLOR_COLORLESS;
   }
   return mask;
 }
@@ -427,7 +435,7 @@ function evalLeafField(
   node: FieldNode,
   index: CardIndex,
   buf: Uint8Array,
-): void {
+): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
   const cf = index.canonicalFace;
@@ -436,10 +444,10 @@ function evalLeafField(
 
   if (val === "") {
     fillCanonical(buf, cf, n);
-    return;
+    return null;
   }
   if (!canonical) {
-    return;
+    return null;
   }
 
   const valLower = val.toLowerCase();
@@ -466,6 +474,10 @@ function evalLeafField(
     case "identity": {
       const col = canonical === "color" ? index.colors : index.colorIdentity;
       const queryMask = parseColorValue(val);
+
+      if (queryMask === COLOR_IMPOSSIBLE) {
+        return "a card cannot be both colored and colorless";
+      }
 
       if (queryMask === COLOR_COLORLESS) {
         for (let i = 0; i < n; i++) if (col[i] === 0) buf[cf[i]] = 1;
@@ -584,6 +596,7 @@ function evalLeafField(
     default:
       break;
   }
+  return null;
 }
 
 function evalLeafRegex(
@@ -658,6 +671,7 @@ export interface ComputedResult {
   buf: Uint8Array;
   matchCount: number;
   productionMs: number;
+  error?: string;
 }
 
 export function nodeKey(ast: ASTNode): string {
@@ -704,7 +718,7 @@ export class NodeCache {
     const root = this.internTree(ast);
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
-    if (ast.type === "NOP") {
+    if (ast.type === "NOP" || root.computed!.error) {
       return { result, indices: new Uint32Array(0) };
     }
     const count = root.computed!.matchCount;
@@ -770,10 +784,14 @@ export class NodeCache {
       case "FIELD": {
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        evalLeafField(ast, this.index, buf);
+        const error = evalLeafField(ast, this.index, buf);
         const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
+        if (error) {
+          interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0, error };
+        } else {
+          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        }
+        timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
         break;
       }
       case "BARE": {
@@ -806,6 +824,14 @@ export class NodeCache {
       case "NOT": {
         const childInterned = this.intern(ast.child);
         this.computeTree(childInterned, timings);
+        if (childInterned.computed!.error) {
+          interned.computed = {
+            buf: new Uint8Array(0), matchCount: -1, productionMs: 0,
+            error: childInterned.computed!.error,
+          };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
         const childBuf = childInterned.computed!.buf;
         const buf = new Uint8Array(n);
         const cf = this.index.canonicalFace;
@@ -822,7 +848,9 @@ export class NodeCache {
           this.computeTree(ci, timings);
           return ci;
         });
-        const live = childInterneds.filter(ci => ci.ast.type !== "NOP");
+        const live = childInterneds.filter(ci =>
+          ci.ast.type !== "NOP" && !ci.computed?.error
+        );
         if (live.length === 0) {
           const buf = new Uint8Array(n);
           const cf = this.index.canonicalFace;
@@ -855,7 +883,9 @@ export class NodeCache {
           this.computeTree(ci, timings);
           return ci;
         });
-        const live = childInterneds.filter(ci => ci.ast.type !== "NOP");
+        const live = childInterneds.filter(ci =>
+          ci.ast.type !== "NOP" && !ci.computed?.error
+        );
         if (live.length === 0) {
           interned.computed = { buf: new Uint8Array(n), matchCount: 0, productionMs: 0 };
           timings.set(interned.key, { cached: false, evalMs: 0 });
@@ -892,6 +922,7 @@ export class NodeCache {
       productionMs: computed.productionMs,
       evalMs: timing.evalMs,
     };
+    if (computed.error) result.error = computed.error;
 
     switch (ast.type) {
       case "NOT":

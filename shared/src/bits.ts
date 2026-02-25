@@ -21,6 +21,7 @@ export const COLOR_FROM_LETTER: Record<string, number> = {
 // These are negative to avoid collision with any valid 5-bit color mask.
 export const COLOR_COLORLESS = -1;
 export const COLOR_MULTICOLOR = -2;
+export const COLOR_IMPOSSIBLE = -3;
 
 /**
  * Named color values → bitmask (or sentinel for special predicates).

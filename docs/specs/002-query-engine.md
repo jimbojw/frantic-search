@@ -225,7 +225,7 @@ Color values are resolved in order:
 2. **Special predicates.** Two values change _how_ the comparison works rather than supplying a bitmask:
    - `colorless` (alias `c`): matches cards with exactly zero color bits. When used with `:`, `=`, `<=`, it means "has no colors" (`mask === 0`). With `>`, `>=`, `!=` it inverts accordingly.
    - `multicolor` (alias `m`): matches cards with two or more color bits (`popcount(mask) >= 2`). Comparison operators are not meaningful; only `:` is supported (other operators match nothing).
-3. **Letter-sequence fallback.** Each character is looked up in WUBRG: `c:wu` → White + Blue bitmask.
+3. **Letter-sequence fallback.** Each character is looked up in WUBRG: `c:wu` → White + Blue bitmask. The letter `C` is recognized as colorless in this context. If `C` appears alongside any color letter (W, U, B, R, G), the value is contradictory — no card can be both colored and colorless — and the term is treated as an error (Spec 039).
 
 The `:` operator means "at least these colors" for `color:` (bitwise superset: `(card & query) === query`) and "fits in a deck of these colors" for `identity:` (bitwise subset: `(card & ~query) === 0`). The `=` operator means "exactly these colors" (`card === query`).
 

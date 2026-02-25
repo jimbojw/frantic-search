@@ -1590,3 +1590,97 @@ describe("is: operator", () => {
     expect(indices).toContain(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Colorless+color contradiction (Spec 039, GitHub issue #17)
+// ---------------------------------------------------------------------------
+
+describe("colorless+color contradiction", () => {
+  function getResult(query: string) {
+    const cache = new NodeCache(index);
+    return cache.evaluate(parse(query)).result;
+  }
+
+  test("ci:cb produces error (colorless + blue)", () => {
+    const result = getResult("ci:cb");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("c:cb produces error (color field, same contradiction)", () => {
+    const result = getResult("c:cb");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("ci:cw produces error", () => {
+    const result = getResult("ci:cw");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("ci:cwubrg produces error", () => {
+    const result = getResult("ci:cwubrg");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("c:cr produces error", () => {
+    const result = getResult("c:cr");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("ci:c (just colorless) is NOT an error", () => {
+    const result = getResult("ci:c");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(1); // Sol Ring
+  });
+
+  test("ci:colorless is NOT an error", () => {
+    const result = getResult("ci:colorless");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(1);
+  });
+
+  test("ci:wu (no colorless) is NOT an error", () => {
+    const result = getResult("ci:wu");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBeGreaterThan(0);
+  });
+
+  test("error node in AND is skipped — t:creature ci:cb matches same as t:creature", () => {
+    const creatureOnly = matchCount("t:creature");
+    const withError = matchCount("t:creature ci:cb");
+    expect(withError).toBe(creatureOnly);
+  });
+
+  test("error node child in AND carries error field", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("t:creature ci:cb"));
+    const ciChild = result.children!.find(
+      c => c.node.type === "FIELD" && (c.node as import("./ast").FieldNode).field === "ci"
+    );
+    expect(ciChild).toBeDefined();
+    expect(ciChild!.error).toBe("a card cannot be both colored and colorless");
+    expect(ciChild!.matchCount).toBe(-1);
+  });
+
+  test("error node in OR is skipped — t:creature OR ci:cb matches same as t:creature", () => {
+    const creatureOnly = matchCount("t:creature");
+    const withError = matchCount("t:creature OR ci:cb");
+    expect(withError).toBe(creatureOnly);
+  });
+
+  test("NOT of error propagates error — -ci:cb", () => {
+    const result = getResult("-ci:cb");
+    expect(result.error).toBe("a card cannot be both colored and colorless");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("error node produces zero indices", () => {
+    const cache = new NodeCache(index);
+    const { indices } = cache.evaluate(parse("ci:cb"));
+    expect(indices.length).toBe(0);
+  });
+});

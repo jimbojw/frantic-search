@@ -1,6 +1,6 @@
 # Spec 039: Non-Destructive Error Handling
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 021 (Inline Query Breakdown)
 
@@ -125,7 +125,13 @@ The `default` branch of `evalIsKeyword`'s switch checks `LAND_CYCLES`, then `UNS
 
 The key distinction is between **closed-set fields** (format, is) and **open-ended string fields** (name, type, oracle). For string fields, `t:xyz` is a valid query that legitimately matches zero cards — the user typed a real field and a value that happens to find nothing. For closed-set fields, the complete set of valid values is known at compile time, and `f:comma` on the way to `f:commander` (or `is:sho` on the way to `is:shockland`) should not tank the result set.
 
-3. **No errors for other field/value combinations.** String fields (`name`, `oracle`, `type`), color fields, numeric fields, and `mana` all have open-ended or context-dependent value spaces where zero results is meaningful information. These fields continue to show `0` in amber, not an error indicator.
+3. **Contradictory color values** — The value combines `c` (colorless) with one or more actual colors (W, U, B, R, G) in the letter-sequence fallback. A card cannot be both colored and colorless. This applies to both the `color`/`c` and `identity`/`id`/`ci` fields. The error message is `"a card cannot be both colored and colorless"`. This matches Scryfall's behavior, which ignores such expressions with the message *"A card cannot be both colored and colorless."*
+
+   Detection: `parseColorValue` returns a new `COLOR_IMPOSSIBLE` sentinel (defined in `bits.ts` alongside the existing `COLOR_COLORLESS` and `COLOR_MULTICOLOR` sentinels) when the letter-sequence fallback encounters `C` alongside any valid color letter. The evaluator checks for this sentinel before entering the bitmask comparison logic and returns the error. The named lookup (`COLOR_NAMES`) handles `"c"` and `"colorless"` as whole values before the letter fallback, so `ci:c` and `ci:colorless` continue to work normally.
+
+   Examples: `ci:cb`, `c:cw`, `ci:cwubrg` → error. `ci:c`, `ci:colorless`, `ci:wu` → not an error.
+
+4. **No errors for other field/value combinations.** String fields (`name`, `oracle`, `type`), other color field values, numeric fields, and `mana` all have open-ended or context-dependent value spaces where zero results is meaningful information. These fields continue to show `0` in amber, not an error indicator.
 
 #### `evalLeafRegex`
 
@@ -339,6 +345,9 @@ Error nodes are **not** filtered out — they should remain visible so the user 
 | Input | Field known? | Value | Classification | Evaluator behavior |
 |---|---|---|---|---|
 | `ci:wu` | Yes | Non-empty | **Valid** | Normal evaluation |
+| `ci:cb` | Yes | Colorless+color | **Error** | Skip in AND/OR, show `!` |
+| `c:cw` | Yes | Colorless+color | **Error** | Skip in AND/OR, show `!` |
+| `ci:c` | Yes | Colorless only | **Valid** | Normal evaluation (matches colorless cards) |
 | `ci:` | Yes | Empty | **Valid (incomplete)** | Universal set (transparent in AND) |
 | `foo:bar` | No | Non-empty | **Error** | Skip in AND/OR, show `!` |
 | `foo:` | No | Empty | **Error** | Skip in AND/OR, show `!` |
@@ -382,7 +391,10 @@ Tests use a synthetic `CardIndex` (same fixture as existing evaluator tests). Ea
 | `is:xyz` | `"unknown keyword \"xyz\""` | `-1` |
 | `is:foil` | `"unsupported keyword \"foil\""` | `-1` |
 | `is:shockland` | `undefined` | (positive number) |
+| `ci:cb` | `"a card cannot be both colored and colorless"` | `-1` |
+| `c:cw` | `"a card cannot be both colored and colorless"` | `-1` |
 | `ci:wu` | `undefined` | (positive number) |
+| `ci:c` | `undefined` | (positive number — colorless cards) |
 | `ci:` | `undefined` | (all cards) |
 
 **AND with error children:**
@@ -391,6 +403,7 @@ Tests use a synthetic `CardIndex` (same fixture as existing evaluator tests). Ea
 |---|---|---|
 | `t:creature foo:bar` | Same as `t:creature` alone | Error child skipped |
 | `t:creature o:/[/` | Same as `t:creature` alone | Error child skipped |
+| `t:creature ci:cb` | Same as `t:creature` alone | Error child skipped |
 | `foo:bar baz:qux` | (all cards) | Both children error → vacuous AND |
 
 **OR with error children:**
@@ -531,5 +544,9 @@ A query like `foo: OR` produces `OR(FIELD(foo, :, ""), NOP)`. The FIELD node err
 13. `BreakdownNode` carries an `error` field, propagated from the evaluator through the worker.
 14. The breakdown UI shows `!` in red/orange for error nodes, with the error reason visible on hover.
 15. Error nodes remain visible in the flat breakdown display (not filtered out like NOP).
-16. Existing tests continue to pass (no behavioral change for valid queries).
-17. Compliance suite `errors.yaml` passes in local mode and verifies against Scryfall in verification mode (with the `foo:` divergence annotated).
+16. `ci:cb` evaluates with `error: "a card cannot be both colored and colorless"` and `matchCount: -1`. Same for `c:cw`, `ci:cwubrg`, etc.
+17. `ci:c` and `ci:colorless` (colorless without colors) are NOT errors — they continue to match colorless cards normally.
+18. `t:creature ci:cb` returns the same result set as `t:creature` alone — the contradictory color term is skipped.
+19. `-ci:cb` propagates the error — NOT of an error is an error.
+20. Existing tests continue to pass (no behavioral change for valid queries).
+21. Compliance suite `errors.yaml` passes in local mode and verifies against Scryfall in verification mode (with the `foo:` divergence annotated).
