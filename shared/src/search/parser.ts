@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { TokenType, type Token, type ASTNode } from "./ast";
+import { TokenType, type Token, type ASTNode, type Span } from "./ast";
 import { lex } from "./lexer";
 
 const BARE_REGEX_FIELDS = ["name", "oracle", "type"];
@@ -13,6 +13,13 @@ const OPERATORS = new Set<string>([
   TokenType.LTE,
   TokenType.GTE,
 ]);
+
+function compoundSpan(children: ASTNode[]): Span | undefined {
+  const first = children[0]?.span;
+  const last = children[children.length - 1]?.span;
+  if (first && last) return { start: first.start, end: last.end };
+  return undefined;
+}
 
 class Parser {
   private tokens: Token[];
@@ -52,7 +59,7 @@ class Parser {
       this.advance();
       children.push(this.parseAndGroup());
     }
-    return { type: "OR", children };
+    return { type: "OR", children, span: compoundSpan(children) };
   }
 
   private parseAndGroup(): ASTNode {
@@ -62,7 +69,7 @@ class Parser {
     }
     if (children.length === 0) return { type: "AND", children: [] };
     if (children.length === 1) return children[0];
-    return { type: "AND", children };
+    return { type: "AND", children, span: compoundSpan(children) };
   }
 
   private isTermStart(): boolean {
@@ -79,16 +86,19 @@ class Parser {
 
   private parseTerm(): ASTNode {
     if (this.at(TokenType.DASH)) {
-      this.advance();
+      const dash = this.advance();
       if (!this.isAtomStart()) return { type: "NOT", child: { type: "AND", children: [] } };
-      return { type: "NOT", child: this.parseAtom() };
+      const child = this.parseAtom();
+      const span = child.span ? { start: dash.start, end: child.span.end } : undefined;
+      return { type: "NOT", child, span };
     }
     if (this.at(TokenType.BANG)) {
-      this.advance();
-      const value = this.at(TokenType.QUOTED) || this.at(TokenType.WORD)
-        ? this.advance().value
-        : "";
-      return { type: "EXACT", value };
+      const bang = this.advance();
+      if (this.at(TokenType.QUOTED) || this.at(TokenType.WORD)) {
+        const valueTok = this.advance();
+        return { type: "EXACT", value: valueTok.value, span: { start: bang.start, end: valueTok.end } };
+      }
+      return { type: "EXACT", value: "", span: { start: bang.start, end: bang.end } };
     }
     return this.parseAtom();
   }
@@ -111,20 +121,32 @@ class Parser {
       if (OPERATORS.has(this.peek().type)) {
         const op = this.advance();
         if (this.at(TokenType.WORD) || this.at(TokenType.QUOTED)) {
-          const value = this.advance();
-          return { type: "FIELD", field: word.value, operator: op.value, value: value.value };
+          const valueTok = this.advance();
+          return {
+            type: "FIELD", field: word.value, operator: op.value, value: valueTok.value,
+            span: { start: word.start, end: valueTok.end },
+            valueSpan: { start: valueTok.start, end: valueTok.end },
+          };
         }
         if (this.at(TokenType.REGEX)) {
           const regex = this.advance();
-          return { type: "REGEX_FIELD", field: word.value, operator: op.value, pattern: regex.value };
+          return {
+            type: "REGEX_FIELD", field: word.value, operator: op.value, pattern: regex.value,
+            span: { start: word.start, end: regex.end },
+          };
         }
-        return { type: "FIELD", field: word.value, operator: op.value, value: "" };
+        return {
+          type: "FIELD", field: word.value, operator: op.value, value: "",
+          span: { start: word.start, end: op.end },
+          valueSpan: { start: op.end, end: op.end },
+        };
       }
-      return { type: "BARE", value: word.value, quoted: false };
+      return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
     }
 
     if (this.at(TokenType.QUOTED)) {
-      return { type: "BARE", value: this.advance().value, quoted: true };
+      const tok = this.advance();
+      return { type: "BARE", value: tok.value, quoted: true, span: { start: tok.start, end: tok.end } };
     }
 
     if (this.at(TokenType.REGEX)) {

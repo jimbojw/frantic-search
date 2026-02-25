@@ -1,6 +1,6 @@
 # Spec 036: Source Spans
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 021 (Inline Query Breakdown), Spec 023 (Breakdown Remove Node)
 

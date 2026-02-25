@@ -24,6 +24,15 @@ export type TokenType = (typeof TokenType)[keyof typeof TokenType];
 export interface Token {
   type: TokenType;
   value: string;
+  start: number;
+  end: number;
+}
+
+// --- Source Spans ---
+
+export interface Span {
+  start: number;
+  end: number;
 }
 
 // --- AST Node Types ---
@@ -31,16 +40,19 @@ export interface Token {
 export interface AndNode {
   type: "AND";
   children: ASTNode[];
+  span?: Span;
 }
 
 export interface OrNode {
   type: "OR";
   children: ASTNode[];
+  span?: Span;
 }
 
 export interface NotNode {
   type: "NOT";
   child: ASTNode;
+  span?: Span;
 }
 
 export interface FieldNode {
@@ -48,17 +60,21 @@ export interface FieldNode {
   field: string;
   operator: string;
   value: string;
+  span?: Span;
+  valueSpan?: Span;
 }
 
 export interface BareWordNode {
   type: "BARE";
   value: string;
   quoted: boolean;
+  span?: Span;
 }
 
 export interface ExactNameNode {
   type: "EXACT";
   value: string;
+  span?: Span;
 }
 
 export interface RegexFieldNode {
@@ -66,6 +82,7 @@ export interface RegexFieldNode {
   field: string;
   operator: string;
   pattern: string;
+  span?: Span;
 }
 
 export type ASTNode =

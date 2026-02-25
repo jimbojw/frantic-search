@@ -27,9 +27,13 @@ function isNotLeaf(qnr: QueryNodeResult): boolean {
 function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
   if (isNotLeaf(qnr)) {
     const childLabel = leafLabel(qnr.children![0])
-    return { type: 'NOT', label: `-${childLabel}`, matchCount: qnr.matchCount }
+    const node: BreakdownNode = { type: 'NOT', label: `-${childLabel}`, matchCount: qnr.matchCount }
+    if (qnr.node.span) node.span = qnr.node.span
+    return node
   }
   const node: BreakdownNode = { type: qnr.node.type, label: leafLabel(qnr), matchCount: qnr.matchCount }
+  if (qnr.node.span) node.span = qnr.node.span
+  if (qnr.node.type === 'FIELD' && qnr.node.valueSpan) node.valueSpan = qnr.node.valueSpan
   if (qnr.children) {
     node.children = qnr.children.map(toBreakdown)
   }

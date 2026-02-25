@@ -34,6 +34,8 @@ export type BreakdownNode = {
   label: string
   matchCount: number
   children?: BreakdownNode[]
+  span?: { start: number; end: number }
+  valueSpan?: { start: number; end: number }
 }
 
 export type Histograms = {
