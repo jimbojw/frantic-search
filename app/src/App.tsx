@@ -436,7 +436,7 @@ function App() {
               spellcheck={false}
               value={query()}
               onInput={(e) => setQuery(e.currentTarget.value)}
-              onFocus={() => { setInputFocused(true); setHasEverFocused(true) }}
+              onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
               onBlur={() => setInputFocused(false)}
               disabled={workerStatus() === 'error'}
               class="w-full bg-transparent px-4 py-3 pl-11 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
@@ -556,7 +556,9 @@ function App() {
                         <div class="overflow-hidden">
                           <ResultsBreakdown
                             histograms={h()}
-                            onAppendQuery={appendQuery}
+                            breakdown={breakdown()}
+                            query={query()}
+                            onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                           />
                         </div>
                       </div>

@@ -1,6 +1,6 @@
 # Spec 037: Histogram Toggles
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 036 (Source Spans), Spec 025 (Results Breakdown)
 

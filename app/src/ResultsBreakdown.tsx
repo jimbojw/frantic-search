@@ -1,40 +1,91 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For } from 'solid-js'
-import type { Histograms } from '@frantic-search/shared'
+import { For, createMemo } from 'solid-js'
+import type { Histograms, BreakdownNode } from '@frantic-search/shared'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
+import {
+  findFieldNode,
+  extractValue,
+  toggleColorDrill,
+  toggleColorExclude,
+  toggleSimple,
+} from './query-edit'
 
-type BarDef = {
-  label: () => any
-  background: string
-  drillTerm: string
-  excludeTerm: string
-}
+export const MV_BAR_COLOR = '#60a5fa'    // blue-400
+export const TYPE_BAR_COLOR = '#34d399'  // emerald-400
 
-const COLOR_BARS: BarDef[] = [
-  { label: () => <i class="ms ms-c ms-cost" />, background: CI_COLORLESS, drillTerm: 'ci:c', excludeTerm: '-ci:c' },
-  { label: () => <i class="ms ms-w ms-cost" />, background: CI_W, drillTerm: 'ci>=w', excludeTerm: '-ci>=w' },
-  { label: () => <i class="ms ms-u ms-cost" />, background: CI_U, drillTerm: 'ci>=u', excludeTerm: '-ci>=u' },
-  { label: () => <i class="ms ms-b ms-cost" />, background: CI_B, drillTerm: 'ci>=b', excludeTerm: '-ci>=b' },
-  { label: () => <i class="ms ms-r ms-cost" />, background: CI_R, drillTerm: 'ci>=r', excludeTerm: '-ci>=r' },
-  { label: () => <i class="ms ms-g ms-cost" />, background: CI_G, drillTerm: 'ci>=g', excludeTerm: '-ci>=g' },
-  { label: () => <span class="inline-block size-3.5 rounded" style={{ background: CI_BACKGROUNDS[31] }} />, background: CI_BACKGROUNDS[31], drillTerm: 'ci:m', excludeTerm: '-ci:m' },
-]
+const CI_FIELDS = ['ci', 'identity', 'id', 'commander', 'cmd']
+const MV_FIELDS = ['mv', 'cmc', 'manavalue']
+const TYPE_FIELDS = ['t', 'type']
 
 const MV_LABELS = ['0', '1', '2', '3', '4', '5', '6', '7+']
 const MV_TERMS = ['mv=0', 'mv=1', 'mv=2', 'mv=3', 'mv=4', 'mv=5', 'mv=6', 'mv>=7']
-
-export const MV_BAR_COLOR = '#60a5fa'    // blue-400
+const MV_OPS = ['=', '=', '=', '=', '=', '=', '=', '>=']
+const MV_VALUES = ['0', '1', '2', '3', '4', '5', '6', '7']
 
 const TYPE_LABELS = ['Lgn', 'Cre', 'Ins', 'Sor', 'Art', 'Enc', 'Plw', 'Lnd']
 const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:artifact', 't:enchantment', 't:planeswalker', 't:land']
+const TYPE_VALUES = ['legendary', 'creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'land']
 
-export const TYPE_BAR_COLOR = '#34d399'  // emerald-400
+const WUBRG_RE = /^[wubrg]+$/i
+const COLORS = ['w', 'u', 'b', 'r', 'g'] as const
+
+type ColorBarDef = {
+  label: () => any
+  background: string
+  color: string
+  kind: 'colorless' | 'wubrg' | 'multicolor'
+}
+
+const COLOR_BARS: ColorBarDef[] = [
+  { label: () => <i class="ms ms-c ms-cost" />, background: CI_COLORLESS, color: 'c', kind: 'colorless' },
+  { label: () => <i class="ms ms-w ms-cost" />, background: CI_W, color: 'w', kind: 'wubrg' },
+  { label: () => <i class="ms ms-u ms-cost" />, background: CI_U, color: 'u', kind: 'wubrg' },
+  { label: () => <i class="ms ms-b ms-cost" />, background: CI_B, color: 'b', kind: 'wubrg' },
+  { label: () => <i class="ms ms-r ms-cost" />, background: CI_R, color: 'r', kind: 'wubrg' },
+  { label: () => <i class="ms ms-g ms-cost" />, background: CI_G, color: 'g', kind: 'wubrg' },
+  { label: () => <span class="inline-block size-3.5 rounded" style={{ background: CI_BACKGROUNDS[31] }} />, background: CI_BACKGROUNDS[31], color: 'm', kind: 'multicolor' },
+]
+
+// ---------------------------------------------------------------------------
+// Active state detection
+// ---------------------------------------------------------------------------
+
+function isColorDrillActive(breakdown: BreakdownNode | null, color: string): boolean {
+  if (!breakdown) return false
+  const node = findFieldNode(breakdown, CI_FIELDS, '>=', false)
+  if (!node) return false
+  return extractValue(node.label, '>=').toLowerCase().includes(color.toLowerCase())
+}
+
+function isColorExcludeActive(breakdown: BreakdownNode | null, color: string): boolean {
+  if (!breakdown) return false
+  const node = findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_RE.test(v))
+  if (!node) return false
+  return !extractValue(node.label, ':').toLowerCase().includes(color.toLowerCase())
+}
+
+function isSimpleActive(
+  breakdown: BreakdownNode | null,
+  field: string[],
+  operator: string,
+  negated: boolean,
+  value: string,
+): boolean {
+  if (!breakdown) return false
+  return findFieldNode(breakdown, field, operator, negated, v => v === value) !== null
+}
+
+// ---------------------------------------------------------------------------
+// BarRow component
+// ---------------------------------------------------------------------------
 
 function BarRow(props: {
   label: () => any
   count: number
   maxCount: number
   background: string
+  drillActive: boolean
+  excludeActive: boolean
   onDrill: () => void
   onExclude: () => void
 }) {
@@ -49,7 +100,11 @@ function BarRow(props: {
       <button
         type="button"
         onClick={() => props.onDrill()}
-        class="flex-1 h-full flex items-center px-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors min-w-0"
+        class={`flex-1 h-full flex items-center px-1 cursor-pointer transition-colors min-w-0 ${
+          props.drillActive
+            ? 'bg-blue-50 dark:bg-blue-900/20'
+            : 'hover:bg-gray-100 dark:hover:bg-gray-800/50'
+        }`}
       >
         <div
           class="h-3.5 rounded-sm transition-all"
@@ -65,7 +120,11 @@ function BarRow(props: {
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); props.onExclude() }}
-        class="size-6 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+        class={`size-6 shrink-0 flex items-center justify-center rounded-full transition-colors ${
+          props.excludeActive
+            ? 'text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+            : 'text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
+        }`}
         aria-label="Exclude"
       >
         <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -76,13 +135,69 @@ function BarRow(props: {
   )
 }
 
+// ---------------------------------------------------------------------------
+// ResultsBreakdown
+// ---------------------------------------------------------------------------
+
 export default function ResultsBreakdown(props: {
   histograms: Histograms
-  onAppendQuery: (term: string) => void
+  breakdown: BreakdownNode | null
+  query: string
+  onSetQuery: (query: string) => void
 }) {
   const colorMax = () => Math.max(...props.histograms.colorIdentity)
   const mvMax = () => Math.max(...props.histograms.manaValue)
   const typeMax = () => Math.max(...props.histograms.cardType)
+
+  // Memoize the CI drill node to avoid repeated DFS for each WUBRG bar
+  const ciDrillNode = createMemo(() =>
+    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '>=', false) : null
+  )
+  const ciExcludeNode = createMemo(() =>
+    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, ':', false, v => WUBRG_RE.test(v)) : null
+  )
+
+  function handleColorDrill(bar: ColorBarDef) {
+    if (bar.kind === 'wubrg') {
+      props.onSetQuery(toggleColorDrill(props.query, props.breakdown, bar.color))
+    } else {
+      const value = bar.kind === 'colorless' ? 'c' : 'm'
+      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+        field: CI_FIELDS, operator: ':', negated: false, value, appendTerm: `ci:${value}`,
+      }))
+    }
+  }
+
+  function handleColorExclude(bar: ColorBarDef) {
+    if (bar.kind === 'wubrg') {
+      props.onSetQuery(toggleColorExclude(props.query, props.breakdown, bar.color))
+    } else {
+      const value = bar.kind === 'colorless' ? 'c' : 'm'
+      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+        field: CI_FIELDS, operator: ':', negated: true, value, appendTerm: `-ci:${value}`,
+      }))
+    }
+  }
+
+  function colorDrillActive(bar: ColorBarDef): boolean {
+    if (bar.kind === 'wubrg') {
+      const node = ciDrillNode()
+      if (!node) return false
+      return extractValue(node.label, '>=').toLowerCase().includes(bar.color)
+    }
+    const value = bar.kind === 'colorless' ? 'c' : 'm'
+    return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, value)
+  }
+
+  function colorExcludeActive(bar: ColorBarDef): boolean {
+    if (bar.kind === 'wubrg') {
+      const node = ciExcludeNode()
+      if (!node) return false
+      return !extractValue(node.label, ':').toLowerCase().includes(bar.color)
+    }
+    const value = bar.kind === 'colorless' ? 'c' : 'm'
+    return isSimpleActive(props.breakdown, CI_FIELDS, ':', true, value)
+  }
 
   return (
     <div class="grid grid-cols-3 gap-4 px-3 pb-2">
@@ -94,8 +209,14 @@ export default function ResultsBreakdown(props: {
               count={props.histograms.manaValue[i()]}
               maxCount={mvMax()}
               background={MV_BAR_COLOR}
-              onDrill={() => props.onAppendQuery(MV_TERMS[i()])}
-              onExclude={() => props.onAppendQuery('-' + MV_TERMS[i()])}
+              drillActive={isSimpleActive(props.breakdown, MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
+              excludeActive={isSimpleActive(props.breakdown, MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
+              onDrill={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+                field: MV_FIELDS, operator: MV_OPS[i()], negated: false, value: MV_VALUES[i()], appendTerm: MV_TERMS[i()],
+              }))}
+              onExclude={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+                field: MV_FIELDS, operator: MV_OPS[i()], negated: true, value: MV_VALUES[i()], appendTerm: '-' + MV_TERMS[i()],
+              }))}
             />
           )}
         </For>
@@ -108,8 +229,10 @@ export default function ResultsBreakdown(props: {
               count={props.histograms.colorIdentity[i()]}
               maxCount={colorMax()}
               background={bar.background}
-              onDrill={() => props.onAppendQuery(bar.drillTerm)}
-              onExclude={() => props.onAppendQuery(bar.excludeTerm)}
+              drillActive={colorDrillActive(bar)}
+              excludeActive={colorExcludeActive(bar)}
+              onDrill={() => handleColorDrill(bar)}
+              onExclude={() => handleColorExclude(bar)}
             />
           )}
         </For>
@@ -122,8 +245,14 @@ export default function ResultsBreakdown(props: {
               count={props.histograms.cardType[i()]}
               maxCount={typeMax()}
               background={TYPE_BAR_COLOR}
-              onDrill={() => props.onAppendQuery(TYPE_TERMS[i()])}
-              onExclude={() => props.onAppendQuery('-' + TYPE_TERMS[i()])}
+              drillActive={isSimpleActive(props.breakdown, TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
+              excludeActive={isSimpleActive(props.breakdown, TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
+              onDrill={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+                field: TYPE_FIELDS, operator: ':', negated: false, value: TYPE_VALUES[i()], appendTerm: TYPE_TERMS[i()],
+              }))}
+              onExclude={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+                field: TYPE_FIELDS, operator: ':', negated: true, value: TYPE_VALUES[i()], appendTerm: '-' + TYPE_TERMS[i()],
+              }))}
             />
           )}
         </For>
