@@ -1,6 +1,6 @@
 # Spec 038: Collapsible Sparkline Histograms
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 025 (Results Breakdown)
 
@@ -37,7 +37,7 @@ The toolbar containing "Try on Scryfall ↗", the bug report button, and the "Or
 
 ```
 ┌─ RESULTS container ──────────────────────────────────────┐
-│ ▸ mv: ▁▃▅▇▅▃▁▁   ci: ▁▃▅▇▃▅▁   t: ▃▇▅▃▂▂▁▁           │
+│ ▸ mv: [━━━━━━━━] ci: [━━━━━━━] t: [━━━━━━━━]            │
 ├──────────────────────────────────────────────────────────┤
 │  Try on Scryfall ↗  [🐛]                   Oracle text   │
 ├──────────────────────────────────────────────────────────┤
@@ -75,12 +75,14 @@ The sparkline bar is a single horizontal strip containing three miniature bar ch
 #### Structure
 
 ```
-[chevron] [mv-label] [mv-sparkline] [ci-label] [ci-sparkline] [t-label] [t-sparkline]
+[chevron] | mv: [━━━━━━━━━━━] | ci: [━━━━━━━━━━━] | t: [━━━━━━━━━━━] |
+          ╰─── grid cell ────╯╰─── grid cell ────╯╰─── grid cell ────╯
 ```
 
-- **Chevron**: Right-pointing triangle (▸), same SVG as the current RESULTS hat chevron, in muted color (`text-gray-500 dark:text-gray-400`).
-- **Labels**: `mv:`, `ci:`, `t:` in `font-mono text-[10px]` muted text (`text-gray-400 dark:text-gray-500`).
-- **Sparklines**: Inline miniature bar charts (see below).
+- **Chevron**: Right-pointing triangle (▸), same SVG as the current RESULTS hat chevron, in muted color (`text-gray-500 dark:text-gray-400`). Sits outside the grid.
+- **Grid**: `grid-cols-3` with `gap-4`, matching the expanded histogram column structure. Fills remaining width via `flex-1`.
+- **Labels**: `mv:`, `ci:`, `t:` in `font-mono text-[10px]` muted text, fixed at `3em` wide, right-aligned within each grid cell.
+- **Sparklines**: Fill the remaining space in each grid cell via `flex-1`.
 
 The bar has `cursor-pointer` and a subtle hover state (`hover:bg-gray-50 dark:hover:bg-gray-800/50`) to indicate interactivity. The entire bar is a single click target.
 
@@ -91,7 +93,7 @@ Each sparkline is a vertical stack of thin horizontal bars:
 - **Bar height**: 2px.
 - **Gap between bars**: 1px.
 - **Total height**: Mana value (8 bars) = 8×2 + 7×1 = **23px**. Color identity (7 bars) = 7×2 + 6×1 = **20px**. Card type (8 bars) = **23px**.
-- **Width**: Each sparkline occupies a fixed width of **48px**. This is wide enough for proportional differences to be visible at 2px bar height.
+- **Width**: The three sparklines share a `grid-cols-3` layout (matching the expanded histograms' column structure). Within each grid cell, the label occupies a fixed `3em` right-aligned, and the sparkline chart fills the remaining space via `flex-1`. This makes the charts scale with the container width rather than using a fixed pixel size.
 - **Bar widths**: Proportional to count / max within that chart, same per-chart scaling as the full histograms. Zero-count bars render as 0-width (invisible).
 - **Minimum bar width**: 1px when count > 0 (scaled down from the full histogram's 2px minimum).
 - **Border radius**: None — at 2px tall, rounding is not perceptible.
@@ -179,28 +181,16 @@ Create the sparkline component:
 
 - Accepts `counts: number[]` and `colors: string | string[]`.
 - Computes local max from `counts`.
-- Renders a 48px-wide flex-column container with 1px gap.
+- Renders a flex-column container (`flex-1 min-w-0`) with 1px gap that fills its parent's available width.
 - Each bar: 2px tall `<div>`, width = `(count / max) * 100%`, min-width 1px when count > 0.
 - Color applied via `background-color` (single) or per-bar from the array.
 - No interactive elements, no event handlers.
 
 ### 2. Sparkline bar (`app/src/App.tsx`)
 
-Replace the RESULTS hat with a collapsed-state sparkline bar:
+Replace the RESULTS hat with a collapsed-state sparkline bar. The outer toggle row is `flex` with the chevron as a shrink-0 first child. The rest is a `grid-cols-3 gap-4 flex-1` containing three cells, each a `flex items-center gap-1` with a `w-[3em] text-right` label and a `flex-1` `SparkBars`.
 
-```
-<div onClick={toggle} class="flex items-center gap-2 px-3 py-1 cursor-pointer ...">
-  <chevron />
-  <span class="font-mono text-[10px] ...">mv:</span>
-  <SparkBars counts={histograms().manaValue} colors={MV_BAR_COLOR} />
-  <span class="font-mono text-[10px] ...">ci:</span>
-  <SparkBars counts={histograms().colorIdentity} colors={CI_SPARK_COLORS} />
-  <span class="font-mono text-[10px] ...">t:</span>
-  <SparkBars counts={histograms().cardType} colors={TYPE_BAR_COLOR} />
-</div>
-```
-
-Where `CI_SPARK_COLORS` is the per-bar color array `[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]`.
+`CI_SPARK_COLORS` is the per-bar color array `[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]`.
 
 ### 3. Expanded label row toggle (`app/src/ResultsBreakdown.tsx`)
 
@@ -262,7 +252,7 @@ Sparkline bar colors are the same as the full histogram bar colors, which alread
 1. The RESULTS hat (toggle row with "RESULTS" label and gear icon) is removed.
 2. The toolbar (Scryfall link, bug report, Oracle text toggle) is always visible when results exist, regardless of histogram expanded/collapsed state.
 3. When collapsed, a sparkline bar appears at the top of the results container showing three miniature bar charts labeled `mv:`, `ci:`, and `t:`.
-4. Sparkline bars are 2px tall with 1px gaps, 48px wide, non-interactive, with per-chart proportional scaling.
+4. Sparkline bars are 2px tall with 1px gaps, dynamically sized to fill available width, non-interactive, with per-chart proportional scaling.
 5. The color identity sparkline uses per-bar colors matching the full histogram (colorless gray, W yellow, U blue, B dark, R red, G green, M gradient).
 6. Clicking anywhere on the sparkline bar expands to the full interactive histograms.
 7. When expanded, the histogram label row ("Mana Value" / "Color Identity" / "Card Type") has a chevron at the far left and acts as the collapse toggle.

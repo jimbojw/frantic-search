@@ -6,7 +6,9 @@ import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import InlineBreakdown from './InlineBreakdown'
-import ResultsBreakdown from './ResultsBreakdown'
+import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdown'
+import SparkBars from './SparkBars'
+import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
@@ -175,11 +177,11 @@ function App() {
       return next
     })
   }
-  const [resultsOptionsExpanded, setResultsOptionsExpanded] = createSignal(
-    localStorage.getItem('frantic-results-options-expanded') !== 'false'
+  const [histogramsExpanded, setHistogramsExpanded] = createSignal(
+    localStorage.getItem('frantic-results-options-expanded') === 'true'
   )
-  function toggleResultsOptions() {
-    setResultsOptionsExpanded(prev => {
+  function toggleHistograms() {
+    setHistogramsExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-results-options-expanded', String(next))
       return next
@@ -513,59 +515,81 @@ function App() {
               </div>
             }>
                 <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-                  <div
-                    onClick={() => toggleResultsOptions()}
-                    class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <svg class={`size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform ${resultsOptionsExpanded() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
-                      <path d="M8 5l8 7-8 7z" />
-                    </svg>
-                    <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex-1">RESULTS</span>
-                    <svg class="size-3.5 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                  </div>
-                  <Show when={resultsOptionsExpanded()}>
-                    <Show when={histograms()}>
-                      {(h) => (
-                        <ResultsBreakdown
-                          histograms={h()}
-                          onAppendQuery={appendQuery}
-                        />
-                      )}
-                    </Show>
-                    <div class="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
-                      <div class="flex items-center gap-x-3 gap-y-1 text-sm">
-                        <a
-                          href={scryfallUrl()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        >
-                          Try on Scryfall ↗
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => navigateToReport()}
-                          title="Report a problem"
-                          aria-label="Report a problem"
-                          class="inline-flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0 1 12 12.75Zm0 0c2.883 0 5.647.508 8.207 1.44a23.91 23.91 0 0 1-1.152 6.06M12 12.75c-2.883 0-5.647.508-8.208 1.44.125 2.104.52 4.136 1.153 6.06M12 12.75a2.25 2.25 0 0 0 2.248-2.354M12 12.75a2.25 2.25 0 0 1-2.248-2.354M12 8.25c.995 0 1.971-.08 2.922-.236.403-.066.74-.358.795-.762a3.778 3.778 0 0 0-.399-2.25M12 8.25c-.995 0-1.97-.08-2.922-.236-.402-.066-.74-.358-.795-.762a3.734 3.734 0 0 1 .4-2.253M12 8.25a2.25 2.25 0 0 0-2.248 2.146M12 8.25a2.25 2.25 0 0 1 2.248 2.146M8.683 5a6.032 6.032 0 0 1-1.155-1.002c.07-.63.27-1.222.574-1.747m.581 2.749A3.75 3.75 0 0 1 15.318 5m0 0c.427-.283.815-.62 1.155-.999a4.471 4.471 0 0 0-.575-1.752M4.921 6a24.048 24.048 0 0 0-.392 3.314c1.668.546 3.416.914 5.223 1.082M19.08 6c.205 1.08.337 2.187.392 3.314a23.882 23.882 0 0 1-5.223 1.082" />
-                          </svg>
-                        </button>
+                  <Show when={histograms()}>
+                    {(h) => (<>
+                      <div
+                        onClick={() => toggleHistograms()}
+                        class="relative px-3 py-1 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                      >
+                        <svg class={`absolute left-3 top-1/2 -translate-y-1/2 size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform duration-150 ${histogramsExpanded() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+                          <path d="M8 5l8 7-8 7z" />
+                        </svg>
+                        <Show when={histogramsExpanded()} fallback={
+                          <div class="grid grid-cols-3 gap-4">
+                            <div class="flex items-center gap-1 min-w-0 pl-4">
+                              <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
+                              <SparkBars counts={h().manaValue} colors={MV_BAR_COLOR} />
+                            </div>
+                            <div class="flex items-center gap-1 min-w-0">
+                              <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">ci:</span>
+                              <SparkBars counts={h().colorIdentity} colors={[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]} />
+                            </div>
+                            <div class="flex items-center gap-1 min-w-0">
+                              <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">t:</span>
+                              <SparkBars counts={h().cardType} colors={TYPE_BAR_COLOR} />
+                            </div>
+                          </div>
+                        }>
+                          <div class="grid grid-cols-3 gap-4">
+                            <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Mana Value</p>
+                            <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Color Identity</p>
+                            <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Card Type</p>
+                          </div>
+                        </Show>
                       </div>
+                      <div
+                        class="grid transition-[grid-template-rows] duration-150 ease-out"
+                        style={{ 'grid-template-rows': histogramsExpanded() ? '1fr' : '0fr' }}
+                      >
+                        <div class="overflow-hidden">
+                          <ResultsBreakdown
+                            histograms={h()}
+                            onAppendQuery={appendQuery}
+                          />
+                        </div>
+                      </div>
+                    </>)}
+                  </Show>
+                  <div class="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-x-3 gap-y-1 text-sm">
+                      <a
+                        href={scryfallUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      >
+                        Try on Scryfall ↗
+                      </a>
                       <button
                         type="button"
-                        onClick={() => setShowOracleText(prev => !prev)}
-                        class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer select-none transition-colors ${showOracleText() ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+                        onClick={() => navigateToReport()}
+                        title="Report a problem"
+                        aria-label="Report a problem"
+                        class="inline-flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       >
-                        Oracle text
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0 1 12 12.75Zm0 0c2.883 0 5.647.508 8.207 1.44a23.91 23.91 0 0 1-1.152 6.06M12 12.75c-2.883 0-5.647.508-8.208 1.44.125 2.104.52 4.136 1.153 6.06M12 12.75a2.25 2.25 0 0 0 2.248-2.354M12 12.75a2.25 2.25 0 0 1-2.248-2.354M12 8.25c.995 0 1.971-.08 2.922-.236.403-.066.74-.358.795-.762a3.778 3.778 0 0 0-.399-2.25M12 8.25c-.995 0-1.97-.08-2.922-.236-.402-.066-.74-.358-.795-.762a3.734 3.734 0 0 1 .4-2.253M12 8.25a2.25 2.25 0 0 0-2.248 2.146M12 8.25a2.25 2.25 0 0 1 2.248 2.146M8.683 5a6.032 6.032 0 0 1-1.155-1.002c.07-.63.27-1.222.574-1.747m.581 2.749A3.75 3.75 0 0 1 15.318 5m0 0c.427-.283.815-.62 1.155-.999a4.471 4.471 0 0 0-.575-1.752M4.921 6a24.048 24.048 0 0 0-.392 3.314c1.668.546 3.416.914 5.223 1.082M19.08 6c.205 1.08.337 2.187.392 3.314a23.882 23.882 0 0 1-5.223 1.082" />
+                        </svg>
                       </button>
                     </div>
-                  </Show>
+                    <button
+                      type="button"
+                      onClick={() => setShowOracleText(prev => !prev)}
+                      class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer select-none transition-colors ${showOracleText() ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+                    >
+                      Oracle text
+                    </button>
+                  </div>
                   <Show when={totalCards() > 0} fallback={
                     <p class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
                       No cards found

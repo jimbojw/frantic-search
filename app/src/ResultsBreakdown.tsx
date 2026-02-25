@@ -23,12 +23,12 @@ const COLOR_BARS: BarDef[] = [
 const MV_LABELS = ['0', '1', '2', '3', '4', '5', '6', '7+']
 const MV_TERMS = ['mv=0', 'mv=1', 'mv=2', 'mv=3', 'mv=4', 'mv=5', 'mv=6', 'mv>=7']
 
-const MV_BAR_COLOR = '#60a5fa'    // blue-400
+export const MV_BAR_COLOR = '#60a5fa'    // blue-400
 
 const TYPE_LABELS = ['Lgn', 'Cre', 'Ins', 'Sor', 'Art', 'Enc', 'Plw', 'Lnd']
 const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:artifact', 't:enchantment', 't:planeswalker', 't:land']
 
-const TYPE_BAR_COLOR = '#34d399'  // emerald-400
+export const TYPE_BAR_COLOR = '#34d399'  // emerald-400
 
 function BarRow(props: {
   label: () => any
@@ -85,9 +85,8 @@ export default function ResultsBreakdown(props: {
   const typeMax = () => Math.max(...props.histograms.cardType)
 
   return (
-    <div class="grid grid-cols-3 gap-4 px-3 pb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+    <div class="grid grid-cols-3 gap-4 px-3 pb-2">
       <div>
-        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Mana Value</p>
         <For each={MV_LABELS}>
           {(label, i) => (
             <BarRow
@@ -102,7 +101,6 @@ export default function ResultsBreakdown(props: {
         </For>
       </div>
       <div>
-        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Color Identity</p>
         <For each={COLOR_BARS}>
           {(bar, i) => (
             <BarRow
@@ -117,7 +115,6 @@ export default function ResultsBreakdown(props: {
         </For>
       </div>
       <div>
-        <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mb-1">Card Type</p>
         <For each={TYPE_LABELS}>
           {(label, i) => (
             <BarRow
