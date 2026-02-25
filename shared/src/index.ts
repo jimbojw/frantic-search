@@ -14,7 +14,9 @@ export type { ColumnarData } from "./data";
 
 export type { ToWorker, FromWorker, DisplayColumns, BreakdownNode, Histograms } from "./worker-protocol";
 
-export type { QueryNodeResult, Span } from "./search/ast";
+export { TokenType } from "./search/ast";
+export type { Token, QueryNodeResult, Span } from "./search/ast";
+export { lex } from "./search/lexer";
 export { CardIndex } from "./search/card-index";
 export { NodeCache, nodeKey } from "./search/evaluator";
 export { parse } from "./search/parser";

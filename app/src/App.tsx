@@ -9,6 +9,7 @@ import InlineBreakdown from './InlineBreakdown'
 import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdown'
 import SparkBars from './SparkBars'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
+import { sealQuery } from './query-edit'
 import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
@@ -368,8 +369,9 @@ function App() {
     setQuery(q => {
       const trimmed = q.trim()
       if (!trimmed) return term
+      const sealed = sealQuery(trimmed)
       const needsParens = breakdown()?.type === 'OR'
-      return needsParens ? `(${trimmed}) ${term}` : `${trimmed} ${term}`
+      return needsParens ? `(${sealed}) ${term}` : `${sealed} ${term}`
     })
   }
 

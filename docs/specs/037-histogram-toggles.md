@@ -226,9 +226,9 @@ Exact visual treatment is left to implementation. The key requirement is that th
 |---|---|
 | `app/src/ResultsBreakdown.tsx` | Replace `onAppendQuery` with `onSetQuery`; accept `breakdown` and `query` props; implement toggle logic per histogram type; add visual active state |
 | `app/src/App.tsx` | Pass `breakdown()`, `query()`, and a `setQuery`-based callback to `ResultsBreakdown` instead of `appendQuery` |
-| `app/src/query-edit.ts` (new) | `findFieldNode`, `spliceQuery`, and helper functions shared between `ResultsBreakdown` and future TERMS drawer controls |
+| `app/src/query-edit.ts` (new) | `sealQuery`, `findFieldNode`, `spliceQuery`, and helper functions shared between `ResultsBreakdown` and future TERMS drawer controls |
 
-The `query-edit.ts` module contains the search and splice logic that will also be used by the color identity checkboxes (future spec) in the TERMS drawer. Extracting it now avoids duplication later.
+The `query-edit.ts` module contains the search, splice, and query-preparation logic that will also be used by the color identity checkboxes (future spec) in the TERMS drawer. Extracting it now avoids duplication later.
 
 ## Test Strategy
 
@@ -328,9 +328,23 @@ If a `ci:` node's value reaches `wubrg` (all five colors), it means "identity is
 
 Removing the only term in a query produces an empty string. This clears the search and returns the user to the landing state, which is consistent with the existing behavior when removing the last term via the breakdown × button (Spec 023).
 
+### Unclosed delimiters before append
+
+The query may contain unclosed syntactic constructs — an unclosed quote (`name:"ang`), unclosed regex (`name:/ang`), or unclosed parenthesis (`(t:creature`). Naively appending a term produces broken results: `name:/ang ci>=w` puts `ci>=w` inside the regex, because the lexer consumes to EOF when it cannot find a closing delimiter.
+
+Before any append operation, unclosed delimiters must be closed. The `sealQuery` function in `query-edit.ts` handles this:
+
+1. Lex the query.
+2. Inspect the last non-EOF token. If it is QUOTED and the source text (`query.slice(token.start, token.end)`) does not end with the matching quote character, append the closing quote. Same for REGEX and `/`.
+3. Count `LPAREN − RPAREN` across all tokens. Append that many `)`.
+
+The function closes inner delimiters first (quote/regex), then outer ones (parens). For example, `f:commander (t:enchantment OR name:"ang` → `f:commander (t:enchantment OR name:"ang")`.
+
+This applies to both the existing `appendQuery` in `App.tsx` and the toggle-on append path in `ResultsBreakdown`.
+
 ### Appending to an OR-rooted query
 
-When appending a new term and the current query's breakdown root is an OR node, the existing `appendQuery` wraps the current query in parentheses: `(existing) newterm`. The same logic applies here when a toggle-on requires appending.
+When appending a new term and the current query's breakdown root is an OR node, the existing `appendQuery` wraps the current query in parentheses: `(existing) newterm`. The same logic applies here when a toggle-on requires appending. The query is sealed before wrapping.
 
 ## Out of Scope
 
