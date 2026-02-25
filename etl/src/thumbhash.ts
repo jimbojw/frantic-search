@@ -101,7 +101,7 @@ function artCropUrl(id: string): string {
 }
 
 function cardImageUrl(id: string): string {
-  return `https://cards.scryfall.io/normal/front/${id[0]}/${id[1]}/${id}.jpg`;
+  return `https://cards.scryfall.io/small/front/${id[0]}/${id[1]}/${id}.jpg`;
 }
 
 async function downloadAndHash(url: string): Promise<string> {
