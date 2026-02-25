@@ -294,7 +294,7 @@ The parser must handle incomplete input gracefully, since it runs on every keyst
 - **Trailing operator:** `c:` (no value yet) → parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter).
 - **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
 - **Empty operand:** When `parseAndGroup` finds no term-starting tokens, it produces a `NopNode` instead of an empty AND. This arises from trailing `OR` (`a OR`), leading `OR` (`OR a`), double `OR` (`a OR OR b`), empty parentheses (`()`), and empty input.
-- **Unknown field:** `x:foo` → parse normally. The evaluator treats unrecognized fields as matching zero cards.
+- **Unknown field:** `x:foo` → parse normally. The evaluator detects the unknown field and marks the node as an error (Spec 039). Error nodes are skipped in AND/OR reduction, preventing a single malformed term from zeroing out sibling results.
 
 The parser should never throw on user input. Malformed input produces a best-effort AST.
 
@@ -423,9 +423,9 @@ test("trailing operator", () => {
   Type matching is now pure substring search (case-insensitive), which correctly
   handles partial words (`t:legend`), multi-word matches (`t:"legendary creature"`),
   and cross-category queries. Removed `CardType`, `Supertype`, and their lookup
-  tables from `bits.ts` as dead code. Implemented `REGEX_FIELD` evaluation for
+  tables from `bits.ts` as dead code.   Implemented `REGEX_FIELD` evaluation for
   string fields (`name`, `oracle`, `type`) using `RegExp.test()` with case-insensitive
-  matching. Invalid regex patterns gracefully match zero cards.
+  matching. Invalid regex patterns are flagged as errors (Spec 039).
 - 2026-02-20: Switched from card-per-row to face-per-row data model (ADR-012).
   Multi-face cards (transform, modal_dfc, adventure, split, flip) now emit one
   row per face. This fixes missing data for ~500 DFCs whose `oracle_text`,
