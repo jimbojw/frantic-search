@@ -532,7 +532,7 @@ export function toggleSimple(
 
 const CI_OPS = ['>=', ':', '=']
 
-function isCILabel(label: string): boolean {
+export function isCILabel(label: string): boolean {
   const raw = label.startsWith('-') ? label.slice(1) : label
   const lower = raw.toLowerCase()
   for (const f of CI_FIELDS) {

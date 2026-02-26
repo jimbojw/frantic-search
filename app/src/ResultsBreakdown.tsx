@@ -11,6 +11,7 @@ import {
   colorlessX,
   toggleSimple,
   clearColorIdentity,
+  isCILabel,
 } from './query-edit'
 
 export const MV_BAR_COLOR = '#60a5fa'    // blue-400
@@ -190,14 +191,12 @@ export default function ResultsBreakdown(props: {
     return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, 'm')
   }
 
-  const anyCIActive = createMemo(() => {
-    if (ciEqNode() || ciColonNode() || ciGteNode()) return true
-    if (!props.breakdown) return false
-    if (findFieldNode(props.breakdown, CI_FIELDS, '=', false, v => v.toLowerCase() === 'c')) return true
-    if (findFieldNode(props.breakdown, CI_FIELDS, '=', true, v => v.toLowerCase() === 'c')) return true
-    if (findFieldNode(props.breakdown, CI_FIELDS, ':', false, v => v === 'm')) return true
-    if (findFieldNode(props.breakdown, CI_FIELDS, ':', true, v => v === 'm')) return true
-    return false
+  const ciTermLabels = createMemo((): string[] => {
+    const bd = props.breakdown
+    if (!bd) return []
+    if (isCILabel(bd.label)) return [bd.label]
+    if (!bd.children) return []
+    return bd.children.filter(c => isCILabel(c.label)).map(c => c.label)
   })
 
   function colorExcludeActive(bar: ColorBarDef): boolean {
@@ -254,14 +253,14 @@ export default function ResultsBreakdown(props: {
             />
           )}
         </For>
-        <Show when={anyCIActive()}>
+        <Show when={ciTermLabels().length > 0}>
           <div class="flex items-center h-6">
             <button
               type="button"
               onClick={() => props.onSetQuery(clearColorIdentity(props.query, props.breakdown))}
-              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
             >
-              Clear
+              Clear (<code class="font-mono">{ciTermLabels().join(' ')}</code>)
             </button>
           </div>
         </Show>
