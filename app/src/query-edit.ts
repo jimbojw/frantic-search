@@ -183,7 +183,8 @@ const CI_FIELDS = ['ci', 'identity', 'id', 'commander', 'cmd']
 const WUBRG_VALUE_RE = /^[wubrg]+$/i
 
 // ---------------------------------------------------------------------------
-// Toggle: Color Identity drill (shared ci>= node)
+// Toggle: Color Identity drill (shared ci>= node) — LEGACY, kept for
+// existing call sites until migration is complete.
 // ---------------------------------------------------------------------------
 
 export function toggleColorDrill(
@@ -219,7 +220,261 @@ export function toggleColorDrill(
 }
 
 // ---------------------------------------------------------------------------
+// Operator splice helper
+// ---------------------------------------------------------------------------
+
+function spliceOpAndValue(
+  query: string,
+  node: BreakdownNode,
+  currentOp: string,
+  newOp: string,
+  newValue: string,
+): string {
+  const opStart = node.valueSpan!.start - currentOp.length
+  return spliceQuery(query, { start: opStart, end: node.valueSpan!.end }, newOp + newValue)
+}
+
+// ---------------------------------------------------------------------------
+// Graduated: Color Identity bar ("more of this color")  — Spec 043
+// ---------------------------------------------------------------------------
+
+export function graduatedColorBar(
+  query: string,
+  breakdown: BreakdownNode | null,
+  color: string,
+): string {
+  const colorBit = COLOR_BIT[color.toLowerCase()]
+  if (!colorBit) return query
+  const c = color.toLowerCase()
+
+  const eqNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '=', false) : null
+  if (eqNode) {
+    const val = extractValue(eqNode.label, '=')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) return query
+    const newMask = mask | colorBit
+    return spliceOpAndValue(query, eqNode, '=', ':', serializeColors(newMask))
+  }
+
+  const colonNode = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_VALUE_RE.test(v))
+    : null
+  if (colonNode) {
+    const val = extractValue(colonNode.label, ':')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) {
+      return spliceOpAndValue(query, colonNode, ':', '=', val)
+    }
+    const newMask = mask | colorBit
+    return spliceQuery(query, colonNode.valueSpan!, serializeColors(newMask))
+  }
+
+  const gteNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '>=', false) : null
+  if (gteNode) {
+    const val = extractValue(gteNode.label, '>=')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) {
+      return spliceOpAndValue(query, gteNode, '>=', ':', val)
+    }
+    const newMask = mask | colorBit
+    return spliceQuery(query, gteNode.valueSpan!, serializeColors(newMask))
+  }
+
+  return appendTerm(query, `ci>=${c}`, breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Graduated: Color Identity × ("less of this color")  — Spec 043
+// ---------------------------------------------------------------------------
+
+export function graduatedColorX(
+  query: string,
+  breakdown: BreakdownNode | null,
+  color: string,
+): string {
+  const colorBit = COLOR_BIT[color.toLowerCase()]
+  if (!colorBit) return query
+
+  // 1. ci= node
+  const eqNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '=', false) : null
+  if (eqNode) {
+    const val = extractValue(eqNode.label, '=')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) {
+      return spliceOpAndValue(query, eqNode, '=', ':', val)
+    }
+    return query
+  }
+
+  // 2. ci: WUBRG node
+  const colonNode = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_VALUE_RE.test(v))
+    : null
+  if (colonNode) {
+    const val = extractValue(colonNode.label, ':')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) {
+      const newMask = mask & ~colorBit
+      if (newMask === 0) {
+        // Single-color: downgrade operator to >=
+        return spliceOpAndValue(query, colonNode, ':', '>=', val)
+      }
+      // Multi-color: remove C from allowed set
+      return spliceQuery(query, colonNode.valueSpan!, serializeColors(newMask))
+    }
+    return query
+  }
+
+  // 3. ci>= node
+  const gteNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '>=', false) : null
+  if (gteNode) {
+    const val = extractValue(gteNode.label, '>=')
+    const mask = parseColorMask(val)
+    if (mask & colorBit) {
+      const newMask = mask & ~colorBit
+      if (newMask === 0) {
+        return removeNode(query, gteNode, breakdown!)
+      }
+      return spliceQuery(query, gteNode.valueSpan!, serializeColors(newMask))
+    }
+    // C not in ci>= — upgrade to ci: to exclude absent colors (including C)
+    return spliceOpAndValue(query, gteNode, '>=', ':', val)
+  }
+
+  // 4. No CI node at all — append exclusion term
+  const newMask = ALL_FIVE & ~colorBit
+  return appendTerm(query, `ci:${serializeColors(newMask)}`, breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Graduated: Colorless bar / × — Spec 043
+// ---------------------------------------------------------------------------
+
+export function colorlessBar(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  // 1. ci=c already present → no change
+  const eqC = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, '=', false, v => v.toLowerCase() === 'c')
+    : null
+  if (eqC) return query
+
+  // 2. -ci=c present → remove it (un-exclude)
+  const negEqC = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, '=', true, v => v.toLowerCase() === 'c')
+    : null
+  if (negEqC) return removeNode(query, negEqC, breakdown!)
+
+  // 3. ci>= exists → downgrade to ci: (includes colorless via subset semantics)
+  const gteNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '>=', false) : null
+  if (gteNode) {
+    const val = extractValue(gteNode.label, '>=')
+    return spliceOpAndValue(query, gteNode, '>=', ':', val)
+  }
+
+  // 4. ci= WUBRG exists → downgrade to ci: (relax to include colorless)
+  const eqNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '=', false) : null
+  if (eqNode) {
+    const val = extractValue(eqNode.label, '=')
+    return spliceOpAndValue(query, eqNode, '=', ':', val)
+  }
+
+  // 5. ci: WUBRG exists → colorless already included, so "more colorless" means
+  //    narrow to exclusively colorless: splice to ci=c.
+  const colonNode = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_VALUE_RE.test(v))
+    : null
+  if (colonNode) return spliceOpAndValue(query, colonNode, ':', '=', 'c')
+
+  // 6. No relevant node → append ci=c
+  return appendTerm(query, 'ci=c', breakdown)
+}
+
+export function colorlessX(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  // 1. ci=c exists → remove it
+  const eqC = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, '=', false, v => v.toLowerCase() === 'c')
+    : null
+  if (eqC) return removeNode(query, eqC, breakdown!)
+
+  // 2. -ci=c already present → no change
+  const negEqC = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, '=', true, v => v.toLowerCase() === 'c')
+    : null
+  if (negEqC) return query
+
+  // 3. ci= WUBRG exists → colorless implicitly excluded, no change
+  const eqNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '=', false) : null
+  if (eqNode) return query
+
+  // 4. ci: WUBRG exists → upgrade to ci= to exclude colorless
+  const colonNode = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => WUBRG_VALUE_RE.test(v))
+    : null
+  if (colonNode) {
+    const val = extractValue(colonNode.label, ':')
+    return spliceOpAndValue(query, colonNode, ':', '=', val)
+  }
+
+  // 5. ci>= exists → colorless implicitly excluded, no change
+  const gteNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '>=', false) : null
+  if (gteNode) return query
+
+  // 6. No relevant node → append -ci=c
+  return appendTerm(query, '-ci=c', breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Graduated: Multicolor bar / × — Spec 043
+// ---------------------------------------------------------------------------
+
+export function multicolorBar(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  // 1. ci:m already present → no change (already at max)
+  const pos = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => v.toLowerCase() === 'm')
+    : null
+  if (pos) return query
+
+  // 2. -ci:m present → remove it (un-exclude)
+  const neg = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', true, v => v.toLowerCase() === 'm')
+    : null
+  if (neg) return removeNode(query, neg, breakdown!)
+
+  // 3. Neither → append ci:m
+  return appendTerm(query, 'ci:m', breakdown)
+}
+
+export function multicolorX(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  // 1. -ci:m already present → no change (already excluding)
+  const neg = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', true, v => v.toLowerCase() === 'm')
+    : null
+  if (neg) return query
+
+  // 2. ci:m present → remove it (less multicolor)
+  const pos = breakdown
+    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => v.toLowerCase() === 'm')
+    : null
+  if (pos) return removeNode(query, pos, breakdown!)
+
+  // 3. Neither → append -ci:m
+  return appendTerm(query, '-ci:m', breakdown)
+}
+
+// ---------------------------------------------------------------------------
 // Toggle: Color Identity exclude (shared ci: node, WUBRG subset)
+// — LEGACY, kept for existing call sites until migration is complete.
 // ---------------------------------------------------------------------------
 
 export function toggleColorExclude(

@@ -364,3 +364,8 @@ When appending a new term and the current query's breakdown root is an OR node, 
 8. All toggles are reversible — two clicks on the same control returns the query to its previous state.
 9. In-place edits preserve surrounding query text byte-for-byte (verified via source spans).
 10. `findFieldNode` and `spliceQuery` are extracted into a shared module (`query-edit.ts`) for reuse by future TERMS drawer controls.
+
+## Implementation Notes
+
+- 2026-02-25: The WUBRG color identity (bar and ×) and colorless sections of this spec are superseded by Spec 043 (Graduated Color Identity Interaction), which replaces the binary toggle model with a graduated "more / less" progression through `ci>=` → `ci:` → `ci=` levels. The mana value and card type sections remain authoritative. The shared infrastructure (`findFieldNode`, `spliceQuery`, `removeNode`, `sealQuery`) is unchanged.
+- 2026-02-26: The multicolor section is also superseded by Spec 043. Multicolor bar/× now follow "more / less" semantics (idempotent when already active, cross-removal of the opposite node) instead of the binary toggle model.

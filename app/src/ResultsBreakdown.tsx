@@ -5,8 +5,12 @@ import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './co
 import {
   findFieldNode,
   extractValue,
-  toggleColorDrill,
-  toggleColorExclude,
+  graduatedColorBar,
+  graduatedColorX,
+  colorlessBar,
+  colorlessX,
+  multicolorBar,
+  multicolorX,
   toggleSimple,
 } from './query-edit'
 
@@ -134,54 +138,70 @@ export default function ResultsBreakdown(props: {
   const mvMax = () => Math.max(...props.histograms.manaValue)
   const typeMax = () => Math.max(...props.histograms.cardType)
 
-  // Memoize the CI drill node to avoid repeated DFS for each WUBRG bar
-  const ciDrillNode = createMemo(() =>
-    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '>=', false) : null
+  // Memoize CI node lookups across all three operator types (Spec 043)
+  const ciEqNode = createMemo(() =>
+    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '=', false) : null
   )
-  const ciExcludeNode = createMemo(() =>
+  const ciColonNode = createMemo(() =>
     props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, ':', false, v => WUBRG_RE.test(v)) : null
+  )
+  const ciGteNode = createMemo(() =>
+    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '>=', false) : null
   )
 
   function handleColorDrill(bar: ColorBarDef) {
     if (bar.kind === 'wubrg') {
-      props.onSetQuery(toggleColorDrill(props.query, props.breakdown, bar.color))
+      props.onSetQuery(graduatedColorBar(props.query, props.breakdown, bar.color))
+    } else if (bar.kind === 'colorless') {
+      props.onSetQuery(colorlessBar(props.query, props.breakdown))
     } else {
-      const value = bar.kind === 'colorless' ? 'c' : 'm'
-      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
-        field: CI_FIELDS, operator: ':', negated: false, value, appendTerm: `ci:${value}`,
-      }))
+      props.onSetQuery(multicolorBar(props.query, props.breakdown))
     }
   }
 
   function handleColorExclude(bar: ColorBarDef) {
     if (bar.kind === 'wubrg') {
-      props.onSetQuery(toggleColorExclude(props.query, props.breakdown, bar.color))
+      props.onSetQuery(graduatedColorX(props.query, props.breakdown, bar.color))
+    } else if (bar.kind === 'colorless') {
+      props.onSetQuery(colorlessX(props.query, props.breakdown))
     } else {
-      const value = bar.kind === 'colorless' ? 'c' : 'm'
-      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
-        field: CI_FIELDS, operator: ':', negated: true, value, appendTerm: `-ci:${value}`,
-      }))
+      props.onSetQuery(multicolorX(props.query, props.breakdown))
     }
   }
 
   function colorDrillActive(bar: ColorBarDef): boolean {
     if (bar.kind === 'wubrg') {
-      const node = ciDrillNode()
-      if (!node) return false
-      return extractValue(node.label, '>=').toLowerCase().includes(bar.color)
+      const c = bar.color
+      const eq = ciEqNode()
+      if (eq && extractValue(eq.label, '=').toLowerCase().includes(c)) return true
+      const colon = ciColonNode()
+      if (colon && extractValue(colon.label, ':').toLowerCase().includes(c)) return true
+      const gte = ciGteNode()
+      if (gte && extractValue(gte.label, '>=').toLowerCase().includes(c)) return true
+      return false
     }
-    const value = bar.kind === 'colorless' ? 'c' : 'm'
-    return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, value)
+    if (bar.kind === 'colorless') {
+      if (isSimpleActive(props.breakdown, CI_FIELDS, '=', false, 'c')) return true
+      return ciColonNode() !== null
+    }
+    return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, 'm')
   }
 
   function colorExcludeActive(bar: ColorBarDef): boolean {
     if (bar.kind === 'wubrg') {
-      const node = ciExcludeNode()
-      if (!node) return false
-      return !extractValue(node.label, ':').toLowerCase().includes(bar.color)
+      const c = bar.color
+      const eq = ciEqNode()
+      if (eq && !extractValue(eq.label, '=').toLowerCase().includes(c)) return true
+      const colon = ciColonNode()
+      if (colon && !extractValue(colon.label, ':').toLowerCase().includes(c)) return true
+      return false
     }
-    const value = bar.kind === 'colorless' ? 'c' : 'm'
-    return isSimpleActive(props.breakdown, CI_FIELDS, ':', true, value)
+    if (bar.kind === 'colorless') {
+      if (isSimpleActive(props.breakdown, CI_FIELDS, '=', true, 'c')) return true
+      if (ciEqNode()) return true
+      return ciGteNode() !== null
+    }
+    return isSimpleActive(props.breakdown, CI_FIELDS, ':', true, 'm')
   }
 
   return (

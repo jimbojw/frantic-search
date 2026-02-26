@@ -11,6 +11,12 @@ import {
   toggleColorDrill,
   toggleColorExclude,
   toggleSimple,
+  graduatedColorBar,
+  graduatedColorX,
+  colorlessBar,
+  colorlessX,
+  multicolorBar,
+  multicolorX,
 } from './query-edit'
 
 // ---------------------------------------------------------------------------
@@ -422,31 +428,52 @@ describe('toggleSimple — colorless', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Toggle: Multicolor (simple toggles)
+// Graduated: Multicolor bar
 // ---------------------------------------------------------------------------
 
-describe('toggleSimple — multicolor', () => {
-  const drill = (q: string, bd: BreakdownNode | null) =>
-    toggleSimple(q, bd, { field: CI_FIELDS, operator: ':', negated: false, value: 'm', appendTerm: 'ci:m' })
-  const exclude = (q: string, bd: BreakdownNode | null) =>
-    toggleSimple(q, bd, { field: CI_FIELDS, operator: ':', negated: true, value: 'm', appendTerm: '-ci:m' })
-
+describe('multicolorBar', () => {
   it('appends ci:m to empty query', () => {
-    expect(drill('', null)).toBe('ci:m')
+    expect(multicolorBar('', null)).toBe('ci:m')
   })
 
-  it('removes ci:m (toggle off)', () => {
+  it('no change when ci:m already exists', () => {
     const q = 'ci:m'
-    expect(drill(q, buildBreakdown(q))).toBe('')
+    expect(multicolorBar(q, buildBreakdown(q))).toBe('ci:m')
   })
 
-  it('appends -ci:m to empty query', () => {
-    expect(exclude('', null)).toBe('-ci:m')
-  })
-
-  it('removes -ci:m (toggle off)', () => {
+  it('removes -ci:m (un-exclude)', () => {
     const q = '-ci:m'
-    expect(exclude(q, buildBreakdown(q))).toBe('')
+    expect(multicolorBar(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('appends ci:m preserving other terms', () => {
+    const q = 'ci>=r t:creature'
+    expect(multicolorBar(q, buildBreakdown(q))).toBe('ci>=r t:creature ci:m')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Graduated: Multicolor ×
+// ---------------------------------------------------------------------------
+
+describe('multicolorX', () => {
+  it('appends -ci:m to empty query', () => {
+    expect(multicolorX('', null)).toBe('-ci:m')
+  })
+
+  it('no change when -ci:m already exists', () => {
+    const q = '-ci:m'
+    expect(multicolorX(q, buildBreakdown(q))).toBe('-ci:m')
+  })
+
+  it('removes ci:m (less multicolor)', () => {
+    const q = 'ci:m'
+    expect(multicolorX(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('removes ci:m preserving other terms', () => {
+    const q = 't:creature ci:m'
+    expect(multicolorX(q, buildBreakdown(q))).toBe('t:creature')
   })
 })
 
@@ -545,7 +572,7 @@ describe('toggleSimple — card type', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Splice correctness — surrounding text preservation
+// Splice correctness — surrounding text preservation (legacy)
 // ---------------------------------------------------------------------------
 
 describe('splice correctness', () => {
@@ -559,5 +586,268 @@ describe('splice correctness', () => {
     const q = 'f:edh ci>=ur t:creature'
     const result = toggleColorDrill(q, buildBreakdown(q), 'r')
     expect(result).toBe('f:edh ci>=u t:creature')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Graduated: Color Identity bar ("more of this color")
+// ---------------------------------------------------------------------------
+
+describe('graduatedColorBar', () => {
+  // Single-color progression
+  it('appends ci>=C to empty query', () => {
+    expect(graduatedColorBar('', null, 'r')).toBe('ci>=r')
+  })
+
+  it('upgrades ci>= to ci: when color already in node', () => {
+    const q = 'ci>=r'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci:r')
+  })
+
+  it('upgrades ci: to ci= when color already in node', () => {
+    const q = 'ci:r'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci=r')
+  })
+
+  it('no change when color already at ci= (max)', () => {
+    const q = 'ci=r'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci=r')
+  })
+
+  // Cross-color: adding to existing node
+  it('adds color to existing ci>= node', () => {
+    const q = 'ci>=w'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci>=wr')
+  })
+
+  it('adds color to existing ci: WUBRG node', () => {
+    const q = 'ci:w'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci:wr')
+  })
+
+  it('downgrades ci= to ci: and adds new color', () => {
+    const q = 'ci=w'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci:wr')
+  })
+
+  // Multi-color same-node upgrade (whole-node)
+  it('upgrades whole ci>= node to ci: when color in multi-color node', () => {
+    const q = 'ci>=wr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci:wr')
+  })
+
+  it('upgrades whole ci: node to ci= when color in multi-color node', () => {
+    const q = 'ci:wr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('ci=wr')
+  })
+
+  // Splice correctness with surrounding terms
+  it('upgrades ci>= to ci: preserving surrounding terms', () => {
+    const q = 'f:edh ci>=r t:creature'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('f:edh ci:r t:creature')
+  })
+
+  it('upgrades ci: to ci= preserving surrounding terms', () => {
+    const q = 'f:edh ci:r t:creature'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('f:edh ci=r t:creature')
+  })
+
+  it('downgrades ci= and adds color preserving surrounding terms', () => {
+    const q = 'f:edh ci=w t:creature'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('f:edh ci:wr t:creature')
+  })
+
+  it('adds color to ci>= preserving surrounding terms', () => {
+    const q = 'f:edh ci>=wr t:creature'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('f:edh ci:wr t:creature')
+  })
+
+  // Alias preservation
+  it('preserves user-typed field alias on upgrade', () => {
+    const q = 'identity>=r'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'r')).toBe('identity:r')
+  })
+
+  // WUBRG canonicalization for value additions
+  it('canonicalizes added colors to WUBRG order', () => {
+    const q = 'ci>=r'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'w')).toBe('ci>=wr')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Graduated: Color Identity × ("less of this color")
+// ---------------------------------------------------------------------------
+
+describe('graduatedColorX', () => {
+  // Single-color regression
+  it('downgrades ci= to ci: when color in node', () => {
+    const q = 'ci=r'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:r')
+  })
+
+  it('downgrades ci: to ci>= when color in node', () => {
+    const q = 'ci:r'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=r')
+  })
+
+  it('removes ci>= node when single-color', () => {
+    const q = 'ci>=r'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('')
+  })
+
+  it('appends exclusion when no CI node exists', () => {
+    expect(graduatedColorX('', null, 'r')).toBe('ci:wubg')
+  })
+
+  it('no change when color already excluded by ci: WUBRG', () => {
+    const q = 'ci:wubg'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:wubg')
+  })
+
+  it('no change when color excluded by ci=', () => {
+    const q = 'ci=w'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci=w')
+  })
+
+  // Multi-color same-node downgrade (whole-node)
+  it('downgrades whole ci= node to ci: for multi-color', () => {
+    const q = 'ci=wr'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:wr')
+  })
+
+  it('removes color from ci: multi-color node', () => {
+    const q = 'ci:wr'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:w')
+  })
+
+  it('removes color from ci>= multi-color node', () => {
+    const q = 'ci>=wr'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=w')
+  })
+
+  it('removes color from ci: with four colors', () => {
+    const q = 'ci:wurg'
+    expect(graduatedColorX(q, buildBreakdown(q), 'g')).toBe('ci:wur')
+  })
+
+  // Cross-color × interactions
+  it('upgrades ci>= to ci: when color not in node (excludes absent colors)', () => {
+    const q = 'ci>=w'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:w')
+  })
+
+  it('no change when ci:w excludes the color', () => {
+    const q = 'ci:w'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:w')
+  })
+
+  // Splice correctness
+  it('downgrades ci= to ci: preserving surrounding terms', () => {
+    const q = 'f:edh ci=r t:creature'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('f:edh ci:r t:creature')
+  })
+
+  it('removes color from ci>= preserving surrounding terms', () => {
+    const q = 'f:edh ci>=wr t:creature'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('f:edh ci>=w t:creature')
+  })
+
+  // Alias preservation
+  it('preserves user-typed field alias on downgrade', () => {
+    const q = 'identity=r'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('identity:r')
+  })
+
+  // Multi-node scenario
+  it('appends exclusion alongside existing ci>= when color not present', () => {
+    const q = 'ci>=w ci:wubg'
+    // R is already excluded by ci:wubg — no change
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=w ci:wubg')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Graduated: Colorless bar
+// ---------------------------------------------------------------------------
+
+describe('colorlessBar', () => {
+  it('appends ci=c to empty query', () => {
+    expect(colorlessBar('', null)).toBe('ci=c')
+  })
+
+  it('no change when ci=c already exists', () => {
+    const q = 'ci=c'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('ci=c')
+  })
+
+  it('removes -ci=c (un-exclude)', () => {
+    const q = '-ci=c'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('downgrades ci>= to ci: (includes colorless)', () => {
+    const q = 'ci>=w'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('ci:w')
+  })
+
+  it('downgrades ci= WUBRG to ci:', () => {
+    const q = 'ci=w'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('ci:w')
+  })
+
+  it('narrows ci: WUBRG to ci=c (more colorless)', () => {
+    const q = 'ci:w'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('ci=c')
+  })
+
+  it('narrows multi-color ci: to ci=c', () => {
+    const q = 'ci:ur'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('ci=c')
+  })
+
+  it('downgrades ci>= preserving other terms', () => {
+    const q = 't:creature ci>=w'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('t:creature ci:w')
+  })
+
+  it('narrows ci: to ci=c preserving other terms', () => {
+    const q = 'f:edh ci:ur t:creature'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('f:edh ci=c t:creature')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Graduated: Colorless ×
+// ---------------------------------------------------------------------------
+
+describe('colorlessX', () => {
+  it('appends -ci=c to empty query', () => {
+    expect(colorlessX('', null)).toBe('-ci=c')
+  })
+
+  it('no change when -ci=c already exists', () => {
+    const q = '-ci=c'
+    expect(colorlessX(q, buildBreakdown(q))).toBe('-ci=c')
+  })
+
+  it('removes ci=c', () => {
+    const q = 'ci=c'
+    expect(colorlessX(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('no change when ci>= exists (colorless implicitly excluded)', () => {
+    const q = 'ci>=w'
+    expect(colorlessX(q, buildBreakdown(q))).toBe('ci>=w')
+  })
+
+  it('no change when ci= WUBRG exists (colorless implicitly excluded)', () => {
+    const q = 'ci=w'
+    expect(colorlessX(q, buildBreakdown(q))).toBe('ci=w')
+  })
+
+  it('upgrades ci: WUBRG to ci= to exclude colorless', () => {
+    const q = 'ci:w'
+    expect(colorlessX(q, buildBreakdown(q))).toBe('ci=w')
   })
 })
