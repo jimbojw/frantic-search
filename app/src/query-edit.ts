@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { BreakdownNode } from '@frantic-search/shared'
-import { lex, TokenType } from '@frantic-search/shared'
+import type { ASTNode, BreakdownNode } from '@frantic-search/shared'
+import { lex, parse, TokenType } from '@frantic-search/shared'
 
 /**
  * Close any unclosed syntactic constructs (quotes, regex, parentheses) so that
@@ -61,6 +61,74 @@ export function extractValue(label: string, operator: string): string {
   const opIdx = raw.indexOf(operator)
   return opIdx >= 0 ? raw.slice(opIdx + operator.length) : ''
 }
+
+// ---------------------------------------------------------------------------
+// Synchronous breakdown from query string (no worker needed)
+// ---------------------------------------------------------------------------
+
+function nodeLabel(node: ASTNode): string {
+  switch (node.type) {
+    case 'FIELD': return `${node.field}${node.operator}${node.value}`
+    case 'BARE': return node.value
+    case 'EXACT': return `!"${node.value}"`
+    case 'REGEX_FIELD': return `${node.field}${node.operator}/${node.pattern}/`
+    case 'NOP': return '(no-op)'
+    case 'NOT': return 'NOT'
+    case 'AND': return 'AND'
+    case 'OR': return 'OR'
+  }
+}
+
+function isNotLeaf(node: ASTNode): boolean {
+  if (node.type !== 'NOT') return false
+  const child = node.child
+  return child.type !== 'AND' && child.type !== 'OR' && child.type !== 'NOT'
+}
+
+function astToBreakdown(node: ASTNode): BreakdownNode {
+  if (isNotLeaf(node)) {
+    const child = (node as { type: 'NOT'; child: ASTNode }).child
+    const bd: BreakdownNode = {
+      type: 'NOT',
+      label: `-${nodeLabel(child)}`,
+      matchCount: 0,
+    }
+    if (node.span) bd.span = node.span
+    return bd
+  }
+
+  const bd: BreakdownNode = {
+    type: node.type,
+    label: nodeLabel(node),
+    matchCount: 0,
+  }
+  if (node.span) bd.span = node.span
+  if (node.type === 'FIELD' && node.valueSpan) bd.valueSpan = node.valueSpan
+
+  if (node.type === 'AND' || node.type === 'OR') {
+    bd.children = node.children.map(astToBreakdown)
+  } else if (node.type === 'NOT') {
+    bd.children = [astToBreakdown(node.child)]
+  }
+
+  return bd
+}
+
+/**
+ * Parse a query string and build a BreakdownNode tree synchronously.
+ * Unlike the worker's breakdown, this has no match counts — but spans are
+ * guaranteed to correspond to the given query string, avoiding stale-span bugs
+ * when the query signal updates faster than the worker can respond.
+ */
+export function parseBreakdown(query: string): BreakdownNode | null {
+  const trimmed = query.trim()
+  if (!trimmed) return null
+  return astToBreakdown(parse(trimmed))
+}
+
+// ---------------------------------------------------------------------------
+// Node search
+// ---------------------------------------------------------------------------
 
 /**
  * DFS search for a matching FIELD node in the breakdown tree.

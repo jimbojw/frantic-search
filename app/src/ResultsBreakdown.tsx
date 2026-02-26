@@ -12,6 +12,7 @@ import {
   toggleSimple,
   clearColorIdentity,
   isCILabel,
+  parseBreakdown,
 } from './query-edit'
 
 export const MV_BAR_COLOR = '#60a5fa'    // blue-400
@@ -130,7 +131,6 @@ function BarRow(props: {
 
 export default function ResultsBreakdown(props: {
   histograms: Histograms
-  breakdown: BreakdownNode | null
   query: string
   onSetQuery: (query: string) => void
 }) {
@@ -138,24 +138,31 @@ export default function ResultsBreakdown(props: {
   const mvMax = () => Math.max(...props.histograms.manaValue)
   const typeMax = () => Math.max(...props.histograms.cardType)
 
+  // Synchronous breakdown derived from the query string. Spans always match
+  // the current query, unlike the async worker breakdown which can lag behind.
+  const bd = createMemo(() => parseBreakdown(props.query))
+
   // Memoize CI node lookups across all three operator types (Spec 043)
-  const ciEqNode = createMemo(() =>
-    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '=', false) : null
-  )
-  const ciColonNode = createMemo(() =>
-    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, ':', false, v => WUBRG_RE.test(v)) : null
-  )
-  const ciGteNode = createMemo(() =>
-    props.breakdown ? findFieldNode(props.breakdown, CI_FIELDS, '>=', false) : null
-  )
+  const ciEqNode = createMemo(() => {
+    const b = bd()
+    return b ? findFieldNode(b, CI_FIELDS, '=', false) : null
+  })
+  const ciColonNode = createMemo(() => {
+    const b = bd()
+    return b ? findFieldNode(b, CI_FIELDS, ':', false, v => WUBRG_RE.test(v)) : null
+  })
+  const ciGteNode = createMemo(() => {
+    const b = bd()
+    return b ? findFieldNode(b, CI_FIELDS, '>=', false) : null
+  })
 
   function handleColorDrill(bar: ColorBarDef) {
     if (bar.kind === 'wubrg') {
-      props.onSetQuery(graduatedColorBar(props.query, props.breakdown, bar.color))
+      props.onSetQuery(graduatedColorBar(props.query, bd(), bar.color))
     } else if (bar.kind === 'colorless') {
-      props.onSetQuery(colorlessBar(props.query, props.breakdown))
+      props.onSetQuery(colorlessBar(props.query, bd()))
     } else {
-      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+      props.onSetQuery(toggleSimple(props.query, bd(), {
         field: CI_FIELDS, operator: ':', negated: false, value: 'm', appendTerm: 'ci:m',
       }))
     }
@@ -163,11 +170,11 @@ export default function ResultsBreakdown(props: {
 
   function handleColorExclude(bar: ColorBarDef) {
     if (bar.kind === 'wubrg') {
-      props.onSetQuery(graduatedColorX(props.query, props.breakdown, bar.color))
+      props.onSetQuery(graduatedColorX(props.query, bd(), bar.color))
     } else if (bar.kind === 'colorless') {
-      props.onSetQuery(colorlessX(props.query, props.breakdown))
+      props.onSetQuery(colorlessX(props.query, bd()))
     } else {
-      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+      props.onSetQuery(toggleSimple(props.query, bd(), {
         field: CI_FIELDS, operator: ':', negated: true, value: 'm', appendTerm: '-ci:m',
       }))
     }
@@ -185,18 +192,18 @@ export default function ResultsBreakdown(props: {
       return false
     }
     if (bar.kind === 'colorless') {
-      if (isSimpleActive(props.breakdown, CI_FIELDS, '=', false, 'c')) return true
+      if (isSimpleActive(bd(), CI_FIELDS, '=', false, 'c')) return true
       return ciColonNode() !== null
     }
-    return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, 'm')
+    return isSimpleActive(bd(), CI_FIELDS, ':', false, 'm')
   }
 
   const ciTermLabels = createMemo((): string[] => {
-    const bd = props.breakdown
-    if (!bd) return []
-    if (isCILabel(bd.label)) return [bd.label]
-    if (!bd.children) return []
-    return bd.children.filter(c => isCILabel(c.label)).map(c => c.label)
+    const b = bd()
+    if (!b) return []
+    if (isCILabel(b.label)) return [b.label]
+    if (!b.children) return []
+    return b.children.filter(c => isCILabel(c.label)).map(c => c.label)
   })
 
   function colorExcludeActive(bar: ColorBarDef): boolean {
@@ -209,11 +216,11 @@ export default function ResultsBreakdown(props: {
       return false
     }
     if (bar.kind === 'colorless') {
-      if (isSimpleActive(props.breakdown, CI_FIELDS, '=', true, 'c')) return true
+      if (isSimpleActive(bd(), CI_FIELDS, '=', true, 'c')) return true
       if (ciEqNode()) return true
       return ciGteNode() !== null
     }
-    return isSimpleActive(props.breakdown, CI_FIELDS, ':', true, 'm')
+    return isSimpleActive(bd(), CI_FIELDS, ':', true, 'm')
   }
 
   return (
@@ -226,12 +233,12 @@ export default function ResultsBreakdown(props: {
               count={props.histograms.manaValue[i()]}
               maxCount={mvMax()}
               background={MV_BAR_COLOR}
-              drillActive={isSimpleActive(props.breakdown, MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
-              excludeActive={isSimpleActive(props.breakdown, MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
-              onDrill={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+              drillActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
+              excludeActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
+              onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
                 field: MV_FIELDS, operator: MV_OPS[i()], negated: false, value: MV_VALUES[i()], appendTerm: MV_TERMS[i()],
               }))}
-              onExclude={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+              onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
                 field: MV_FIELDS, operator: MV_OPS[i()], negated: true, value: MV_VALUES[i()], appendTerm: '-' + MV_TERMS[i()],
               }))}
             />
@@ -257,7 +264,7 @@ export default function ResultsBreakdown(props: {
           <div class="flex items-center h-6">
             <button
               type="button"
-              onClick={() => props.onSetQuery(clearColorIdentity(props.query, props.breakdown))}
+              onClick={() => props.onSetQuery(clearColorIdentity(props.query, bd()))}
               class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
             >
               Clear (<code class="font-mono">{ciTermLabels().join(' ')}</code>)
@@ -273,12 +280,12 @@ export default function ResultsBreakdown(props: {
               count={props.histograms.cardType[i()]}
               maxCount={typeMax()}
               background={TYPE_BAR_COLOR}
-              drillActive={isSimpleActive(props.breakdown, TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
-              excludeActive={isSimpleActive(props.breakdown, TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
-              onDrill={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+              drillActive={isSimpleActive(bd(), TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
+              excludeActive={isSimpleActive(bd(), TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
+              onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
                 field: TYPE_FIELDS, operator: ':', negated: false, value: TYPE_VALUES[i()], appendTerm: TYPE_TERMS[i()],
               }))}
-              onExclude={() => props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+              onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
                 field: TYPE_FIELDS, operator: ':', negated: true, value: TYPE_VALUES[i()], appendTerm: '-' + TYPE_TERMS[i()],
               }))}
             />

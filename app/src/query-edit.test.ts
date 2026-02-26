@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
-import type { ASTNode, BreakdownNode } from '@frantic-search/shared'
-import { parse } from '@frantic-search/shared'
+import type { BreakdownNode } from '@frantic-search/shared'
 import {
   sealQuery,
   findFieldNode,
@@ -16,64 +15,11 @@ import {
   colorlessBar,
   colorlessX,
   clearColorIdentity,
+  parseBreakdown,
 } from './query-edit'
 
-// ---------------------------------------------------------------------------
-// Test helper: build a BreakdownNode tree from a query string using the real
-// parser. This mirrors the worker's toBreakdown but operates on ASTNode
-// directly (no evaluation needed). matchCount is always 0.
-// ---------------------------------------------------------------------------
-
-function nodeLabel(node: ASTNode): string {
-  switch (node.type) {
-    case 'FIELD': return `${node.field}${node.operator}${node.value}`
-    case 'BARE': return node.value
-    case 'EXACT': return `!"${node.value}"`
-    case 'REGEX_FIELD': return `${node.field}${node.operator}/${node.pattern}/`
-    case 'NOP': return '(no-op)'
-    case 'NOT': return 'NOT'
-    case 'AND': return 'AND'
-    case 'OR': return 'OR'
-  }
-}
-
-function isNotLeaf(node: ASTNode): boolean {
-  if (node.type !== 'NOT') return false
-  const child = node.child
-  return child.type !== 'AND' && child.type !== 'OR' && child.type !== 'NOT'
-}
-
-function astToBreakdown(node: ASTNode): BreakdownNode {
-  if (isNotLeaf(node)) {
-    const child = (node as { type: 'NOT'; child: ASTNode }).child
-    const bd: BreakdownNode = {
-      type: 'NOT',
-      label: `-${nodeLabel(child)}`,
-      matchCount: 0,
-    }
-    if (node.span) bd.span = node.span
-    return bd
-  }
-
-  const bd: BreakdownNode = {
-    type: node.type,
-    label: nodeLabel(node),
-    matchCount: 0,
-  }
-  if (node.span) bd.span = node.span
-  if (node.type === 'FIELD' && node.valueSpan) bd.valueSpan = node.valueSpan
-
-  if (node.type === 'AND' || node.type === 'OR') {
-    bd.children = node.children.map(astToBreakdown)
-  } else if (node.type === 'NOT') {
-    bd.children = [astToBreakdown(node.child)]
-  }
-
-  return bd
-}
-
 function buildBreakdown(query: string): BreakdownNode {
-  return astToBreakdown(parse(query))
+  return parseBreakdown(query)!
 }
 
 // ---------------------------------------------------------------------------
@@ -1000,5 +946,71 @@ describe('clearColorIdentity', () => {
   it('handles alias fields', () => {
     const q = 'identity>=r'
     expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Multi-step toggle sequences (regression tests for stale-breakdown bug)
+//
+// These simulate sequential histogram clicks where each step uses a fresh
+// breakdown derived from the current query, matching the fix in
+// ResultsBreakdown that uses parseBreakdown() instead of the async worker
+// breakdown.
+// ---------------------------------------------------------------------------
+
+function mvDrill(query: string, value: string): string {
+  const op = value === '7' ? '>=' : '='
+  const term = `mv${op}${value}`
+  return toggleSimple(query, buildBreakdown(query), {
+    field: MV_FIELDS, operator: op, negated: false, value, appendTerm: term,
+  })
+}
+
+function mvExclude(query: string, value: string): string {
+  const op = value === '7' ? '>=' : '='
+  const term = `-mv${op}${value}`
+  return toggleSimple(query, buildBreakdown(query), {
+    field: MV_FIELDS, operator: op, negated: true, value, appendTerm: term,
+  })
+}
+
+describe('multi-step MV toggle sequences', () => {
+  it('drill 2, drill 3, ×2, ×3 returns to start', () => {
+    let q = 'f:commander'
+    q = mvDrill(q, '2');  expect(q).toBe('f:commander mv=2')
+    q = mvDrill(q, '3');  expect(q).toBe('f:commander mv=2 mv=3')
+    q = mvExclude(q, '2');expect(q).toBe('f:commander mv=3')
+    q = mvExclude(q, '3');expect(q).toBe('f:commander')
+  })
+
+  it('×2, ×3, drill 2, drill 3 returns to start', () => {
+    let q = 'f:commander'
+    q = mvExclude(q, '2');expect(q).toBe('f:commander -mv=2')
+    q = mvExclude(q, '3');expect(q).toBe('f:commander -mv=2 -mv=3')
+    q = mvDrill(q, '2');  expect(q).toBe('f:commander -mv=3')
+    q = mvDrill(q, '3');  expect(q).toBe('f:commander')
+  })
+
+  it('×2, ×3, drill 2, drill 3, ×2 re-excludes', () => {
+    let q = 'f:commander'
+    q = mvExclude(q, '2');expect(q).toBe('f:commander -mv=2')
+    q = mvExclude(q, '3');expect(q).toBe('f:commander -mv=2 -mv=3')
+    q = mvDrill(q, '2');  expect(q).toBe('f:commander -mv=3')
+    q = mvDrill(q, '3');  expect(q).toBe('f:commander')
+    q = mvExclude(q, '2');expect(q).toBe('f:commander -mv=2')
+  })
+
+  it('drill 3, drill 2, ×2 leaves only drill 3', () => {
+    let q = 'f:commander'
+    q = mvDrill(q, '3');  expect(q).toBe('f:commander mv=3')
+    q = mvDrill(q, '2');  expect(q).toBe('f:commander mv=3 mv=2')
+    q = mvExclude(q, '2');expect(q).toBe('f:commander mv=3')
+  })
+
+  it('×3, drill 2, ×2 leaves only ×3', () => {
+    let q = 'f:commander'
+    q = mvExclude(q, '3');expect(q).toBe('f:commander -mv=3')
+    q = mvDrill(q, '2');  expect(q).toBe('f:commander -mv=3 mv=2')
+    q = mvExclude(q, '2');expect(q).toBe('f:commander -mv=3')
   })
 })

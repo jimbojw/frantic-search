@@ -583,7 +583,6 @@ function App() {
                         <div class="overflow-hidden">
                           <ResultsBreakdown
                             histograms={h()}
-                            breakdown={breakdown()}
                             query={query()}
                             onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                           />
