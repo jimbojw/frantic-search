@@ -9,8 +9,6 @@ import {
   graduatedColorX,
   colorlessBar,
   colorlessX,
-  multicolorBar,
-  multicolorX,
   toggleSimple,
 } from './query-edit'
 
@@ -155,7 +153,9 @@ export default function ResultsBreakdown(props: {
     } else if (bar.kind === 'colorless') {
       props.onSetQuery(colorlessBar(props.query, props.breakdown))
     } else {
-      props.onSetQuery(multicolorBar(props.query, props.breakdown))
+      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+        field: CI_FIELDS, operator: ':', negated: false, value: 'm', appendTerm: 'ci:m',
+      }))
     }
   }
 
@@ -165,7 +165,9 @@ export default function ResultsBreakdown(props: {
     } else if (bar.kind === 'colorless') {
       props.onSetQuery(colorlessX(props.query, props.breakdown))
     } else {
-      props.onSetQuery(multicolorX(props.query, props.breakdown))
+      props.onSetQuery(toggleSimple(props.query, props.breakdown, {
+        field: CI_FIELDS, operator: ':', negated: true, value: 'm', appendTerm: '-ci:m',
+      }))
     }
   }
 

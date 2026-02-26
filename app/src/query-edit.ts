@@ -429,50 +429,6 @@ export function colorlessX(
 }
 
 // ---------------------------------------------------------------------------
-// Graduated: Multicolor bar / × — Spec 043
-// ---------------------------------------------------------------------------
-
-export function multicolorBar(
-  query: string,
-  breakdown: BreakdownNode | null,
-): string {
-  // 1. ci:m already present → no change (already at max)
-  const pos = breakdown
-    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => v.toLowerCase() === 'm')
-    : null
-  if (pos) return query
-
-  // 2. -ci:m present → remove it (un-exclude)
-  const neg = breakdown
-    ? findFieldNode(breakdown, CI_FIELDS, ':', true, v => v.toLowerCase() === 'm')
-    : null
-  if (neg) return removeNode(query, neg, breakdown!)
-
-  // 3. Neither → append ci:m
-  return appendTerm(query, 'ci:m', breakdown)
-}
-
-export function multicolorX(
-  query: string,
-  breakdown: BreakdownNode | null,
-): string {
-  // 1. -ci:m already present → no change (already excluding)
-  const neg = breakdown
-    ? findFieldNode(breakdown, CI_FIELDS, ':', true, v => v.toLowerCase() === 'm')
-    : null
-  if (neg) return query
-
-  // 2. ci:m present → remove it (less multicolor)
-  const pos = breakdown
-    ? findFieldNode(breakdown, CI_FIELDS, ':', false, v => v.toLowerCase() === 'm')
-    : null
-  if (pos) return removeNode(query, pos, breakdown!)
-
-  // 3. Neither → append -ci:m
-  return appendTerm(query, '-ci:m', breakdown)
-}
-
-// ---------------------------------------------------------------------------
 // Toggle: Color Identity exclude (shared ci: node, WUBRG subset)
 // — LEGACY, kept for existing call sites until migration is complete.
 // ---------------------------------------------------------------------------
@@ -516,8 +472,13 @@ export function toggleColorExclude(
 }
 
 // ---------------------------------------------------------------------------
-// Toggle: Simple (independent node-level toggle)
-// Used for colorless, multicolor, MV, and type toggles.
+// Graduated: Simple (independent node-level "more / less")
+// Used for multicolor, MV, and type toggles.
+//
+// Bar callers pass negated=false; × callers pass negated=true.
+// 1. Same-polarity node exists → no change (already active)
+// 2. Opposite-polarity node exists → remove it (cross-cancel)
+// 3. Neither → append
 // ---------------------------------------------------------------------------
 
 export function toggleSimple(
@@ -531,12 +492,15 @@ export function toggleSimple(
     appendTerm: string
   },
 ): string {
-  const node = breakdown
+  const same = breakdown
     ? findFieldNode(breakdown, opts.field, opts.operator, opts.negated, v => v === opts.value)
     : null
+  if (same) return query
 
-  if (node) {
-    return removeNode(query, node, breakdown!)
-  }
+  const opposite = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, !opts.negated, v => v === opts.value)
+    : null
+  if (opposite) return removeNode(query, opposite, breakdown!)
+
   return appendTerm(query, opts.appendTerm, breakdown)
 }

@@ -103,17 +103,13 @@ For a tapped color C:
 5. `ci>=` node exists → **no change** (colorless implicitly excluded by superset).
 6. No relevant node → append `-ci=c`.
 
-### Multicolor bar tap ("more multicolor")
+### Multicolor bar/×
 
-1. `ci:m` node exists (un-negated) → **no change** (already filtering for multicolor).
-2. `-ci:m` node exists → remove it (un-exclude multicolor).
-3. No relevant node → append `ci:m`.
+Multicolor uses the graduated `toggleSimple` pattern (same 3-step "more / less" logic as MV and type bars, defined in Spec 037). Bar callers pass `negated=false`; × callers pass `negated=true`. The algorithm is:
 
-### Multicolor × tap ("less multicolor")
-
-1. `-ci:m` node exists → **no change** (already excluding multicolor).
-2. `ci:m` node exists → remove it (reduce multicolor filtering).
-3. No relevant node → append `-ci:m`.
+1. Same-polarity node exists → **no change** (already active).
+2. Opposite-polarity node exists → remove it (cross-cancel).
+3. Neither → append the term.
 
 ### Operator splicing
 
@@ -160,10 +156,10 @@ Note: `ci>=` does not exclude absent colors (superset semantics allow cards with
 
 | File | Change |
 |------|--------|
-| `app/src/query-edit.ts` | Replace `toggleColorDrill` with `graduatedColorBar`; replace `toggleColorExclude` with `graduatedColorX`; add `colorlessBar`, `colorlessX`, `multicolorBar`, `multicolorX`; add operator-splice helper |
-| `app/src/query-edit.test.ts` | Replace WUBRG drill/exclude test suites with graduated tests; add colorless and multicolor interaction tests |
-| `app/src/ResultsBreakdown.tsx` | Update color handlers and active-state detection to use new functions |
-| `docs/specs/037-histogram-toggles.md` | Add implementation note noting WUBRG/colorless/multicolor sections superseded by this spec |
+| `app/src/query-edit.ts` | Replace `toggleColorDrill` with `graduatedColorBar`; replace `toggleColorExclude` with `graduatedColorX`; add `colorlessBar` and `colorlessX`; refactor `toggleSimple` to graduated 3-step "more / less" pattern (used by multicolor, MV, and type); add operator-splice helper |
+| `app/src/query-edit.test.ts` | Replace WUBRG drill/exclude test suites with graduated tests; add colorless interaction tests; update multicolor/MV/type tests for graduated semantics |
+| `app/src/ResultsBreakdown.tsx` | Update color handlers and active-state detection to use new functions; multicolor uses `toggleSimple` |
+| `docs/specs/037-histogram-toggles.md` | Add implementation notes noting WUBRG/colorless/multicolor sections superseded by this spec; update MV/type sections to graduated semantics |
 
 ## Test Strategy
 
@@ -303,7 +299,6 @@ The graduated model is not perfectly reversible across all multi-color sequences
 3. When a color is added to an existing multi-color node, it joins at that node's level.
 4. When a color already in a multi-color node is advanced or retreated, the entire node changes level.
 5. Colorless bar/× use `ci=c` / `-ci=c` with interaction-aware logic for existing WUBRG nodes.
-6. Multicolor bar/× follow "more / less" semantics: bar is idempotent when `ci:m` exists and removes `-ci:m` when present; × is idempotent when `-ci:m` exists and removes `ci:m` when present.
+6. Multicolor, MV, and type bar/× all follow the graduated `toggleSimple` pattern: bar is idempotent when the positive node exists and cross-removes the negative node; × is idempotent when the negative node exists and cross-removes the positive node.
 7. Active state detection reflects the new semantics: bar active = any inclusion level, × active = excluded.
 8. All operator and value changes are spliced in place, preserving surrounding query text.
-9. MV, type, and other histogram toggles are unaffected.

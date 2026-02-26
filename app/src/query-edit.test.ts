@@ -15,8 +15,6 @@ import {
   graduatedColorX,
   colorlessBar,
   colorlessX,
-  multicolorBar,
-  multicolorX,
 } from './query-edit'
 
 // ---------------------------------------------------------------------------
@@ -399,7 +397,7 @@ describe('toggleColorExclude', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Toggle: Colorless (simple toggles)
+// Graduated: Colorless (via toggleSimple — app uses colorlessBar/colorlessX)
 // ---------------------------------------------------------------------------
 
 describe('toggleSimple — colorless', () => {
@@ -412,8 +410,13 @@ describe('toggleSimple — colorless', () => {
     expect(drill('', null)).toBe('ci:c')
   })
 
-  it('removes ci:c (toggle off)', () => {
+  it('no change when ci:c already exists', () => {
     const q = 'ci:c'
+    expect(drill(q, buildBreakdown(q))).toBe('ci:c')
+  })
+
+  it('removes -ci:c when drilling (un-exclude)', () => {
+    const q = '-ci:c'
     expect(drill(q, buildBreakdown(q))).toBe('')
   })
 
@@ -421,64 +424,58 @@ describe('toggleSimple — colorless', () => {
     expect(exclude('', null)).toBe('-ci:c')
   })
 
-  it('removes -ci:c (toggle off)', () => {
+  it('no change when -ci:c already exists', () => {
     const q = '-ci:c'
+    expect(exclude(q, buildBreakdown(q))).toBe('-ci:c')
+  })
+
+  it('removes ci:c when excluding (less of this)', () => {
+    const q = 'ci:c'
     expect(exclude(q, buildBreakdown(q))).toBe('')
   })
 })
 
 // ---------------------------------------------------------------------------
-// Graduated: Multicolor bar
+// Graduated: Multicolor (via toggleSimple)
 // ---------------------------------------------------------------------------
 
-describe('multicolorBar', () => {
+describe('toggleSimple — multicolor', () => {
+  const drill = (q: string, bd: BreakdownNode | null) =>
+    toggleSimple(q, bd, { field: CI_FIELDS, operator: ':', negated: false, value: 'm', appendTerm: 'ci:m' })
+  const exclude = (q: string, bd: BreakdownNode | null) =>
+    toggleSimple(q, bd, { field: CI_FIELDS, operator: ':', negated: true, value: 'm', appendTerm: '-ci:m' })
+
   it('appends ci:m to empty query', () => {
-    expect(multicolorBar('', null)).toBe('ci:m')
+    expect(drill('', null)).toBe('ci:m')
   })
 
   it('no change when ci:m already exists', () => {
     const q = 'ci:m'
-    expect(multicolorBar(q, buildBreakdown(q))).toBe('ci:m')
+    expect(drill(q, buildBreakdown(q))).toBe('ci:m')
   })
 
   it('removes -ci:m (un-exclude)', () => {
     const q = '-ci:m'
-    expect(multicolorBar(q, buildBreakdown(q))).toBe('')
+    expect(drill(q, buildBreakdown(q))).toBe('')
   })
 
-  it('appends ci:m preserving other terms', () => {
-    const q = 'ci>=r t:creature'
-    expect(multicolorBar(q, buildBreakdown(q))).toBe('ci>=r t:creature ci:m')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Graduated: Multicolor ×
-// ---------------------------------------------------------------------------
-
-describe('multicolorX', () => {
   it('appends -ci:m to empty query', () => {
-    expect(multicolorX('', null)).toBe('-ci:m')
+    expect(exclude('', null)).toBe('-ci:m')
   })
 
   it('no change when -ci:m already exists', () => {
     const q = '-ci:m'
-    expect(multicolorX(q, buildBreakdown(q))).toBe('-ci:m')
+    expect(exclude(q, buildBreakdown(q))).toBe('-ci:m')
   })
 
   it('removes ci:m (less multicolor)', () => {
     const q = 'ci:m'
-    expect(multicolorX(q, buildBreakdown(q))).toBe('')
-  })
-
-  it('removes ci:m preserving other terms', () => {
-    const q = 't:creature ci:m'
-    expect(multicolorX(q, buildBreakdown(q))).toBe('t:creature')
+    expect(exclude(q, buildBreakdown(q))).toBe('')
   })
 })
 
 // ---------------------------------------------------------------------------
-// Toggle: Mana Value
+// Graduated: Mana Value
 // ---------------------------------------------------------------------------
 
 describe('toggleSimple — mana value', () => {
@@ -493,8 +490,13 @@ describe('toggleSimple — mana value', () => {
     expect(drill3('', null)).toBe('mv=3')
   })
 
-  it('removes mv=3 (toggle off)', () => {
+  it('no change when mv=3 already exists', () => {
     const q = 'mv=3'
+    expect(drill3(q, buildBreakdown(q))).toBe('mv=3')
+  })
+
+  it('removes -mv=3 when drilling (un-exclude)', () => {
+    const q = '-mv=3'
     expect(drill3(q, buildBreakdown(q))).toBe('')
   })
 
@@ -507,14 +509,24 @@ describe('toggleSimple — mana value', () => {
     expect(exclude3('', null)).toBe('-mv=3')
   })
 
-  it('removes -mv=3 (toggle off)', () => {
+  it('no change when -mv=3 already exists', () => {
     const q = '-mv=3'
+    expect(exclude3(q, buildBreakdown(q))).toBe('-mv=3')
+  })
+
+  it('removes mv=3 when excluding (less of this)', () => {
+    const q = 'mv=3'
+    expect(exclude3(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('handles alias: removes cmc=3 when excluding', () => {
+    const q = 'cmc=3'
     expect(exclude3(q, buildBreakdown(q))).toBe('')
   })
 })
 
 // ---------------------------------------------------------------------------
-// Toggle: MV 7+ (uses >= operator)
+// Graduated: MV 7+ (uses >= operator)
 // ---------------------------------------------------------------------------
 
 describe('toggleSimple — mana value 7+', () => {
@@ -527,8 +539,13 @@ describe('toggleSimple — mana value 7+', () => {
     expect(drill('', null)).toBe('mv>=7')
   })
 
-  it('removes mv>=7 (toggle off)', () => {
+  it('no change when mv>=7 already exists', () => {
     const q = 'mv>=7'
+    expect(drill(q, buildBreakdown(q))).toBe('mv>=7')
+  })
+
+  it('removes -mv>=7 when drilling (un-exclude)', () => {
+    const q = '-mv>=7'
     expect(drill(q, buildBreakdown(q))).toBe('')
   })
 
@@ -536,14 +553,19 @@ describe('toggleSimple — mana value 7+', () => {
     expect(exclude('', null)).toBe('-mv>=7')
   })
 
-  it('removes -mv>=7 (toggle off)', () => {
+  it('no change when -mv>=7 already exists', () => {
     const q = '-mv>=7'
+    expect(exclude(q, buildBreakdown(q))).toBe('-mv>=7')
+  })
+
+  it('removes mv>=7 when excluding (less of this)', () => {
+    const q = 'mv>=7'
     expect(exclude(q, buildBreakdown(q))).toBe('')
   })
 })
 
 // ---------------------------------------------------------------------------
-// Toggle: Card Type
+// Graduated: Card Type
 // ---------------------------------------------------------------------------
 
 describe('toggleSimple — card type', () => {
@@ -556,8 +578,13 @@ describe('toggleSimple — card type', () => {
     expect(drill('', null)).toBe('t:creature')
   })
 
-  it('removes t:creature (toggle off)', () => {
+  it('no change when t:creature already exists', () => {
     const q = 't:creature'
+    expect(drill(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
+  it('removes -t:creature when drilling (un-exclude)', () => {
+    const q = '-t:creature'
     expect(drill(q, buildBreakdown(q))).toBe('')
   })
 
@@ -565,9 +592,24 @@ describe('toggleSimple — card type', () => {
     expect(exclude('', null)).toBe('-t:creature')
   })
 
-  it('removes -t:creature (toggle off)', () => {
+  it('no change when -t:creature already exists', () => {
     const q = '-t:creature'
+    expect(exclude(q, buildBreakdown(q))).toBe('-t:creature')
+  })
+
+  it('removes t:creature when excluding (less of this)', () => {
+    const q = 't:creature'
     expect(exclude(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('handles alias: removes type:creature when excluding', () => {
+    const q = 'type:creature'
+    expect(exclude(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('handles alias: no change when type:creature exists on drill', () => {
+    const q = 'type:creature'
+    expect(drill(q, buildBreakdown(q))).toBe('type:creature')
   })
 })
 

@@ -136,41 +136,47 @@ Multicolor is also an independent node-level toggle, using the pseudo-value `m`.
 
 #### Mana Value (bar and ×)
 
-Each MV bar is an independent node-level toggle. The eight bars correspond to exact values 0–6 and the `>=7` bucket.
+Each MV bar is an independent node-level "more / less" toggle. The eight bars correspond to exact values 0–6 and the `>=7` bucket. A bar click means "more of this MV"; an × click means "less of this MV."
 
 **Bar click (drill) for MV 0–6:**
 1. Search for un-negated FIELD with field ∈ `{mv, cmc, manavalue}`, operator `=`, value `N`.
-2. Found → remove (toggle off).
-3. Not found → append `mv=N` (toggle on).
+2. Found → **no change** (already filtering for this MV).
+3. Search for NOT-wrapped FIELD with same field/operator/value. Found → remove it (un-exclude).
+4. Neither found → append `mv=N`.
 
 **Bar click (drill) for MV 7+:**
 1. Search for un-negated FIELD with field ∈ `{mv, cmc, manavalue}`, operator `>=`, value `7`.
-2. Found → remove (toggle off).
-3. Not found → append `mv>=7` (toggle on).
+2. Found → **no change** (already filtering for 7+).
+3. Search for NOT-wrapped FIELD with same field/operator/value. Found → remove it (un-exclude).
+4. Neither found → append `mv>=7`.
 
 **× click (exclude) for MV 0–6:**
 1. Search for NOT-wrapped FIELD with field ∈ `{mv, cmc, manavalue}`, operator `=`, value `N`.
-2. Found → remove (toggle off).
-3. Not found → append `-mv=N` (toggle on).
+2. Found → **no change** (already excluding this MV).
+3. Search for un-negated FIELD with same field/operator/value. Found → remove it (less of this).
+4. Neither found → append `-mv=N`.
 
 **× click (exclude) for MV 7+:**
 1. Search for NOT-wrapped FIELD with field ∈ `{mv, cmc, manavalue}`, operator `>=`, value `7`.
-2. Found → remove (toggle off).
-3. Not found → append `-mv>=7` (toggle on).
+2. Found → **no change** (already excluding 7+).
+3. Search for un-negated FIELD with same field/operator/value. Found → remove it (less of this).
+4. Neither found → append `-mv>=7`.
 
 #### Card Type (bar and ×)
 
-Each type bar is an independent node-level toggle.
+Each type bar is an independent node-level "more / less" toggle. A bar click means "more of this type"; an × click means "less of this type."
 
 **Bar click (drill):**
 1. Search for un-negated FIELD with field ∈ `{t, type}`, operator `:`, value matching the type.
-2. Found → remove (toggle off).
-3. Not found → append `t:creature` (or whichever type).
+2. Found → **no change** (already filtering for this type).
+3. Search for NOT-wrapped FIELD with same field/operator/value. Found → remove it (un-exclude).
+4. Neither found → append `t:creature` (or whichever type).
 
 **× click (exclude):**
 1. Search for NOT-wrapped FIELD with field ∈ `{t, type}`, operator `:`, value matching the type.
-2. Found → remove (toggle off).
-3. Not found → append `-t:creature`.
+2. Found → **no change** (already excluding this type).
+3. Search for un-negated FIELD with same field/operator/value. Found → remove it (less of this).
+4. Neither found → append `-t:creature`.
 
 ### Node removal
 
@@ -282,19 +288,25 @@ The `query-edit.ts` module contains the search, splice, and query-preparation lo
 | Initial query | Action | Expected result |
 |---|---|---|
 | (empty) | click MV 3 bar | `mv=3` |
-| `mv=3` | click MV 3 bar | (empty) |
+| `mv=3` | click MV 3 bar | `mv=3` (no change) |
+| `-mv=3` | click MV 3 bar | (empty) |
 | `mv=3` | click MV 5 bar | `mv=3 mv=5` |
 | (empty) | × on MV 3 | `-mv=3` |
-| `-mv=3` | × on MV 3 | (empty) |
+| `-mv=3` | × on MV 3 | `-mv=3` (no change) |
+| `mv=3` | × on MV 3 | (empty) |
+| `cmc=3` | × on MV 3 | (empty) |
 
-**Type toggle:**
+**Type graduated toggle:**
 
 | Initial query | Action | Expected result |
 |---|---|---|
 | (empty) | click Creature bar | `t:creature` |
-| `t:creature` | click Creature bar | (empty) |
+| `t:creature` | click Creature bar | `t:creature` (no change) |
+| `-t:creature` | click Creature bar | (empty) |
 | (empty) | × on Creature | `-t:creature` |
-| `-t:creature` | × on Creature | (empty) |
+| `-t:creature` | × on Creature | `-t:creature` (no change) |
+| `t:creature` | × on Creature | (empty) |
+| `type:creature` | × on Creature | (empty) |
 
 ### Splice correctness
 
@@ -354,18 +366,18 @@ When appending a new term and the current query's breakdown root is an OR node, 
 
 ## Acceptance Criteria
 
-1. Clicking a histogram bar that corresponds to an existing query term removes that term (toggle off).
-2. Clicking a histogram bar that does not correspond to an existing term adds it (toggle on).
-3. The × button follows the same toggle behavior for negated terms.
-4. For WUBRG color identity drill bars, repeated clicks on different colors accumulate into a single `ci>=` node (e.g., `ci>=ru`) rather than appending separate terms.
-5. For WUBRG color identity × buttons, exclusion manipulates a shared `ci:` node, removing or adding color letters.
-6. Colorless, multicolor, mana value, and type bars use independent node-level toggles.
-7. Active bars and × buttons are visually distinguishable from inactive ones.
-8. All toggles are reversible — two clicks on the same control returns the query to its previous state.
+1. Clicking a histogram bar when the filter is already active is a no-op (idempotent at the endcap).
+2. Clicking a histogram bar when the opposite-polarity (negated) filter exists removes the negated filter (un-exclude).
+3. Clicking a histogram bar when neither polarity exists appends the filter term.
+4. The × button follows the same graduated pattern in the opposite direction: idempotent when already excluding, removes the positive filter if present, appends a negated term otherwise.
+5. For WUBRG color identity drill bars, repeated clicks on different colors accumulate into a single `ci>=` node (e.g., `ci>=ru`) rather than appending separate terms.
+6. For WUBRG color identity × buttons, exclusion manipulates a shared `ci:` node, removing or adding color letters.
+7. Multicolor, mana value, and type bars use the graduated `toggleSimple` pattern (independent node-level "more / less").
+8. Active bars and × buttons are visually distinguishable from inactive ones.
 9. In-place edits preserve surrounding query text byte-for-byte (verified via source spans).
 10. `findFieldNode` and `spliceQuery` are extracted into a shared module (`query-edit.ts`) for reuse by future TERMS drawer controls.
 
 ## Implementation Notes
 
-- 2026-02-25: The WUBRG color identity (bar and ×) and colorless sections of this spec are superseded by Spec 043 (Graduated Color Identity Interaction), which replaces the binary toggle model with a graduated "more / less" progression through `ci>=` → `ci:` → `ci=` levels. The mana value and card type sections remain authoritative. The shared infrastructure (`findFieldNode`, `spliceQuery`, `removeNode`, `sealQuery`) is unchanged.
-- 2026-02-26: The multicolor section is also superseded by Spec 043. Multicolor bar/× now follow "more / less" semantics (idempotent when already active, cross-removal of the opposite node) instead of the binary toggle model.
+- 2026-02-25: The WUBRG color identity (bar and ×) and colorless sections of this spec are superseded by Spec 043 (Graduated Color Identity Interaction), which replaces the binary toggle model with a graduated "more / less" progression through `ci>=` → `ci:` → `ci=` levels. The shared infrastructure (`findFieldNode`, `spliceQuery`, `removeNode`, `sealQuery`) is unchanged.
+- 2026-02-26: All remaining simple toggles (multicolor, mana value, card type) are now graduated: `toggleSimple` uses "more / less" semantics (idempotent when the same-polarity node exists, cross-removes the opposite-polarity node, appends only when neither exists). The multicolor section is additionally superseded by Spec 043 for design rationale. The MV and type design sections above have been updated in place to reflect the graduated 3-step pattern.
