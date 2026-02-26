@@ -302,3 +302,7 @@ The graduated model is not perfectly reversible across all multi-color sequences
 6. Multicolor, MV, and type bar/× all follow the graduated `toggleSimple` pattern: bar is idempotent when the positive node exists and cross-removes the negative node; × is idempotent when the negative node exists and cross-removes the positive node.
 7. Active state detection reflects the new semantics: bar active = any inclusion level, × active = excluded.
 8. All operator and value changes are spliced in place, preserving surrounding query text.
+
+## Implementation Notes
+
+- 2026-02-26: Any operation that would produce `ci:wubrg` (a tautology matching every card) now removes the node instead. This affects `graduatedColorBar` (adding the 5th color to a `ci:` or `ci>=` node, or upgrading `ci>=wubrg`), `graduatedColorX` (downgrading `ci=wubrg`), and `colorlessBar` (downgrading `ci>=wubrg` or `ci=wubrg`). Guards compare the resulting color mask against `ALL_FIVE` and call `removeNode` when matched.

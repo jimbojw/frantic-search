@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, createMemo } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
 import type { Histograms, BreakdownNode } from '@frantic-search/shared'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 import {
@@ -10,6 +10,7 @@ import {
   colorlessBar,
   colorlessX,
   toggleSimple,
+  clearColorIdentity,
 } from './query-edit'
 
 export const MV_BAR_COLOR = '#60a5fa'    // blue-400
@@ -189,6 +190,16 @@ export default function ResultsBreakdown(props: {
     return isSimpleActive(props.breakdown, CI_FIELDS, ':', false, 'm')
   }
 
+  const anyCIActive = createMemo(() => {
+    if (ciEqNode() || ciColonNode() || ciGteNode()) return true
+    if (!props.breakdown) return false
+    if (findFieldNode(props.breakdown, CI_FIELDS, '=', false, v => v.toLowerCase() === 'c')) return true
+    if (findFieldNode(props.breakdown, CI_FIELDS, '=', true, v => v.toLowerCase() === 'c')) return true
+    if (findFieldNode(props.breakdown, CI_FIELDS, ':', false, v => v === 'm')) return true
+    if (findFieldNode(props.breakdown, CI_FIELDS, ':', true, v => v === 'm')) return true
+    return false
+  })
+
   function colorExcludeActive(bar: ColorBarDef): boolean {
     if (bar.kind === 'wubrg') {
       const c = bar.color
@@ -243,6 +254,17 @@ export default function ResultsBreakdown(props: {
             />
           )}
         </For>
+        <Show when={anyCIActive()}>
+          <div class="flex items-center h-6">
+            <button
+              type="button"
+              onClick={() => props.onSetQuery(clearColorIdentity(props.query, props.breakdown))}
+              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </Show>
       </div>
       <div>
         <For each={TYPE_LABELS}>

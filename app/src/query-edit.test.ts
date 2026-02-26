@@ -15,6 +15,7 @@ import {
   graduatedColorX,
   colorlessBar,
   colorlessX,
+  clearColorIdentity,
 } from './query-edit'
 
 // ---------------------------------------------------------------------------
@@ -715,6 +716,32 @@ describe('graduatedColorBar', () => {
     const q = 'ci>=r'
     expect(graduatedColorBar(q, buildBreakdown(q), 'w')).toBe('ci>=wr')
   })
+
+  // ci:wubrg tautology removal
+  it('removes ci: node when adding color would produce ci:wubrg', () => {
+    const q = 'ci:wubr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'g')).toBe('')
+  })
+
+  it('removes ci: node with surrounding terms when tautological', () => {
+    const q = 't:creature ci:wubr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'g')).toBe('t:creature')
+  })
+
+  it('removes ci= node when adding color would produce ci:wubrg', () => {
+    const q = 'ci=wubr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'g')).toBe('')
+  })
+
+  it('removes ci>= node when adding color would produce ci>=wubrg (tautological at :)', () => {
+    const q = 'ci>=wubr'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'g')).toBe('')
+  })
+
+  it('removes ci>= node when upgrading ci>=wubrg to ci: (tautological)', () => {
+    const q = 'ci>=wubrg'
+    expect(graduatedColorBar(q, buildBreakdown(q), 'w')).toBe('')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -807,6 +834,17 @@ describe('graduatedColorX', () => {
     // R is already excluded by ci:wubg — no change
     expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=w ci:wubg')
   })
+
+  // ci:wubrg tautology removal
+  it('removes ci=wubrg instead of downgrading to ci:wubrg', () => {
+    const q = 'ci=wubrg'
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('')
+  })
+
+  it('removes ci=wubrg with surrounding terms', () => {
+    const q = 't:creature ci=wubrg'
+    expect(graduatedColorX(q, buildBreakdown(q), 'w')).toBe('t:creature')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -857,6 +895,22 @@ describe('colorlessBar', () => {
     const q = 'f:edh ci:ur t:creature'
     expect(colorlessBar(q, buildBreakdown(q))).toBe('f:edh ci=c t:creature')
   })
+
+  // ci:wubrg tautology removal
+  it('removes ci>=wubrg instead of downgrading to ci:wubrg', () => {
+    const q = 'ci>=wubrg'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('removes ci>=wubrg with surrounding terms', () => {
+    const q = 't:creature ci>=wubrg'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
+  it('removes ci=wubrg instead of downgrading to ci:wubrg', () => {
+    const q = 'ci=wubrg'
+    expect(colorlessBar(q, buildBreakdown(q))).toBe('')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -891,5 +945,60 @@ describe('colorlessX', () => {
   it('upgrades ci: WUBRG to ci= to exclude colorless', () => {
     const q = 'ci:w'
     expect(colorlessX(q, buildBreakdown(q))).toBe('ci=w')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// clearColorIdentity
+// ---------------------------------------------------------------------------
+
+describe('clearColorIdentity', () => {
+  it('removes a single ci>= node', () => {
+    const q = 'ci>=wr'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('removes ci: and ci:m nodes', () => {
+    const q = 'ci:wub ci:m'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('preserves non-CI terms when removing CI nodes', () => {
+    const q = 't:creature ci>=r -ci=c'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
+  it('removes ci=wubrg', () => {
+    const q = 'ci=wubrg'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('returns query unchanged when no CI nodes exist', () => {
+    const q = 't:creature'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
+  it('returns empty query unchanged', () => {
+    expect(clearColorIdentity('', null)).toBe('')
+  })
+
+  it('removes negated CI nodes', () => {
+    const q = '-ci:m t:creature'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
+  it('removes ci=c node', () => {
+    const q = 'ci=c'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('removes mixed CI nodes preserving other terms', () => {
+    const q = 'f:edh ci>=wr ci:m t:creature -ci=c'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('f:edh t:creature')
+  })
+
+  it('handles alias fields', () => {
+    const q = 'identity>=r'
+    expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
   })
 })

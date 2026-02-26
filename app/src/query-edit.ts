@@ -253,6 +253,9 @@ export function graduatedColorBar(
     const mask = parseColorMask(val)
     if (mask & colorBit) return query
     const newMask = mask | colorBit
+    if (newMask === ALL_FIVE) {
+      return removeNode(query, eqNode, breakdown!)
+    }
     return spliceOpAndValue(query, eqNode, '=', ':', serializeColors(newMask))
   }
 
@@ -266,6 +269,9 @@ export function graduatedColorBar(
       return spliceOpAndValue(query, colonNode, ':', '=', val)
     }
     const newMask = mask | colorBit
+    if (newMask === ALL_FIVE) {
+      return removeNode(query, colonNode, breakdown!)
+    }
     return spliceQuery(query, colonNode.valueSpan!, serializeColors(newMask))
   }
 
@@ -274,9 +280,15 @@ export function graduatedColorBar(
     const val = extractValue(gteNode.label, '>=')
     const mask = parseColorMask(val)
     if (mask & colorBit) {
+      if (mask === ALL_FIVE) {
+        return removeNode(query, gteNode, breakdown!)
+      }
       return spliceOpAndValue(query, gteNode, '>=', ':', val)
     }
     const newMask = mask | colorBit
+    if (newMask === ALL_FIVE) {
+      return removeNode(query, gteNode, breakdown!)
+    }
     return spliceQuery(query, gteNode.valueSpan!, serializeColors(newMask))
   }
 
@@ -301,6 +313,9 @@ export function graduatedColorX(
     const val = extractValue(eqNode.label, '=')
     const mask = parseColorMask(val)
     if (mask & colorBit) {
+      if (mask === ALL_FIVE) {
+        return removeNode(query, eqNode, breakdown!)
+      }
       return spliceOpAndValue(query, eqNode, '=', ':', val)
     }
     return query
@@ -370,6 +385,9 @@ export function colorlessBar(
   const gteNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '>=', false) : null
   if (gteNode) {
     const val = extractValue(gteNode.label, '>=')
+    if (parseColorMask(val) === ALL_FIVE) {
+      return removeNode(query, gteNode, breakdown!)
+    }
     return spliceOpAndValue(query, gteNode, '>=', ':', val)
   }
 
@@ -377,6 +395,9 @@ export function colorlessBar(
   const eqNode = breakdown ? findFieldNode(breakdown, CI_FIELDS, '=', false) : null
   if (eqNode) {
     const val = extractValue(eqNode.label, '=')
+    if (parseColorMask(val) === ALL_FIVE) {
+      return removeNode(query, eqNode, breakdown!)
+    }
     return spliceOpAndValue(query, eqNode, '=', ':', val)
   }
 
@@ -503,4 +524,44 @@ export function toggleSimple(
   if (opposite) return removeNode(query, opposite, breakdown!)
 
   return appendTerm(query, opts.appendTerm, breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Clear all color identity filters
+// ---------------------------------------------------------------------------
+
+const CI_OPS = ['>=', ':', '=']
+
+function isCILabel(label: string): boolean {
+  const raw = label.startsWith('-') ? label.slice(1) : label
+  const lower = raw.toLowerCase()
+  for (const f of CI_FIELDS) {
+    for (const op of CI_OPS) {
+      if (lower.startsWith(f + op)) return true
+    }
+  }
+  return false
+}
+
+export function clearColorIdentity(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  if (!breakdown || !query.trim()) return query
+
+  if (isCILabel(breakdown.label)) return ''
+
+  if (!breakdown.children) return query
+
+  const targets = breakdown.children.filter(
+    child => child.span && isCILabel(child.label),
+  )
+  if (targets.length === 0) return query
+
+  targets.sort((a, b) => b.span!.start - a.span!.start)
+  let result = query
+  for (const t of targets) {
+    result = spliceQuery(result, t.span!, '')
+  }
+  return result.replace(/  +/g, ' ').trim()
 }
