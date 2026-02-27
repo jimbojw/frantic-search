@@ -263,6 +263,48 @@ describe("lex", () => {
     ]);
   });
 
+  test("hyphen mid-word is part of the word", () => {
+    expect(lex("a-b")).toMatchObject([
+      { type: "WORD", value: "a-b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("multiple hyphens mid-word", () => {
+    expect(lex("well-of-lost-dreams")).toMatchObject([
+      { type: "WORD", value: "well-of-lost-dreams" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("leading dash is still negation", () => {
+    expect(lex("-c:r")).toMatchObject([
+      { type: "DASH", value: "-" },
+      { type: "WORD", value: "c" },
+      { type: "COLON", value: ":" },
+      { type: "WORD", value: "r" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("dash after whitespace is negation", () => {
+    expect(lex("a -b")).toMatchObject([
+      { type: "WORD", value: "a" },
+      { type: "DASH", value: "-" },
+      { type: "WORD", value: "b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("hyphens in field values", () => {
+    expect(lex("date>=2018-06-18")).toMatchObject([
+      { type: "WORD", value: "date" },
+      { type: "GTE", value: ">=" },
+      { type: "WORD", value: "2018-06-18" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
   test("complex query", () => {
     expect(lex('c:wu (t:creature OR t:planeswalker) -o:"enters the"')).toMatchObject([
       { type: "WORD", value: "c" },
@@ -371,6 +413,11 @@ describe("lex", () => {
     test("unclosed regex span extends to end of input", () => {
       const tokens = lex("/partial");
       expect(tokens[0]).toEqual({ type: "REGEX", value: "partial", start: 0, end: 8 });
+    });
+
+    test("hyphenated word span", () => {
+      const tokens = lex("a-b");
+      expect(tokens[0]).toEqual({ type: "WORD", value: "a-b", start: 0, end: 3 });
     });
 
     test("invariant: input.slice(start, end) reproduces source text", () => {

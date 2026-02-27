@@ -87,7 +87,7 @@ export class NodeCache {
   setPrintingIndex(pIdx: PrintingIndex): void {
     this._printingIndex = pIdx;
     // Invalidate any cached printing-domain results since the data changed.
-    for (const [key, interned] of this.nodes) {
+    for (const [, interned] of this.nodes) {
       if (interned.computed?.domain === "printing") {
         interned.computed = undefined;
       }

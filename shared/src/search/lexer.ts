@@ -18,8 +18,7 @@ function isSpecial(ch: string): boolean {
     ch === "!" ||
     ch === "<" ||
     ch === ">" ||
-    ch === '"' ||
-    ch === "-"
+    ch === '"'
   );
 }
 
