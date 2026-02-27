@@ -10,47 +10,64 @@ import { VitePWA } from 'vite-plugin-pwa'
 import checker from 'vite-plugin-checker'
 import pkg from '../package.json' with { type: 'json' }
 
+function contentHash(filePath: string): string {
+  return createHash('md5').update(fs.readFileSync(filePath)).digest('hex').slice(0, 8)
+}
+
 function serveData(): Plugin {
-  const dataFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
+  const columnsFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
+  const thumbsFile = path.resolve(__dirname, '..', 'data', 'dist', 'thumb-hashes.json')
   let columnsFilename = 'columns.json'
+  let thumbsFilename = 'thumb-hashes.json'
 
   return {
     name: 'serve-data',
 
     config(_config, { command }) {
-      if (command === 'build' && fs.existsSync(dataFile)) {
-        const hash = createHash('md5')
-          .update(fs.readFileSync(dataFile))
-          .digest('hex')
-          .slice(0, 8)
-        columnsFilename = `columns.${hash}.json`
+      if (command === 'build') {
+        if (fs.existsSync(columnsFile)) {
+          columnsFilename = `columns.${contentHash(columnsFile)}.json`
+        }
+        if (fs.existsSync(thumbsFile)) {
+          thumbsFilename = `thumb-hashes.${contentHash(thumbsFile)}.json`
+        }
       }
-      const fileSize = fs.existsSync(dataFile) ? fs.statSync(dataFile).size : 0
+      const columnsSize = fs.existsSync(columnsFile) ? fs.statSync(columnsFile).size : 0
       return {
         define: {
           __COLUMNS_FILENAME__: JSON.stringify(columnsFilename),
-          __COLUMNS_FILESIZE__: String(fileSize),
+          __COLUMNS_FILESIZE__: String(columnsSize),
+          __THUMBS_FILENAME__: JSON.stringify(thumbsFilename),
         },
       }
     },
 
     configureServer(server) {
-      server.middlewares.use('/columns.json', (_req, res) => {
-        if (!fs.existsSync(dataFile)) {
-          res.writeHead(404)
-          res.end('columns.json not found — run ETL first')
-          return
-        }
-        res.setHeader('Content-Type', 'application/json')
-        fs.createReadStream(dataFile).pipe(res)
-      })
+      for (const [route, file] of [
+        ['/columns.json', columnsFile],
+        ['/thumb-hashes.json', thumbsFile],
+      ] as const) {
+        server.middlewares.use(route, (_req, res) => {
+          if (!fs.existsSync(file)) {
+            res.writeHead(404)
+            res.end(`${path.basename(file)} not found — run ETL first`)
+            return
+          }
+          res.setHeader('Content-Type', 'application/json')
+          fs.createReadStream(file).pipe(res)
+        })
+      }
     },
 
     closeBundle() {
       const outDir = path.resolve(__dirname, 'dist')
-      if (fs.existsSync(dataFile)) {
-        fs.copyFileSync(dataFile, path.join(outDir, columnsFilename))
-        fs.copyFileSync(dataFile, path.join(outDir, 'columns.json'))
+      if (fs.existsSync(columnsFile)) {
+        fs.copyFileSync(columnsFile, path.join(outDir, columnsFilename))
+        fs.copyFileSync(columnsFile, path.join(outDir, 'columns.json'))
+      }
+      if (fs.existsSync(thumbsFile)) {
+        fs.copyFileSync(thumbsFile, path.join(outDir, thumbsFilename))
+        fs.copyFileSync(thumbsFile, path.join(outDir, 'thumb-hashes.json'))
       }
     },
   }
@@ -84,6 +101,14 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /columns\.[a-f0-9]+\.json$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'card-data',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /thumb-hashes\.[a-f0-9]+\.json$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'card-data',

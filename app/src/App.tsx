@@ -21,6 +21,7 @@ import { BATCH_SIZES, isViewMode } from './view-mode'
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
+declare const __THUMBS_FILENAME__: string
 
 function buildFacesOf(canonicalFace: number[]): Map<number, number[]> {
   const map = new Map<number, number[]>()
@@ -247,6 +248,22 @@ function App() {
   const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused() || termsExpanded()
   const scryfallUrl = () => `https://scryfall.com/search?q=${encodeURIComponent(query().trim())}`
 
+  async function fetchThumbHashes(): Promise<void> {
+    try {
+      const url = new URL(__THUMBS_FILENAME__, location.href)
+      const resp = await fetch(url)
+      if (!resp.ok) return
+      const data: { art_crop: string[]; card: string[] } = await resp.json()
+      setDisplay(prev => prev ? {
+        ...prev,
+        art_crop_thumb_hashes: data.art_crop,
+        card_thumb_hashes: data.card,
+      } : prev)
+    } catch {
+      // Thumb hashes are optional; gracefully degrade to gradients.
+    }
+  }
+
   const worker = new SearchWorker()
   let latestQueryId = 0
 
@@ -258,7 +275,11 @@ function App() {
           setDataProgress(msg.fraction)
         } else {
           setWorkerStatus(msg.status)
-          if (msg.status === 'ready') { setDataProgress(1); setDisplay(msg.display) }
+          if (msg.status === 'ready') {
+            setDataProgress(1)
+            setDisplay(msg.display)
+            fetchThumbHashes()
+          }
           if (msg.status === 'error') setWorkerError(msg.error)
         }
         break

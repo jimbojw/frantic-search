@@ -48,6 +48,7 @@ function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
 }
 
 function extractDisplayColumns(data: ColumnarData): DisplayColumns {
+  const len = data.names.length
   return {
     names: data.names,
     mana_costs: data.mana_costs,
@@ -59,8 +60,8 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     defenses: data.defenses,
     color_identity: data.color_identity,
     scryfall_ids: data.scryfall_ids,
-    art_crop_thumb_hashes: data.art_crop_thumb_hashes,
-    card_thumb_hashes: data.card_thumb_hashes,
+    art_crop_thumb_hashes: data.art_crop_thumb_hashes ?? new Array<string>(len).fill(''),
+    card_thumb_hashes: data.card_thumb_hashes ?? new Array<string>(len).fill(''),
     layouts: data.layouts,
     legalities_legal: data.legalities_legal,
     legalities_banned: data.legalities_banned,

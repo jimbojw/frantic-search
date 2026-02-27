@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import { ORACLE_CARDS_PATH, COLUMNS_PATH, ensureDistDir } from "./paths";
+import { ORACLE_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
 import { loadArtCropManifest, loadCardManifest } from "./thumbhash";
 import {
@@ -150,8 +150,14 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
+interface ThumbHashData {
+  art_crop: string[];
+  card: string[];
+}
+
 function pushFaceRow(
   data: ColumnarData,
+  thumbs: ThumbHashData,
   face: CardFace,
   card: Card,
   cardIdx: number,
@@ -189,8 +195,8 @@ function pushFaceRow(
   data.canonical_face.push(canonicalFace);
   data.scryfall_ids.push(card.id ?? "");
   const id = card.id ?? "";
-  data.art_crop_thumb_hashes.push(artCropManifest[id] ?? "");
-  data.card_thumb_hashes.push(cardManifest[id] ?? "");
+  thumbs.art_crop.push(artCropManifest[id] ?? "");
+  thumbs.card.push(cardManifest[id] ?? "");
   data.layouts.push(card.layout ?? "normal");
   data.flags.push(encodeFlags(card));
 }
@@ -231,8 +237,6 @@ export function processCards(verbose: boolean): void {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
-    art_crop_thumb_hashes: [],
-    card_thumb_hashes: [],
     layouts: [],
     flags: [],
     power_lookup: [],
@@ -240,6 +244,8 @@ export function processCards(verbose: boolean): void {
     loyalty_lookup: [],
     defense_lookup: [],
   };
+
+  const thumbs: ThumbHashData = { art_crop: [], card: [] };
 
   let filtered = 0;
 
@@ -257,11 +263,11 @@ export function processCards(verbose: boolean): void {
 
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
-        pushFaceRow(data, face, card, cardIdx, faceRowStart, leg, artCropManifest,
+        pushFaceRow(data, thumbs, face, card, cardIdx, faceRowStart, leg, artCropManifest,
           cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
       }
     } else {
-      pushFaceRow(data, card, card, cardIdx, faceRowStart, leg, artCropManifest,
+      pushFaceRow(data, thumbs, card, card, cardIdx, faceRowStart, leg, artCropManifest,
         cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
     }
   }
@@ -278,4 +284,7 @@ export function processCards(verbose: boolean): void {
 
   fs.writeFileSync(COLUMNS_PATH, JSON.stringify(data) + "\n");
   log(`Wrote ${COLUMNS_PATH}`, true);
+
+  fs.writeFileSync(THUMBS_PATH, JSON.stringify(thumbs) + "\n");
+  log(`Wrote ${THUMBS_PATH}`, true);
 }

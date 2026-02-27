@@ -19,8 +19,8 @@ export interface ColumnarData {
   card_index: number[];
   canonical_face: number[];
   scryfall_ids: string[];
-  art_crop_thumb_hashes: string[];
-  card_thumb_hashes: string[];
+  art_crop_thumb_hashes?: string[];
+  card_thumb_hashes?: string[];
   layouts: string[];
   flags: number[];
   power_lookup: string[];

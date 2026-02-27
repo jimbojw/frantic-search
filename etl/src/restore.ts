@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
 import axios from "axios";
-import { COLUMNS_PATH } from "./paths";
+import { COLUMNS_PATH, THUMBS_PATH } from "./paths";
 import {
   loadArtCropManifest,
   loadCardManifest,
@@ -36,35 +36,36 @@ export function mergeManifests(
 
 interface ColumnsData {
   scryfall_ids?: string[];
+  // Pre-split format: thumb hashes inline in columns.json
   art_crop_thumb_hashes?: string[];
   card_thumb_hashes?: string[];
-  // Migration fallback: old column name
   thumb_hashes?: string[];
 }
 
-async function fetchColumnsData(
-  siteUrl: string,
-  verbose: boolean,
-): Promise<ColumnsData | null> {
-  const url = siteUrl.replace(/\/+$/, "") + "/columns.json";
+interface ThumbHashData {
+  art_crop?: string[];
+  card?: string[];
+}
+
+async function fetchJson<T>(url: string, verbose: boolean): Promise<T | null> {
   log(`Fetching ${url}…`, verbose);
   try {
-    const response = await axios.get<ColumnsData>(url, { timeout: 30_000 });
+    const response = await axios.get<T>(url, { timeout: 30_000 });
     return response.data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    log(`Warning: could not fetch from site — ${msg}`, true);
+    log(`Warning: could not fetch ${url} — ${msg}`, verbose);
     return null;
   }
 }
 
-function readLocalColumnsData(verbose: boolean): ColumnsData | null {
-  log(`Reading local ${COLUMNS_PATH}…`, verbose);
+function readLocalJson<T>(filePath: string, verbose: boolean): T | null {
+  log(`Reading local ${filePath}…`, verbose);
   try {
-    const raw = fs.readFileSync(COLUMNS_PATH, "utf-8");
-    return JSON.parse(raw) as ColumnsData;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    return JSON.parse(raw) as T;
   } catch {
-    log("No local columns.json found — skipping restore", true);
+    log(`${filePath} not found — skipping`, verbose);
     return null;
   }
 }
@@ -116,8 +117,8 @@ export async function restoreManifest(options: RestoreOptions): Promise<void> {
   const { siteUrl, verbose } = options;
 
   const columnsData = siteUrl
-    ? await fetchColumnsData(siteUrl, verbose)
-    : readLocalColumnsData(verbose);
+    ? await fetchJson<ColumnsData>(siteUrl.replace(/\/+$/, "") + "/columns.json", verbose)
+    : readLocalJson<ColumnsData>(COLUMNS_PATH, verbose);
 
   if (!columnsData) {
     return;
@@ -129,8 +130,21 @@ export async function restoreManifest(options: RestoreOptions): Promise<void> {
     return;
   }
 
-  // Art crop: prefer new column name, fall back to old name
-  const artCropHashes = columnsData.art_crop_thumb_hashes ?? columnsData.thumb_hashes;
+  // Try the separate thumb-hashes.json first (post-split format)
+  const thumbsData = siteUrl
+    ? await fetchJson<ThumbHashData>(siteUrl.replace(/\/+$/, "") + "/thumb-hashes.json", verbose)
+    : readLocalJson<ThumbHashData>(THUMBS_PATH, verbose);
+
+  // Resolve art crop hashes: thumb-hashes.json > inline column > legacy column name
+  const artCropHashes =
+    thumbsData?.art_crop ??
+    columnsData.art_crop_thumb_hashes ??
+    columnsData.thumb_hashes;
+
+  // Resolve card hashes: thumb-hashes.json > inline column
+  const cardHashes =
+    thumbsData?.card ??
+    columnsData.card_thumb_hashes;
 
   restoreOneManifest(
     "art crop",
@@ -144,7 +158,7 @@ export async function restoreManifest(options: RestoreOptions): Promise<void> {
   restoreOneManifest(
     "card image",
     scryfall_ids,
-    columnsData.card_thumb_hashes,
+    cardHashes,
     loadCardManifest,
     saveCardManifest,
     verbose,

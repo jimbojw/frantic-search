@@ -156,3 +156,7 @@ With the current Scryfall dataset (~37,000 raw cards), the process filters ~3,50
   and renamed `thumb_hashes` to `art_crop_thumb_hashes` (Spec 017). The
   process command now reads two manifests and populates both
   `art_crop_thumb_hashes` (art crops) and `card_thumb_hashes` (card images).
+- 2026-02-27: Split ThumbHash columns into a separate file (Spec 045). The
+  process command now writes `data/dist/columns.json` (without thumb hashes)
+  and `data/dist/thumb-hashes.json` (two arrays: `art_crop` and `card`).
+  The `ColumnarData` type's thumb hash fields are now optional.

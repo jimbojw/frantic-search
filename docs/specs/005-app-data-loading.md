@@ -90,8 +90,18 @@ The ETL pipeline must have been run (`npm run etl -- download && npm run etl -- 
 
 ## Acceptance Criteria
 
-1. `npm run dev` serves `columns.json` at the app root without any manual copy step (assuming ETL has been run).
-2. `npm run build -w app` produces `app/dist/columns.json` alongside the SPA assets.
+1. `npm run dev` serves `columns.json` and `thumb-hashes.json` at the app root without any manual copy step (assuming ETL has been run).
+2. `npm run build -w app` produces both files (hashed and stable names) in `app/dist/` alongside the SPA assets.
 3. The WebWorker successfully fetches and parses `columns.json` using a relative URL in both dev and production.
-4. If `columns.json` is missing during dev, the server returns a 404 with a message suggesting the ETL be run.
+4. If a data file is missing during dev, the server returns a 404 with a message suggesting the ETL be run.
 5. The Vite config uses `base: './'` — no absolute paths or environment-specific base configuration.
+
+## Implementation Notes
+
+- 2026-02-27: Data loading split into two files (Spec 045). The `serveData`
+  plugin now handles both `columns.json` (core searchable data, loaded by the
+  worker) and `thumb-hashes.json` (display-only ThumbHash placeholders, loaded
+  by the main thread after the worker posts `ready`). Both files get
+  content-hashed filenames for cache busting and stable names for the
+  restore command. The `__THUMBS_FILENAME__` define is injected alongside
+  `__COLUMNS_FILENAME__`.
