@@ -11,6 +11,8 @@ import {
   colorlessX,
   toggleSimple,
   clearColorIdentity,
+  clearFieldTerms,
+  isFieldLabel,
   isCILabel,
   parseBreakdown,
 } from './query-edit'
@@ -206,6 +208,24 @@ export default function ResultsBreakdown(props: {
     return b.children.filter(c => isCILabel(c.label)).map(c => c.label)
   })
 
+  const isMVLabel = (label: string) => isFieldLabel(label, MV_FIELDS, ['=', '>='])
+  const mvTermLabels = createMemo((): string[] => {
+    const b = bd()
+    if (!b) return []
+    if (isMVLabel(b.label)) return [b.label]
+    if (!b.children) return []
+    return b.children.filter(c => isMVLabel(c.label)).map(c => c.label)
+  })
+
+  const isTypeLabel = (label: string) => isFieldLabel(label, TYPE_FIELDS, [':'])
+  const typeTermLabels = createMemo((): string[] => {
+    const b = bd()
+    if (!b) return []
+    if (isTypeLabel(b.label)) return [b.label]
+    if (!b.children) return []
+    return b.children.filter(c => isTypeLabel(c.label)).map(c => c.label)
+  })
+
   function colorExcludeActive(bar: ColorBarDef): boolean {
     if (bar.kind === 'wubrg') {
       const c = bar.color
@@ -244,6 +264,17 @@ export default function ResultsBreakdown(props: {
             />
           )}
         </For>
+        <Show when={mvTermLabels().length > 0}>
+          <div class="flex items-center h-6">
+            <button
+              type="button"
+              onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
+              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+            >
+              Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)
+            </button>
+          </div>
+        </Show>
       </div>
       <div>
         <For each={COLOR_BARS}>
@@ -291,6 +322,17 @@ export default function ResultsBreakdown(props: {
             />
           )}
         </For>
+        <Show when={typeTermLabels().length > 0}>
+          <div class="flex items-center h-6">
+            <button
+              type="button"
+              onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isTypeLabel))}
+              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+            >
+              Clear (<code class="font-mono">{typeTermLabels().join(' ')}</code>)
+            </button>
+          </div>
+        </Show>
       </div>
     </div>
   )

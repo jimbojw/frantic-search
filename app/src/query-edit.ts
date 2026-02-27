@@ -595,34 +595,37 @@ export function toggleSimple(
 }
 
 // ---------------------------------------------------------------------------
-// Clear all color identity filters
+// Clear field-family filters (generic)
 // ---------------------------------------------------------------------------
 
-const CI_OPS = ['>=', ':', '=']
-
-export function isCILabel(label: string): boolean {
+export function isFieldLabel(
+  label: string,
+  fields: string[],
+  operators: string[],
+): boolean {
   const raw = label.startsWith('-') ? label.slice(1) : label
   const lower = raw.toLowerCase()
-  for (const f of CI_FIELDS) {
-    for (const op of CI_OPS) {
+  for (const f of fields) {
+    for (const op of operators) {
       if (lower.startsWith(f + op)) return true
     }
   }
   return false
 }
 
-export function clearColorIdentity(
+export function clearFieldTerms(
   query: string,
   breakdown: BreakdownNode | null,
+  predicate: (label: string) => boolean,
 ): string {
   if (!breakdown || !query.trim()) return query
 
-  if (isCILabel(breakdown.label)) return ''
+  if (predicate(breakdown.label)) return ''
 
   if (!breakdown.children) return query
 
   const targets = breakdown.children.filter(
-    child => child.span && isCILabel(child.label),
+    child => child.span && predicate(child.label),
   )
   if (targets.length === 0) return query
 
@@ -632,4 +635,17 @@ export function clearColorIdentity(
     result = spliceQuery(result, t.span!, '')
   }
   return result.replace(/  +/g, ' ').trim()
+}
+
+const CI_OPS = ['>=', ':', '=']
+
+export function isCILabel(label: string): boolean {
+  return isFieldLabel(label, CI_FIELDS, CI_OPS)
+}
+
+export function clearColorIdentity(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  return clearFieldTerms(query, breakdown, isCILabel)
 }
