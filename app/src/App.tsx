@@ -244,7 +244,7 @@ function App() {
 
   const totalCards = () => indices().length
 
-  const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused()
+  const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused() || termsExpanded()
   const scryfallUrl = () => `https://scryfall.com/search?q=${encodeURIComponent(query().trim())}`
 
   const worker = new SearchWorker()
@@ -358,6 +358,12 @@ function App() {
   }
 
   function navigateHome() {
+    if (termsExpanded()) {
+      setTermsExpanded(false)
+      localStorage.setItem('frantic-terms-expanded', 'false')
+      return
+    }
+
     const isAtHome =
       view() === 'search' &&
       !query().trim() &&
