@@ -115,4 +115,7 @@ export interface QueryNodeResult {
 export interface EvalOutput {
   result: QueryNodeResult;
   indices: Uint32Array;
+  printingIndices?: Uint32Array;
+  hasPrintingConditions: boolean;
+  printingsUnavailable: boolean;
 }

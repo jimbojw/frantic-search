@@ -32,6 +32,7 @@ export interface ColumnarData {
 export interface SetLookupEntry {
   code: string;
   name: string;
+  released_at: number;
 }
 
 export interface PrintingColumnarData {
@@ -44,5 +45,6 @@ export interface PrintingColumnarData {
   finish: number[];
   frame: number[];
   price_usd: number[];
+  released_at: number[];
   set_lookup: SetLookupEntry[];
 }

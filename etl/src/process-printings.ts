@@ -31,6 +31,7 @@ interface DefaultCard {
   set_name?: string;
   collector_number?: string;
   rarity?: string;
+  released_at?: string;
   full_art?: boolean;
   textless?: boolean;
   reprint?: boolean;
@@ -95,6 +96,18 @@ const PRICE_KEY_FOR_FINISH: Record<string, string> = {
   etched: "usd_etched",
 };
 
+/** Encode an ISO date string (YYYY-MM-DD) as a uint32 YYYYMMDD integer. */
+function encodeDateYmd(dateStr: string | undefined): number {
+  if (!dateStr) return 0;
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return 0;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return 0;
+  return y * 10000 + m * 100 + d;
+}
+
 // ---------------------------------------------------------------------------
 // Set dictionary encoder (uint16 indices)
 // ---------------------------------------------------------------------------
@@ -103,11 +116,11 @@ class SetEncoder {
   private table: SetLookupEntry[] = [];
   private index = new Map<string, number>();
 
-  encode(code: string, name: string): number {
+  encode(code: string, name: string, releasedAt: number): number {
     let idx = this.index.get(code);
     if (idx === undefined) {
       idx = this.table.length;
-      this.table.push({ code, name });
+      this.table.push({ code, name, released_at: releasedAt });
       this.index.set(code, idx);
     }
     return idx;
@@ -196,6 +209,7 @@ export function processPrintings(verbose: boolean): void {
     finish: [],
     frame: [],
     price_usd: [],
+    released_at: [],
     set_lookup: [],
   };
 
@@ -223,7 +237,8 @@ export function processPrintings(verbose: boolean): void {
     const finishes = card.finishes ?? ["nonfoil"];
     const scryfallId = card.id ?? "";
     const collectorNumber = card.collector_number ?? "";
-    const setIdx = setEncoder.encode(card.set ?? "", card.set_name ?? "");
+    const releasedAtYmd = encodeDateYmd(card.released_at);
+    const setIdx = setEncoder.encode(card.set ?? "", card.set_name ?? "", releasedAtYmd);
     const rarityBits = encodeRarity(card.rarity);
     const flagBits = encodePrintingFlags(card);
     const frameBits = encodeFrame(card.frame);
@@ -244,6 +259,7 @@ export function processPrintings(verbose: boolean): void {
       data.finish.push(finishVal);
       data.frame.push(frameBits);
       data.price_usd.push(priceCents);
+      data.released_at.push(releasedAtYmd);
 
       totalEntries++;
     }
