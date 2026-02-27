@@ -138,3 +138,78 @@ export const CardFlag = {
   Funny: 1 << 1,
   UniversesBeyond: 1 << 2,
 } as const;
+
+// --- Rarity (bitmask, 4 bits) ---
+export const Rarity = {
+  Common: 1 << 0,
+  Uncommon: 1 << 1,
+  Rare: 1 << 2,
+  Mythic: 1 << 3,
+} as const;
+
+export const RARITY_FROM_STRING: Record<string, number> = {
+  common: Rarity.Common,
+  uncommon: Rarity.Uncommon,
+  rare: Rarity.Rare,
+  mythic: Rarity.Mythic,
+};
+
+export const RARITY_NAMES: Record<string, number> = {
+  common: Rarity.Common, c: Rarity.Common,
+  uncommon: Rarity.Uncommon, u: Rarity.Uncommon,
+  rare: Rarity.Rare, r: Rarity.Rare,
+  mythic: Rarity.Mythic, m: Rarity.Mythic,
+};
+
+export const RARITY_ORDER: Record<number, number> = {
+  [Rarity.Common]: 0,
+  [Rarity.Uncommon]: 1,
+  [Rarity.Rare]: 2,
+  [Rarity.Mythic]: 3,
+};
+
+// --- Finish (enum, not bitmask — each printing row has exactly one) ---
+export const Finish = {
+  Nonfoil: 0,
+  Foil: 1,
+  Etched: 2,
+} as const;
+
+export const FINISH_FROM_STRING: Record<string, number> = {
+  nonfoil: Finish.Nonfoil,
+  foil: Finish.Foil,
+  etched: Finish.Etched,
+};
+
+// --- Printing Flags (bitmask, 8 bits) ---
+export const PrintingFlag = {
+  FullArt: 1 << 0,
+  Textless: 1 << 1,
+  Reprint: 1 << 2,
+  Promo: 1 << 3,
+  Digital: 1 << 4,
+  HighresImage: 1 << 5,
+  Borderless: 1 << 6,
+  ExtendedArt: 1 << 7,
+} as const;
+
+// --- Frame (bitmask, 5 bits) ---
+export const Frame = {
+  Y1993: 1 << 0,
+  Y1997: 1 << 1,
+  Y2003: 1 << 2,
+  Y2015: 1 << 3,
+  Future: 1 << 4,
+} as const;
+
+export const FRAME_FROM_STRING: Record<string, number> = {
+  "1993": Frame.Y1993,
+  "1997": Frame.Y1997,
+  "2003": Frame.Y2003,
+  "2015": Frame.Y2015,
+  future: Frame.Future,
+};
+
+export const FRAME_NAMES: Record<string, number> = {
+  ...FRAME_FROM_STRING,
+};

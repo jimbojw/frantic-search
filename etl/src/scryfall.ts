@@ -17,11 +17,15 @@ const BulkDataResponseSchema = z.object({
   data: z.array(BulkDataEntrySchema),
 });
 
-export type OracleCardsEntry = z.infer<typeof BulkDataEntrySchema>;
+export type BulkDataEntry = z.infer<typeof BulkDataEntrySchema>;
 
-export async function fetchMetadata(
+/** @deprecated Use fetchBulkMetadata("oracle_cards", verbose) instead. */
+export type OracleCardsEntry = BulkDataEntry;
+
+export async function fetchBulkMetadata(
+  bulkType: string,
   verbose: boolean,
-): Promise<OracleCardsEntry> {
+): Promise<BulkDataEntry> {
   log(`GET ${BULK_DATA_URL}`, verbose);
 
   const response = await axios.get(BULK_DATA_URL, {
@@ -35,17 +39,23 @@ export async function fetchMetadata(
     );
   }
 
-  const entry = parsed.data.data.find((e) => e.type === "oracle_cards");
+  const entry = parsed.data.data.find((e) => e.type === bulkType);
   if (!entry) {
     throw new Error(
-      'Scryfall API returned no "oracle_cards" entry in bulk-data list',
+      `Scryfall API returned no "${bulkType}" entry in bulk-data list`,
     );
   }
 
   log(
-    `Found oracle_cards: updated_at=${entry.updated_at}, size=${entry.size}`,
+    `Found ${bulkType}: updated_at=${entry.updated_at}, size=${entry.size}`,
     verbose,
   );
 
   return entry;
+}
+
+export async function fetchMetadata(
+  verbose: boolean,
+): Promise<BulkDataEntry> {
+  return fetchBulkMetadata("oracle_cards", verbose);
 }

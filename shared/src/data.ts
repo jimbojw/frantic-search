@@ -28,3 +28,21 @@ export interface ColumnarData {
   loyalty_lookup: string[];
   defense_lookup: string[];
 }
+
+export interface SetLookupEntry {
+  code: string;
+  name: string;
+}
+
+export interface PrintingColumnarData {
+  canonical_face_ref: number[];
+  scryfall_ids: string[];
+  collector_numbers: string[];
+  set_indices: number[];
+  rarity: number[];
+  printing_flags: number[];
+  finish: number[];
+  frame: number[];
+  price_usd: number[];
+  set_lookup: SetLookupEntry[];
+}

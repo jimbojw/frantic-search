@@ -9,9 +9,19 @@ export {
   Format,
   FORMAT_NAMES,
   CardFlag,
+  Rarity,
+  RARITY_FROM_STRING,
+  RARITY_NAMES,
+  RARITY_ORDER,
+  Finish,
+  FINISH_FROM_STRING,
+  PrintingFlag,
+  Frame,
+  FRAME_FROM_STRING,
+  FRAME_NAMES,
 } from "./bits";
 
-export type { ColumnarData } from "./data";
+export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";
 
 export type { ToWorker, FromWorker, DisplayColumns, BreakdownNode, Histograms } from "./worker-protocol";
 

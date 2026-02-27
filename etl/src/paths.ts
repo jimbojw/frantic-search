@@ -8,9 +8,12 @@ const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..");
 export const RAW_DIR = path.join(PROJECT_ROOT, "data", "raw");
 export const DIST_DIR = path.join(PROJECT_ROOT, "data", "dist");
 export const ORACLE_CARDS_PATH = path.join(RAW_DIR, "oracle-cards.json");
+export const DEFAULT_CARDS_PATH = path.join(RAW_DIR, "default-cards.json");
 export const META_PATH = path.join(RAW_DIR, "meta.json");
+export const DEFAULT_CARDS_META_PATH = path.join(RAW_DIR, "default-cards-meta.json");
 export const COLUMNS_PATH = path.join(DIST_DIR, "columns.json");
 export const THUMBS_PATH = path.join(DIST_DIR, "thumb-hashes.json");
+export const PRINTINGS_PATH = path.join(DIST_DIR, "printings.json");
 export const THUMBHASH_DIR = path.join(PROJECT_ROOT, "data", "thumbhash");
 export const ART_CROP_MANIFEST_PATH = path.join(THUMBHASH_DIR, "art-crop-thumbhash-manifest.json");
 export const CARD_MANIFEST_PATH = path.join(THUMBHASH_DIR, "card-thumbhash-manifest.json");
@@ -34,14 +37,22 @@ export function ensureDistDir(): void {
 }
 
 export function readLocalMeta(): LocalMeta | null {
+  return readLocalMetaFor(META_PATH);
+}
+
+export function writeLocalMeta(meta: LocalMeta): void {
+  writeLocalMetaFor(META_PATH, meta);
+}
+
+export function readLocalMetaFor(metaPath: string): LocalMeta | null {
   try {
-    const raw = fs.readFileSync(META_PATH, "utf-8");
+    const raw = fs.readFileSync(metaPath, "utf-8");
     return LocalMetaSchema.parse(JSON.parse(raw));
   } catch {
     return null;
   }
 }
 
-export function writeLocalMeta(meta: LocalMeta): void {
-  fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2) + "\n");
+export function writeLocalMetaFor(metaPath: string, meta: LocalMeta): void {
+  fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n");
 }
