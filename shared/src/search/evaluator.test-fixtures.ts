@@ -2,8 +2,9 @@
 import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { Color, Format } from "../bits";
-import type { ColumnarData } from "../data";
+import { PrintingIndex } from "./printing-index";
+import { Color, Format, Rarity, Finish, Frame } from "../bits";
+import type { ColumnarData, PrintingColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
 // Synthetic card pool (9 cards = 10 face rows)
@@ -107,7 +108,41 @@ export const TEST_DATA: ColumnarData = {
 
 export const index = new CardIndex(TEST_DATA);
 
+// ---------------------------------------------------------------------------
+// Synthetic printing data (5 printing rows across 2 canonical faces)
+// ---------------------------------------------------------------------------
+// Printing #0  Lightning Bolt (face 1) | MH2  | rare     | nonfoil | $1.00 | 2015 | 2021-06-18
+// Printing #1  Lightning Bolt (face 1) | MH2  | rare     | foil    | $3.00 | 2015 | 2021-06-18
+// Printing #2  Lightning Bolt (face 1) | A25  | uncommon | nonfoil | $0.50 | 2015 | 2018-03-16
+// Printing #3  Sol Ring       (face 3) | C21  | uncommon | nonfoil | $0.75 | 2015 | 2021-06-18
+// Printing #4  Sol Ring       (face 3) | C21  | uncommon | foil    | $5.00 | 2015 | 2021-06-18
+
+export const TEST_PRINTING_DATA: PrintingColumnarData = {
+  canonical_face_ref: [1, 1, 1, 3, 3],
+  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e"],
+  collector_numbers: ["261", "261", "113", "280", "280"],
+  set_indices: [0, 0, 1, 2, 2],
+  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon],
+  printing_flags: [0, 0, 0, 0, 0],
+  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil],
+  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
+  price_usd: [100, 300, 50, 75, 500],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618],
+  set_lookup: [
+    { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
+    { code: "A25", name: "Masters 25", released_at: 20180316 },
+    { code: "C21", name: "Commander 2021", released_at: 20210618 },
+  ],
+};
+
+export const printingIndex = new PrintingIndex(TEST_PRINTING_DATA);
+
 export function matchCount(query: string): number {
   const cache = new NodeCache(index);
+  return cache.evaluate(parse(query)).result.matchCount;
+}
+
+export function matchCountWithPrintings(query: string): number {
+  const cache = new NodeCache(index, printingIndex);
   return cache.evaluate(parse(query)).result.matchCount;
 }

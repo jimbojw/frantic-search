@@ -1,0 +1,191 @@
+# Printing-domain query compliance tests (Spec 047)
+
+# ---------------------------------------------------------------------------
+# set:
+# ---------------------------------------------------------------------------
+
+- name: "set:mh2 returns Modern Horizons 2 cards"
+  query: "set:mh2"
+  assertions:
+    contains:
+      - "Ragavan, Nimble Pilferer"
+      - "Urza's Saga"
+      - "Grief"
+    count_min: 300
+
+- name: "set:lea returns Limited Edition Alpha cards"
+  query: "set:lea"
+  assertions:
+    contains:
+      - "Black Lotus"
+      - "Lightning Bolt"
+    count_min: 280
+    count_max: 310
+
+- name: "set:xxx returns no cards"
+  query: "set:xxx"
+  assertions:
+    count: 0
+
+# ---------------------------------------------------------------------------
+# rarity:
+# ---------------------------------------------------------------------------
+
+- name: "rarity:mythic t:creature returns mythic creatures"
+  query: "rarity:mythic t:creature"
+  assertions:
+    contains:
+      - "Emrakul, the Aeons Torn"
+      - "Ragavan, Nimble Pilferer"
+    count_min: 500
+
+- name: "r:common t:instant returns common instants"
+  query: "r:common t:instant"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+      - "Counterspell"
+    count_min: 500
+
+- name: "r>=rare set:mh2 narrows to rare and mythic in MH2"
+  query: "r>=rare set:mh2"
+  assertions:
+    contains:
+      - "Ragavan, Nimble Pilferer"
+    excludes:
+      - "Lightning Bolt"
+    count_min: 50
+
+- name: "r:u abbreviation works for uncommon"
+  query: "r:u set:mh2"
+  assertions:
+    count_min: 50
+
+# ---------------------------------------------------------------------------
+# is:foil / is:nonfoil / is:etched
+# ---------------------------------------------------------------------------
+
+- name: "is:foil finds cards with foil printings"
+  query: "is:foil t:creature c:g"
+  scryfall_query: "is:foil t:creature c:g include:extras"
+  assertions:
+    contains:
+      - "Tarmogoyf"
+    count_min: 500
+
+- name: "is:etched finds etched cards (Commander Legends etc.)"
+  query: "is:etched"
+  scryfall_query: "is:etched include:extras"
+  assertions:
+    count_min: 100
+
+# ---------------------------------------------------------------------------
+# is: printing flags
+# ---------------------------------------------------------------------------
+
+- name: "is:fullart finds full-art cards"
+  query: "is:fullart"
+  scryfall_query: "is:fullart include:extras"
+  assertions:
+    count_min: 100
+
+- name: "is:borderless finds borderless cards"
+  query: "is:borderless"
+  scryfall_query: "is:borderless include:extras"
+  assertions:
+    count_min: 100
+
+- name: "is:reprint finds reprints"
+  query: "is:reprint t:creature c:r"
+  scryfall_query: "is:reprint t:creature c:r include:extras"
+  assertions:
+    contains:
+      - "Goblin Guide"
+    count_min: 200
+
+# ---------------------------------------------------------------------------
+# frame:
+# ---------------------------------------------------------------------------
+
+- name: "frame:future returns future-frame cards"
+  query: "frame:future"
+  scryfall_query: "frame:future include:extras"
+  assertions:
+    contains:
+      - "Tarmogoyf"
+    count_min: 50
+
+- name: "frame:1993 returns Alpha-era frame cards"
+  query: "frame:1993"
+  scryfall_query: "frame:1993 include:extras"
+  assertions:
+    contains:
+      - "Black Lotus"
+    count_min: 500
+
+# ---------------------------------------------------------------------------
+# price:
+# ---------------------------------------------------------------------------
+
+- name: "price<0.10 t:creature finds cheap creature printings"
+  query: "price<0.10 t:creature"
+  assertions:
+    count_min: 500
+
+- name: "price>=100 finds expensive printings"
+  query: "price>=100"
+  assertions:
+    contains:
+      - "Black Lotus"
+    count_min: 10
+
+# ---------------------------------------------------------------------------
+# year: and date:
+# ---------------------------------------------------------------------------
+
+- name: "year<=1994 finds early Magic cards"
+  query: "year<=1994"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+    count_min: 500
+
+- name: "year:2021 finds 2021 printings"
+  query: "year:2021"
+  assertions:
+    count_min: 500
+
+# ---------------------------------------------------------------------------
+# Cross-domain queries (face + printing)
+# ---------------------------------------------------------------------------
+
+- name: "t:creature set:mh2 finds MH2 creatures"
+  query: "t:creature set:mh2"
+  assertions:
+    contains:
+      - "Ragavan, Nimble Pilferer"
+    count_min: 50
+
+- name: "t:instant r:mythic finds mythic instants"
+  query: "t:instant r:mythic"
+  assertions:
+    count_min: 20
+
+- name: "c:r set:lea finds red cards in Alpha"
+  query: "c:r set:lea"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+    count_min: 30
+
+# ---------------------------------------------------------------------------
+# NOT with printing conditions
+# ---------------------------------------------------------------------------
+
+- name: "-is:reprint finds first printings only"
+  query: "-is:reprint t:creature set:mh2"
+  scryfall_query: "-is:reprint t:creature set:mh2 include:extras"
+  assertions:
+    contains:
+      - "Ragavan, Nimble Pilferer"
+    count_min: 30
