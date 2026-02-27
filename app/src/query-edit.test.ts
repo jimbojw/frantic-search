@@ -10,6 +10,7 @@ import {
   toggleColorDrill,
   toggleColorExclude,
   toggleSimple,
+  cycleChip,
   graduatedColorBar,
   graduatedColorX,
   colorlessBar,
@@ -1012,5 +1013,109 @@ describe('multi-step MV toggle sequences', () => {
     q = mvExclude(q, '3');expect(q).toBe('f:commander -mv=3')
     q = mvDrill(q, '2');  expect(q).toBe('f:commander -mv=3 mv=2')
     q = mvExclude(q, '2');expect(q).toBe('f:commander -mv=3')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// cycleChip — tri-state cycling (Spec 044)
+// ---------------------------------------------------------------------------
+
+const FORMAT_FIELDS = ['f', 'format', 'legal']
+const IS_FIELDS = ['is']
+
+function cycleFormat(query: string, value: string): string {
+  return cycleChip(query, parseBreakdown(query), {
+    field: FORMAT_FIELDS, operator: ':', value, term: `f:${value}`,
+  })
+}
+
+function cycleIs(query: string, value: string): string {
+  return cycleChip(query, parseBreakdown(query), {
+    field: IS_FIELDS, operator: ':', value, term: `is:${value}`,
+  })
+}
+
+describe('cycleChip — format', () => {
+  it('neutral → positive: appends f:commander', () => {
+    expect(cycleFormat('', 'commander')).toBe('f:commander')
+  })
+
+  it('positive → negative: replaces f:commander with -f:commander', () => {
+    expect(cycleFormat('f:commander', 'commander')).toBe('-f:commander')
+  })
+
+  it('negative → neutral: removes -f:commander', () => {
+    expect(cycleFormat('-f:commander', 'commander')).toBe('')
+  })
+
+  it('full round-trip returns to empty', () => {
+    let q = ''
+    q = cycleFormat(q, 'commander'); expect(q).toBe('f:commander')
+    q = cycleFormat(q, 'commander'); expect(q).toBe('-f:commander')
+    q = cycleFormat(q, 'commander'); expect(q).toBe('')
+  })
+
+  it('detects user-typed alias: format:commander → -format:commander', () => {
+    expect(cycleFormat('format:commander', 'commander')).toBe('-format:commander')
+  })
+
+  it('detects negated alias: -format:commander → neutral', () => {
+    expect(cycleFormat('-format:commander', 'commander')).toBe('')
+  })
+
+  it('preserves surrounding terms on positive → negative', () => {
+    expect(cycleFormat('t:creature f:commander is:dfc', 'commander'))
+      .toBe('t:creature is:dfc -f:commander')
+  })
+
+  it('preserves surrounding terms on negative → neutral', () => {
+    expect(cycleFormat('t:creature -f:commander', 'commander'))
+      .toBe('t:creature')
+  })
+})
+
+describe('cycleChip — is keywords', () => {
+  it('neutral → positive: appends is:dfc', () => {
+    expect(cycleIs('', 'dfc')).toBe('is:dfc')
+  })
+
+  it('positive → negative: replaces is:dfc with -is:dfc', () => {
+    expect(cycleIs('is:dfc', 'dfc')).toBe('-is:dfc')
+  })
+
+  it('negative → neutral: removes -is:dfc', () => {
+    expect(cycleIs('-is:dfc', 'dfc')).toBe('')
+  })
+
+  it('full round-trip returns to empty', () => {
+    let q = ''
+    q = cycleIs(q, 'dual'); expect(q).toBe('is:dual')
+    q = cycleIs(q, 'dual'); expect(q).toBe('-is:dual')
+    q = cycleIs(q, 'dual'); expect(q).toBe('')
+  })
+
+  it('preserves surrounding terms throughout cycle', () => {
+    let q = 't:creature'
+    q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature is:dfc')
+    q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature -is:dfc')
+    q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature')
+  })
+})
+
+describe('cycleChip — multi-chip sequences', () => {
+  it('multiple different chips coexist', () => {
+    let q = ''
+    q = cycleFormat(q, 'commander'); expect(q).toBe('f:commander')
+    q = cycleIs(q, 'dfc');           expect(q).toBe('f:commander is:dfc')
+    q = cycleFormat(q, 'commander'); expect(q).toBe('is:dfc -f:commander')
+    q = cycleIs(q, 'dfc');           expect(q).toBe('-f:commander -is:dfc')
+  })
+
+  it('cycling one chip does not affect another', () => {
+    let q = 'f:commander is:dfc'
+    q = cycleIs(q, 'dfc')
+    expect(q).toBe('f:commander -is:dfc')
+    q = cycleFormat(q, 'commander')
+    expect(q).toBe('-is:dfc -f:commander')
   })
 })

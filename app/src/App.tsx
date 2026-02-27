@@ -9,7 +9,6 @@ import InlineBreakdown from './InlineBreakdown'
 import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdown'
 import SparkBars from './SparkBars'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
-import { sealQuery } from './query-edit'
 import TermsDrawer from './TermsDrawer'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
@@ -392,17 +391,6 @@ function App() {
     window.scrollTo(0, 0)
   }
 
-  function appendQuery(term: string) {
-    flushPendingCommit()
-    setQuery(q => {
-      const trimmed = q.trim()
-      if (!trimmed) return term
-      const sealed = sealQuery(trimmed)
-      const needsParens = breakdown()?.type === 'OR'
-      return needsParens ? `(${sealed}) ${term}` : `${sealed} ${term}`
-    })
-  }
-
   return (
     <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'help'}>
@@ -448,7 +436,8 @@ function App() {
         <div class={`overflow-hidden border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 ${headerCollapsed() ? 'rounded-b-xl rounded-t-none' : 'rounded-xl'}`}>
           <Show when={termsExpanded()}>
             <TermsDrawer
-              onChipClick={appendQuery}
+              query={query()}
+              onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
               onHelpClick={navigateToHelp}
               onClose={toggleTerms}
             />

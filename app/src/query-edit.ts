@@ -595,6 +595,36 @@ export function toggleSimple(
 }
 
 // ---------------------------------------------------------------------------
+// Tri-state cycle: neutral → positive → negative → neutral  (Spec 044)
+// ---------------------------------------------------------------------------
+
+export function cycleChip(
+  query: string,
+  breakdown: BreakdownNode | null,
+  opts: { field: string[]; operator: string; value: string; term: string },
+): string {
+  const positive = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, false, v => v === opts.value)
+    : null
+  const negative = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, true, v => v === opts.value)
+    : null
+
+  if (positive) {
+    const negatedTerm = `-${positive.label}`
+    const removed = removeNode(query, positive, breakdown!)
+    const freshBd = parseBreakdown(removed)
+    return appendTerm(removed, negatedTerm, freshBd)
+  }
+
+  if (negative) {
+    return removeNode(query, negative, breakdown!)
+  }
+
+  return appendTerm(query, opts.term, breakdown)
+}
+
+// ---------------------------------------------------------------------------
 // Clear field-family filters (generic)
 // ---------------------------------------------------------------------------
 
