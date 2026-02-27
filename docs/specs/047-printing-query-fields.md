@@ -1,6 +1,6 @@
 # Spec 047: Printing Query Fields
 
-**Status:** Draft
+**Status:** In Progress 
 
 **Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation)
 
@@ -206,7 +206,7 @@ class PrintingIndex {
 
 The `faceToPrintings` reverse map is built at construction time by iterating `canonicalFaceRef`. It enables face→printing promotion in the evaluator.
 
-### Field aliases (`shared/src/search/evaluator.ts`)
+### Field aliases (`shared/src/search/eval-leaves.ts`)
 
 Extend `FIELD_ALIASES`:
 
@@ -221,7 +221,7 @@ const FIELD_ALIASES: Record<string, string> = {
 };
 ```
 
-### Printing-domain field set
+### Printing-domain field set (`shared/src/search/eval-printing.ts`)
 
 ```typescript
 const PRINTING_FIELDS = new Set([
@@ -231,25 +231,25 @@ const PRINTING_FIELDS = new Set([
 
 `is:` keywords are handled separately (see below) but also evaluate in printing domain.
 
-### Leaf evaluation: `evalPrintingField()`
+### Leaf evaluation: `evalPrintingField()` (`shared/src/search/eval-printing.ts`)
 
 New function analogous to `evalLeafField()`, operating on `PrintingIndex` columns and producing a `Uint8Array(printingCount)`.
 
-Dispatch within `evalLeafField()`:
+Dispatch from `evaluator.ts` into `eval-printing.ts`:
 
 ```typescript
-if (PRINTING_FIELDS.has(canonical)) {
+if (isPrintingField(canonical)) {
   return evalPrintingField(canonical, operator, value, printingIndex, printingBuf, printingCount);
 }
 ```
 
-### `is:` keyword changes
+### `is:` keyword changes (`shared/src/search/eval-is.ts`)
 
-`evalIsKeyword()` gains a domain return value. For keywords that are printing-domain (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`), it evaluates against the printing buffer and returns `"printing"`. For face-domain keywords (all existing ones), it returns `"ok"` as today.
+Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`, which operates on the printing buffer and returns `"printing"` domain. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`, which returns `"ok"` as today. Both functions live in `eval-is.ts`.
 
 These keywords are removed from `UNSUPPORTED_IS_KEYWORDS`.
 
-### Dual-domain buffer management in `NodeCache`
+### Dual-domain buffer management in `NodeCache` (`shared/src/search/evaluator.ts`)
 
 `NodeCache` manages two buffer pools:
 
@@ -258,7 +258,7 @@ These keywords are removed from `UNSUPPORTED_IS_KEYWORDS`.
 
 Each `InternedNode` tracks its domain (`"face" | "printing"`). Leaf nodes set their domain based on the field. Composite nodes determine their domain from their children and insert promotion as needed.
 
-### Promotion implementation
+### Promotion implementation (`shared/src/search/eval-printing.ts`)
 
 Two helper functions:
 
@@ -314,9 +314,20 @@ If printing data has not yet loaded when a query containing printing-domain fiel
 
 ## Test Strategy
 
-### Unit tests (`shared/src/search/evaluator.test.ts`)
+### Test files
 
-Extend the synthetic card pool with printing data:
+Tests are split across several files in `shared/src/search/`:
+
+| File | Contents |
+|---|---|
+| `evaluator.test-fixtures.ts` | Shared synthetic card pool (`TEST_DATA`, `TEST_PRINTING_DATA`) and pre-built `index`/`printingIndex` instances |
+| `evaluator.test.ts` | Core evaluator tests (node key, caching, basic field evaluation) |
+| `evaluator-printing.test.ts` | Printing-domain integration tests (cross-domain queries through `NodeCache.evaluate`) |
+| `evaluator-is.test.ts` | `is:` keyword tests |
+| `evaluator-errors.test.ts` | Error and edge-case tests |
+| `eval-printing.test.ts` | Unit tests for `evalPrintingField()`, `isPrintingField()`, and promotion helpers |
+
+The synthetic card pool in the fixtures is extended with printing data:
 
 | Printing row | Card | Set | Rarity | Finish | Price (cents) | Frame |
 |---|---|---|---|---|---|---|
@@ -349,9 +360,14 @@ Add printing-field entries once the full dataset is available.
 | `shared/src/bits.ts` | Add `Rarity`, `RARITY_NAMES`, `RARITY_ORDER`, `Finish`, `PrintingFlag`, `Frame`, `FRAME_NAMES` |
 | `shared/src/data.ts` | Add `PrintingColumnarData` interface |
 | `shared/src/search/printing-index.ts` | New: `PrintingIndex` class |
-| `shared/src/search/evaluator.ts` | Add `PRINTING_FIELDS`, `evalPrintingField()`, promotion helpers, dual-domain composite node logic, updated `evalIsKeyword()`, remove printing keywords from `UNSUPPORTED_IS_KEYWORDS` |
-| `shared/src/search/card-index.ts` | `NodeCache` extended with dual buffer pools and domain tracking |
-| `shared/src/search/evaluator.test.ts` | Synthetic printing data, cross-domain test cases |
+| `shared/src/search/eval-leaves.ts` | `FIELD_ALIASES` extended with printing field aliases |
+| `shared/src/search/eval-printing.ts` | New: `PRINTING_FIELDS`, `isPrintingField()`, `evalPrintingField()`, `promotePrintingToFace()`, `promoteFaceToPrinting()` |
+| `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword()` for printing-domain `is:` keywords; remove printing keywords from `UNSUPPORTED_IS_KEYWORDS` |
+| `shared/src/search/evaluator.ts` | Dual-domain composite node logic, domain tracking in `NodeCache`/`InternedNode` |
+| `shared/src/search/evaluator.test-fixtures.ts` | Synthetic card pool and printing data shared across test files |
+| `shared/src/search/evaluator-printing.test.ts` | Printing-domain integration tests (cross-domain queries through `NodeCache.evaluate`) |
+| `shared/src/search/eval-printing.test.ts` | Unit tests for `evalPrintingField()`, promotion helpers |
+| `shared/src/search/evaluator-is.test.ts` | `is:` keyword tests (face-domain and printing-domain) |
 
 ## Acceptance Criteria
 

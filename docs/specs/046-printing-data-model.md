@@ -1,6 +1,6 @@
 # Spec 046: Printing Data Model and ETL
 
-**Status:** Draft
+**Status:** In Progress 
 
 **Depends on:** Spec 003 (ETL Process), Spec 045 (Split Data Files), ADR-017 (Dual-Domain Query Evaluation)
 
