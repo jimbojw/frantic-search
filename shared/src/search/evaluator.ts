@@ -8,7 +8,12 @@ import {
   type ExactNameNode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
-import { COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, COLOR_IMPOSSIBLE, FORMAT_NAMES, CardFlag } from "../bits";
+import type { PrintingIndex } from "./printing-index";
+import {
+  COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, COLOR_IMPOSSIBLE,
+  FORMAT_NAMES, CardFlag,
+  RARITY_NAMES, RARITY_ORDER, Finish, PrintingFlag, FRAME_NAMES, FINISH_FROM_STRING,
+} from "../bits";
 import { parseManaSymbols, manaContains } from "./mana";
 import { parseStatValue } from "./stats";
 
@@ -30,7 +35,18 @@ const FIELD_ALIASES: Record<string, string> = {
   banned: "banned",
   restricted: "restricted",
   is: "is",
+  set: "set", s: "set", e: "set", edition: "set",
+  rarity: "rarity", r: "rarity",
+  price: "price", usd: "price",
+  cn: "collectornumber", number: "collectornumber", collectornumber: "collectornumber",
+  frame: "frame",
+  year: "year",
+  date: "date",
 };
+
+const PRINTING_FIELDS = new Set([
+  "set", "rarity", "price", "collectornumber", "frame", "year", "date",
+]);
 
 function popcount(buf: Uint8Array, len: number): number {
   let count = 0;
@@ -286,9 +302,14 @@ function hasPhyrexianSymbol(text: string): boolean {
   return false;
 }
 
+const PRINTING_IS_KEYWORDS = new Set([
+  "foil", "nonfoil", "etched",
+  "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
+  "borderless", "extended",
+]);
+
 const UNSUPPORTED_IS_KEYWORDS = new Set([
-  "foil", "nonfoil", "promo", "reprint", "unique", "digital", "hires",
-  "full", "borderless", "extended", "etched", "glossy", "spotlight",
+  "glossy", "spotlight",
   "booster", "masterpiece", "alchemy", "rebalanced", "colorshifted",
   "newinpauper", "meldpart", "meldresult",
 ]);
@@ -669,6 +690,220 @@ function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): 
 }
 
 // ---------------------------------------------------------------------------
+// Printing-domain evaluation
+// ---------------------------------------------------------------------------
+
+export type EvalDomain = "face" | "printing";
+
+function isPrintingField(canonical: string): boolean {
+  return PRINTING_FIELDS.has(canonical);
+}
+
+function evalPrintingIsKeyword(
+  keyword: string,
+  pIdx: PrintingIndex,
+  buf: Uint8Array,
+  n: number,
+): "ok" | "unsupported" | "unknown" {
+  switch (keyword) {
+    case "foil":
+      for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Foil) buf[i] = 1;
+      break;
+    case "nonfoil":
+      for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Nonfoil) buf[i] = 1;
+      break;
+    case "etched":
+      for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Etched) buf[i] = 1;
+      break;
+    case "full": case "fullart":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.FullArt) buf[i] = 1;
+      break;
+    case "textless":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Textless) buf[i] = 1;
+      break;
+    case "reprint":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Reprint) buf[i] = 1;
+      break;
+    case "promo":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Promo) buf[i] = 1;
+      break;
+    case "digital":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Digital) buf[i] = 1;
+      break;
+    case "hires":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.HighresImage) buf[i] = 1;
+      break;
+    case "borderless":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Borderless) buf[i] = 1;
+      break;
+    case "extended":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.ExtendedArt) buf[i] = 1;
+      break;
+    default:
+      return "unknown";
+  }
+  return "ok";
+}
+
+function buildRarityMask(op: string, targetBit: number): number {
+  const targetOrder = RARITY_ORDER[targetBit];
+  if (targetOrder === undefined) return 0;
+  let mask = 0;
+  for (const [bit, order] of Object.entries(RARITY_ORDER)) {
+    const bitNum = Number(bit);
+    switch (op) {
+      case ":": case "=": if (order === targetOrder) mask |= bitNum; break;
+      case "!=": if (order !== targetOrder) mask |= bitNum; break;
+      case ">":  if (order > targetOrder) mask |= bitNum; break;
+      case "<":  if (order < targetOrder) mask |= bitNum; break;
+      case ">=": if (order >= targetOrder) mask |= bitNum; break;
+      case "<=": if (order <= targetOrder) mask |= bitNum; break;
+    }
+  }
+  return mask;
+}
+
+function parseDateValue(val: string): number {
+  const parts = val.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return y * 10000 + m * 100 + d;
+  }
+  return 0;
+}
+
+function evalPrintingField(
+  canonical: string,
+  op: string,
+  val: string,
+  pIdx: PrintingIndex,
+  buf: Uint8Array,
+): string | null {
+  const n = pIdx.printingCount;
+  const valLower = val.toLowerCase();
+
+  switch (canonical) {
+    case "set": {
+      for (let i = 0; i < n; i++) {
+        if (pIdx.setCodesLower[i] === valLower) buf[i] = 1;
+      }
+      break;
+    }
+    case "rarity": {
+      const targetBit = RARITY_NAMES[valLower];
+      if (targetBit === undefined) return `unknown rarity "${val}"`;
+      const mask = buildRarityMask(op, targetBit);
+      for (let i = 0; i < n; i++) {
+        if (pIdx.rarity[i] & mask) buf[i] = 1;
+      }
+      break;
+    }
+    case "price": {
+      const queryDollars = parseFloat(val);
+      if (isNaN(queryDollars)) return `invalid price "${val}"`;
+      const queryCents = Math.round(queryDollars * 100);
+      for (let i = 0; i < n; i++) {
+        const p = pIdx.priceUsd[i];
+        if (p === 0) continue;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = p === queryCents; break;
+          case "!=": match = p !== queryCents; break;
+          case ">":  match = p > queryCents; break;
+          case "<":  match = p < queryCents; break;
+          case ">=": match = p >= queryCents; break;
+          case "<=": match = p <= queryCents; break;
+        }
+        if (match) buf[i] = 1;
+      }
+      break;
+    }
+    case "collectornumber": {
+      for (let i = 0; i < n; i++) {
+        if (pIdx.collectorNumbersLower[i] === valLower) buf[i] = 1;
+      }
+      break;
+    }
+    case "frame": {
+      const frameBit = FRAME_NAMES[valLower];
+      if (frameBit === undefined) return `unknown frame "${val}"`;
+      for (let i = 0; i < n; i++) {
+        if (pIdx.frame[i] & frameBit) buf[i] = 1;
+      }
+      break;
+    }
+    case "year": {
+      const queryYear = parseInt(val, 10);
+      if (isNaN(queryYear)) return `invalid year "${val}"`;
+      for (let i = 0; i < n; i++) {
+        const cardYear = Math.floor(pIdx.releasedAt[i] / 10000);
+        if (pIdx.releasedAt[i] === 0) continue;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = cardYear === queryYear; break;
+          case "!=": match = cardYear !== queryYear; break;
+          case ">":  match = cardYear > queryYear; break;
+          case "<":  match = cardYear < queryYear; break;
+          case ">=": match = cardYear >= queryYear; break;
+          case "<=": match = cardYear <= queryYear; break;
+        }
+        if (match) buf[i] = 1;
+      }
+      break;
+    }
+    case "date": {
+      const queryDate = parseDateValue(val);
+      if (queryDate === 0) return `invalid date "${val}" (expected YYYY-MM-DD)`;
+      for (let i = 0; i < n; i++) {
+        const d = pIdx.releasedAt[i];
+        if (d === 0) continue;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = d === queryDate; break;
+          case "!=": match = d !== queryDate; break;
+          case ">":  match = d > queryDate; break;
+          case "<":  match = d < queryDate; break;
+          case ">=": match = d >= queryDate; break;
+          case "<=": match = d <= queryDate; break;
+        }
+        if (match) buf[i] = 1;
+      }
+      break;
+    }
+    default:
+      return `unknown printing field "${canonical}"`;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Domain promotion helpers
+// ---------------------------------------------------------------------------
+
+function promotePrintingToFace(
+  printingBuf: Uint8Array,
+  faceBuf: Uint8Array,
+  canonicalFaceRef: number[],
+  printingCount: number,
+): void {
+  for (let p = 0; p < printingCount; p++) {
+    if (printingBuf[p]) faceBuf[canonicalFaceRef[p]] = 1;
+  }
+}
+
+function promoteFaceToPrinting(
+  faceBuf: Uint8Array,
+  printingBuf: Uint8Array,
+  pIdx: PrintingIndex,
+): void {
+  for (let p = 0; p < pIdx.printingCount; p++) {
+    if (faceBuf[pIdx.canonicalFaceRef[p]]) printingBuf[p] = 1;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Node interning and evaluation cache
 // ---------------------------------------------------------------------------
 
@@ -685,6 +920,7 @@ export interface InternedNode {
 
 export interface ComputedResult {
   buf: Uint8Array;
+  domain: EvalDomain;
   matchCount: number;
   productionMs: number;
   error?: string;
@@ -714,9 +950,25 @@ export function nodeKey(ast: ASTNode): string {
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
   readonly index: CardIndex;
+  private _printingIndex: PrintingIndex | null = null;
 
-  constructor(index: CardIndex) {
+  constructor(index: CardIndex, printingIndex?: PrintingIndex | null) {
     this.index = index;
+    this._printingIndex = printingIndex ?? null;
+  }
+
+  get printingIndex(): PrintingIndex | null {
+    return this._printingIndex;
+  }
+
+  setPrintingIndex(pIdx: PrintingIndex): void {
+    this._printingIndex = pIdx;
+    // Invalidate any cached printing-domain results since the data changed.
+    for (const [key, interned] of this.nodes) {
+      if (interned.computed?.domain === "printing") {
+        interned.computed = undefined;
+      }
+    }
   }
 
   intern(ast: ASTNode): InternedNode {
@@ -734,17 +986,100 @@ export class NodeCache {
     const root = this.internTree(ast);
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
+
+    const hasPrintingConditions = this._hasPrintingLeaves(ast);
+    const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
+
     if (ast.type === "NOP" || root.computed!.error) {
-      return { result, indices: new Uint32Array(0) };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable };
     }
-    const count = root.computed!.matchCount;
+
+    // Root buffer may be printing-domain if all conditions are printing-level.
+    // Promote to face domain for the card-level index output.
+    let faceBuf: Uint8Array;
+    if (root.computed!.domain === "printing" && this._printingIndex) {
+      faceBuf = new Uint8Array(this.index.faceCount);
+      promotePrintingToFace(
+        root.computed!.buf, faceBuf,
+        this._printingIndex.canonicalFaceRef, this._printingIndex.printingCount,
+      );
+    } else {
+      faceBuf = root.computed!.buf;
+    }
+
+    const count = popcount(faceBuf, this.index.faceCount);
     const indices = new Uint32Array(count);
-    const buf = root.computed!.buf;
     let j = 0;
     for (let i = 0; i < this.index.faceCount; i++) {
-      if (buf[i]) indices[j++] = i;
+      if (faceBuf[i]) indices[j++] = i;
     }
-    return { result, indices };
+
+    // Compute printing indices when printing conditions are present.
+    let printingIndices: Uint32Array | undefined;
+    if (hasPrintingConditions && this._printingIndex) {
+      let printBuf: Uint8Array;
+      if (root.computed!.domain === "printing") {
+        printBuf = root.computed!.buf;
+      } else {
+        // Root is face-domain but had printing leaves promoted into it.
+        // Expand the face result back to printing domain, then intersect
+        // with any printing-domain leaf buffers.
+        printBuf = new Uint8Array(this._printingIndex.printingCount);
+        promoteFaceToPrinting(faceBuf, printBuf, this._printingIndex);
+        this._intersectPrintingLeaves(ast, printBuf);
+      }
+      const pCount = popcount(printBuf, this._printingIndex.printingCount);
+      printingIndices = new Uint32Array(pCount);
+      let k = 0;
+      for (let i = 0; i < this._printingIndex.printingCount; i++) {
+        if (printBuf[i]) printingIndices[k++] = i;
+      }
+    }
+
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable };
+  }
+
+  private _hasPrintingLeaves(ast: ASTNode): boolean {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (canonical === "is") {
+          return PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
+        }
+        return canonical !== undefined && isPrintingField(canonical);
+      }
+      case "NOT": return this._hasPrintingLeaves(ast.child);
+      case "AND": case "OR": return ast.children.some(c => this._hasPrintingLeaves(c));
+      default: return false;
+    }
+  }
+
+  /** AND the printing-domain leaf buffers into printBuf to refine the expansion. */
+  private _intersectPrintingLeaves(ast: ASTNode, printBuf: Uint8Array): void {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        const isPrinting = (canonical === "is" && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase()))
+          || (canonical !== undefined && isPrintingField(canonical));
+        if (isPrinting) {
+          const interned = this.intern(ast);
+          if (interned.computed && interned.computed.domain === "printing") {
+            const lb = interned.computed.buf;
+            for (let i = 0; i < printBuf.length; i++) printBuf[i] &= lb[i];
+          }
+        }
+        break;
+      }
+      case "AND":
+        for (const child of ast.children) this._intersectPrintingLeaves(child, printBuf);
+        break;
+      case "NOT":
+        // NOT of a printing leaf is complex — skip refinement for correctness.
+        break;
+      case "OR":
+        // OR children are alternatives — skip refinement for correctness.
+        break;
+    }
   }
 
   private internTree(ast: ASTNode): InternedNode {
@@ -782,6 +1117,22 @@ export class NodeCache {
     }
   }
 
+  private _promoteBufToFace(printingBuf: Uint8Array): Uint8Array {
+    const pIdx = this._printingIndex!;
+    const faceBuf = new Uint8Array(this.index.faceCount);
+    promotePrintingToFace(printingBuf, faceBuf, pIdx.canonicalFaceRef, pIdx.printingCount);
+    return faceBuf;
+  }
+
+  /** Get a face-domain buffer from an InternedNode, promoting if needed. */
+  private _faceBuf(ci: InternedNode): Uint8Array {
+    const c = ci.computed!;
+    if (c.domain === "printing" && this._printingIndex) {
+      return this._promoteBufToFace(c.buf);
+    }
+    return c.buf;
+  }
+
   private computeTree(interned: InternedNode, timings: Map<string, EvalTiming>): void {
     if (interned.computed) {
       this.markCached(interned, timings);
@@ -793,19 +1144,68 @@ export class NodeCache {
 
     switch (ast.type) {
       case "NOP": {
-        interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0 };
+        interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0 };
         timings.set(interned.key, { cached: false, evalMs: 0 });
         break;
       }
       case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+
+        // Check if this is a printing-domain field or is: keyword
+        const isPrintingIs = canonical === "is"
+          && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
+        const isPrintingDomain = isPrintingIs
+          || (canonical !== undefined && isPrintingField(canonical));
+
+        if (isPrintingDomain && this._printingIndex) {
+          const pIdx = this._printingIndex;
+          const pn = pIdx.printingCount;
+          const buf = new Uint8Array(pn);
+          const t0 = performance.now();
+          let error: string | null = null;
+
+          if (isPrintingIs) {
+            if (ast.operator !== ":" && ast.operator !== "=") {
+              error = null; // silently ignore non-colon operators on is:
+            } else {
+              const status = evalPrintingIsKeyword(
+                ast.value.toLowerCase(), pIdx, buf, pn,
+              );
+              if (status === "unknown") error = `unknown keyword "${ast.value}"`;
+            }
+          } else if (canonical && ast.value !== "") {
+            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf);
+          }
+
+          const ms = performance.now() - t0;
+          if (error) {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
+          } else {
+            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          }
+          timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
+          break;
+        }
+
+        if (isPrintingDomain && !this._printingIndex) {
+          // Printing data not loaded yet — return error-like result
+          interned.computed = {
+            buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+            error: `printing data not loaded`,
+          };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
+        // Face-domain evaluation (existing logic)
         const buf = new Uint8Array(n);
         const t0 = performance.now();
         const error = evalLeafField(ast, this.index, buf);
         const ms = performance.now() - t0;
         if (error) {
-          interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0, error };
+          interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
         } else {
-          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
         }
         timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
         break;
@@ -815,7 +1215,7 @@ export class NodeCache {
         const t0 = performance.now();
         evalLeafBareWord(ast.value, ast.quoted, this.index, buf);
         const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
         timings.set(interned.key, { cached: false, evalMs: ms });
         break;
       }
@@ -824,7 +1224,7 @@ export class NodeCache {
         const t0 = performance.now();
         evalLeafExact(ast, this.index, buf);
         const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
         timings.set(interned.key, { cached: false, evalMs: ms });
         break;
       }
@@ -834,9 +1234,9 @@ export class NodeCache {
         const error = evalLeafRegex(ast, this.index, buf);
         const ms = performance.now() - t0;
         if (error) {
-          interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0, error };
+          interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
         } else {
-          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
         }
         timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
         break;
@@ -846,19 +1246,21 @@ export class NodeCache {
         this.computeTree(childInterned, timings);
         if (childInterned.computed!.error) {
           interned.computed = {
-            buf: new Uint8Array(0), matchCount: -1, productionMs: 0,
+            buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
             error: childInterned.computed!.error,
           };
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
-        const childBuf = childInterned.computed!.buf;
+        // NOT always produces face-domain. If child is printing, promote first.
+        // -set:mh2 = "cards with NO MH2 printing"
+        const childFaceBuf = this._faceBuf(childInterned);
         const buf = new Uint8Array(n);
         const cf = this.index.canonicalFace;
         const t0 = performance.now();
-        for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childBuf[i] ^ 1) : 0;
+        for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childFaceBuf[i] ^ 1) : 0;
         const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
         timings.set(interned.key, { cached: false, evalMs: ms });
         break;
       }
@@ -875,7 +1277,7 @@ export class NodeCache {
           const buf = new Uint8Array(n);
           const cf = this.index.canonicalFace;
           fillCanonical(buf, cf, n);
-          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: 0 };
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
@@ -884,17 +1286,39 @@ export class NodeCache {
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
-        const buf = new Uint8Array(n);
-        const t0 = performance.now();
-        const first = live[0].computed!.buf;
-        for (let i = 0; i < n; i++) buf[i] = first[i];
-        for (let c = 1; c < live.length; c++) {
-          const cb = live[c].computed!.buf;
-          for (let i = 0; i < n; i++) buf[i] &= cb[i];
+
+        // Determine combined domain: if ALL live children share a domain, stay in it.
+        // Otherwise promote everything to face domain.
+        const allPrinting = live.every(ci => ci.computed!.domain === "printing");
+        const hasPrinting = live.some(ci => ci.computed!.domain === "printing");
+
+        if (allPrinting && this._printingIndex) {
+          const pn = this._printingIndex.printingCount;
+          const buf = new Uint8Array(pn);
+          const t0 = performance.now();
+          const first = live[0].computed!.buf;
+          for (let i = 0; i < pn; i++) buf[i] = first[i];
+          for (let c = 1; c < live.length; c++) {
+            const cb = live[c].computed!.buf;
+            for (let i = 0; i < pn; i++) buf[i] &= cb[i];
+          }
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+        } else {
+          // Mixed or all-face: combine in face domain
+          const buf = new Uint8Array(n);
+          const t0 = performance.now();
+          const firstBuf = hasPrinting ? this._faceBuf(live[0]) : live[0].computed!.buf;
+          for (let i = 0; i < n; i++) buf[i] = firstBuf[i];
+          for (let c = 1; c < live.length; c++) {
+            const cb = hasPrinting ? this._faceBuf(live[c]) : live[c].computed!.buf;
+            for (let i = 0; i < n; i++) buf[i] &= cb[i];
+          }
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
         }
-        const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
         break;
       }
       case "OR": {
@@ -907,7 +1331,7 @@ export class NodeCache {
           ci.ast.type !== "NOP" && !ci.computed?.error
         );
         if (live.length === 0) {
-          interned.computed = { buf: new Uint8Array(n), matchCount: 0, productionMs: 0 };
+          interned.computed = { buf: new Uint8Array(n), domain: "face", matchCount: 0, productionMs: 0 };
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
@@ -916,15 +1340,32 @@ export class NodeCache {
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
-        const buf = new Uint8Array(n);
-        const t0 = performance.now();
-        for (const ci of live) {
-          const cb = ci.computed!.buf;
-          for (let i = 0; i < n; i++) buf[i] |= cb[i];
+
+        const allPrinting = live.every(ci => ci.computed!.domain === "printing");
+        const hasPrinting = live.some(ci => ci.computed!.domain === "printing");
+
+        if (allPrinting && this._printingIndex) {
+          const pn = this._printingIndex.printingCount;
+          const buf = new Uint8Array(pn);
+          const t0 = performance.now();
+          for (const ci of live) {
+            const cb = ci.computed!.buf;
+            for (let i = 0; i < pn; i++) buf[i] |= cb[i];
+          }
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+        } else {
+          const buf = new Uint8Array(n);
+          const t0 = performance.now();
+          for (const ci of live) {
+            const cb = hasPrinting ? this._faceBuf(ci) : ci.computed!.buf;
+            for (let i = 0; i < n; i++) buf[i] |= cb[i];
+          }
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
         }
-        const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
         break;
       }
     }
