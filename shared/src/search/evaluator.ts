@@ -286,12 +286,19 @@ function hasPhyrexianSymbol(text: string): boolean {
   return false;
 }
 
+const UNSUPPORTED_IS_KEYWORDS = new Set([
+  "foil", "nonfoil", "promo", "reprint", "unique", "digital", "hires",
+  "full", "borderless", "extended", "etched", "glossy", "spotlight",
+  "booster", "masterpiece", "alchemy", "rebalanced", "colorshifted",
+  "newinpauper", "meldpart", "meldresult",
+]);
+
 function evalIsKeyword(
   keyword: string,
   index: CardIndex,
   buf: Uint8Array,
   n: number,
-): void {
+): "ok" | "unsupported" | "unknown" {
   const cf = index.canonicalFace;
   switch (keyword) {
     case "permanent":
@@ -422,9 +429,13 @@ function evalIsKeyword(
         for (let i = 0; i < n; i++) {
           if (cycle.has(index.namesLower[i])) buf[cf[i]] = 1;
         }
+        return "ok";
       }
+      if (UNSUPPORTED_IS_KEYWORDS.has(keyword)) return "unsupported";
+      return "unknown";
     }
   }
+  return "ok";
 }
 
 function fillCanonical(buf: Uint8Array, cf: number[], n: number): void {
@@ -442,11 +453,11 @@ function evalLeafField(
   const op = node.operator;
   const val = node.value;
 
+  if (!canonical) {
+    return `unknown field "${node.field}"`;
+  }
   if (val === "") {
     fillCanonical(buf, cf, n);
-    return null;
-  }
-  if (!canonical) {
     return null;
   }
 
@@ -579,7 +590,7 @@ function evalLeafField(
     case "banned":
     case "restricted": {
       const formatBit = FORMAT_NAMES[valLower];
-      if (formatBit === undefined) break;
+      if (formatBit === undefined) return `unknown format "${node.value}"`;
       const col = canonical === "legal" ? index.legalitiesLegal
         : canonical === "banned" ? index.legalitiesBanned
         : index.legalitiesRestricted;
@@ -590,7 +601,9 @@ function evalLeafField(
     }
     case "is": {
       if (op !== ":" && op !== "=") break;
-      evalIsKeyword(valLower, index, buf, n);
+      const status = evalIsKeyword(valLower, index, buf, n);
+      if (status === "unsupported") return `unsupported keyword "${node.value}"`;
+      if (status === "unknown") return `unknown keyword "${node.value}"`;
       break;
     }
     default:
@@ -603,8 +616,10 @@ function evalLeafRegex(
   node: RegexFieldNode,
   index: CardIndex,
   buf: Uint8Array,
-): void {
+): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
+  if (!canonical) return `unknown field "${node.field}"`;
+
   const n = index.faceCount;
   const cf = index.canonicalFace;
 
@@ -612,21 +627,22 @@ function evalLeafRegex(
   if (canonical === "oracle" && node.pattern.includes("~")) {
     col = index.oracleTextsTildeLower;
   } else {
-    col = canonical ? getStringColumn(canonical, index) : null;
+    col = getStringColumn(canonical, index);
   }
 
-  if (!col) return;
+  if (!col) return `unknown field "${node.field}"`;
 
   let re: RegExp;
   try {
     re = new RegExp(node.pattern, "i");
   } catch {
-    return;
+    return "invalid regex";
   }
 
   for (let i = 0; i < n; i++) {
     if (re.test(col[i])) buf[cf[i]] = 1;
   }
+  return null;
 }
 
 function evalLeafBareWord(value: string, quoted: boolean, index: CardIndex, buf: Uint8Array): void {
@@ -815,10 +831,14 @@ export class NodeCache {
       case "REGEX_FIELD": {
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        evalLeafRegex(ast, this.index, buf);
+        const error = evalLeafRegex(ast, this.index, buf);
         const ms = performance.now() - t0;
-        interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
+        if (error) {
+          interned.computed = { buf: new Uint8Array(0), matchCount: -1, productionMs: 0, error };
+        } else {
+          interned.computed = { buf, matchCount: popcount(buf, n), productionMs: ms };
+        }
+        timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
         break;
       }
       case "NOT": {

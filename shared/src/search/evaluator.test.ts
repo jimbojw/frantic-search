@@ -414,8 +414,11 @@ describe("evaluate", () => {
     expect(matchCount("(c:r OR c:u) t:instant")).toBe(3);
   });
 
-  test("unknown field matches zero cards", () => {
-    expect(matchCount("rarity:common")).toBe(0);
+  test("unknown field produces error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("rarity:common"));
+    expect(result.error).toBe('unknown field "rarity"');
+    expect(result.matchCount).toBe(-1);
   });
 
   test("empty value matches all cards", () => {
@@ -505,8 +508,11 @@ describe("evaluate", () => {
     expect(matchCount("legal:legacy t:creature")).toBe(4);
   });
 
-  test("unknown format matches zero", () => {
-    expect(matchCount("legal:fakefmt")).toBe(0);
+  test("unknown format produces error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("legal:fakefmt"));
+    expect(result.error).toBe('unknown format "fakefmt"');
+    expect(result.matchCount).toBe(-1);
   });
 
   test("regex on oracle text", () => {
@@ -525,12 +531,18 @@ describe("evaluate", () => {
     expect(matchCount("name:/bolt$/")).toBe(1);
   });
 
-  test("regex with invalid pattern matches zero", () => {
-    expect(matchCount("o:/[invalid/")).toBe(0);
+  test("regex with invalid pattern produces error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("o:/[invalid/"));
+    expect(result.error).toBe("invalid regex");
+    expect(result.matchCount).toBe(-1);
   });
 
-  test("regex on unsupported field matches zero", () => {
-    expect(matchCount("pow:/3/")).toBe(0);
+  test("regex on non-string field produces error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("pow:/3/"));
+    expect(result.error).toBe('unknown field "pow"');
+    expect(result.matchCount).toBe(-1);
   });
 
   // -------------------------------------------------------------------------
@@ -1394,9 +1406,16 @@ describe("is: operator", () => {
 
   // --- Edge cases ---
 
-  test("unknown is: value matches zero cards", () => {
-    expect(isMatchCount("is:nonsense")).toBe(0);
-    expect(isMatchCount("is:foil")).toBe(0);
+  test("unknown is: value produces error", () => {
+    const cache = new NodeCache(index);
+    const nonsense = cache.evaluate(parse("is:nonsense")).result;
+    expect(nonsense.error).toBe('unknown keyword "nonsense"');
+    expect(nonsense.matchCount).toBe(-1);
+
+    const cache2 = new NodeCache(index);
+    const foil = cache2.evaluate(parse("is:foil")).result;
+    expect(foil.error).toBe('unsupported keyword "foil"');
+    expect(foil.matchCount).toBe(-1);
   });
 
   test("is: with comparison operators matches zero cards", () => {
@@ -1682,5 +1701,148 @@ describe("colorless+color contradiction", () => {
     const cache = new NodeCache(index);
     const { indices } = cache.evaluate(parse("ci:cb"));
     expect(indices.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Non-destructive error handling (Spec 039)
+// ---------------------------------------------------------------------------
+
+describe("non-destructive error handling", () => {
+  function getResult(query: string) {
+    const cache = new NodeCache(index);
+    return cache.evaluate(parse(query));
+  }
+
+  // --- Error detection ---
+
+  test("foo:bar produces unknown field error", () => {
+    const { result } = getResult("foo:bar");
+    expect(result.error).toBe('unknown field "foo"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("foo: (unknown field, empty value) produces error", () => {
+    const { result } = getResult("foo:");
+    expect(result.error).toBe('unknown field "foo"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("o:/[/ produces invalid regex error", () => {
+    const { result } = getResult("o:/[/");
+    expect(result.error).toBe("invalid regex");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("f:comma produces unknown format error", () => {
+    const { result } = getResult("f:comma");
+    expect(result.error).toBe('unknown format "comma"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("is:xyz produces unknown keyword error", () => {
+    const { result } = getResult("is:xyz");
+    expect(result.error).toBe('unknown keyword "xyz"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("is:foil produces unsupported keyword error", () => {
+    const { result } = getResult("is:foil");
+    expect(result.error).toBe('unsupported keyword "foil"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("error nodes produce zero indices", () => {
+    expect(getResult("foo:bar").indices.length).toBe(0);
+    expect(getResult("o:/[/").indices.length).toBe(0);
+    expect(getResult("f:comma").indices.length).toBe(0);
+    expect(getResult("is:xyz").indices.length).toBe(0);
+  });
+
+  // --- Non-errors (should NOT produce errors) ---
+
+  test("ci: (known field, empty value) is not an error", () => {
+    const { result } = getResult("ci:");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(9);
+  });
+
+  test("t:xyz (open-ended field, zero results) is not an error", () => {
+    const { result } = getResult("t:notavalidtype");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(0);
+  });
+
+  test("f:commander (known format) is not an error", () => {
+    const { result } = getResult("f:commander");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBeGreaterThan(0);
+  });
+
+  test("is:permanent (supported keyword) is not an error", () => {
+    const { result } = getResult("is:permanent");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBeGreaterThan(0);
+  });
+
+  // --- AND with error children ---
+
+  test("error child is skipped in AND — t:creature foo:bar", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("t:creature foo:bar")).toBe(creatureOnly);
+  });
+
+  test("error child is skipped in AND — t:creature o:/[/", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("t:creature o:/[/")).toBe(creatureOnly);
+  });
+
+  test("error child is skipped in AND — f:comma t:creature", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("f:comma t:creature")).toBe(creatureOnly);
+  });
+
+  test("error child is skipped in AND — is:xyz t:creature", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("is:xyz t:creature")).toBe(creatureOnly);
+  });
+
+  test("all-error AND is vacuous conjunction (all cards)", () => {
+    expect(matchCount("foo:bar baz:qux")).toBe(9);
+  });
+
+  test("AND error child carries error field", () => {
+    const { result } = getResult("t:creature foo:bar");
+    const errorChild = result.children!.find(
+      c => c.node.type === "FIELD" && (c.node as import("./ast").FieldNode).field === "foo"
+    );
+    expect(errorChild).toBeDefined();
+    expect(errorChild!.error).toBe('unknown field "foo"');
+    expect(errorChild!.matchCount).toBe(-1);
+  });
+
+  // --- OR with error children ---
+
+  test("error child is skipped in OR — t:creature OR foo:bar", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("t:creature OR foo:bar")).toBe(creatureOnly);
+  });
+
+  test("all-error OR is vacuous disjunction (empty set)", () => {
+    expect(matchCount("foo:bar OR baz:qux")).toBe(0);
+  });
+
+  // --- NOT with error child ---
+
+  test("-foo:bar propagates error", () => {
+    const { result } = getResult("-foo:bar");
+    expect(result.error).toBe('unknown field "foo"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("-f:comma propagates error", () => {
+    const { result } = getResult("-f:comma");
+    expect(result.error).toBe('unknown format "comma"');
+    expect(result.matchCount).toBe(-1);
   });
 });
