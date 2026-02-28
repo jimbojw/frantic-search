@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
-import { Finish } from '@frantic-search/shared'
+import { Finish, parse, toScryfallQuery } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -228,7 +228,12 @@ function App() {
   const totalCards = () => indices().length
 
   const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused() || termsExpanded()
-  const scryfallUrl = () => `https://scryfall.com/search?q=${encodeURIComponent(query().trim())}`
+  const scryfallUrl = () => {
+    const q = query().trim()
+    if (!q) return ''
+    const canonical = toScryfallQuery(parse(q))
+    return canonical ? `https://scryfall.com/search?q=${encodeURIComponent(canonical)}` : ''
+  }
 
   async function fetchThumbHashes(): Promise<void> {
     try {

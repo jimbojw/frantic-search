@@ -32,4 +32,5 @@ export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
 export { NodeCache, nodeKey } from "./search/evaluator";
 export { parse } from "./search/parser";
+export { toScryfallQuery } from "./search/canonicalize";
 export { seededSort, seededSortPrintings, collectBareWords } from "./search/ordering";

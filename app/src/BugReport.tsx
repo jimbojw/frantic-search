@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, Show, For } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
+import { parse, toScryfallQuery } from '@frantic-search/shared'
 
 declare const __APP_VERSION__: string
 declare const __BUGS_URL__: string
@@ -40,7 +41,8 @@ function serializeBreakdown(node: BreakdownNode, indent = 0): string {
 }
 
 function scryfallComparisonText(query: string, scryfall: ScryfallStatus): string {
-  const scryfallUrl = `https://scryfall.com/search?q=${encodeURIComponent(query)}`
+  const canonical = toScryfallQuery(parse(query))
+  const scryfallUrl = canonical ? `https://scryfall.com/search?q=${encodeURIComponent(canonical)}` : ''
   switch (scryfall.state) {
     case 'idle':
     case 'loading':
