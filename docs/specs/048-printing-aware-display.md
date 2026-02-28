@@ -184,3 +184,7 @@ When `uniquePrints` is true:
 8. The results header shows both card count and printing count when printing results are present.
 9. Before `printings.json` loads, queries with printing conditions show a "loading" notice and return no printing results.
 10. `unique:prints` has no effect on Slim and Detail modes.
+
+## Implementation Notes
+
+- 2026-02-27: Images and Full modes now deduplicate `printingIndices` by `scryfall_id` before rendering. Foil and nonfoil variants of the same physical printing share a Scryfall image, so displaying both produced visually identical adjacent tiles. The display layer groups finish variants by `scryfall_id`, renders one tile per unique ID, and shows aggregated finish/price metadata (e.g., "Foil · Nonfoil") on the collapsed tile. `unique:prints` bypasses the dedup and shows every finish row individually. The raw printing count in the results header remains the evaluator's matched count, not the deduped count. Acceptance criterion 3 is narrowed: `set:mh2` in Images shows one image per unique `scryfall_id` among matching printings, not one per finish variant.

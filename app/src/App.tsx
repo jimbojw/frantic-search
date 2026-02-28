@@ -290,19 +290,52 @@ function App() {
     return pi ? pi.length : 0
   }
 
+  const dedupedPrintingItems = createMemo(() => {
+    const pi = printingIndices()
+    const pd = printingDisplay()
+    if (!pi || !pd) return null
+    if (uniquePrints()) return Array.from(pi)
+    const seen = new Set<string>()
+    const result: number[] = []
+    for (const idx of pi) {
+      const sid = pd.scryfall_ids[idx]
+      if (!seen.has(sid)) {
+        seen.add(sid)
+        result.push(idx)
+      }
+    }
+    return result
+  })
+
+  const finishGroupMap = createMemo(() => {
+    const pi = printingIndices()
+    const pd = printingDisplay()
+    if (!pi || !pd) return new Map<string, { finish: number; price: number }[]>()
+    const map = new Map<string, { finish: number; price: number }[]>()
+    for (const idx of pi) {
+      const sid = pd.scryfall_ids[idx]
+      let group = map.get(sid)
+      if (!group) { group = []; map.set(sid, group) }
+      group.push({ finish: pd.finish[idx], price: pd.price_usd[idx] })
+    }
+    return map
+  })
+
   const printingExpanded = () =>
     showPrintingResults() && (viewMode() === 'images' || viewMode() === 'full')
 
-  const totalDisplayItems = () => printingExpanded() ? totalPrintingItems() : indices().length
+  const totalDisplayItems = () => {
+    if (!printingExpanded()) return indices().length
+    const d = dedupedPrintingItems()
+    return d ? d.length : 0
+  }
 
   const visibleDisplayItems = createMemo(() => {
     if (!printingExpanded()) return null
-    const pi = printingIndices()
-    if (!pi) return null
-    const len = Math.min(pi.length, visibleCount())
-    const result: number[] = new Array(len)
-    for (let i = 0; i < len; i++) result[i] = pi[i]
-    return result
+    const items = dedupedPrintingItems()
+    if (!items) return null
+    const len = Math.min(items.length, visibleCount())
+    return items.slice(0, len)
   })
 
   const hasMore = () => totalDisplayItems() > visibleCount()
@@ -855,10 +888,26 @@ function App() {
                                             <dd>{pd.collector_numbers[pi]}</dd>
                                             <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
                                             <dd>{RARITY_LABELS[pd.rarity[pi]] ?? 'Unknown'}</dd>
-                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
-                                            <dd>{FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'}</dd>
-                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
-                                            <dd>{formatPrice(pd.price_usd[pi])}</dd>
+                                            {(() => {
+                                              const sid = pd.scryfall_ids[pi]
+                                              const group = finishGroupMap().get(sid)
+                                              if (group && group.length > 1) {
+                                                return (<>
+                                                  <dt class="font-medium text-gray-600 dark:text-gray-300">Finishes</dt>
+                                                  <dd>{group.map(g => {
+                                                    const label = FINISH_LABELS[g.finish] ?? 'Unknown'
+                                                    const price = formatPrice(g.price)
+                                                    return `${label} (${price})`
+                                                  }).join(' · ')}</dd>
+                                                </>)
+                                              }
+                                              return (<>
+                                                <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
+                                                <dd>{FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'}</dd>
+                                                <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
+                                                <dd>{formatPrice(pd.price_usd[pi])}</dd>
+                                              </>)
+                                            })()}
                                           </dl>
                                         </div>
                                       </div>
@@ -920,10 +969,16 @@ function App() {
                                     }
                                     const setCode = pd.set_codes[pi]
                                     const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
+                                    const sid = pd.scryfall_ids[pi]
+                                    const finishes = () => {
+                                      const group = finishGroupMap().get(sid)
+                                      if (!group || group.length <= 1) return null
+                                      return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
+                                    }
                                     return (
                                       <div class="bg-white dark:bg-gray-900 flex flex-col">
                                         <CardImage
-                                          scryfallId={pd.scryfall_ids[pi]}
+                                          scryfallId={sid}
                                           colorIdentity={d().color_identity[ci]}
                                           thumbHash={d().card_thumb_hashes[ci]}
                                           class="cursor-pointer hover:brightness-110 transition-[filter]"
@@ -934,6 +989,9 @@ function App() {
                                           <span class="uppercase">{setCode}</span>
                                           {' · '}
                                           {rarityLabel}
+                                          <Show when={finishes()}>
+                                            {(f) => <>{' · '}{f()}</>}
+                                          </Show>
                                         </div>
                                       </div>
                                     )
