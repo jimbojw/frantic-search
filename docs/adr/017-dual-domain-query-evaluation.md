@@ -32,6 +32,8 @@ AND, OR, and NOT nodes may have children in different domains. Before combining 
 - **Printing → Face**: For each `p` where `printingBuf[p] = 1`, set `faceBuf[canonicalFaceRef[p]] = 1`. Semantics: "card has at least one matching printing." This is a many-to-one reduction.
 - **Face → Printing**: For each canonical face `f` where `faceBuf[f] = 1`, set `printingBuf[p] = 1` for all printings `p` belonging to that card. Semantics: "all printings of matching cards are included." This uses a prebuilt `faceToPrintings` reverse map and is a one-to-many expansion.
 
+**NOT** preserves its child's domain. If the child is printing-domain, the NOT inverts the printing buffer row-wise (each row flips). This means `-is:foil` evaluates to "printing rows that are not foil" (stays in printing domain), matching Scryfall's per-printing NOT semantics. When promoted to face domain via an enclosing AND/OR, the result becomes "cards with at least one non-foil printing." This is distinct from the old behavior where NOT always promoted to face domain first, which gave "cards with no foil printing at all."
+
 The target domain for promotion is determined by what the query needs:
 
 - If the query contains **no printing-domain leaves**, all buffers are face-domain and no promotion occurs. This is the common case — pure card-level queries are completely unaffected.

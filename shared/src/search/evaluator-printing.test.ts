@@ -164,20 +164,58 @@ describe("cross-domain AND", () => {
 // ---------------------------------------------------------------------------
 
 describe("NOT with printing domain", () => {
-  test("-set:mh2 excludes Lightning Bolt, leaves 8 cards", () => {
-    expect(cardCount("-set:mh2")).toBe(8);
+  test("-set:mh2 matches cards with non-MH2 printings", () => {
+    // NOT stays in printing domain: rows not in MH2 = {2,3,4,5}.
+    // Promotes to face: Bolt (rows 2,5) + Sol Ring (rows 3,4) = 2 cards.
+    expect(cardCount("-set:mh2")).toBe(2);
   });
 
-  test("-is:foil excludes Bolt and Sol Ring, leaves 7 cards", () => {
-    expect(cardCount("-is:foil")).toBe(7);
+  test("-is:foil matches cards with non-foil printings", () => {
+    // NOT stays in printing domain: non-foil rows = {0,2,3,5}.
+    // Promotes to face: Bolt + Sol Ring = 2 cards.
+    expect(cardCount("-is:foil")).toBe(2);
   });
 
-  test("-rarity:rare excludes Bolt, leaves 8 cards", () => {
-    expect(cardCount("-rarity:rare")).toBe(8);
+  test("-rarity:rare matches cards with non-rare printings", () => {
+    // NOT stays in printing domain: non-rare rows = {2,3,4,5}.
+    // Promotes to face: Bolt + Sol Ring = 2 cards.
+    expect(cardCount("-rarity:rare")).toBe(2);
   });
 
-  test("t:instant -set:mh2 — instants without MH2 printings (3 of 4 instants)", () => {
-    expect(cardCount("t:instant -set:mh2")).toBe(3);
+  test("t:instant -set:mh2 — instants with non-MH2 printings", () => {
+    // -set:mh2 (printing): non-MH2 rows → faces 1,3.
+    // t:instant (face): faces 1,2,5,9. Intersection: face 1 (Bolt).
+    expect(cardCount("t:instant -set:mh2")).toBe(1);
+  });
+
+  test("-is:foil is:etched — etched rows that aren't foil (Scryfall semantics)", () => {
+    // NOT stays in printing: non-foil rows = {0,2,3,5}. AND with
+    // is:etched = {5}. Promotes to face: Bolt. = 1 card.
+    expect(cardCount("-is:foil is:etched")).toBe(1);
+  });
+
+  test("-is:nonfoil is:etched — etched rows that aren't nonfoil", () => {
+    // is:nonfoil (finish !== Foil) matches rows {0,2,3,5}.
+    // NOT inverts in printing domain: rows {1,4}.
+    // AND with is:etched {5}: empty. No row is both foil and etched.
+    expect(cardCount("-is:nonfoil is:etched")).toBe(0);
+  });
+
+  test("is:etched alone matches Bolt (CMR etched printing)", () => {
+    expect(cardCount("is:etched")).toBe(1);
+  });
+
+  test("-is:foil is:etched printingIndices returns only the etched row", () => {
+    const { printingIndices } = evaluate("-is:foil is:etched");
+    expect(printingIndices).toBeDefined();
+    expect(Array.from(printingIndices!)).toEqual([5]);
+  });
+
+  test("-set:mh2 lightning printingIndices excludes MH2 rows", () => {
+    const { printingIndices } = evaluate("-set:mh2 lightning");
+    expect(printingIndices).toBeDefined();
+    // Bolt's non-MH2 printings: A25 nonfoil (row 2), CMR etched (row 5)
+    expect(Array.from(printingIndices!)).toEqual([2, 5]);
   });
 });
 
@@ -296,9 +334,10 @@ describe("matchCount domain semantics", () => {
     expect(result.matchCount).toBe(1);
   });
 
-  test("NOT of printing: matchCount is face count", () => {
+  test("NOT of printing: matchCount is printing-row count", () => {
+    // -set:mh2 stays in printing domain: 4 non-MH2 rows (2,3,4,5).
     const { result } = evaluate("-set:mh2");
-    expect(result.matchCount).toBe(8);
+    expect(result.matchCount).toBe(4);
   });
 });
 
@@ -339,10 +378,10 @@ describe("spec 047 test cases", () => {
     expect(cardCount("is:foil price<2")).toBe(0);
   });
 
-  test("-set:mh2 lightning — NOT promotes to face domain, excluding Bolt entirely", () => {
-    // -set:mh2 excludes Lightning Bolt (card has MH2 printings).
-    // Bare word "lightning" only matches Lightning Bolt → AND = 0.
-    expect(cardCount("-set:mh2 lightning")).toBe(0);
+  test("-set:mh2 lightning — Bolt survives via non-MH2 printings", () => {
+    // -set:mh2 stays in printing domain (non-MH2 rows). Promoted to face:
+    // Bolt (A25, CMR) + Sol Ring. AND with "lightning" (Bolt) → 1 card.
+    expect(cardCount("-set:mh2 lightning")).toBe(1);
   });
 });
 
@@ -394,19 +433,19 @@ describe("unique:prints", () => {
   test("unique:prints with face-only query expands all printings", () => {
     const output = evaluate("t:instant unique:prints");
     // t:instant matches 4 cards (Bolt, Counterspell, Azorius Charm, Dismember).
-    // Only Bolt has printings (rows 0,1,2). Others have none.
+    // Only Bolt has printings (rows 0,1,2,5). Others have none.
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(4);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5]);
   });
 
   test("unique:prints alone expands all printings of all cards", () => {
     const output = evaluate("unique:prints");
-    // All 9 cards match. Printings: rows 0-4 (Bolt and Sol Ring).
+    // All 9 cards match. Printings: rows 0-5 (Bolt and Sol Ring).
     expect(output.indices.length).toBe(9);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 3, 4]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 3, 4]);
   });
 
   test("unique:prints with printing conditions expands to ALL printings of matching cards", () => {
@@ -416,8 +455,8 @@ describe("unique:prints", () => {
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(1); // Bolt only
     expect(output.printingIndices).toBeDefined();
-    // All 3 Bolt printings (0,1,2), not just the rare ones (0,1)
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2]);
+    // All 4 Bolt printings (0,1,2,5), not just the rare ones (0,1)
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5]);
   });
 
   test("unique:prints is not treated as a filter (does not affect card count)", () => {

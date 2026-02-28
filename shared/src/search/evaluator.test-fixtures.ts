@@ -109,29 +109,31 @@ export const TEST_DATA: ColumnarData = {
 export const index = new CardIndex(TEST_DATA);
 
 // ---------------------------------------------------------------------------
-// Synthetic printing data (5 printing rows across 2 canonical faces)
+// Synthetic printing data (6 printing rows across 2 canonical faces)
 // ---------------------------------------------------------------------------
 // Printing #0  Lightning Bolt (face 1) | MH2  | rare     | nonfoil | $1.00 | 2015 | 2021-06-18
 // Printing #1  Lightning Bolt (face 1) | MH2  | rare     | foil    | $3.00 | 2015 | 2021-06-18
 // Printing #2  Lightning Bolt (face 1) | A25  | uncommon | nonfoil | $0.50 | 2015 | 2018-03-16
 // Printing #3  Sol Ring       (face 3) | C21  | uncommon | nonfoil | $0.75 | 2015 | 2021-06-18
 // Printing #4  Sol Ring       (face 3) | C21  | uncommon | foil    | $5.00 | 2015 | 2021-06-18
+// Printing #5  Lightning Bolt (face 1) | CMR  | uncommon | etched  | $2.00 | 2015 | 2020-11-20
 
 export const TEST_PRINTING_DATA: PrintingColumnarData = {
-  canonical_face_ref: [1, 1, 1, 3, 3],
-  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e"],
-  collector_numbers: ["261", "261", "113", "280", "280"],
-  set_indices: [0, 0, 1, 2, 2],
-  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon],
-  printing_flags: [0, 0, 0, 0, 0],
-  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil],
-  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
-  price_usd: [100, 300, 50, 75, 500],
-  released_at: [20210618, 20210618, 20180316, 20210618, 20210618],
+  canonical_face_ref: [1, 1, 1, 3, 3, 1],
+  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f"],
+  collector_numbers: ["261", "261", "113", "280", "280", "187"],
+  set_indices: [0, 0, 1, 2, 2, 3],
+  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon],
+  printing_flags: [0, 0, 0, 0, 0, 0],
+  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched],
+  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
+  price_usd: [100, 300, 50, 75, 500, 200],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },
     { code: "C21", name: "Commander 2021", released_at: 20210618 },
+    { code: "CMR", name: "Commander Legends", released_at: 20201120 },
   ],
 };
 

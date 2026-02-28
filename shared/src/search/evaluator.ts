@@ -217,9 +217,14 @@ export class NodeCache {
       case "AND":
         for (const child of ast.children) this._intersectPrintingLeaves(child, printBuf);
         break;
-      case "NOT":
-        // NOT of a printing leaf is complex — skip refinement for correctness.
+      case "NOT": {
+        const notInterned = this.intern(ast);
+        if (notInterned.computed && notInterned.computed.domain === "printing") {
+          const lb = notInterned.computed.buf;
+          for (let i = 0; i < printBuf.length; i++) printBuf[i] &= lb[i];
+        }
         break;
+      }
       case "OR":
         // OR children are alternatives — skip refinement for correctness.
         break;
@@ -404,16 +409,28 @@ export class NodeCache {
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
-        // NOT always produces face-domain. If child is printing, promote first.
-        // -set:mh2 = "cards with NO MH2 printing"
-        const childFaceBuf = this._faceBuf(childInterned);
-        const buf = new Uint8Array(n);
-        const cf = this.index.canonicalFace;
-        const t0 = performance.now();
-        for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childFaceBuf[i] ^ 1) : 0;
-        const ms = performance.now() - t0;
-        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
+        if (childInterned.computed!.domain === "printing" && this._printingIndex) {
+          // Stay in printing domain: invert the printing buffer row-wise.
+          // -is:foil = "printing rows that are not foil" (Scryfall semantics).
+          const pn = this._printingIndex.printingCount;
+          const childBuf = childInterned.computed!.buf;
+          const buf = new Uint8Array(pn);
+          const t0 = performance.now();
+          for (let i = 0; i < pn; i++) buf[i] = childBuf[i] ^ 1;
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+        } else {
+          // Face-domain NOT: promote if needed, then invert at card level.
+          const childFaceBuf = this._faceBuf(childInterned);
+          const buf = new Uint8Array(n);
+          const cf = this.index.canonicalFace;
+          const t0 = performance.now();
+          for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childFaceBuf[i] ^ 1) : 0;
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+        }
         break;
       }
       case "AND": {

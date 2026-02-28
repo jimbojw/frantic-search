@@ -357,8 +357,9 @@ Test cases:
 | `t:instant set:mh2` | Lightning Bolt | Cross-domain AND (face + printing) |
 | `is:foil price<2` | Lightning Bolt (MH2 foil at $3.00 excluded, but need test data adjustment) | Finish + price on same row |
 | `r>=rare` | Lightning Bolt | Rarity comparison |
-| `-set:mh2 lightning` | Lightning Bolt (A25 printing matches) | NOT + printing promotion |
+| `-set:mh2 lightning` | Lightning Bolt (A25 printing matches) | NOT stays in printing domain, combined with face-level bare word |
 | `is:foil` | Lightning Bolt, Sol Ring | Promoted to face: "has any foil printing" |
+| `-is:foil is:etched` | Cards with etched printings | NOT stays in printing domain; row-level AND with `is:etched` |
 
 ### Compliance suite (`cli/suites/`)
 
@@ -388,7 +389,7 @@ Add printing-field entries once the full dataset is available.
 4. `is:foil` returns cards that have been printed in foil.
 5. `is:foil price<1` returns cards with a foil printing under $1.00.
 6. `t:creature set:mh2` returns creatures that appear in MH2 (cross-domain AND).
-7. `-is:foil` returns cards that have *no* foil printing (NOT promotion works correctly).
+7. `-is:foil` matches printing rows that are not foil (NOT stays in printing domain). When promoted to face, returns cards with at least one non-foil printing.
 8. `frame:future` returns cards with the futuristic frame.
 9. `price<1` excludes rows with no price data (price_usd = 0).
 10. `cn:1` returns printings with collector number "1".
