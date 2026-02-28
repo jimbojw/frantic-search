@@ -17,8 +17,10 @@ function contentHash(filePath: string): string {
 function serveData(): Plugin {
   const columnsFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
   const thumbsFile = path.resolve(__dirname, '..', 'data', 'dist', 'thumb-hashes.json')
+  const printingsFile = path.resolve(__dirname, '..', 'data', 'dist', 'printings.json')
   let columnsFilename = 'columns.json'
   let thumbsFilename = 'thumb-hashes.json'
+  let printingsFilename = 'printings.json'
 
   return {
     name: 'serve-data',
@@ -31,6 +33,9 @@ function serveData(): Plugin {
         if (fs.existsSync(thumbsFile)) {
           thumbsFilename = `thumb-hashes.${contentHash(thumbsFile)}.json`
         }
+        if (fs.existsSync(printingsFile)) {
+          printingsFilename = `printings.${contentHash(printingsFile)}.json`
+        }
       }
       const columnsSize = fs.existsSync(columnsFile) ? fs.statSync(columnsFile).size : 0
       return {
@@ -38,6 +43,7 @@ function serveData(): Plugin {
           __COLUMNS_FILENAME__: JSON.stringify(columnsFilename),
           __COLUMNS_FILESIZE__: String(columnsSize),
           __THUMBS_FILENAME__: JSON.stringify(thumbsFilename),
+          __PRINTINGS_FILENAME__: JSON.stringify(printingsFilename),
         },
       }
     },
@@ -46,6 +52,7 @@ function serveData(): Plugin {
       for (const [route, file] of [
         ['/columns.json', columnsFile],
         ['/thumb-hashes.json', thumbsFile],
+        ['/printings.json', printingsFile],
       ] as const) {
         server.middlewares.use(route, (_req, res) => {
           if (!fs.existsSync(file)) {
@@ -68,6 +75,10 @@ function serveData(): Plugin {
       if (fs.existsSync(thumbsFile)) {
         fs.copyFileSync(thumbsFile, path.join(outDir, thumbsFilename))
         fs.copyFileSync(thumbsFile, path.join(outDir, 'thumb-hashes.json'))
+      }
+      if (fs.existsSync(printingsFile)) {
+        fs.copyFileSync(printingsFile, path.join(outDir, printingsFilename))
+        fs.copyFileSync(printingsFile, path.join(outDir, 'printings.json'))
       }
     },
   }
@@ -109,6 +120,14 @@ export default defineConfig({
           },
           {
             urlPattern: /thumb-hashes\.[a-f0-9]+\.json$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'card-data',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /printings\.[a-f0-9]+\.json$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'card-data',

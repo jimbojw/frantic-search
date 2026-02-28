@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, NodeCache, Color, parse, seededSort, collectBareWords } from '@frantic-search/shared'
+import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, collectBareWords } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
 declare const __COLUMNS_FILESIZE__: number
+declare const __PRINTINGS_FILENAME__: string
 
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -146,8 +147,22 @@ async function readJsonWithProgress(response: Response): Promise<unknown> {
 
 const sessionSalt = (Math.random() * 0xffffffff) >>> 0
 
+async function fetchPrintings(): Promise<PrintingIndex | null> {
+  try {
+    const url = new URL(/* @vite-ignore */ `../${__PRINTINGS_FILENAME__}`, import.meta.url)
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const data = await response.json() as PrintingColumnarData
+    return new PrintingIndex(data)
+  } catch {
+    return null
+  }
+}
+
 async function init(): Promise<void> {
   post({ type: 'status', status: 'loading' })
+
+  const printingsPromise = fetchPrintings()
 
   let data: ColumnarData
   try {
@@ -163,7 +178,8 @@ async function init(): Promise<void> {
   }
 
   const index = new CardIndex(data)
-  const cache = new NodeCache(index)
+  const printingIndex = await printingsPromise
+  const cache = new NodeCache(index, printingIndex)
   const display = extractDisplayColumns(data)
 
   post({ type: 'status', status: 'ready', display })
