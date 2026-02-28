@@ -448,15 +448,40 @@ describe("unique:prints", () => {
     expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 3, 4]);
   });
 
-  test("unique:prints with printing conditions expands to ALL printings of matching cards", () => {
-    // r:mythic has no matches in test data, but r:rare matches Bolt.
-    // unique:prints should show ALL printings of Bolt, not just the rare ones.
+  test("unique:prints with printing conditions returns only matching printings", () => {
+    // r:rare matches Bolt (rows 0,1 are rare). unique:prints should return
+    // only the rare printing rows, not all Bolt printings.
     const output = evaluate("r:rare unique:prints");
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(1); // Bolt only
     expect(output.printingIndices).toBeDefined();
-    // All 4 Bolt printings (0,1,2,5), not just the rare ones (0,1)
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1]);
+  });
+
+  test("is:foil unique:prints returns only foil printings", () => {
+    // Foil rows: #1 (Bolt MH2 foil), #4 (Sol Ring C21 foil).
+    const output = evaluate("is:foil unique:prints");
+    expect(output.uniquePrints).toBe(true);
+    expect(output.indices.length).toBe(2); // Bolt + Sol Ring
+    expect(output.printingIndices).toBeDefined();
+    expect(Array.from(output.printingIndices!)).toEqual([1, 4]);
+  });
+
+  test("is:nonfoil unique:prints returns only nonfoil printings", () => {
+    // Nonfoil rows (finish !== Foil): #0, #2, #3, #5.
+    const output = evaluate("is:nonfoil unique:prints");
+    expect(output.uniquePrints).toBe(true);
+    expect(output.indices.length).toBe(2); // Bolt + Sol Ring
+    expect(output.printingIndices).toBeDefined();
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5]);
+  });
+
+  test("-is:foil unique:prints returns non-foil printings", () => {
+    // NOT preserves printing domain: non-foil rows = {0,2,3,5}.
+    const output = evaluate("-is:foil unique:prints");
+    expect(output.uniquePrints).toBe(true);
+    expect(output.printingIndices).toBeDefined();
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5]);
   });
 
   test("unique:prints is not treated as a filter (does not affect card count)", () => {

@@ -156,9 +156,9 @@ The results header shows card count (from `indices.length`) as today. When print
 
 When `uniquePrints` is true:
 
-- Images and Full: show all printings of matching cards (expand `indices` to all printing rows via `faceToPrintings`), not just the printings that matched printing conditions.
+- Images and Full **without printing conditions**: show all printings of matching cards (expand `indices` to all printing rows via `faceToPrintings`).
+- Images and Full **with printing conditions** (e.g., `is:foil unique:prints`, `r:mythic unique:prints`): show only the printings that match the printing conditions, but bypass `scryfall_id` deduplication so each finish variant appears as a separate tile. This matches Scryfall's behavior where `unique:prints` controls deduplication, not filtering.
 - Slim and Detail: unchanged (one row per card).
-- If combined with printing conditions (e.g., `r:mythic unique:prints`), show all printings of cards that have at least one mythic printing — not just the mythic printings. This matches Scryfall's behavior where `unique:prints` overrides the default deduplication.
 
 ## Scope of Changes
 
@@ -179,7 +179,7 @@ When `uniquePrints` is true:
 3. `set:mh2` in Images shows one image per matching MH2 printing (including separate foil/nonfoil if both match).
 4. `is:foil price<1` in Images shows one image per matching foil printing under $1.
 5. `unique:prints` in Images shows all printings of matching cards.
-6. `r:mythic unique:prints` in Images shows all printings (not just mythic) of cards that have at least one mythic printing.
+6. `r:mythic unique:prints` in Images shows only mythic printings, with each finish variant as a separate tile (no `scryfall_id` deduplication).
 7. Full mode with printing conditions shows set, rarity, finish, collector number, and price.
 8. The results header shows both card count and printing count when printing results are present.
 9. Before `printings.json` loads, queries with printing conditions show a "loading" notice and return no printing results.

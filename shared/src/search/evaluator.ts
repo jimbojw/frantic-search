@@ -140,9 +140,11 @@ export class NodeCache {
 
     let printingIndices: Uint32Array | undefined;
 
-    if (uniquePrints && this._printingIndex) {
-      // unique:prints expands ALL matching cards to ALL their printing rows,
-      // regardless of whether printing conditions also exist.
+    if (uniquePrints && !hasPrintingConditions && this._printingIndex) {
+      // unique:prints without printing conditions: expand all printings of
+      // matching cards. When printing conditions ARE present, fall through to
+      // the hasPrintingConditions branch which intersects with printing-domain
+      // leaf buffers — unique:prints then only controls display-layer dedup.
       const rows: number[] = [];
       for (const fi of indices) {
         const pRows = this._printingIndex.printingsOf(fi);
