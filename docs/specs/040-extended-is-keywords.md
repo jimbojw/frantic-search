@@ -177,7 +177,7 @@ The `creatureland`/`manland` set (48 cards) grows whenever a new creature land i
 
 - **Printing-level `is:` keywords** (`foil`, `nonfoil`, `promo`, `reprint`, `digital`, etc.). These remain in `UNSUPPORTED_IS_KEYWORDS` per Spec 039.
 - **`is:colorshifted`**, **`is:masterpiece`** — printing/frame-level attributes.
-- **Additional non-land `is:` keywords** (`is:meldpart`, `is:meldresult`, `is:oathbreaker`, `is:duelcommander`, `is:gamechanger`, `is:newinpauper`). These could be added incrementally in future work.
+- **Additional non-land `is:` keywords** (`is:meldpart`, `is:meldresult`, `is:oathbreaker`, `is:duelcommander`, `is:newinpauper`). These could be added incrementally in future work. *Note: `is:gamechanger` / `is:gc` was implemented in a follow-up (Issue #40) via `CardFlag.GameChanger` from Scryfall's `game_changer` field.*
 - **`is:tdfc`** alias for `is:transform`. Minor alias gap, not part of this spec.
 
 ## Acceptance Criteria

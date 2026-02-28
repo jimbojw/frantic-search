@@ -261,3 +261,21 @@
       - "Dismember"
       - "Gitaxian Probe"
     count_min: 60
+
+# --- is:gamechanger (Issue #40) ---
+
+- name: "is:gamechanger matches Commander Game Changer list"
+  query: "is:gamechanger"
+  scryfall_query: "is:gamechanger"
+  assertions:
+    contains:
+      - "Demonic Tutor"
+      - "Rhystic Study"
+      - "Cyclonic Rift"
+    count: 53
+
+- name: "is:gc is alias for is:gamechanger"
+  query: "is:gc"
+  scryfall_query: "is:gc"
+  assertions:
+    count: 53

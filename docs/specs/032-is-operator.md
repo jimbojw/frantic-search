@@ -78,6 +78,7 @@ These require a new `flags` column in `ColumnarData`, populated by the ETL pipel
 | `is:reserved` | `CardFlag.Reserved` | `reserved === true` |
 | `is:funny` | `CardFlag.Funny` | See § Funny Flag Logic below |
 | `is:universesbeyond` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` |
+| `is:gamechanger` / `is:gc` | `CardFlag.GameChanger` | `game_changer === true` (Commander Game Changer list) |
 
 ### Curated land cycle lists (via name lookup)
 
@@ -98,7 +99,7 @@ These are hardcoded sets of oracle card names. The evaluator checks `namesLower[
 
 **Tier 1 (existing data):** `permanent`, `spell`, `historic`, `party`, `outlaw`, `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner`, `bear`.
 
-**Tier 2 (flags column):** `reserved`, `funny`, `universesbeyond`.
+**Tier 2 (flags column):** `reserved`, `funny`, `universesbeyond`, `gamechanger` (alias: `gc`).
 
 **Tier 3 (curated name lists):** `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland`.
 

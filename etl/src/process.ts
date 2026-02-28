@@ -42,6 +42,7 @@ interface Card {
   defense?: string;
   legalities?: Record<string, string>;
   reserved?: boolean;
+  game_changer?: boolean;
   security_stamp?: string;
   border_color?: string;
   set_type?: string;
@@ -103,6 +104,7 @@ function encodeFlags(card: Card): number {
   if (card.reserved) flags |= CardFlag.Reserved;
   if (isFunny(card)) flags |= CardFlag.Funny;
   if (card.security_stamp === "triangle") flags |= CardFlag.UniversesBeyond;
+  if (card.game_changer) flags |= CardFlag.GameChanger;
   return flags;
 }
 

@@ -52,6 +52,7 @@ import { index } from "./evaluator.test-fixtures";
 // Row #35 Hybrid-Phyrexian Test    | GW | Creature — Elf                          | pow=2 tou=2 cmc=2 | normal  (mana: {1}{G/W/P})
 // Row #36 Blinding Souleater       | -  | Artifact Creature — Cleric              | pow=1 tou=3 cmc=3 | normal  (oracle has {W/P} — Phyrexian in text only)
 // Row #37 Oracle Hybrid Test       | -  | Creature — Elf                          | pow=1 tou=1 cmc=1 | normal  (oracle has {G/U} — hybrid in text only)
+// Row #38 Demonic Tutor             | B  | Sorcery                                 | -      cmc=2      | normal  flags=GameChanger
 
 const isExtPowerDict = ["", "0", "*", "2", "3", "4", "1", "6"];
 const isExtToughnessDict = ["", "1", "1+*", "3", "4", "2", "6"];
@@ -74,6 +75,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Steam Vents", "Scalding Tarn",
     "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
     "Blinding Souleater", "Oracle Hybrid Test",
+    "Demonic Tutor",
   ],
   combined_names: [
     "Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf",
@@ -94,6 +96,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Steam Vents", "Scalding Tarn",
     "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
     "Blinding Souleater", "Oracle Hybrid Test",
+    "Demonic Tutor",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -112,6 +115,7 @@ const IS_TEST_DATA: ColumnarData = {
     "", "",
     "", "", "", "{1}{G/W/P}",
     "{3}", "{G}",
+    "{1}{B}",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -152,6 +156,7 @@ const IS_TEST_DATA: ColumnarData = {
     "",
     "{W/P}, {T}: Tap target creature.",
     "{G/U}: This creature gets +1/+1 until end of turn.",
+    "Search your library for a card, put that card into your hand, then shuffle.",
   ],
   oracle_texts_tilde: [
     "Flying (~ can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -177,6 +182,7 @@ const IS_TEST_DATA: ColumnarData = {
     "{T}: Add {W}, {B}, or {G}.",
     "",
     "", "",
+    "Search your library for a card, put that card into your hand, then shuffle.",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -195,6 +201,7 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     0, 0, 0, Color.Green | Color.White,
     0, Color.Green,
+    Color.Black,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -213,6 +220,7 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     0, 0, 0, Color.Green | Color.White,
     0, Color.Green,
+    Color.Black,
   ],
   type_lines: [
     "Creature — Elf",
@@ -253,20 +261,21 @@ const IS_TEST_DATA: ColumnarData = {
     "Creature — Elf",
     "Artifact Creature — Cleric",
     "Creature — Elf",
+    "Sorcery",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
-  scryfall_ids:          Array(38).fill(""),
-  art_crop_thumb_hashes: Array(38).fill(""),
-  card_thumb_hashes:     Array(38).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38],
+  scryfall_ids:          Array(39).fill(""),
+  art_crop_thumb_hashes: Array(39).fill(""),
+  card_thumb_hashes:     Array(39).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -284,6 +293,7 @@ const IS_TEST_DATA: ColumnarData = {
     "normal", "normal",
     "normal", "normal", "normal", "normal",
     "normal", "normal",
+    "normal",
   ],
   flags: [
     0, 0, 0, 0, 0,
@@ -302,6 +312,7 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     0, 0, 0, 0,
     0, 0,
+    CardFlag.GameChanger,
   ],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
@@ -341,7 +352,7 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    expect(isMatchCount("is:spell")).toBe(28);
+    expect(isMatchCount("is:spell")).toBe(29);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -575,11 +586,21 @@ describe("is: operator", () => {
     expect(indices).toEqual([29]); // Gandalf the Grey
   });
 
+  test("is:gamechanger matches cards on Commander Game Changer list", () => {
+    const indices = isMatchIndices("is:gamechanger");
+    expect(indices).toEqual([38]); // Demonic Tutor
+  });
+
+  test("is:gc is alias for is:gamechanger", () => {
+    const indices = isMatchIndices("is:gc");
+    expect(indices).toEqual([38]); // Demonic Tutor
+  });
+
   test("-is:funny excludes funny cards", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(33); // 34 total cards - 1 funny
+    expect(indices.length).toBe(34); // 35 unique cards - 1 funny
   });
 
   // --- Land cycle checks ---

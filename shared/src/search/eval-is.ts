@@ -354,6 +354,12 @@ export function evalIsKeyword(
         if ((index.flags[i] & CardFlag.UniversesBeyond) !== 0) buf[cf[i]] = 1;
       }
       break;
+    case "gamechanger":
+    case "gc":
+      for (let i = 0; i < n; i++) {
+        if ((index.flags[i] & CardFlag.GameChanger) !== 0) buf[cf[i]] = 1;
+      }
+      break;
     case "hybrid":
       for (let i = 0; i < n; i++) {
         if (hasHybridSymbol(index.manaCostsLower[i])) buf[cf[i]] = 1;
