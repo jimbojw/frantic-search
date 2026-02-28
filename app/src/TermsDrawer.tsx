@@ -136,15 +136,15 @@ export default function TermsDrawer(props: {
   const chips = createMemo(() => TAB_CHIPS[activeTab()])
 
   return (
-    <div class="px-3 pt-1.5 pb-2">
-      {/* Tab row */}
-      <div class="flex items-center gap-0.5 mb-2">
+    <div class="flex px-3 pt-1.5 pb-2">
+      {/* Left: vertical tabs */}
+      <div class="flex flex-col gap-0.5 shrink-0 pr-2">
         <For each={TABS}>
           {(tab) => (
             <button
               type="button"
               onClick={() => selectTab(tab)}
-              class={`px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer ${
+              class={`px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
                 activeTab() === tab
                   ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
                   : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
@@ -154,7 +154,35 @@ export default function TermsDrawer(props: {
             </button>
           )}
         </For>
-        <div class="flex-1" />
+      </div>
+
+      {/* Center: chips */}
+      <div class="flex-1 flex flex-wrap gap-1.5 content-start min-w-0">
+        <For each={chips()}>
+          {(chip) => (
+            <TermChip
+              chip={chip}
+              state={getChipState(bd(), chip)}
+              query={props.query}
+              breakdown={bd()}
+              onSetQuery={props.onSetQuery}
+            />
+          )}
+        </For>
+      </div>
+
+      {/* Right: controls */}
+      <div class="flex flex-col justify-between shrink-0 pl-2">
+        <button
+          type="button"
+          onClick={() => props.onClose()}
+          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
+          aria-label="Close filters"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <button
           type="button"
           onClick={() => props.onHelpClick()}
@@ -169,31 +197,6 @@ export default function TermsDrawer(props: {
             <rect x="9" y="16.5" width="6" height="1.5" rx="0.5" fill="currentColor" />
           </svg>
         </button>
-        <button
-          type="button"
-          onClick={() => props.onClose()}
-          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
-          aria-label="Close filters"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Chip grid */}
-      <div class="flex flex-wrap gap-1.5">
-        <For each={chips()}>
-          {(chip) => (
-            <TermChip
-              chip={chip}
-              state={getChipState(bd(), chip)}
-              query={props.query}
-              breakdown={bd()}
-              onSetQuery={props.onSetQuery}
-            />
-          )}
-        </For>
       </div>
     </div>
   )
