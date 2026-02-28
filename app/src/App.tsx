@@ -785,11 +785,13 @@ function App() {
                                   const ci = pd.canonical_face_ref[pi]
                                   const faces = () => facesOf().get(ci) ?? []
                                   const name = () => fullCardName(d(), faces())
-                                  const isFoilish = pd.finish[pi] !== Finish.Nonfoil
+                                  const isFoil = pd.finish[pi] === Finish.Foil
+                                  const isEtched = pd.finish[pi] === Finish.Etched
+                                  const overlayClass = () => uniquePrints() && isFoil ? 'foil-overlay ' : uniquePrints() && isEtched ? 'etched-overlay ' : ''
                                   return (
                                     <li class="group px-4 py-3 text-sm">
                                       <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
-                                        <div class={uniquePrints() && isFoilish ? 'foil-overlay w-[336px] max-w-full shrink-0 rounded-lg' : 'w-[336px] max-w-full shrink-0'}>
+                                        <div class={`${overlayClass()}w-[336px] max-w-full shrink-0 rounded-lg`}>
                                           <CardImage
                                             scryfallId={pd.scryfall_ids[pi]}
                                             colorIdentity={d().color_identity[ci]}
@@ -907,15 +909,18 @@ function App() {
                                     const setCode = pd.set_codes[pi]
                                     const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
                                     const sid = pd.scryfall_ids[pi]
-                                    const isFoilish = pd.finish[pi] !== Finish.Nonfoil
+                                    const isFoil = pd.finish[pi] === Finish.Foil
+                                    const isEtched = pd.finish[pi] === Finish.Etched
                                     const finishLabel = () => {
                                       if (uniquePrints()) return FINISH_LABELS[pd.finish[pi]] ?? null
                                       const group = finishGroupMap().get(sid)
                                       if (!group || group.length <= 1) return null
                                       return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
                                     }
+                                    const overlayClass = () => uniquePrints() && isFoil ? 'foil-overlay' : uniquePrints() && isEtched ? 'etched-overlay' : ''
+                                    const metaClass = () => uniquePrints() && isFoil ? 'foil-meta' : uniquePrints() && isEtched ? 'etched-meta' : ''
                                     return (
-                                      <div class={`bg-white dark:bg-gray-900 flex flex-col ${uniquePrints() && isFoilish ? 'foil-overlay' : ''}`}>
+                                      <div class={`bg-white dark:bg-gray-900 flex flex-col ${overlayClass()}`}>
                                         <CardImage
                                           scryfallId={sid}
                                           colorIdentity={d().color_identity[ci]}
@@ -924,7 +929,7 @@ function App() {
                                           onClick={() => navigateToCard(d().scryfall_ids[ci])}
                                           aria-label={name()}
                                         />
-                                        <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate ${uniquePrints() && isFoilish ? 'foil-meta' : ''}`}>
+                                        <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate ${metaClass()}`}>
                                           <span class="uppercase">{setCode}</span>
                                           {' · '}
                                           {rarityLabel}
