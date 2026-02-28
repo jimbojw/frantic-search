@@ -90,10 +90,9 @@ describe("set field", () => {
     expect(marked(evalField("set", ":", "c21").buf)).toEqual([3, 4]);
   });
 
-  test("unknown set matches nothing", () => {
-    const { buf, error } = evalField("set", ":", "xxx");
-    expect(error).toBeNull();
-    expect(marked(buf)).toEqual([]);
+  test("unknown set returns error", () => {
+    const { error } = evalField("set", ":", "xxx");
+    expect(error).toBe('unknown set "xxx"');
   });
 });
 

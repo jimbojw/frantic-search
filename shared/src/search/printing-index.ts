@@ -15,6 +15,7 @@ export class PrintingIndex {
   readonly priceUsd: number[];
   readonly releasedAt: number[];
   readonly setReleasedAt: number[];
+  readonly knownSetCodes: Set<string>;
 
   /** Reverse map: canonical face index -> printing row indices. */
   private readonly _printingsOf: Map<number, number[]>;
@@ -35,6 +36,7 @@ export class PrintingIndex {
     this.priceUsd = data.price_usd;
     this.releasedAt = data.released_at;
     this.setReleasedAt = data.set_lookup.map(e => e.released_at);
+    this.knownSetCodes = new Set(data.set_lookup.map(e => e.code.toLowerCase()));
 
     this._printingsOf = new Map();
     for (let i = 0; i < this.printingCount; i++) {

@@ -71,6 +71,7 @@ export function evalPrintingField(
 
   switch (canonical) {
     case "set": {
+      if (!pIdx.knownSetCodes.has(valLower)) return `unknown set "${val}"`;
       for (let i = 0; i < n; i++) {
         if (pIdx.setCodesLower[i] === valLower) buf[i] = 1;
       }
