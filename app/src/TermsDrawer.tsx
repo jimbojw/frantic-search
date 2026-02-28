@@ -56,6 +56,7 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     isChip('commander'),
     isChip('partner'),
     isChip('companion'),
+    isChip('gamechanger'),
     isChip('reserved'),
     isChip('permanent'),
     isChip('spell'),

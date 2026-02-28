@@ -37,7 +37,7 @@ Four sections, ordered to maximize scan-ability and discovery:
 
 **Deckbuilding** (meta-categories that cut across types):
 
-`is:commander`, `is:partner`, `is:companion`, `is:reserved`, `is:permanent`, `is:spell`
+`is:commander`, `is:partner`, `is:companion`, `is:gamechanger`, `is:reserved`, `is:permanent`, `is:spell`
 
 **Land Cycles** (useful but hard-to-remember keywords):
 
