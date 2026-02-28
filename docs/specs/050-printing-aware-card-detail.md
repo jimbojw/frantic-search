@@ -1,6 +1,6 @@
 # Spec 050: Printing-Aware Card Detail
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 015 (Card Detail Page), Spec 046 (Printing Data Model), Spec 048 (Printing-Aware Display)
 
