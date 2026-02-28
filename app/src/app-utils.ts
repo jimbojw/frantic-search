@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { DisplayColumns } from '@frantic-search/shared'
+import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import { Rarity, Finish } from '@frantic-search/shared'
 
 export function buildFacesOf(canonicalFace: number[]): Map<number, number[]> {
@@ -21,6 +21,15 @@ export function buildScryfallIndex(scryfallIds: string[], canonicalFace: number[
   for (let i = 0; i < scryfallIds.length; i++) {
     const cf = canonicalFace[i]
     if (cf === i) map.set(scryfallIds[i], i)
+  }
+  return map
+}
+
+export function buildPrintingScryfallIndex(pd: PrintingDisplayColumns): Map<string, number> {
+  const map = new Map<string, number>()
+  for (let i = 0; i < pd.scryfall_ids.length; i++) {
+    const sid = pd.scryfall_ids[i]
+    if (!map.has(sid)) map.set(sid, i)
   }
   return map
 }

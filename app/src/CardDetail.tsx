@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
-import type { DisplayColumns } from '@frantic-search/shared'
+import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import { Format } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
+import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },
@@ -175,9 +176,13 @@ export default function CardDetail(props: {
   scryfallId: string
   display: DisplayColumns | null
   facesOf: Map<number, number[]>
+  printingIndex?: number
+  printingDisplay?: PrintingDisplayColumns | null
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
+  const pi = () => props.printingIndex
+  const pd = () => props.printingDisplay
   const faces = () => {
     const idx = ci()
     return idx != null ? (props.facesOf.get(idx) ?? []) : []
@@ -185,6 +190,12 @@ export default function CardDetail(props: {
   const fullName = () => {
     const cols = d()
     return cols ? faces().map(fi => cols.names[fi]).join(' // ') : ''
+  }
+  const imageScryfallId = () => {
+    const pidx = pi()
+    const pcols = pd()
+    if (pidx !== undefined && pcols) return pcols.scryfall_ids[pidx]
+    return props.scryfallId
   }
   const scryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
 
@@ -231,11 +242,35 @@ export default function CardDetail(props: {
             <>
               <div class="mb-6 max-w-xs mx-auto">
                 <CardImage
-                  scryfallId={cols().scryfall_ids[idx]}
+                  scryfallId={imageScryfallId()}
                   colorIdentity={cols().color_identity[idx]}
                   layout={cols().layouts[idx]}
                 />
               </div>
+
+              <Show when={pi() !== undefined && pd()}>
+                {(pcols) => {
+                  const pidx = pi()!
+                  return (
+                    <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
+                        <dd class="text-gray-700 dark:text-gray-200">
+                          {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span>
+                        </dd>
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Collector #</dt>
+                        <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
+                        <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
+                        <dd class="text-gray-700 dark:text-gray-200">{FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'}</dd>
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
+                        <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pidx])}</dd>
+                      </dl>
+                    </div>
+                  )
+                }}
+              </Show>
 
               <div class="space-y-4 mb-8">
                 <For each={faces()}>

@@ -19,8 +19,8 @@ import CardFaceRow from './CardFaceRow'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
 import {
-  buildFacesOf, buildScryfallIndex, RARITY_LABELS, FINISH_LABELS,
-  formatPrice, fullCardName, parseView,
+  buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
+  RARITY_LABELS, FINISH_LABELS, formatPrice, fullCardName, parseView,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -123,6 +123,11 @@ function App() {
   const scryfallIndex = createMemo(() => {
     const d = display()
     return d ? buildScryfallIndex(d.scryfall_ids, d.canonical_face) : new Map<string, number>()
+  })
+
+  const printingScryfallIndex = createMemo(() => {
+    const pd = printingDisplay()
+    return pd ? buildPrintingScryfallIndex(pd) : new Map<string, number>()
   })
 
   const batchSize = () => BATCH_SIZES[viewMode()]
@@ -415,12 +420,28 @@ function App() {
         <SyntaxHelp onSelectExample={navigateToQuery} />
       </Show>
       <Show when={view() === 'card'}>
-        <CardDetail
-          canonicalIndex={scryfallIndex().get(cardId())}
-          scryfallId={cardId()}
-          display={display()}
-          facesOf={facesOf()}
-        />
+        {(() => {
+          const oracleCI = () => scryfallIndex().get(cardId())
+          const printingPI = () => printingScryfallIndex().get(cardId())
+          const resolvedCI = () => {
+            const oci = oracleCI()
+            if (oci !== undefined) return oci
+            const pi = printingPI()
+            const pd = printingDisplay()
+            if (pi !== undefined && pd) return pd.canonical_face_ref[pi]
+            return undefined
+          }
+          return (
+            <CardDetail
+              canonicalIndex={resolvedCI()}
+              scryfallId={cardId()}
+              display={display()}
+              facesOf={facesOf()}
+              printingIndex={oracleCI() === undefined ? printingPI() : undefined}
+              printingDisplay={printingDisplay()}
+            />
+          )
+        })()}
       </Show>
       <Show when={view() === 'report'}>
         <BugReport query={query()} breakdown={breakdown()} resultCount={totalCards()} />
@@ -712,13 +733,13 @@ function App() {
                                     <div class="min-w-0 flex-1">
                                       <Show when={faces().length > 1} fallback={
                                         <>
-                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} setBadge={setBadge()} />
+                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(artScryfallId())} setBadge={setBadge()} />
                                         </>
                                       }>
                                         <div class="flex items-center gap-1.5 min-w-0">
                                           <button
                                             type="button"
-                                            onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                            onClick={() => navigateToCard(artScryfallId())}
                                             class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
                                           >
                                             {name()}
@@ -744,16 +765,16 @@ function App() {
                                         colorIdentity={d().color_identity[ci]}
                                         thumbHash={d().card_thumb_hashes[ci]}
                                         class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
-                                        onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                        onClick={() => navigateToCard(artScryfallId())}
                                       />
                                       <div class="min-w-0 flex-1 w-full">
                                         <Show when={faces().length > 1} fallback={
-                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} setBadge={setBadge()} />
+                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(artScryfallId())} setBadge={setBadge()} />
                                         }>
                                           <div class="flex items-center gap-1.5 min-w-0">
                                             <button
                                               type="button"
-                                              onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                              onClick={() => navigateToCard(artScryfallId())}
                                               class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
                                             >
                                               {name()}
@@ -797,17 +818,17 @@ function App() {
                                             colorIdentity={d().color_identity[ci]}
                                             thumbHash={d().card_thumb_hashes[ci]}
                                             class="cursor-pointer rounded-lg"
-                                            onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                            onClick={() => navigateToCard(pd.scryfall_ids[pi])}
                                           />
                                         </div>
                                         <div class="min-w-0 flex-1 w-full">
                                           <Show when={faces().length > 1} fallback={
-                                            <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
+                                            <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(pd.scryfall_ids[pi])} />
                                           }>
                                             <div class="flex items-center gap-1.5 min-w-0">
                                               <button
                                                 type="button"
-                                                onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                                onClick={() => navigateToCard(pd.scryfall_ids[pi])}
                                                 class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
                                               >
                                                 {name()}
@@ -926,7 +947,7 @@ function App() {
                                           colorIdentity={d().color_identity[ci]}
                                           thumbHash={d().card_thumb_hashes[ci]}
                                           class="cursor-pointer hover:brightness-110 transition-[filter]"
-                                          onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                          onClick={() => navigateToCard(sid)}
                                           aria-label={name()}
                                         />
                                         <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate ${metaClass()}`}>

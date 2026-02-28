@@ -2,9 +2,11 @@
 import { describe, it, expect } from 'vitest'
 import type { DisplayColumns } from '@frantic-search/shared'
 import { Rarity, Finish } from '@frantic-search/shared'
+import type { PrintingDisplayColumns } from '@frantic-search/shared'
 import {
   buildFacesOf,
   buildScryfallIndex,
+  buildPrintingScryfallIndex,
   RARITY_LABELS,
   FINISH_LABELS,
   formatPrice,
@@ -272,5 +274,64 @@ describe('parseView', () => {
 
   it('prioritizes report over help', () => {
     expect(parseView(new URLSearchParams('report&help'))).toBe('report')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildPrintingScryfallIndex
+// ---------------------------------------------------------------------------
+
+function stubPrintingDisplay(overrides: Partial<PrintingDisplayColumns> = {}): PrintingDisplayColumns {
+  return {
+    scryfall_ids: [],
+    collector_numbers: [],
+    set_codes: [],
+    set_names: [],
+    rarity: [],
+    finish: [],
+    price_usd: [],
+    canonical_face_ref: [],
+    ...overrides,
+  }
+}
+
+describe('buildPrintingScryfallIndex', () => {
+  it('returns an empty map for empty input', () => {
+    expect(buildPrintingScryfallIndex(stubPrintingDisplay())).toEqual(new Map())
+  })
+
+  it('maps each unique scryfall_id to its first printing index', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['aaa', 'bbb', 'ccc'],
+      canonical_face_ref: [0, 1, 2],
+    })
+    const result = buildPrintingScryfallIndex(pd)
+    expect(result.size).toBe(3)
+    expect(result.get('aaa')).toBe(0)
+    expect(result.get('bbb')).toBe(1)
+    expect(result.get('ccc')).toBe(2)
+  })
+
+  it('keeps the first index when finish variants share a scryfall_id', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['aaa', 'aaa', 'bbb'],
+      canonical_face_ref: [0, 0, 1],
+    })
+    const result = buildPrintingScryfallIndex(pd)
+    expect(result.size).toBe(2)
+    expect(result.get('aaa')).toBe(0)
+    expect(result.get('bbb')).toBe(2)
+  })
+
+  it('handles multiple printings of the same card across sets', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['print-a', 'print-b', 'print-c'],
+      canonical_face_ref: [5, 5, 5],
+    })
+    const result = buildPrintingScryfallIndex(pd)
+    expect(result.size).toBe(3)
+    expect(result.get('print-a')).toBe(0)
+    expect(result.get('print-b')).toBe(1)
+    expect(result.get('print-c')).toBe(2)
   })
 })
