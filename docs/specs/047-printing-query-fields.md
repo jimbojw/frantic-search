@@ -1,6 +1,6 @@
 # Spec 047: Printing Query Fields
 
-**Status:** In Progress 
+**Status:** Implemented 
 
 **Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation)
 
