@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, createMemo, createSignal } from 'solid-js'
+import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints } from './query-edit'
 
 // ---------------------------------------------------------------------------
 // Chip data
@@ -153,6 +153,33 @@ function TermChip(props: {
 }
 
 // ---------------------------------------------------------------------------
+// Bimodal chip: unique:prints
+// ---------------------------------------------------------------------------
+
+const UNIQUE_PRINTS_TABS: ReadonlySet<TabId> = new Set(['rarities', 'printings'])
+
+function UniquePrintsChip(props: {
+  active: boolean
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(toggleUniquePrints(props.query, props.breakdown))}
+      class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
+        props.active
+          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
+          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+      }`}
+    >
+      unique:prints
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // TermsDrawer
 // ---------------------------------------------------------------------------
 
@@ -226,18 +253,30 @@ export default function TermsDrawer(props: {
           </For>
         </div>
 
-        <div class="flex-1 flex flex-wrap gap-1.5 content-start min-w-0">
-          <For each={chips()}>
-            {(chip) => (
-              <TermChip
-                chip={chip}
-                state={getChipState(bd(), chip)}
+        <div class="flex-1 flex flex-col gap-1.5 min-w-0">
+          <div class="flex flex-wrap gap-1.5 content-start">
+            <For each={chips()}>
+              {(chip) => (
+                <TermChip
+                  chip={chip}
+                  state={getChipState(bd(), chip)}
+                  query={props.query}
+                  breakdown={bd()}
+                  onSetQuery={props.onSetQuery}
+                />
+              )}
+            </For>
+          </div>
+          <Show when={UNIQUE_PRINTS_TABS.has(activeTab())}>
+            <div class="flex items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
+              <UniquePrintsChip
+                active={hasUniquePrints(bd())}
                 query={props.query}
                 breakdown={bd()}
                 onSetQuery={props.onSetQuery}
               />
-            )}
-          </For>
+            </div>
+          </Show>
         </div>
       </div>
     </div>

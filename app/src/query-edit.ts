@@ -625,6 +625,28 @@ export function cycleChip(
 }
 
 // ---------------------------------------------------------------------------
+// Bimodal toggle: unique:prints (Spec 048)
+// ---------------------------------------------------------------------------
+
+const UNIQUE_FIELDS = ['unique']
+
+export function toggleUniquePrints(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  const node = breakdown
+    ? findFieldNode(breakdown, UNIQUE_FIELDS, ':', false, v => v === 'prints')
+    : null
+  if (node) return removeNode(query, node, breakdown!)
+  return appendTerm(query, 'unique:prints', breakdown)
+}
+
+export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
+  if (!breakdown) return false
+  return findFieldNode(breakdown, UNIQUE_FIELDS, ':', false, v => v === 'prints') !== null
+}
+
+// ---------------------------------------------------------------------------
 // Clear field-family filters (generic)
 // ---------------------------------------------------------------------------
 

@@ -17,6 +17,8 @@ import {
   colorlessX,
   clearColorIdentity,
   parseBreakdown,
+  toggleUniquePrints,
+  hasUniquePrints,
 } from './query-edit'
 
 function buildBreakdown(query: string): BreakdownNode {
@@ -1117,5 +1119,70 @@ describe('cycleChip — multi-chip sequences', () => {
     expect(q).toBe('f:commander -is:dfc')
     q = cycleFormat(q, 'commander')
     expect(q).toBe('-is:dfc -f:commander')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toggleUniquePrints — bimodal toggle (Spec 048)
+// ---------------------------------------------------------------------------
+
+describe('toggleUniquePrints', () => {
+  it('appends unique:prints to empty query', () => {
+    expect(toggleUniquePrints('', null)).toBe('unique:prints')
+  })
+
+  it('removes unique:prints when present', () => {
+    const q = 'unique:prints'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('round-trips: absent → present → absent', () => {
+    let q = ''
+    q = toggleUniquePrints(q, parseBreakdown(q))
+    expect(q).toBe('unique:prints')
+    q = toggleUniquePrints(q, parseBreakdown(q))
+    expect(q).toBe('')
+  })
+
+  it('preserves surrounding terms when appending', () => {
+    const q = 'r:mythic'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('r:mythic unique:prints')
+  })
+
+  it('preserves surrounding terms when removing', () => {
+    const q = 'r:mythic unique:prints'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('r:mythic')
+  })
+
+  it('preserves surrounding terms on both sides when removing', () => {
+    const q = 'r:mythic unique:prints t:creature'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('r:mythic t:creature')
+  })
+
+  it('wraps OR-root query in parens when appending', () => {
+    const q = 'r:mythic OR r:rare'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('(r:mythic OR r:rare) unique:prints')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// hasUniquePrints — state detection
+// ---------------------------------------------------------------------------
+
+describe('hasUniquePrints', () => {
+  it('returns false for null breakdown', () => {
+    expect(hasUniquePrints(null)).toBe(false)
+  })
+
+  it('returns false when unique:prints is absent', () => {
+    expect(hasUniquePrints(buildBreakdown('r:mythic'))).toBe(false)
+  })
+
+  it('returns true when unique:prints is present', () => {
+    expect(hasUniquePrints(buildBreakdown('unique:prints'))).toBe(true)
+  })
+
+  it('returns true when unique:prints is among other terms', () => {
+    expect(hasUniquePrints(buildBreakdown('r:mythic unique:prints'))).toBe(true)
   })
 })
