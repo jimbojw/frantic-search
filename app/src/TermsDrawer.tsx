@@ -10,6 +10,7 @@ import { findFieldNode, cycleChip, parseBreakdown } from './query-edit'
 const FORMAT_FIELDS = ['f', 'format', 'legal']
 const IS_FIELDS = ['is']
 const RARITY_FIELDS = ['r', 'rarity']
+const PRICE_FIELDS = ['price', 'usd']
 
 type ChipDef = { label: string; field: string[]; operator: string; value: string; term: string }
 
@@ -25,7 +26,11 @@ function rarityChip(value: string): ChipDef {
   return { label: `r:${value}`, field: RARITY_FIELDS, operator: ':', value, term: `r:${value}` }
 }
 
-const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings'] as const
+function priceChip(value: string): ChipDef {
+  return { label: `price<${value}`, field: PRICE_FIELDS, operator: '<', value, term: `price<${value}` }
+}
+
+const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices'] as const
 type TabId = (typeof TABS)[number]
 
 const TAB_CHIPS: Record<TabId, ChipDef[]> = {
@@ -83,6 +88,16 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     isChip('textless'),
     isChip('promo'),
     isChip('reprint'),
+  ],
+  prices: [
+    priceChip('0.10'),
+    priceChip('1'),
+    priceChip('2'),
+    priceChip('5'),
+    priceChip('10'),
+    priceChip('20'),
+    priceChip('50'),
+    priceChip('100'),
   ],
 }
 
