@@ -7,6 +7,7 @@ import {
   buildFacesOf,
   buildScryfallIndex,
   buildPrintingScryfallIndex,
+  buildPrintingScryfallGroupIndex,
   RARITY_LABELS,
   FINISH_LABELS,
   formatPrice,
@@ -333,5 +334,45 @@ describe('buildPrintingScryfallIndex', () => {
     expect(result.get('print-a')).toBe(0)
     expect(result.get('print-b')).toBe(1)
     expect(result.get('print-c')).toBe(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildPrintingScryfallGroupIndex
+// ---------------------------------------------------------------------------
+
+describe('buildPrintingScryfallGroupIndex', () => {
+  it('returns an empty map for empty input', () => {
+    expect(buildPrintingScryfallGroupIndex(stubPrintingDisplay())).toEqual(new Map())
+  })
+
+  it('maps a unique scryfall_id to a single-element array', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['aaa', 'bbb'],
+    })
+    const result = buildPrintingScryfallGroupIndex(pd)
+    expect(result.size).toBe(2)
+    expect(result.get('aaa')).toEqual([0])
+    expect(result.get('bbb')).toEqual([1])
+  })
+
+  it('groups finish variants that share a scryfall_id', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['aaa', 'aaa', 'bbb'],
+      finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil],
+    })
+    const result = buildPrintingScryfallGroupIndex(pd)
+    expect(result.size).toBe(2)
+    expect(result.get('aaa')).toEqual([0, 1])
+    expect(result.get('bbb')).toEqual([2])
+  })
+
+  it('preserves insertion order within a group', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['x', 'x', 'x'],
+      finish: [Finish.Nonfoil, Finish.Foil, Finish.Etched],
+    })
+    const result = buildPrintingScryfallGroupIndex(pd)
+    expect(result.get('x')).toEqual([0, 1, 2])
   })
 })

@@ -176,13 +176,17 @@ export default function CardDetail(props: {
   scryfallId: string
   display: DisplayColumns | null
   facesOf: Map<number, number[]>
-  printingIndex?: number
+  printingIndices?: number[]
   printingDisplay?: PrintingDisplayColumns | null
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
-  const pi = () => props.printingIndex
+  const pis = () => props.printingIndices
   const pd = () => props.printingDisplay
+  const primaryPI = () => {
+    const indices = pis()
+    return indices && indices.length > 0 ? indices[0] : undefined
+  }
   const faces = () => {
     const idx = ci()
     return idx != null ? (props.facesOf.get(idx) ?? []) : []
@@ -192,7 +196,7 @@ export default function CardDetail(props: {
     return cols ? faces().map(fi => cols.names[fi]).join(' // ') : ''
   }
   const imageScryfallId = () => {
-    const pidx = pi()
+    const pidx = primaryPI()
     const pcols = pd()
     if (pidx !== undefined && pcols) return pcols.scryfall_ids[pidx]
     return props.scryfallId
@@ -248,9 +252,10 @@ export default function CardDetail(props: {
                 />
               </div>
 
-              <Show when={pi() !== undefined && pd()}>
+              <Show when={primaryPI() !== undefined && pd()}>
                 {(pcols) => {
-                  const pidx = pi()!
+                  const pidx = primaryPI()!
+                  const indices = pis()!
                   return (
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
                       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -262,10 +267,21 @@ export default function CardDetail(props: {
                         <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
                         <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
-                        <dd class="text-gray-700 dark:text-gray-200">{FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'}</dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
-                        <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pidx])}</dd>
+                        <Show when={indices.length === 1} fallback={
+                          <For each={indices}>
+                            {(pi) => (<>
+                              <dt class="font-medium text-gray-600 dark:text-gray-300">
+                                {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
+                              </dt>
+                              <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pi])}</dd>
+                            </>)}
+                          </For>
+                        }>
+                          <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
+                          <dd class="text-gray-700 dark:text-gray-200">{FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'}</dd>
+                          <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
+                          <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pidx])}</dd>
+                        </Show>
                       </dl>
                     </div>
                   )

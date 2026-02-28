@@ -20,6 +20,7 @@ import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
+  buildPrintingScryfallGroupIndex,
   RARITY_LABELS, FINISH_LABELS, formatPrice, fullCardName, parseView,
 } from './app-utils'
 import type { View } from './app-utils'
@@ -128,6 +129,11 @@ function App() {
   const printingScryfallIndex = createMemo(() => {
     const pd = printingDisplay()
     return pd ? buildPrintingScryfallIndex(pd) : new Map<string, number>()
+  })
+
+  const printingScryfallGroupIndex = createMemo(() => {
+    const pd = printingDisplay()
+    return pd ? buildPrintingScryfallGroupIndex(pd) : new Map<string, number[]>()
   })
 
   const batchSize = () => BATCH_SIZES[viewMode()]
@@ -423,6 +429,7 @@ function App() {
         {(() => {
           const oracleCI = () => scryfallIndex().get(cardId())
           const printingPI = () => printingScryfallIndex().get(cardId())
+          const printingPIs = () => printingScryfallGroupIndex().get(cardId())
           const resolvedCI = () => {
             const oci = oracleCI()
             if (oci !== undefined) return oci
@@ -437,7 +444,7 @@ function App() {
               scryfallId={cardId()}
               display={display()}
               facesOf={facesOf()}
-              printingIndex={oracleCI() === undefined ? printingPI() : undefined}
+              printingIndices={printingPIs()}
               printingDisplay={printingDisplay()}
             />
           )

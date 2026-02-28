@@ -34,6 +34,20 @@ export function buildPrintingScryfallIndex(pd: PrintingDisplayColumns): Map<stri
   return map
 }
 
+export function buildPrintingScryfallGroupIndex(pd: PrintingDisplayColumns): Map<string, number[]> {
+  const map = new Map<string, number[]>()
+  for (let i = 0; i < pd.scryfall_ids.length; i++) {
+    const sid = pd.scryfall_ids[i]
+    let group = map.get(sid)
+    if (!group) {
+      group = []
+      map.set(sid, group)
+    }
+    group.push(i)
+  }
+  return map
+}
+
 export const RARITY_LABELS: Record<number, string> = {
   [Rarity.Common]: 'Common',
   [Rarity.Uncommon]: 'Uncommon',
