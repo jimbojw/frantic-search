@@ -9,3 +9,44 @@ html {
 button, [role="button"] {
   cursor: pointer;
 }
+
+.foil-overlay {
+  position: relative;
+}
+.foil-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 220, 150, 0.12) 42%,
+    rgba(180, 130, 255, 0.10) 50%,
+    rgba(100, 210, 255, 0.12) 58%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: foil-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes foil-shimmer {
+  0%, 100% { background-position: 200% 0; }
+  50% { background-position: -100% 0; }
+}
+
+.foil-meta {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 210, 120, 0.15),
+    rgba(200, 140, 255, 0.15),
+    rgba(100, 200, 255, 0.15)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foil-overlay::after {
+    animation: none;
+  }
+}

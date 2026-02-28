@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
+import { Finish } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -706,16 +707,19 @@ function App() {
                                   const ci = pd.canonical_face_ref[pi]
                                   const faces = () => facesOf().get(ci) ?? []
                                   const name = () => fullCardName(d(), faces())
+                                  const isFoilish = pd.finish[pi] !== Finish.Nonfoil
                                   return (
                                     <li class="group px-4 py-3 text-sm">
                                       <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
-                                        <CardImage
-                                          scryfallId={pd.scryfall_ids[pi]}
-                                          colorIdentity={d().color_identity[ci]}
-                                          thumbHash={d().card_thumb_hashes[ci]}
-                                          class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
-                                          onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                        />
+                                        <div class={uniquePrints() && isFoilish ? 'foil-overlay w-[336px] max-w-full shrink-0 rounded-lg' : 'w-[336px] max-w-full shrink-0'}>
+                                          <CardImage
+                                            scryfallId={pd.scryfall_ids[pi]}
+                                            colorIdentity={d().color_identity[ci]}
+                                            thumbHash={d().card_thumb_hashes[ci]}
+                                            class="cursor-pointer rounded-lg"
+                                            onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                          />
+                                        </div>
                                         <div class="min-w-0 flex-1 w-full">
                                           <Show when={faces().length > 1} fallback={
                                             <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
@@ -746,7 +750,7 @@ function App() {
                                             {(() => {
                                               const sid = pd.scryfall_ids[pi]
                                               const group = finishGroupMap().get(sid)
-                                              if (group && group.length > 1) {
+                                              if (group && group.length > 1 && !uniquePrints()) {
                                                 return (<>
                                                   <dt class="font-medium text-gray-600 dark:text-gray-300">Finishes</dt>
                                                   <dd>{group.map(g => {
@@ -825,13 +829,15 @@ function App() {
                                     const setCode = pd.set_codes[pi]
                                     const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
                                     const sid = pd.scryfall_ids[pi]
-                                    const finishes = () => {
+                                    const isFoilish = pd.finish[pi] !== Finish.Nonfoil
+                                    const finishLabel = () => {
+                                      if (uniquePrints()) return FINISH_LABELS[pd.finish[pi]] ?? null
                                       const group = finishGroupMap().get(sid)
                                       if (!group || group.length <= 1) return null
                                       return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
                                     }
                                     return (
-                                      <div class="bg-white dark:bg-gray-900 flex flex-col">
+                                      <div class={`bg-white dark:bg-gray-900 flex flex-col ${uniquePrints() && isFoilish ? 'foil-overlay' : ''}`}>
                                         <CardImage
                                           scryfallId={sid}
                                           colorIdentity={d().color_identity[ci]}
@@ -840,11 +846,11 @@ function App() {
                                           onClick={() => navigateToCard(d().scryfall_ids[ci])}
                                           aria-label={name()}
                                         />
-                                        <div class="px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate">
+                                        <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate ${uniquePrints() && isFoilish ? 'foil-meta' : ''}`}>
                                           <span class="uppercase">{setCode}</span>
                                           {' · '}
                                           {rarityLabel}
-                                          <Show when={finishes()}>
+                                          <Show when={finishLabel()}>
                                             {(f) => <>{' · '}{f()}</>}
                                           </Show>
                                         </div>
