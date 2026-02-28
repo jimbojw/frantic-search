@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
+import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 
 type BreakdownCase = 'single' | 'flat-and' | 'flat-or' | 'nested'
 
@@ -49,9 +50,23 @@ function reconstructWithout(root: BreakdownNode, exclude: BreakdownNode): string
   return filtered ? reconstructQuery(filtered) : ''
 }
 
+function HighlightedLabel(props: { label: string }) {
+  const spans = () => buildSpans(props.label)
+  return (
+    <For each={spans()}>
+      {(span) =>
+        span.role
+          ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+          : <>{span.text}</>
+      }
+    </For>
+  )
+}
+
 function BreakdownRow(props: { label: string; count: number; error?: string; indent?: number; onClick?: () => void; onRemove?: () => void }) {
   const isError = () => !!props.error
   const isNop = () => !props.error && props.count < 0
+  const useHighlight = () => !isError() && !isNop() && props.count !== 0
   return (
     <div
       class="flex items-baseline justify-between gap-4 py-0.5"
@@ -61,7 +76,9 @@ function BreakdownRow(props: { label: string; count: number; error?: string; ind
         class={`font-mono text-xs truncate ${isError() ? 'text-red-500 dark:text-red-400' : isNop() ? 'text-gray-400 dark:text-gray-500 italic' : props.count === 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''} ${props.onClick ? 'cursor-pointer hover:underline' : ''}`}
         onClick={props.onClick}
       >
-        {props.label}
+        <Show when={useHighlight()} fallback={props.label}>
+          <HighlightedLabel label={props.label} />
+        </Show>
       </span>
       <span class="flex items-center gap-2 shrink-0">
         <span

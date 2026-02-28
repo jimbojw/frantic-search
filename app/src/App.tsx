@@ -11,6 +11,7 @@ import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdo
 import SparkBars from './SparkBars'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 import TermsDrawer from './TermsDrawer'
+import QueryHighlight from './QueryHighlight'
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import CardImage from './CardImage'
@@ -101,6 +102,8 @@ function App() {
   const [textareaMode, setTextareaMode] = createSignal(false)
   let inputRef: HTMLInputElement | undefined
   let textareaRef: HTMLTextAreaElement | undefined
+  let inputHlRef: HTMLDivElement | undefined
+  let textareaHlRef: HTMLDivElement | undefined
 
   function toggleTextareaMode() {
     const current = textareaMode() ? textareaRef : inputRef
@@ -496,37 +499,49 @@ function App() {
           </Show>
           <div class={`relative ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <Show when={textareaMode()} fallback={
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder='Search cards… e.g. "t:creature c:green"'
-                autocapitalize="none"
-                autocomplete="off"
-                autocorrect="off"
-                spellcheck={false}
-                value={query()}
-                onInput={(e) => setQuery(e.currentTarget.value)}
-                onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
-                onBlur={() => setInputFocused(false)}
-                disabled={workerStatus() === 'error'}
-                class="w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
-              />
+              <div class="grid overflow-hidden">
+                <div ref={inputHlRef} class="hl-layer overflow-hidden whitespace-pre px-4 py-3 pl-14 pr-10">
+                  <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre" />
+                </div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder='Search cards… e.g. "t:creature c:green"'
+                  autocapitalize="none"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck={false}
+                  value={query()}
+                  onInput={(e) => { setQuery(e.currentTarget.value); if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
+                  onScroll={(e) => { if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
+                  onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                  onBlur={() => setInputFocused(false)}
+                  disabled={workerStatus() === 'error'}
+                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+                />
+              </div>
             }>
-              <textarea
-                ref={textareaRef}
-                rows="3"
-                placeholder='Search cards… e.g. "t:creature c:green"'
-                autocapitalize="none"
-                autocomplete="off"
-                autocorrect="off"
-                spellcheck={false}
-                value={query()}
-                onInput={(e) => setQuery(e.currentTarget.value)}
-                onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
-                onBlur={() => setInputFocused(false)}
-                disabled={workerStatus() === 'error'}
-                class="w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
-              />
+              <div class="grid overflow-hidden">
+                <div ref={textareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-14 pr-10">
+                  <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  rows="3"
+                  placeholder='Search cards… e.g. "t:creature c:green"'
+                  autocapitalize="none"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck={false}
+                  value={query()}
+                  onInput={(e) => { setQuery(e.currentTarget.value); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                  onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                  onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                  onBlur={() => setInputFocused(false)}
+                  disabled={workerStatus() === 'error'}
+                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+                />
+              </div>
             </Show>
             <button
               type="button"

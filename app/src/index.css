@@ -85,6 +85,32 @@ button, [role="button"] {
   );
 }
 
+/* Syntax-highlight overlay: highlight layer sits behind a transparent input/textarea */
+.hl-layer {
+  grid-area: 1 / 1;
+  pointer-events: none;
+}
+
+.hl-input {
+  grid-area: 1 / 1;
+  color: transparent;
+  caret-color: #111827; /* gray-900 */
+}
+
+.hl-input::selection {
+  background: rgb(59 130 246 / 0.3); /* blue-500/30 */
+  color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hl-input {
+    caret-color: #f3f4f6; /* gray-100 */
+  }
+  .hl-input::selection {
+    background: rgb(59 130 246 / 0.4);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .foil-overlay::after {
     animation: none;
