@@ -173,53 +173,12 @@ export default function TermsDrawer(props: {
   const chips = createMemo(() => TAB_CHIPS[activeTab()])
 
   return (
-    <div class="flex px-3 pt-1.5 pb-2">
-      {/* Left: vertical tabs */}
-      <div class="flex flex-col gap-0.5 shrink-0 pr-2">
-        <For each={TABS}>
-          {(tab) => (
-            <button
-              type="button"
-              onClick={() => selectTab(tab)}
-              class={`px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
-                activeTab() === tab
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
-            >
-              {tab}
-            </button>
-          )}
-        </For>
-      </div>
-
-      {/* Center: chips */}
-      <div class="flex-1 flex flex-wrap gap-1.5 content-start min-w-0">
-        <For each={chips()}>
-          {(chip) => (
-            <TermChip
-              chip={chip}
-              state={getChipState(bd(), chip)}
-              query={props.query}
-              breakdown={bd()}
-              onSetQuery={props.onSetQuery}
-            />
-          )}
-        </For>
-      </div>
-
-      {/* Right: controls */}
-      <div class="flex flex-col justify-between shrink-0 pl-2">
-        <button
-          type="button"
-          onClick={() => props.onClose()}
-          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
-          aria-label="Close filters"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <div class="flex flex-col px-3 pt-1.5 pb-2">
+      {/* Header row: label, info, spacer, close */}
+      <div class="flex items-center gap-1 pb-1.5">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Terms
+        </span>
         <button
           type="button"
           onClick={() => props.onHelpClick()}
@@ -234,6 +193,52 @@ export default function TermsDrawer(props: {
             <rect x="9" y="16.5" width="6" height="1.5" rx="0.5" fill="currentColor" />
           </svg>
         </button>
+        <div class="flex-1" />
+        <button
+          type="button"
+          onClick={() => props.onClose()}
+          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
+          aria-label="Close filters"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Content row: tabs + chips */}
+      <div class="flex">
+        <div class="flex flex-col gap-0.5 shrink-0 pr-2">
+          <For each={TABS}>
+            {(tab) => (
+              <button
+                type="button"
+                onClick={() => selectTab(tab)}
+                class={`px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
+                  activeTab() === tab
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              >
+                {tab}
+              </button>
+            )}
+          </For>
+        </div>
+
+        <div class="flex-1 flex flex-wrap gap-1.5 content-start min-w-0">
+          <For each={chips()}>
+            {(chip) => (
+              <TermChip
+                chip={chip}
+                state={getChipState(bd(), chip)}
+                query={props.query}
+                breakdown={bd()}
+                onSetQuery={props.onSetQuery}
+              />
+            )}
+          </For>
+        </div>
       </div>
     </div>
   )
