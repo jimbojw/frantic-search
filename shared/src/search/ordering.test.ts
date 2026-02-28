@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { fnv1a, seededRank, collectBareWords, seededSort } from "./ordering";
+import { fnv1a, seededRank, collectBareWords, seededSort, seededSortPrintings } from "./ordering";
 import type { ASTNode } from "./ast";
 
 // --- Helpers ---
@@ -226,5 +226,107 @@ describe("seededSort", () => {
     seededSort(a, "query", namesLower, ["light"], salt);
     seededSort(b, "query", namesLower, ["light"], salt);
     expect(a).toEqual(b);
+  });
+});
+
+// --- seededSortPrintings ---
+
+describe("seededSortPrintings", () => {
+  // Card names indexed by canonical face index.
+  const names = [
+    "lightning bolt",     // face 0
+    "twilight shepherd",  // face 1
+    "lightmine field",    // face 2
+    "raging goblin",      // face 3
+  ];
+
+  // Printing rows: each maps to a canonical face via canonicalFaceRef.
+  //   printing 0 → face 0 (lightning bolt)
+  //   printing 1 → face 0 (lightning bolt, different finish)
+  //   printing 2 → face 1 (twilight shepherd)
+  //   printing 3 → face 2 (lightmine field)
+  //   printing 4 → face 2 (lightmine field, different finish)
+  //   printing 5 → face 3 (raging goblin)
+  const canonicalFaceRef = [0, 0, 1, 2, 2, 3];
+
+  test("same-card printings preserve relative order", () => {
+    const pi = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    seededSortPrintings(pi, "test-seed", canonicalFaceRef, names, []);
+
+    const arr = Array.from(pi);
+    const idx0 = arr.indexOf(0);
+    const idx1 = arr.indexOf(1);
+    expect(idx0).toBeLessThan(idx1);
+
+    const idx3 = arr.indexOf(3);
+    const idx4 = arr.indexOf(4);
+    expect(idx3).toBeLessThan(idx4);
+  });
+
+  test("different-card printings are shuffled across seeds", () => {
+    const results = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      const pi = new Uint32Array([0, 1, 2, 3, 4, 5]);
+      seededSortPrintings(pi, `seed-${i}`, canonicalFaceRef, names, []);
+      results.add(Array.from(pi).join(","));
+    }
+    expect(results.size).toBeGreaterThan(1);
+  });
+
+  test("prefix boost: printings of prefix-matching cards come first", () => {
+    const pi = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    seededSortPrintings(pi, "some-seed", canonicalFaceRef, names, ["light"]);
+
+    // Faces 0 and 2 start with "light"; faces 1 and 3 do not.
+    // Printings 0,1 (face 0) and 3,4 (face 2) should precede 2 (face 1) and 5 (face 3).
+    const boosted = Array.from(pi.slice(0, 4)).sort();
+    const rest = Array.from(pi.slice(4)).sort();
+    expect(boosted).toEqual([0, 1, 3, 4]);
+    expect(rest).toEqual([2, 5]);
+  });
+
+  test("same seed produces identical ordering", () => {
+    const a = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    const b = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    seededSortPrintings(a, "stable-seed", canonicalFaceRef, names, ["light"]);
+    seededSortPrintings(b, "stable-seed", canonicalFaceRef, names, ["light"]);
+    expect(Array.from(a)).toEqual(Array.from(b));
+  });
+
+  test("different seeds produce different orderings", () => {
+    const results = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      const pi = new Uint32Array([0, 1, 2, 3, 4, 5]);
+      seededSortPrintings(pi, `vary-${i}`, canonicalFaceRef, names, ["light"]);
+      results.add(Array.from(pi).join(","));
+    }
+    expect(results.size).toBeGreaterThan(1);
+  });
+
+  test("different session salts produce different orderings", () => {
+    const a = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    const b = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    seededSortPrintings(a, "same-seed", canonicalFaceRef, names, [], 0xDEADBEEF);
+    seededSortPrintings(b, "same-seed", canonicalFaceRef, names, [], 0xCAFEBABE);
+    expect(Array.from(a)).not.toEqual(Array.from(b));
+  });
+
+  test("empty array returns unchanged", () => {
+    const pi = new Uint32Array([]);
+    seededSortPrintings(pi, "seed", canonicalFaceRef, names, []);
+    expect(Array.from(pi)).toEqual([]);
+  });
+
+  test("single element returns unchanged", () => {
+    const pi = new Uint32Array([3]);
+    seededSortPrintings(pi, "seed", canonicalFaceRef, names, []);
+    expect(Array.from(pi)).toEqual([3]);
+  });
+
+  test("output contains exactly the same elements as input", () => {
+    const pi = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    const original = Array.from(pi).sort();
+    seededSortPrintings(pi, "any-seed", canonicalFaceRef, names, ["light"]);
+    expect(Array.from(pi).sort()).toEqual(original);
   });
 });

@@ -73,3 +73,39 @@ export function seededSort(
   const sorted = perm.map(i => indices[i]);
   for (let i = 0; i < n; i++) indices[i] = sorted[i];
 }
+
+/**
+ * Sort printing indices in-place using the same tier + keyed-hash strategy
+ * as seededSort, but keyed on the canonical face ref. Printings of the same
+ * card share identical tier and rank, so stable sort preserves their relative
+ * (intra-card) order.
+ */
+export function seededSortPrintings(
+  printingIndices: Uint32Array,
+  seed: string,
+  canonicalFaceRef: number[],
+  nameColumn: string[],
+  bareWords: string[],
+  sessionSalt = 0,
+): void {
+  const n = printingIndices.length;
+  if (n <= 1) return;
+
+  const seedHash = fnv1a(seed) ^ sessionSalt;
+  const hasBareWords = bareWords.length > 0;
+
+  const tier = new Uint8Array(n);
+  const rank = new Uint32Array(n);
+
+  for (let i = 0; i < n; i++) {
+    const faceIdx = canonicalFaceRef[printingIndices[i]];
+    tier[i] = hasBareWords && bareWords.some(w => nameColumn[faceIdx].startsWith(w)) ? 0 : 1;
+    rank[i] = seededRank(seedHash, faceIdx);
+  }
+
+  const perm = Array.from({ length: n }, (_, i) => i);
+  perm.sort((a, b) => tier[a] !== tier[b] ? tier[a] - tier[b] : rank[a] - rank[b]);
+
+  const sorted = perm.map(i => printingIndices[i]);
+  for (let i = 0; i < n; i++) printingIndices[i] = sorted[i];
+}

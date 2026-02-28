@@ -153,6 +153,41 @@ const bareWords = collectBareWords(ast).map(w => w.toLowerCase());
 seededSort(deduped, msg.query, index.namesLower, bareWords);
 ```
 
+### Printing-level ordering
+
+When printing-level query terms are present (e.g. `set:m15`, `is:foil`), the evaluator produces a separate `printingIndices` array alongside the card-level `indices`. The card-level indices pass through `seededSort()` as described above. The printing indices require their own sort — `seededSortPrintings()` — to avoid results appearing in stable data-file order.
+
+`seededSortPrintings()` uses the same tier + keyed-hash strategy as `seededSort()`, but keys both tier and rank on the **canonical face ref** of each printing row rather than on the printing index itself:
+
+```typescript
+function seededSortPrintings(
+  printingIndices: Uint32Array,
+  seed: string,
+  canonicalFaceRef: number[],
+  nameColumn: string[],
+  bareWords: string[],
+  sessionSalt?: number,
+): void
+```
+
+For each printing index `p`, the face index is `canonicalFaceRef[p]`. Tier and rank are computed from this face index:
+
+| Sort key | Source |
+|---|---|
+| Tier | `nameColumn[faceIdx].startsWith(bareWord)` — same prefix boost as card-level |
+| Rank | `seededRank(seedHash, faceIdx)` — keyed on face, not printing |
+
+Two printing rows with the same `canonicalFaceRef` receive identical tier and rank values. Because `Array.prototype.sort` is stable (ES2019+), these same-card printings preserve their original relative order — which groups finish variants and keeps them adjacent.
+
+The worker applies `seededSortPrintings()` to `printingIndices` before posting results:
+
+```
+AST → evaluate → { indices, printingIndices } → deduplicate indices
+  → seededSort(deduped, ...)
+  → seededSortPrintings(printingIndices, ..., printingIndex.canonicalFaceRef, ...)
+  → postMessage
+```
+
 ### Interaction with Spec 010 (Sort Directives)
 
 When `ParseResult.sort` contains one or more directives, the worker applies `sortResults()` (Spec 010) instead of `seededSort()`. Explicit sort always wins. `order:random` can be added as a Spec 010 extension to re-apply pure seeded-random ordering without the prefix boost.
@@ -170,6 +205,7 @@ shared/src/search/
 - `seededRank(seedHash, index)` — new keyed hash function
 - `collectBareWords(ast)` — new AST walk
 - `seededSort(indices, seed, nameColumn, bareWords)` — new sort function
+- `seededSortPrintings(printingIndices, seed, canonicalFaceRef, nameColumn, bareWords)` — printing-level sort
 
 `seededShuffle` and `mulberry32` are removed.
 
@@ -233,6 +269,16 @@ These signals could be added as additional sort tiers between the prefix tier an
 6. **Empty input**: Empty array returns empty.
 7. **Completeness**: Output contains exactly the same elements as input.
 
+**`seededSortPrintings`:**
+1. **Same-card printings preserve relative order**: Printings sharing a `canonicalFaceRef` retain their original order after sorting.
+2. **Different-card printings are shuffled**: Across multiple seeds, card groups appear in varying positions.
+3. **Prefix boost works**: Printings of cards whose names start with a bare word appear before others.
+4. **Determinism**: Same seed produces identical ordering.
+5. **Seed sensitivity**: Different seeds produce different orderings.
+6. **Session salt sensitivity**: Different session salts produce different orderings.
+7. **Edge cases**: Empty and single-element inputs return unchanged.
+8. **Completeness**: Output contains exactly the same elements as input.
+
 ### Migration test
 
 Verify that `seededShuffle` is no longer called anywhere in the codebase (grep for removed export).
@@ -248,3 +294,5 @@ Verify that `seededShuffle` is no longer called anywhere in the codebase (grep f
 7. No changes to the parser, evaluator, AST types, or worker protocol.
 8. All existing tests continue to pass (with `seededShuffle` references updated).
 9. When Spec 010 sort directives are present, they override the default ordering entirely.
+10. When printing-level query terms are present, `printingIndices` are sorted via `seededSortPrintings()` before being sent to the main thread.
+11. Printings of the same card preserve their relative order after sorting.

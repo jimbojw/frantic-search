@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, PrintingDisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, collectBareWords } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, seededSortPrintings, collectBareWords } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
@@ -245,6 +245,13 @@ async function init(): Promise<void> {
     const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)
     const printingIndices = rawPrintingIndices
+    if (printingIndices) {
+      seededSortPrintings(
+        printingIndices, msg.query,
+        printingIndex!.canonicalFaceRef,
+        index.combinedNamesNormalized, bareWords, sessionSalt,
+      )
+    }
     const transfer: Transferable[] = [indices.buffer]
     if (printingIndices) transfer.push(printingIndices.buffer)
     const resultMsg: FromWorker & { type: 'result' } = {
