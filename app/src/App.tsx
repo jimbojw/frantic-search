@@ -14,109 +14,25 @@ import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import CardImage from './CardImage'
 import ViewModeToggle from './ViewModeToggle'
-import { ManaCost, OracleText } from './card-symbols'
+import CardFaceRow from './CardFaceRow'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
 import {
   buildFacesOf, buildScryfallIndex, RARITY_LABELS, FINISH_LABELS,
-  formatPrice, faceStat, fullCardName, parseView,
+  formatPrice, fullCardName, parseView,
 } from './app-utils'
 import type { View } from './app-utils'
+import {
+  saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
+  flushPendingCommit, cancelPendingCommit,
+} from './history-debounce'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
 declare const __THUMBS_FILENAME__: string
 
-function CardFaceRow(props: {
-  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null
-}) {
-  const copyText = () => props.fullName ?? props.d.names[props.fi]
-  const stat = () => faceStat(props.d, props.fi)
-  return (
-    <div>
-      <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <Show when={props.fullName && props.onCardClick} fallback={
-              <span class={`font-medium text-gray-700 dark:text-gray-200 min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}>
-                {props.d.names[props.fi]}
-              </span>
-            }>
-              <button
-                type="button"
-                onClick={() => props.onCardClick?.()}
-                class={`font-medium hover:underline text-left min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}
-              >
-                {props.fullName}
-              </button>
-            </Show>
-            <Show when={props.setBadge}>
-              {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
-            </Show>
-            <CopyButton text={copyText()} />
-          </div>
-          <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            <span class={`min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}>
-              {props.d.type_lines[props.fi]}
-            </span>
-            <Show when={!props.showOracle && stat()}>
-              <span class="shrink-0 whitespace-nowrap">
-                {' · '}{stat()}
-              </span>
-            </Show>
-          </div>
-        </div>
-        <ManaCost cost={props.d.mana_costs[props.fi]} />
-      </div>
-      <Show when={props.showOracle && props.d.oracle_texts[props.fi]}>
-        <OracleText text={props.d.oracle_texts[props.fi]} />
-      </Show>
-      <Show when={props.showOracle && stat()}>
-        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 mt-1">{stat()}</p>
-      </Show>
-    </div>
-  )
-}
-
 const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
-
-function saveScrollPosition() {
-  history.replaceState({ ...history.state, scrollY: window.scrollY }, '')
-}
-
-const HISTORY_DEBOUNCE_MS = 2000
-let needsPush = false
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-function clearDebounceTimer() {
-  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
-}
-
-function pushIfNeeded() {
-  if (!needsPush) return
-  needsPush = false
-  saveScrollPosition()
-  history.pushState(history.state, '', location.href)
-}
-
-function scheduleDebouncedCommit() {
-  clearDebounceTimer()
-  debounceTimer = setTimeout(() => {
-    debounceTimer = null
-    needsPush = true
-  }, HISTORY_DEBOUNCE_MS)
-}
-
-function flushPendingCommit() {
-  clearDebounceTimer()
-  needsPush = true
-}
-
-function cancelPendingCommit() {
-  clearDebounceTimer()
-  needsPush = false
-}
 
 function App() {
   history.scrollRestoration = 'manual'
