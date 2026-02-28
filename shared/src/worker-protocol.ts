@@ -46,9 +46,21 @@ export type Histograms = {
   cardType: number[]       // [Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd] — length 8
 }
 
+export type PrintingDisplayColumns = {
+  scryfall_ids: string[]
+  collector_numbers: string[]
+  set_codes: string[]
+  set_names: string[]
+  rarity: number[]
+  finish: number[]
+  price_usd: number[]
+  canonical_face_ref: number[]
+}
+
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'progress'; fraction: number }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
+  | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; histograms: Histograms }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean }

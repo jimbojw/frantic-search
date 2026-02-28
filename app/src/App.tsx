@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
+import { Rarity, Finish } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -46,6 +47,24 @@ function buildScryfallIndex(scryfallIds: string[], canonicalFace: number[]): Map
   return map
 }
 
+const RARITY_LABELS: Record<number, string> = {
+  [Rarity.Common]: 'Common',
+  [Rarity.Uncommon]: 'Uncommon',
+  [Rarity.Rare]: 'Rare',
+  [Rarity.Mythic]: 'Mythic',
+}
+
+const FINISH_LABELS: Record<number, string> = {
+  [Finish.Nonfoil]: 'Nonfoil',
+  [Finish.Foil]: 'Foil',
+  [Finish.Etched]: 'Etched',
+}
+
+function formatPrice(cents: number): string {
+  if (cents === 0) return '\u2014'
+  return `$${(cents / 100).toFixed(2)}`
+}
+
 function faceStat(d: DisplayColumns, fi: number): string | null {
   const pow = d.power_lookup[d.powers[fi]]
   const tou = d.toughness_lookup[d.toughnesses[fi]]
@@ -62,7 +81,7 @@ function fullCardName(d: DisplayColumns, faceIndices: number[]): string {
 }
 
 function CardFaceRow(props: {
-  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void
+  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null
 }) {
   const copyText = () => props.fullName ?? props.d.names[props.fi]
   const stat = () => faceStat(props.d, props.fi)
@@ -83,6 +102,9 @@ function CardFaceRow(props: {
               >
                 {props.fullName}
               </button>
+            </Show>
+            <Show when={props.setBadge}>
+              {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
             </Show>
             <CopyButton text={copyText()} />
           </div>
@@ -182,6 +204,10 @@ function App() {
   const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
   const [histograms, setHistograms] = createSignal<Histograms | null>(null)
+  const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
+  const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
+  const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
+  const [uniquePrints, setUniquePrints] = createSignal(false)
   const [breakdownExpanded, setBreakdownExpanded] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
   )
@@ -230,6 +256,7 @@ function App() {
 
   createEffect(() => {
     indices()
+    printingIndices()
     setVisibleCount(batchSize())
   })
 
@@ -241,7 +268,44 @@ function App() {
     return result
   })
 
-  const hasMore = () => indices().length > visibleCount()
+  const showPrintingResults = () => {
+    const pi = printingIndices()
+    return pi !== undefined && pi.length > 0
+  }
+
+  const firstPrintingForCard = createMemo(() => {
+    const pi = printingIndices()
+    const pd = printingDisplay()
+    if (!pi || !pd) return new Map<number, number>()
+    const map = new Map<number, number>()
+    for (const idx of pi) {
+      const ci = pd.canonical_face_ref[idx]
+      if (!map.has(ci)) map.set(ci, idx)
+    }
+    return map
+  })
+
+  const totalPrintingItems = () => {
+    const pi = printingIndices()
+    return pi ? pi.length : 0
+  }
+
+  const printingExpanded = () =>
+    showPrintingResults() && (viewMode() === 'images' || viewMode() === 'full')
+
+  const totalDisplayItems = () => printingExpanded() ? totalPrintingItems() : indices().length
+
+  const visibleDisplayItems = createMemo(() => {
+    if (!printingExpanded()) return null
+    const pi = printingIndices()
+    if (!pi) return null
+    const len = Math.min(pi.length, visibleCount())
+    const result: number[] = new Array(len)
+    for (let i = 0; i < len; i++) result[i] = pi[i]
+    return result
+  })
+
+  const hasMore = () => totalDisplayItems() > visibleCount()
 
   const totalCards = () => indices().length
 
@@ -273,6 +337,8 @@ function App() {
       case 'status':
         if (msg.status === 'progress') {
           setDataProgress(msg.fraction)
+        } else if (msg.status === 'printings-ready') {
+          setPrintingDisplay(msg.printingDisplay)
         } else {
           setWorkerStatus(msg.status)
           if (msg.status === 'ready') {
@@ -288,6 +354,9 @@ function App() {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
           setHistograms(msg.histograms)
+          setPrintingIndices(msg.printingIndices)
+          setHasPrintingConditions(msg.hasPrintingConditions)
+          setUniquePrints(msg.uniquePrints)
         }
         break
     }
@@ -302,6 +371,9 @@ function App() {
       setIndices(new Uint32Array(0))
       setBreakdown(null)
       setHistograms(null)
+      setPrintingIndices(undefined)
+      setHasPrintingConditions(false)
+      setUniquePrints(false)
     }
   })
 
@@ -510,6 +582,7 @@ function App() {
               <InlineBreakdown
                 breakdown={bd()}
                 cardCount={totalCards()}
+                printingCount={showPrintingResults() ? totalPrintingItems() : undefined}
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
                 onNodeClick={(q) => { flushPendingCommit(); setQuery(q) }}
@@ -630,6 +703,11 @@ function App() {
                     </div>
                     <ViewModeToggle value={viewMode()} onChange={changeViewMode} />
                   </div>
+                  <Show when={hasPrintingConditions() && !printingDisplay()}>
+                    <p class="px-3 py-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-t border-amber-200 dark:border-amber-800/50">
+                      Printing data loading — set, rarity, and price filters are not yet available.
+                    </p>
+                  </Show>
                   <Show when={totalCards() > 0} fallback={
                     <p class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
                       No cards found
@@ -637,77 +715,160 @@ function App() {
                   }>
                     <Show when={viewMode() === 'images'} fallback={
                       <ul class="divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-800">
-                        <For each={visibleIndices()}>
-                          {(ci) => {
-                            const faces = () => facesOf().get(ci) ?? []
-                            const name = () => fullCardName(d(), faces())
-                            return (
-                              <Show when={viewMode() === 'full'} fallback={
-                                <li class="group px-4 py-2 text-sm flex items-start gap-3">
-                                  <ArtCrop
-                                    scryfallId={d().scryfall_ids[ci]}
-                                    colorIdentity={d().color_identity[ci]}
-                                    thumbHash={d().art_crop_thumb_hashes[ci]}
-                                  />
-                                  <div class="min-w-0 flex-1">
-                                    <Show when={faces().length > 1} fallback={
-                                      <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
-                                    }>
-                                      <div class="flex items-center gap-1.5 min-w-0">
-                                        <button
-                                          type="button"
-                                          onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                          class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
-                                        >
-                                          {name()}
-                                        </button>
-                                        <CopyButton text={name()} />
-                                      </div>
-                                      <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
-                                        <For each={faces()}>
-                                          {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={showOracleText()} />}
-                                        </For>
-                                      </div>
-                                    </Show>
-                                  </div>
-                                </li>
-                              }>
-                                <li class="group px-4 py-3 text-sm">
-                                  <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
-                                    <CardImage
-                                      scryfallId={d().scryfall_ids[ci]}
+                        <Show when={printingExpanded() && visibleDisplayItems()} fallback={
+                          <For each={visibleIndices()}>
+                            {(ci) => {
+                              const faces = () => facesOf().get(ci) ?? []
+                              const name = () => fullCardName(d(), faces())
+                              const pi = () => firstPrintingForCard().get(ci)
+                              const pdc = () => printingDisplay()
+                              const artScryfallId = () => {
+                                const idx = pi()
+                                const pd = pdc()
+                                return idx !== undefined && pd ? pd.scryfall_ids[idx] : d().scryfall_ids[ci]
+                              }
+                              const setBadge = () => {
+                                if (!hasPrintingConditions() && !uniquePrints()) return null
+                                const idx = pi()
+                                const pd = pdc()
+                                if (idx === undefined || !pd) return null
+                                return pd.set_codes[idx]
+                              }
+                              return (
+                                <Show when={viewMode() === 'full'} fallback={
+                                  <li class="group px-4 py-2 text-sm flex items-start gap-3">
+                                    <ArtCrop
+                                      scryfallId={artScryfallId()}
                                       colorIdentity={d().color_identity[ci]}
-                                      thumbHash={d().card_thumb_hashes[ci]}
-                                      class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
-                                      onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                      thumbHash={d().art_crop_thumb_hashes[ci]}
                                     />
-                                    <div class="min-w-0 flex-1 w-full">
+                                    <div class="min-w-0 flex-1">
                                       <Show when={faces().length > 1} fallback={
-                                        <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
+                                        <>
+                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={showOracleText()} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} setBadge={setBadge()} />
+                                        </>
                                       }>
                                         <div class="flex items-center gap-1.5 min-w-0">
                                           <button
                                             type="button"
                                             onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                            class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
+                                            class={`font-medium hover:underline text-left min-w-0 ${showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
                                           >
                                             {name()}
                                           </button>
+                                          <Show when={setBadge()}>
+                                            {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                          </Show>
                                           <CopyButton text={name()} />
                                         </div>
                                         <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                                           <For each={faces()}>
-                                            {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={true} />}
+                                            {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={showOracleText()} />}
                                           </For>
                                         </div>
                                       </Show>
                                     </div>
-                                  </div>
-                                </li>
-                              </Show>
+                                  </li>
+                                }>
+                                  <li class="group px-4 py-3 text-sm">
+                                    <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
+                                      <CardImage
+                                        scryfallId={artScryfallId()}
+                                        colorIdentity={d().color_identity[ci]}
+                                        thumbHash={d().card_thumb_hashes[ci]}
+                                        class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
+                                        onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                      />
+                                      <div class="min-w-0 flex-1 w-full">
+                                        <Show when={faces().length > 1} fallback={
+                                          <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} setBadge={setBadge()} />
+                                        }>
+                                          <div class="flex items-center gap-1.5 min-w-0">
+                                            <button
+                                              type="button"
+                                              onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                              class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
+                                            >
+                                              {name()}
+                                            </button>
+                                            <Show when={setBadge()}>
+                                              {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                            </Show>
+                                            <CopyButton text={name()} />
+                                          </div>
+                                          <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                                            <For each={faces()}>
+                                              {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={true} />}
+                                            </For>
+                                          </div>
+                                        </Show>
+                                      </div>
+                                    </div>
+                                  </li>
+                                </Show>
+                              )
+                            }}
+                          </For>
+                        }>
+                          {(printItems) => {
+                            const pd = printingDisplay()!
+                            return (
+                              <For each={printItems()}>
+                                {(pi) => {
+                                  const ci = pd.canonical_face_ref[pi]
+                                  const faces = () => facesOf().get(ci) ?? []
+                                  const name = () => fullCardName(d(), faces())
+                                  return (
+                                    <li class="group px-4 py-3 text-sm">
+                                      <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
+                                        <CardImage
+                                          scryfallId={pd.scryfall_ids[pi]}
+                                          colorIdentity={d().color_identity[ci]}
+                                          thumbHash={d().card_thumb_hashes[ci]}
+                                          class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
+                                          onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                        />
+                                        <div class="min-w-0 flex-1 w-full">
+                                          <Show when={faces().length > 1} fallback={
+                                            <CardFaceRow d={d()} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => navigateToCard(d().scryfall_ids[ci])} />
+                                          }>
+                                            <div class="flex items-center gap-1.5 min-w-0">
+                                              <button
+                                                type="button"
+                                                onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                                class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
+                                              >
+                                                {name()}
+                                              </button>
+                                              <CopyButton text={name()} />
+                                            </div>
+                                            <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                                              <For each={faces()}>
+                                                {(fi) => <CardFaceRow d={d()} fi={fi} showOracle={true} />}
+                                              </For>
+                                            </div>
+                                          </Show>
+                                          <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
+                                            <dd>{pd.set_names[pi]} <span class="uppercase font-mono">({pd.set_codes[pi]})</span></dd>
+                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Collector #</dt>
+                                            <dd>{pd.collector_numbers[pi]}</dd>
+                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
+                                            <dd>{RARITY_LABELS[pd.rarity[pi]] ?? 'Unknown'}</dd>
+                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
+                                            <dd>{FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'}</dd>
+                                            <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
+                                            <dd>{formatPrice(pd.price_usd[pi])}</dd>
+                                          </dl>
+                                        </div>
+                                      </div>
+                                    </li>
+                                  )
+                                }}
+                              </For>
                             )
                           }}
-                        </For>
+                        </Show>
                         <Show when={hasMore()}>
                           <li
                             ref={(el) => {
@@ -720,31 +881,67 @@ function App() {
                             }}
                             class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic"
                           >
-                            …and {(totalCards() - visibleCount()).toLocaleString()} more
+                            …and {(totalDisplayItems() - visibleCount()).toLocaleString()} more
                           </li>
                         </Show>
                       </ul>
                     }>
                       <div class="border-t border-gray-200 dark:border-gray-800 overflow-hidden rounded-b-xl">
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-gray-200 dark:bg-gray-800">
-                          <For each={visibleIndices()}>
-                            {(ci) => {
-                              const name = () => {
-                                const faces = facesOf().get(ci) ?? []
-                                return fullCardName(d(), faces)
-                              }
+                          <Show when={visibleDisplayItems()} fallback={
+                            <For each={visibleIndices()}>
+                              {(ci) => {
+                                const name = () => {
+                                  const faces = facesOf().get(ci) ?? []
+                                  return fullCardName(d(), faces)
+                                }
+                                return (
+                                  <CardImage
+                                    scryfallId={d().scryfall_ids[ci]}
+                                    colorIdentity={d().color_identity[ci]}
+                                    thumbHash={d().card_thumb_hashes[ci]}
+                                    class="cursor-pointer hover:brightness-110 transition-[filter]"
+                                    onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                    aria-label={name()}
+                                  />
+                                )
+                              }}
+                            </For>
+                          }>
+                            {(printItems) => {
+                              const pd = printingDisplay()!
                               return (
-                                <CardImage
-                                  scryfallId={d().scryfall_ids[ci]}
-                                  colorIdentity={d().color_identity[ci]}
-                                  thumbHash={d().card_thumb_hashes[ci]}
-                                  class="cursor-pointer hover:brightness-110 transition-[filter]"
-                                  onClick={() => navigateToCard(d().scryfall_ids[ci])}
-                                  aria-label={name()}
-                                />
+                                <For each={printItems()}>
+                                  {(pi) => {
+                                    const ci = pd.canonical_face_ref[pi]
+                                    const name = () => {
+                                      const faces = facesOf().get(ci) ?? []
+                                      return fullCardName(d(), faces)
+                                    }
+                                    const setCode = pd.set_codes[pi]
+                                    const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
+                                    return (
+                                      <div class="bg-white dark:bg-gray-900 flex flex-col">
+                                        <CardImage
+                                          scryfallId={pd.scryfall_ids[pi]}
+                                          colorIdentity={d().color_identity[ci]}
+                                          thumbHash={d().card_thumb_hashes[ci]}
+                                          class="cursor-pointer hover:brightness-110 transition-[filter]"
+                                          onClick={() => navigateToCard(d().scryfall_ids[ci])}
+                                          aria-label={name()}
+                                        />
+                                        <div class="px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate">
+                                          <span class="uppercase">{setCode}</span>
+                                          {' · '}
+                                          {rarityLabel}
+                                        </div>
+                                      </div>
+                                    )
+                                  }}
+                                </For>
                               )
                             }}
-                          </For>
+                          </Show>
                         </div>
                         <Show when={hasMore()}>
                           <div
@@ -758,7 +955,7 @@ function App() {
                             }}
                             class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 italic bg-white dark:bg-gray-900"
                           >
-                            …and {(totalCards() - visibleCount()).toLocaleString()} more
+                            …and {(totalDisplayItems() - visibleCount()).toLocaleString()} more
                           </div>
                         </Show>
                       </div>

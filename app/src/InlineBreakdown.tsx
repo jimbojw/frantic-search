@@ -109,6 +109,7 @@ function BreakdownTreeNode(props: { node: BreakdownNode; root: BreakdownNode; de
 export default function InlineBreakdown(props: {
   breakdown: BreakdownNode
   cardCount: number
+  printingCount?: number
   expanded: boolean
   onToggle: () => void
   onNodeClick: (query: string) => void
@@ -150,6 +151,9 @@ export default function InlineBreakdown(props: {
         </span>
         <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
           {props.cardCount.toLocaleString()} cards
+          <Show when={props.printingCount !== undefined && props.printingCount > 0}>
+            {' '}({props.printingCount!.toLocaleString()} printings)
+          </Show>
         </span>
       </div>
     </div>

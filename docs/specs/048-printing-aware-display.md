@@ -1,6 +1,6 @@
 # Spec 048: Printing-Aware Display
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 041 (Result Display Modes), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), ADR-017 (Dual-Domain Query Evaluation)
 

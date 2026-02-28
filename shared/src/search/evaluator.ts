@@ -110,11 +110,12 @@ export class NodeCache {
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
 
+    const uniquePrints = this._hasUniquePrints(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
 
     if (ast.type === "NOP" || root.computed!.error) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniquePrints };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -137,9 +138,18 @@ export class NodeCache {
       if (faceBuf[i]) indices[j++] = i;
     }
 
-    // Compute printing indices when printing conditions are present.
     let printingIndices: Uint32Array | undefined;
-    if (hasPrintingConditions && this._printingIndex) {
+
+    if (uniquePrints && this._printingIndex) {
+      // unique:prints expands ALL matching cards to ALL their printing rows,
+      // regardless of whether printing conditions also exist.
+      const rows: number[] = [];
+      for (const fi of indices) {
+        const pRows = this._printingIndex.printingsOf(fi);
+        for (const p of pRows) rows.push(p);
+      }
+      printingIndices = new Uint32Array(rows);
+    } else if (hasPrintingConditions && this._printingIndex) {
       let printBuf: Uint8Array;
       if (root.computed!.domain === "printing") {
         printBuf = root.computed!.buf;
@@ -159,12 +169,13 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniquePrints };
   }
 
   private _hasPrintingLeaves(ast: ASTNode): boolean {
     switch (ast.type) {
       case "FIELD": {
+        if (ast.field.toLowerCase() === "unique") return false;
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
         if (canonical === "is") {
           return PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
@@ -173,6 +184,16 @@ export class NodeCache {
       }
       case "NOT": return this._hasPrintingLeaves(ast.child);
       case "AND": case "OR": return ast.children.some(c => this._hasPrintingLeaves(c));
+      default: return false;
+    }
+  }
+
+  private _hasUniquePrints(ast: ASTNode): boolean {
+    switch (ast.type) {
+      case "FIELD":
+        return ast.field.toLowerCase() === "unique" && ast.value.toLowerCase() === "prints";
+      case "NOT": return this._hasUniquePrints(ast.child);
+      case "AND": case "OR": return ast.children.some(c => this._hasUniquePrints(c));
       default: return false;
     }
   }
@@ -272,6 +293,14 @@ export class NodeCache {
         break;
       }
       case "FIELD": {
+        if (ast.field.toLowerCase() === "unique" && ast.value.toLowerCase() === "prints") {
+          const buf = new Uint8Array(n);
+          fillCanonical(buf, this.index.canonicalFace, n);
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
         // Check if this is a printing-domain field or is: keyword

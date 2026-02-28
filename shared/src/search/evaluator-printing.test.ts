@@ -380,3 +380,70 @@ describe("printing error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// unique:prints
+// ---------------------------------------------------------------------------
+
+describe("unique:prints", () => {
+  test("unique:prints flag is set on output", () => {
+    const output = evaluate("unique:prints");
+    expect(output.uniquePrints).toBe(true);
+  });
+
+  test("unique:prints with face-only query expands all printings", () => {
+    const output = evaluate("t:instant unique:prints");
+    // t:instant matches 4 cards (Bolt, Counterspell, Azorius Charm, Dismember).
+    // Only Bolt has printings (rows 0,1,2). Others have none.
+    expect(output.uniquePrints).toBe(true);
+    expect(output.indices.length).toBe(4);
+    expect(output.printingIndices).toBeDefined();
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2]);
+  });
+
+  test("unique:prints alone expands all printings of all cards", () => {
+    const output = evaluate("unique:prints");
+    // All 9 cards match. Printings: rows 0-4 (Bolt and Sol Ring).
+    expect(output.indices.length).toBe(9);
+    expect(output.printingIndices).toBeDefined();
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  test("unique:prints with printing conditions expands to ALL printings of matching cards", () => {
+    // r:mythic has no matches in test data, but r:rare matches Bolt.
+    // unique:prints should show ALL printings of Bolt, not just the rare ones.
+    const output = evaluate("r:rare unique:prints");
+    expect(output.uniquePrints).toBe(true);
+    expect(output.indices.length).toBe(1); // Bolt only
+    expect(output.printingIndices).toBeDefined();
+    // All 3 Bolt printings (0,1,2), not just the rare ones (0,1)
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2]);
+  });
+
+  test("unique:prints is not treated as a filter (does not affect card count)", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant unique:prints");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
+
+  test("unique:prints flag is false for normal queries", () => {
+    const output = evaluate("t:creature");
+    expect(output.uniquePrints).toBe(false);
+  });
+
+  test("hasPrintingConditions is false for pure unique:prints (it's a modifier, not a condition)", () => {
+    const output = evaluate("unique:prints");
+    expect(output.hasPrintingConditions).toBe(false);
+  });
+
+  test("hasPrintingConditions is true when unique:prints is combined with printing conditions", () => {
+    const output = evaluate("r:rare unique:prints");
+    expect(output.hasPrintingConditions).toBe(true);
+  });
+
+  test("unique:prints breakdown shows modifier label, not filter", () => {
+    const output = evaluate("unique:prints");
+    // The unique:prints node should appear in the breakdown
+    expect(output.result.matchCount).toBe(9);
+  });
+});

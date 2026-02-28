@@ -23,7 +23,7 @@ export {
 
 export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";
 
-export type { ToWorker, FromWorker, DisplayColumns, BreakdownNode, Histograms } from "./worker-protocol";
+export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from "./worker-protocol";
 
 export { TokenType } from "./search/ast";
 export type { ASTNode, Token, QueryNodeResult, Span } from "./search/ast";

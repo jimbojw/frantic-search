@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
+import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, PrintingDisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, collectBareWords } from '@frantic-search/shared'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -75,6 +75,19 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   }
 }
 
+function extractPrintingDisplayColumns(data: PrintingColumnarData): PrintingDisplayColumns {
+  return {
+    scryfall_ids: data.scryfall_ids,
+    collector_numbers: data.collector_numbers,
+    set_codes: data.set_indices.map(idx => data.set_lookup[idx]?.code ?? ''),
+    set_names: data.set_indices.map(idx => data.set_lookup[idx]?.name ?? ''),
+    rarity: data.rarity,
+    finish: data.finish,
+    price_usd: data.price_usd,
+    canonical_face_ref: data.canonical_face_ref,
+  }
+}
+
 function popcount(v: number): number {
   v = (v & 0x55) + ((v >> 1) & 0x55)
   v = (v & 0x33) + ((v >> 2) & 0x33)
@@ -147,13 +160,13 @@ async function readJsonWithProgress(response: Response): Promise<unknown> {
 
 const sessionSalt = (Math.random() * 0xffffffff) >>> 0
 
-async function fetchPrintings(): Promise<PrintingIndex | null> {
+async function fetchPrintings(): Promise<{ index: PrintingIndex; data: PrintingColumnarData } | null> {
   try {
     const url = new URL(/* @vite-ignore */ `../${__PRINTINGS_FILENAME__}`, import.meta.url)
     const response = await fetch(url)
     if (!response.ok) return null
     const data = await response.json() as PrintingColumnarData
-    return new PrintingIndex(data)
+    return { index: new PrintingIndex(data), data }
   } catch {
     return null
   }
@@ -178,18 +191,23 @@ async function init(): Promise<void> {
   }
 
   const index = new CardIndex(data)
-  const printingIndex = await printingsPromise
+  const printingsResult = await printingsPromise
+  const printingIndex = printingsResult?.index ?? null
   const cache = new NodeCache(index, printingIndex)
   const display = extractDisplayColumns(data)
 
   post({ type: 'status', status: 'ready', display })
+
+  if (printingsResult) {
+    post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingsResult.data) })
+  }
 
   self.onmessage = (e: MessageEvent<ToWorker>) => {
     const msg = e.data
     if (msg.type !== 'search') return
 
     const ast = parse(msg.query)
-    const { result, indices: rawIndices } = cache.evaluate(ast)
+    const { result, indices: rawIndices, printingIndices: rawPrintingIndices, hasPrintingConditions, uniquePrints } = cache.evaluate(ast)
     const breakdown = toBreakdown(result)
     const deduped = Array.from(rawIndices)
     const bareWords = collectBareWords(ast)
@@ -199,10 +217,14 @@ async function init(): Promise<void> {
 
     const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)
+    const printingIndices = rawPrintingIndices
+    const transfer: Transferable[] = [indices.buffer]
+    if (printingIndices) transfer.push(printingIndices.buffer)
     const resultMsg: FromWorker & { type: 'result' } = {
       type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
+      printingIndices, hasPrintingConditions, uniquePrints,
     }
-    post(resultMsg, [indices.buffer])
+    post(resultMsg, transfer)
   }
 }
 

@@ -118,4 +118,5 @@ export interface EvalOutput {
   printingIndices?: Uint32Array;
   hasPrintingConditions: boolean;
   printingsUnavailable: boolean;
+  uniquePrints: boolean;
 }
