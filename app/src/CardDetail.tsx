@@ -276,7 +276,7 @@ export default function CardDetail(props: {
                     const name = fullName()
                     const set = pcols().set_codes[pidx].toUpperCase()
                     const num = pcols().collector_numbers[pidx]
-                    return `[[${name}|${set}|${num}]]`
+                    return `[[!${name}|${set}|${num}]]`
                   }
                   const [copied, setCopied] = createSignal(false)
                   const copySlackName = () => {
