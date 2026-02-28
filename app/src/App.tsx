@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
-import { Rarity, Finish } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -18,67 +17,16 @@ import ViewModeToggle from './ViewModeToggle'
 import { ManaCost, OracleText } from './card-symbols'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
+import {
+  buildFacesOf, buildScryfallIndex, RARITY_LABELS, FINISH_LABELS,
+  formatPrice, faceStat, fullCardName, parseView,
+} from './app-utils'
+import type { View } from './app-utils'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
 declare const __THUMBS_FILENAME__: string
-
-function buildFacesOf(canonicalFace: number[]): Map<number, number[]> {
-  const map = new Map<number, number[]>()
-  for (let i = 0; i < canonicalFace.length; i++) {
-    const cf = canonicalFace[i]
-    let faces = map.get(cf)
-    if (!faces) {
-      faces = []
-      map.set(cf, faces)
-    }
-    faces.push(i)
-  }
-  return map
-}
-
-function buildScryfallIndex(scryfallIds: string[], canonicalFace: number[]): Map<string, number> {
-  const map = new Map<string, number>()
-  for (let i = 0; i < scryfallIds.length; i++) {
-    const cf = canonicalFace[i]
-    if (cf === i) map.set(scryfallIds[i], i)
-  }
-  return map
-}
-
-const RARITY_LABELS: Record<number, string> = {
-  [Rarity.Common]: 'Common',
-  [Rarity.Uncommon]: 'Uncommon',
-  [Rarity.Rare]: 'Rare',
-  [Rarity.Mythic]: 'Mythic',
-}
-
-const FINISH_LABELS: Record<number, string> = {
-  [Finish.Nonfoil]: 'Nonfoil',
-  [Finish.Foil]: 'Foil',
-  [Finish.Etched]: 'Etched',
-}
-
-function formatPrice(cents: number): string {
-  if (cents === 0) return '\u2014'
-  return `$${(cents / 100).toFixed(2)}`
-}
-
-function faceStat(d: DisplayColumns, fi: number): string | null {
-  const pow = d.power_lookup[d.powers[fi]]
-  const tou = d.toughness_lookup[d.toughnesses[fi]]
-  if (pow && tou) return `${pow}/${tou}`
-  const loy = d.loyalty_lookup[d.loyalties[fi]]
-  if (loy) return `Loyalty: ${loy}`
-  const def = d.defense_lookup[d.defenses[fi]]
-  if (def) return `Defense: ${def}`
-  return null
-}
-
-function fullCardName(d: DisplayColumns, faceIndices: number[]): string {
-  return faceIndices.map(fi => d.names[fi]).join(' // ')
-}
 
 function CardFaceRow(props: {
   d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null
@@ -132,15 +80,6 @@ function CardFaceRow(props: {
 }
 
 const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDACAWGBwYFCAcGhwkIiAmMFA0MCwsMGJGSjpQdGZ6eHJmcG6AkLicgIiuim5woNqirr7EztDOfJri8uDI8LjKzsb/2wBDASIkJDAqMF40NF7GhHCExsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/wAARCAAYACADASIAAhEBAxEB/8QAFwAAAwEAAAAAAAAAAAAAAAAAAAEDAv/EACEQAAICAQQCAwAAAAAAAAAAAAECABEDEhMhMUFhIjJR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAFxEBAQEBAAAAAAAAAAAAAAAAAQACEf/aAAwDAQACEQMRAD8AxjUKTY9VXUGofYH1xK7QxqWZwx8yOVRQYZCwsCqkVGIDIhdttKgauO+jM5kBz6EHYHQjVWuwAteY8iH4kmzVWDDnT3lpoA7UymlJUDn3InKNKrxYu7hCLVlmQzNq45M0wORTuAjT+DsQhIBLS3//2Q=='
-
-type View = 'search' | 'help' | 'card' | 'report'
-
-function parseView(params: URLSearchParams): View {
-  if (params.has('card')) return 'card'
-  if (params.has('report')) return 'report'
-  if (params.has('help')) return 'help'
-  return 'search'
-}
 
 function saveScrollPosition() {
   history.replaceState({ ...history.state, scrollY: window.scrollY }, '')
