@@ -2,7 +2,10 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
 import './index.css'
+import { injectEtchedNoiseTiles } from './noise-tile'
 import App from './App.tsx'
+
+injectEtchedNoiseTiles()
 
 const root = document.getElementById('root')
 
