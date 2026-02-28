@@ -46,6 +46,7 @@ function App() {
   const [dataProgress, setDataProgress] = createSignal(0)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
   const [workerError, setWorkerError] = createSignal('')
+  const [errorCause, setErrorCause] = createSignal<'stale' | 'network' | 'unknown'>('unknown')
   const [display, setDisplay] = createSignal<DisplayColumns | null>(null)
   const [indices, setIndices] = createSignal<Uint32Array>(new Uint32Array(0))
   const storedMode = localStorage.getItem('frantic-view-mode')
@@ -235,7 +236,10 @@ function App() {
             setDisplay(msg.display)
             fetchThumbHashes()
           }
-          if (msg.status === 'error') setWorkerError(msg.error)
+          if (msg.status === 'error') {
+            setWorkerError(msg.error)
+            setErrorCause(msg.cause)
+          }
         }
         break
       case 'result':
@@ -293,6 +297,12 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, scrollY))
   })
 
+  window.addEventListener('online', () => {
+    if (workerStatus() === 'error' && errorCause() === 'network') {
+      location.reload()
+    }
+  })
+
   function navigateToHelp() {
     cancelPendingCommit()
     saveScrollPosition()
@@ -339,6 +349,19 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  function hardReload() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister()
+        }
+        window.location.reload()
+      })
+    } else {
+      window.location.reload()
+    }
+  }
+
   function navigateHome() {
     if (termsExpanded()) {
       setTermsExpanded(false)
@@ -353,18 +376,8 @@ function App() {
       !hasEverFocused()
 
     if (isAtHome) {
-      // Already at home — hard refresh (unregister SW, reload)
       history.replaceState(null, '', location.pathname)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister()
-          }
-          window.location.reload()
-        })
-      } else {
-        window.location.reload()
-      }
+      hardReload()
       return
     }
 
@@ -485,8 +498,33 @@ function App() {
       <main class="mx-auto max-w-2xl px-4">
         <Show when={workerStatus() === 'error'}>
           <div class="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-6 shadow-sm">
-            <p class="text-sm font-medium text-red-800 dark:text-red-200">Failed to load card data</p>
-            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{workerError()}</p>
+            <Show when={errorCause() === 'stale'} fallback={<>
+              <p class="text-sm font-medium text-red-800 dark:text-red-200">Could not load card data</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errorCause() === 'network'
+                  ? 'Check your internet connection. The page will reload automatically when connectivity is restored.'
+                  : workerError()}
+              </p>
+              <button
+                type="button"
+                onClick={() => location.reload()}
+                class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 active:bg-red-800 transition-colors"
+              >
+                Try again
+              </button>
+            </>}>
+              <p class="text-sm font-medium text-red-800 dark:text-red-200">Card data is out of date</p>
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">
+                A newer version of Frantic Search has been deployed. Reload to get the latest data.
+              </p>
+              <button
+                type="button"
+                onClick={() => hardReload()}
+                class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 active:bg-red-800 transition-colors"
+              >
+                Reload
+              </button>
+            </Show>
           </div>
         </Show>
 

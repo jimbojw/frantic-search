@@ -172,6 +172,24 @@ async function fetchPrintings(): Promise<{ index: PrintingIndex; data: PrintingC
   }
 }
 
+type FetchResult =
+  | { ok: true; response: Response }
+  | { ok: false; cause: 'stale' | 'network' | 'unknown'; detail: string }
+
+async function fetchColumns(url: URL): Promise<FetchResult> {
+  try {
+    const response = await fetch(url)
+    if (response.ok) return { ok: true, response }
+    return {
+      ok: false,
+      cause: response.status === 404 ? 'stale' : 'unknown',
+      detail: `${response.status} ${response.statusText}`,
+    }
+  } catch {
+    return { ok: false, cause: 'network', detail: 'Network error' }
+  }
+}
+
 async function init(): Promise<void> {
   post({ type: 'status', status: 'loading' })
 
@@ -180,13 +198,22 @@ async function init(): Promise<void> {
   let data: ColumnarData
   try {
     const url = new URL(/* @vite-ignore */ `../${__COLUMNS_FILENAME__}`, import.meta.url)
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch columns.json: ${response.status} ${response.statusText}`)
+    let result = await fetchColumns(url)
+
+    // Retry once on 404 — covers brief CDN propagation windows.
+    if (!result.ok && result.cause === 'stale') {
+      await new Promise(r => setTimeout(r, 2000))
+      result = await fetchColumns(url)
     }
-    data = await readJsonWithProgress(response) as ColumnarData
+
+    if (!result.ok) {
+      post({ type: 'status', status: 'error', error: `Failed to fetch card data: ${result.detail}`, cause: result.cause })
+      return
+    }
+
+    data = await readJsonWithProgress(result.response) as ColumnarData
   } catch (err) {
-    post({ type: 'status', status: 'error', error: String(err) })
+    post({ type: 'status', status: 'error', error: String(err), cause: 'unknown' })
     return
   }
 

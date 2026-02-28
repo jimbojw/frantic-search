@@ -62,5 +62,5 @@ export type FromWorker =
   | { type: 'status'; status: 'progress'; fraction: number }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
-  | { type: 'status'; status: 'error'; error: string }
+  | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean }
