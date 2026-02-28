@@ -9,6 +9,7 @@ import { findFieldNode, cycleChip, parseBreakdown } from './query-edit'
 
 const FORMAT_FIELDS = ['f', 'format', 'legal']
 const IS_FIELDS = ['is']
+const RARITY_FIELDS = ['r', 'rarity']
 
 type ChipDef = { label: string; field: string[]; operator: string; value: string; term: string }
 
@@ -20,7 +21,11 @@ function isChip(value: string): ChipDef {
   return { label: `is:${value}`, field: IS_FIELDS, operator: ':', value, term: `is:${value}` }
 }
 
-const TABS = ['formats', 'layouts', 'roles', 'lands'] as const
+function rarityChip(value: string): ChipDef {
+  return { label: `r:${value}`, field: RARITY_FIELDS, operator: ':', value, term: `r:${value}` }
+}
+
+const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings'] as const
 type TabId = (typeof TABS)[number]
 
 const TAB_CHIPS: Record<TabId, ChipDef[]> = {
@@ -61,6 +66,23 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     isChip('manland'),
     isChip('bounceland'),
     isChip('scryland'),
+  ],
+  rarities: [
+    rarityChip('mythic'),
+    rarityChip('rare'),
+    rarityChip('uncommon'),
+    rarityChip('common'),
+  ],
+  printings: [
+    isChip('foil'),
+    isChip('nonfoil'),
+    isChip('etched'),
+    isChip('borderless'),
+    isChip('fullart'),
+    isChip('extended'),
+    isChip('textless'),
+    isChip('promo'),
+    isChip('reprint'),
   ],
 }
 
