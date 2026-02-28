@@ -178,6 +178,7 @@ export default function CardDetail(props: {
   facesOf: Map<number, number[]>
   printingIndices?: number[]
   printingDisplay?: PrintingDisplayColumns | null
+  onNavigateToQuery?: (q: string) => void
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
@@ -202,10 +203,14 @@ export default function CardDetail(props: {
     return props.scryfallId
   }
   const scryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
+  const allPrintsQuery = () => {
+    const name = fullName()
+    return name ? `!"${name}" unique:prints` : ''
+  }
 
   return (
     <div class="mx-auto max-w-2xl px-4 py-6">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={() => history.back()}
@@ -229,6 +234,17 @@ export default function CardDetail(props: {
           </svg>
         </a>
       </div>
+      <Show when={allPrintsQuery() && props.onNavigateToQuery}>
+        <div class="flex justify-center mb-6">
+          <button
+            type="button"
+            onClick={() => props.onNavigateToQuery!(allPrintsQuery())}
+            class="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+          >
+            All prints &rarr;
+          </button>
+        </div>
+      </Show>
 
       <Show when={ci() != null && d()} fallback={
         <p class="text-center text-sm text-gray-400 dark:text-gray-600 pt-8">
@@ -256,12 +272,35 @@ export default function CardDetail(props: {
                 {(pcols) => {
                   const pidx = primaryPI()!
                   const indices = pis()!
+                  const slackBotName = () => {
+                    const name = fullName()
+                    const set = pcols().set_codes[pidx].toUpperCase()
+                    const num = pcols().collector_numbers[pidx]
+                    return `[[${name}|${set}|${num}]]`
+                  }
+                  const [copied, setCopied] = createSignal(false)
+                  const copySlackName = () => {
+                    navigator.clipboard.writeText(slackBotName()).then(() => {
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1500)
+                    })
+                  }
                   return (
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
                       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
                         <dd class="text-gray-700 dark:text-gray-200">
-                          {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span>
+                          <Show when={props.onNavigateToQuery} fallback={
+                            <>{pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span></>
+                          }>
+                            <button
+                              type="button"
+                              onClick={() => props.onNavigateToQuery!(`s:${pcols().set_codes[pidx]} unique:prints`)}
+                              class="hover:text-blue-500 dark:hover:text-blue-400 transition-colors text-left"
+                            >
+                              {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span>
+                            </button>
+                          </Show>
                         </dd>
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Collector #</dt>
                         <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
@@ -283,6 +322,25 @@ export default function CardDetail(props: {
                           <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pidx])}</dd>
                         </Show>
                       </dl>
+                      <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                        <code class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{slackBotName()}</code>
+                        <button
+                          type="button"
+                          onClick={copySlackName}
+                          class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
+                          aria-label="Copy Slack bot reference"
+                        >
+                          <Show when={copied()} fallback={
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                            </svg>
+                          }>
+                            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                          </Show>
+                        </button>
+                      </div>
                     </div>
                   )
                 }}

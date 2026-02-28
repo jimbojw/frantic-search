@@ -446,6 +446,7 @@ function App() {
               facesOf={facesOf()}
               printingIndices={printingPIs()}
               printingDisplay={printingDisplay()}
+              onNavigateToQuery={navigateToQuery}
             />
           )
         })()}
