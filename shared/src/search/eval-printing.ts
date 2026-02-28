@@ -30,13 +30,31 @@ function buildRarityMask(op: string, targetBit: number): number {
 
 function parseDateLiteral(val: string): number {
   const parts = val.split("-");
-  if (parts.length === 3) {
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return y * 10000 + m * 100 + d;
+  if (parts.length < 1 || parts.length > 3) return 0;
+
+  const yearStr = parts[0];
+  if (yearStr.length < 1 || yearStr.length > 4 || !/^\d+$/.test(yearStr)) return 0;
+  const year = parseInt(yearStr.padEnd(4, "0"), 10);
+
+  let month = 1;
+  if (parts.length >= 2 && parts[1].length > 0) {
+    const mStr = parts[1];
+    if (mStr.length > 2 || !/^\d+$/.test(mStr)) return 0;
+    month = parseInt(mStr.padEnd(2, "0"), 10);
+    if (month < 1) month = 1;
+    if (month > 12) month = 12;
   }
-  return 0;
+
+  let day = 1;
+  if (parts.length >= 3 && parts[2].length > 0) {
+    const dStr = parts[2];
+    if (dStr.length > 2 || !/^\d+$/.test(dStr)) return 0;
+    day = parseInt(dStr.padEnd(2, "0"), 10);
+    if (day < 1) day = 1;
+    if (day > 31) day = 31;
+  }
+
+  return year * 10000 + month * 100 + day;
 }
 
 function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number {
@@ -141,7 +159,7 @@ export function evalPrintingField(
     }
     case "date": {
       const queryDate = resolveDateValue(val, pIdx);
-      if (queryDate === 0) return `invalid date "${val}" (expected YYYY-MM-DD, "now", or a set code)`;
+      if (queryDate === 0) return `invalid date "${val}" (expected a date like YYYY-MM-DD, "now", or a set code)`;
       for (let i = 0; i < n; i++) {
         const d = pIdx.releasedAt[i];
         if (d === 0) continue;

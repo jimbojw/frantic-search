@@ -112,11 +112,20 @@ Examples: `year<=1994`, `year=2026`
 | `:`, `=` | Exact date match |
 | `>`, `>=`, `<`, `<=` | Date comparison |
 
-The value is a `YYYY-MM-DD` date string, parsed to YYYYMMDD uint32 for comparison against `released_at`. The special value `now` or `today` resolves to the current date. A bare set code (e.g., `date>ori`) resolves to the set's `released_at` from `set_lookup`.
+The value is parsed as a date and converted to a YYYYMMDD uint32 for comparison against `released_at`. Accepted formats:
+
+- **Full date:** `YYYY-MM-DD` (e.g., `2015-08-18`)
+- **Year and month:** `YYYY-MM` (e.g., `2020-08`) — day defaults to `01`
+- **Year only:** `YYYY` (e.g., `2020`) — month and day default to `01`
+- **Partial prefix:** Any prefix of `YYYY-MM-DD` is accepted. Missing digits within a component are right-padded with `0`, and out-of-range values are clamped (month to 1–12, day to 1–31). This enables progressive narrowing as the user types: `202` resolves to `2020-01-01`, `2025-0` resolves to `2025-01-01`, `2025-08-1` resolves to `2025-08-10`.
+- **Special values:** `now` or `today` resolves to the current date.
+- **Set code:** A bare set code (e.g., `date>ori`) resolves to the set's `released_at` from `set_lookup`.
+
+Dashless numeric strings longer than 4 digits (e.g., `20200801`) are rejected. Non-numeric components are rejected and fall through to set code resolution.
 
 Rows where `released_at === 0` (unknown) are excluded from all date comparisons.
 
-Examples: `date>=2015-08-18`, `date>ori`, `date>now`
+Examples: `date>=2015-08-18`, `date>=2020`, `date>=2020-08`, `date>ori`, `date>now`
 
 ## Engine Changes
 

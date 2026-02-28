@@ -334,8 +334,104 @@ describe("date field", () => {
   });
 
   test("invalid date format returns error", () => {
-    expect(evalField("date", ":", "2021").error).toBe('invalid date "2021" (expected YYYY-MM-DD, "now", or a set code)');
-    expect(evalField("date", ":", "not-a-date").error).toBe('invalid date "not-a-date" (expected YYYY-MM-DD, "now", or a set code)');
+    expect(evalField("date", ":", "not-a-date").error).toMatch(/invalid date/);
+    expect(evalField("date", ":", "12345").error).toMatch(/invalid date/);
+    expect(evalField("date", ":", "2020-123").error).toMatch(/invalid date/);
+    expect(evalField("date", ":", "2020-01-123").error).toMatch(/invalid date/);
+    expect(evalField("date", ":", "2020-01-01-05").error).toMatch(/invalid date/);
+  });
+
+  // -- Partial date completion (lowest-possible-value padding) ---------------
+
+  test("year-only resolves to YYYY-01-01", () => {
+    // 2021 → 20210101 — exact match against rows with 20210618 should miss
+    const exact = evalField("date", ":", "2021");
+    expect(exact.error).toBeNull();
+    expect(marked(exact.buf)).toEqual([]);
+
+    // 2021 → 20210101; rows at 20210618 are >=, row 2 (20180316) is not
+    const gte = evalField("date", ">=", "2021");
+    expect(gte.error).toBeNull();
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("year-month resolves to YYYY-MM-01", () => {
+    // 2021-06 → 20210601; date >= 20210601 matches rows at 20210618
+    const gte = evalField("date", ">=", "2021-06");
+    expect(gte.error).toBeNull();
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
+
+    // 2018-04 → 20180401; date < 20180401 matches row 2 (20180316)
+    const lt = evalField("date", "<", "2018-04");
+    expect(lt.error).toBeNull();
+    expect(marked(lt.buf)).toEqual([2]);
+  });
+
+  test("partial year pads right with 0s", () => {
+    // "202" → 2020 → 20200101; date > 20200101 matches 2021 rows
+    const gt = evalField("date", ">", "202");
+    expect(gt.error).toBeNull();
+    expect(marked(gt.buf)).toEqual([0, 1, 3, 4]);
+
+    // "2" → 2000 → 20000101; date >= 20000101 matches everything
+    const gte = evalField("date", ">=", "2");
+    expect(gte.error).toBeNull();
+    expect(marked(gte.buf)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  test("partial month pads right with 0 and clamps to [1,12]", () => {
+    // "2021-0" → month 00 clamped to 01 → 20210101; date > that matches all 2021 rows
+    const gte = evalField("date", ">", "2021-0");
+    expect(gte.error).toBeNull();
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
+
+    // "2018-1" → month 10 → 20181001; date < that matches row 2 (20180316)
+    const lt = evalField("date", "<", "2018-1");
+    expect(lt.error).toBeNull();
+    expect(marked(lt.buf)).toEqual([2]);
+  });
+
+  test("partial day pads right with 0 and clamps to [1,31]", () => {
+    // "2021-06-1" → day 10 → 20210610; date > that matches rows at 20210618
+    const gt = evalField("date", ">", "2021-06-1");
+    expect(gt.error).toBeNull();
+    expect(marked(gt.buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("trailing dashes are tolerated", () => {
+    // "2021-" → month empty → 01, day → 01 → 20210101
+    const r1 = evalField("date", ">=", "2021-");
+    expect(r1.error).toBeNull();
+    expect(marked(r1.buf)).toEqual([0, 1, 3, 4]);
+
+    // "2021-06-" → day empty → 01 → 20210601
+    const r2 = evalField("date", ">=", "2021-06-");
+    expect(r2.error).toBeNull();
+    expect(marked(r2.buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("out-of-range month is clamped", () => {
+    // "2021-00" → month 0 clamped to 1 → 20210101
+    const r1 = evalField("date", ">=", "2021-00");
+    expect(r1.error).toBeNull();
+    expect(marked(r1.buf)).toEqual([0, 1, 3, 4]);
+
+    // "2021-99" → month 99 clamped to 12 → 20211201
+    const r2 = evalField("date", ">", "2021-99");
+    expect(r2.error).toBeNull();
+    expect(marked(r2.buf)).toEqual([]);
+  });
+
+  test("out-of-range day is clamped", () => {
+    // "2021-06-00" → day 0 clamped to 1 → 20210601
+    const r1 = evalField("date", ">=", "2021-06-00");
+    expect(r1.error).toBeNull();
+    expect(marked(r1.buf)).toEqual([0, 1, 3, 4]);
+
+    // "2021-06-99" → day 99 clamped to 31 → 20210631
+    const r2 = evalField("date", ">=", "2021-06-99");
+    expect(r2.error).toBeNull();
+    expect(marked(r2.buf)).toEqual([]);
   });
 
   test("now resolves to the current date", () => {
