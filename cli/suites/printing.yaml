@@ -62,7 +62,7 @@
     count_min: 50
 
 # ---------------------------------------------------------------------------
-# is:foil / is:nonfoil / is:etched
+# is:foil / is:etched
 # ---------------------------------------------------------------------------
 
 - name: "is:foil finds cards with foil printings"

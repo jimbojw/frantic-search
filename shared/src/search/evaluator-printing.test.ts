@@ -98,7 +98,7 @@ describe("printing is: keywords", () => {
     expect(cardCount("is:foil")).toBe(2);
   });
 
-  test("is:nonfoil matches Bolt and Sol Ring (both have nonfoil printings)", () => {
+  test("is:nonfoil matches non-foil printings (including etched)", () => {
     expect(cardCount("is:nonfoil")).toBe(2);
   });
 });

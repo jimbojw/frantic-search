@@ -80,7 +80,6 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
   ],
   printings: [
     isChip('foil'),
-    isChip('nonfoil'),
     isChip('etched'),
     isChip('borderless'),
     isChip('fullart'),

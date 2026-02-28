@@ -43,13 +43,15 @@ Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic
 
 Examples: `r:mythic`, `rarity>=rare`, `r:c`
 
-### `is:foil` / `is:nonfoil` / `is:etched` — Finish
+### `is:foil` / `is:etched` — Finish
 
 | Operator | Semantics |
 |---|---|
 | `:` | Printing's finish matches the keyword |
 
-These `is:` keywords evaluate in the printing domain against the `finish` enum column. `is:foil` matches rows where `finish === Finish.Foil`.
+These `is:` keywords evaluate in the printing domain against the `finish` enum column. `is:foil` matches rows where `finish === Finish.Foil`. `is:etched` matches rows where `finish === Finish.Etched`.
+
+`is:nonfoil` is accepted as a keyword but is equivalent to `-is:foil` at the printing-row level (matches any row whose finish is not foil, including etched). The PRINTINGS tab does not show an `is:nonfoil` chip — the `is:foil` chip's negate state covers this use case.
 
 When promoted to face domain via AND/OR/NOT, the semantics are "card has at least one printing with this finish" — e.g., `t:creature is:foil` returns creatures that have been printed in foil.
 

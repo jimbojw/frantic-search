@@ -392,7 +392,7 @@ export function evalPrintingIsKeyword(
       for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Foil) buf[i] = 1;
       break;
     case "nonfoil":
-      for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Nonfoil) buf[i] = 1;
+      for (let i = 0; i < n; i++) if (pIdx.finish[i] !== Finish.Foil) buf[i] = 1;
       break;
     case "etched":
       for (let i = 0; i < n; i++) if (pIdx.finish[i] === Finish.Etched) buf[i] = 1;
