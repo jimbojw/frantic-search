@@ -28,7 +28,7 @@ function buildRarityMask(op: string, targetBit: number): number {
   return mask;
 }
 
-function parseDateValue(val: string): number {
+function parseDateLiteral(val: string): number {
   const parts = val.split("-");
   if (parts.length === 3) {
     const y = parseInt(parts[0], 10);
@@ -37,6 +37,26 @@ function parseDateValue(val: string): number {
     if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return y * 10000 + m * 100 + d;
   }
   return 0;
+}
+
+function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number {
+  for (let i = 0; i < pIdx.printingCount; i++) {
+    if (pIdx.setCodesLower[i] === codeLower) {
+      return pIdx.setReleasedAt[pIdx.setIndices[i]];
+    }
+  }
+  return 0;
+}
+
+function resolveDateValue(val: string, pIdx: PrintingIndex): number {
+  const lower = val.toLowerCase();
+  if (lower === "now" || lower === "today") {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+  const literal = parseDateLiteral(val);
+  if (literal > 0) return literal;
+  return resolveSetDate(lower, pIdx);
 }
 
 export function evalPrintingField(
@@ -119,8 +139,8 @@ export function evalPrintingField(
       break;
     }
     case "date": {
-      const queryDate = parseDateValue(val);
-      if (queryDate === 0) return `invalid date "${val}" (expected YYYY-MM-DD)`;
+      const queryDate = resolveDateValue(val, pIdx);
+      if (queryDate === 0) return `invalid date "${val}" (expected YYYY-MM-DD, "now", or a set code)`;
       for (let i = 0; i < n; i++) {
         const d = pIdx.releasedAt[i];
         if (d === 0) continue;

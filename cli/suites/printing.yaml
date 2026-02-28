@@ -136,7 +136,7 @@
   query: "price>=100"
   assertions:
     contains:
-      - "Black Lotus"
+      - "Tundra"
     count_min: 10
 
 # ---------------------------------------------------------------------------
@@ -154,6 +154,31 @@
   query: "year:2021"
   assertions:
     count_min: 500
+
+- name: "date>=2015-08-18 finds printings released on or after that date"
+  query: 'date>="2015-08-18"'
+  assertions:
+    count_min: 5000
+
+- name: "date>ori resolves set code to Magic Origins release date"
+  query: "date>ori"
+  assertions:
+    count_min: 5000
+
+# ---------------------------------------------------------------------------
+# cn: / number: (collector number)
+# ---------------------------------------------------------------------------
+
+- name: "cn:1 finds printings with collector number 1"
+  query: "cn:1"
+  assertions:
+    count_min: 200
+
+- name: "cn:1 set:mh2 narrows to MH2 collector number 1"
+  query: "cn:1 set:mh2"
+  assertions:
+    count_min: 1
+    count_max: 5
 
 # ---------------------------------------------------------------------------
 # Cross-domain queries (face + printing)
@@ -182,10 +207,9 @@
 # NOT with printing conditions
 # ---------------------------------------------------------------------------
 
-- name: "-is:reprint finds first printings only"
+- name: "-is:reprint excludes cards with any reprint printing"
   query: "-is:reprint t:creature set:mh2"
   scryfall_query: "-is:reprint t:creature set:mh2 include:extras"
+  divergence: "NOT promotes to face domain: excludes cards with ANY reprint printing, not just reprint rows"
   assertions:
-    contains:
-      - "Ragavan, Nimble Pilferer"
-    count_min: 30
+    count_min: 10

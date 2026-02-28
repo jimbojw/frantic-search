@@ -2,7 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
-import type { ColumnarData } from "@frantic-search/shared/src/data";
+import { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
+import type { ColumnarData, PrintingColumnarData } from "@frantic-search/shared/src/data";
 import { loadAllSuites } from "./loader";
 import { runLocalTest } from "./local";
 import { runScryfallTest } from "./scryfall";
@@ -15,6 +16,7 @@ import {
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
 const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "dist", "columns.json");
+const PRINTINGS_PATH = path.join(PROJECT_ROOT, "data", "dist", "printings.json");
 const SUITES_DIR = path.join(PROJECT_ROOT, "cli", "suites");
 
 export async function runCompliance(options: { verify: boolean; data?: string }): Promise<void> {
@@ -45,9 +47,17 @@ function runLocalMode(suites: ReturnType<typeof loadAllSuites>, dataPath: string
   const data: ColumnarData = JSON.parse(raw);
   const index = new CardIndex(data);
 
+  let printingIndex: PrintingIndex | null = null;
+  if (fs.existsSync(PRINTINGS_PATH)) {
+    const printingData: PrintingColumnarData = JSON.parse(fs.readFileSync(PRINTINGS_PATH, "utf-8"));
+    printingIndex = new PrintingIndex(printingData);
+  } else {
+    process.stderr.write(`Warning: ${PRINTINGS_PATH} not found. Printing-domain queries will not work.\n`);
+  }
+
   const summaries: SuiteSummary[] = [];
   for (const suite of suites) {
-    const results = suite.cases.map(tc => runLocalTest(tc, data, index));
+    const results = suite.cases.map(tc => runLocalTest(tc, data, index, printingIndex));
     summaries.push({ file: suite.file, results });
   }
 

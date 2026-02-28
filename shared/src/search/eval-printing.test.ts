@@ -335,8 +335,42 @@ describe("date field", () => {
   });
 
   test("invalid date format returns error", () => {
-    expect(evalField("date", ":", "2021").error).toBe('invalid date "2021" (expected YYYY-MM-DD)');
-    expect(evalField("date", ":", "not-a-date").error).toBe('invalid date "not-a-date" (expected YYYY-MM-DD)');
+    expect(evalField("date", ":", "2021").error).toBe('invalid date "2021" (expected YYYY-MM-DD, "now", or a set code)');
+    expect(evalField("date", ":", "not-a-date").error).toBe('invalid date "not-a-date" (expected YYYY-MM-DD, "now", or a set code)');
+  });
+
+  test("now resolves to the current date", () => {
+    const { buf, error } = evalField("date", "<", "now");
+    expect(error).toBeNull();
+    expect(marked(buf).length).toBeGreaterThan(0);
+  });
+
+  test("today resolves to the current date", () => {
+    const { buf, error } = evalField("date", "<", "today");
+    expect(error).toBeNull();
+    expect(marked(buf).length).toBeGreaterThan(0);
+  });
+
+  test("bare set code resolves to set released_at", () => {
+    // A25 released 2018-03-16, MH2 released 2021-06-18
+    // date>a25 means date > 20180316
+    const { buf, error } = evalField("date", ">", "a25");
+    expect(error).toBeNull();
+    // Rows 0,1,3,4 are 2021-06-18 which is > 2018-03-16
+    expect(marked(buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("set code resolution is case-insensitive", () => {
+    const { buf, error } = evalField("date", ">", "A25");
+    expect(error).toBeNull();
+    expect(marked(buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("date=mh2 matches printings released on MH2's date", () => {
+    // MH2 released 2021-06-18, rows 0,1,3,4 have that date
+    const { buf, error } = evalField("date", ":", "mh2");
+    expect(error).toBeNull();
+    expect(marked(buf)).toEqual([0, 1, 3, 4]);
   });
 });
 

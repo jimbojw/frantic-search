@@ -2,6 +2,7 @@
 import { parse } from "@frantic-search/shared/src/search/parser";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import type { CardIndex } from "@frantic-search/shared/src/search/card-index";
+import type { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
 import type { ColumnarData } from "@frantic-search/shared/src/data";
 import type { TestCase, Assertions } from "./loader";
 
@@ -96,8 +97,9 @@ export function runLocalTest(
   tc: TestCase,
   data: ColumnarData,
   index: CardIndex,
+  printingIndex?: PrintingIndex | null,
 ): TestResult {
-  const cache = new NodeCache(index);
+  const cache = new NodeCache(index, printingIndex);
   const ast = parse(tc.query);
   const { indices } = cache.evaluate(ast);
 

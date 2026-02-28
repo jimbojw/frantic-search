@@ -330,6 +330,23 @@ describe("printing metadata flags", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 047 test-plan cases: finish+price intersection, NOT+bare-word
+// ---------------------------------------------------------------------------
+
+describe("spec 047 test cases", () => {
+  test("is:foil price<2 — no foil printing is under $2.00", () => {
+    // Foil rows: #1 ($3.00), #4 ($5.00). Neither satisfies price<2.
+    expect(cardCount("is:foil price<2")).toBe(0);
+  });
+
+  test("-set:mh2 lightning — NOT promotes to face domain, excluding Bolt entirely", () => {
+    // -set:mh2 excludes Lightning Bolt (card has MH2 printings).
+    // Bare word "lightning" only matches Lightning Bolt → AND = 0.
+    expect(cardCount("-set:mh2 lightning")).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Error handling with printing index present
 // ---------------------------------------------------------------------------
 
