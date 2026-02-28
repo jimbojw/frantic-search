@@ -97,6 +97,23 @@ function App() {
   }
   const [inputFocused, setInputFocused] = createSignal(false)
   const [hasEverFocused, setHasEverFocused] = createSignal(false)
+  const [textareaMode, setTextareaMode] = createSignal(false)
+  let inputRef: HTMLInputElement | undefined
+  let textareaRef: HTMLTextAreaElement | undefined
+
+  function toggleTextareaMode() {
+    const current = textareaMode() ? textareaRef : inputRef
+    const selStart = current?.selectionStart ?? 0
+    const selEnd = current?.selectionEnd ?? 0
+    setTextareaMode(prev => !prev)
+    queueMicrotask(() => {
+      const next = textareaMode() ? textareaRef : inputRef
+      if (next) {
+        next.focus()
+        next.setSelectionRange(selStart, selEnd)
+      }
+    })
+  }
 
   const facesOf = createMemo(() => {
     const d = display()
@@ -444,34 +461,57 @@ function App() {
             />
           </Show>
           <div class={`relative ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
-            <input
-              type="text"
-              placeholder='Search cards… e.g. "t:creature c:green"'
-              autocapitalize="none"
-              autocomplete="off"
-              autocorrect="off"
-              spellcheck={false}
-              value={query()}
-              onInput={(e) => setQuery(e.currentTarget.value)}
-              onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
-              onBlur={() => setInputFocused(false)}
-              disabled={workerStatus() === 'error'}
-              class="w-full bg-transparent px-4 py-3 pl-11 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
-            />
-            <svg
-              class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-gray-400 dark:text-gray-500"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke="currentColor"
+            <Show when={textareaMode()} fallback={
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder='Search cards… e.g. "t:creature c:green"'
+                autocapitalize="none"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck={false}
+                value={query()}
+                onInput={(e) => setQuery(e.currentTarget.value)}
+                onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                onBlur={() => setInputFocused(false)}
+                disabled={workerStatus() === 'error'}
+                class="w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+              />
+            }>
+              <textarea
+                ref={textareaRef}
+                rows="3"
+                placeholder='Search cards… e.g. "t:creature c:green"'
+                autocapitalize="none"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck={false}
+                value={query()}
+                onInput={(e) => setQuery(e.currentTarget.value)}
+                onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                onBlur={() => setInputFocused(false)}
+                disabled={workerStatus() === 'error'}
+                class="w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+              />
+            </Show>
+            <button
+              type="button"
+              onClick={toggleTextareaMode}
+              class="absolute left-0 top-0 flex items-center gap-0.5 pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              aria-label="Toggle multi-line editor"
+              aria-expanded={textareaMode()}
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
+              <svg class={`size-2.5 fill-current transition-transform ${textareaMode() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+                <path d="M8 5l8 7-8 7z" />
+              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={toggleTerms}
-              class={`absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+              class={`absolute right-0 top-0 ${textareaMode() ? 'py-3' : 'bottom-0'} px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
               aria-label="Toggle search filters"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
