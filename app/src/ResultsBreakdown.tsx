@@ -85,6 +85,20 @@ function BarRow(props: {
   const isGradient = () => props.background.startsWith('linear-gradient')
   return (
     <div class="flex items-center gap-0 h-6">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); props.onExclude() }}
+        class={`size-6 shrink-0 flex items-center justify-center rounded-full transition-colors ${
+          props.excludeActive
+            ? 'text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+            : 'text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
+        }`}
+        aria-label="Less"
+      >
+        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 12h14" />
+        </svg>
+      </button>
       <div class="w-6 shrink-0 flex items-center justify-center text-sm">
         {props.label()}
       </div>
@@ -108,20 +122,6 @@ function BarRow(props: {
               : { "background-color": props.background }),
           }}
         />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); props.onExclude() }}
-        class={`size-6 shrink-0 flex items-center justify-center rounded-full transition-colors ${
-          props.excludeActive
-            ? 'text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-            : 'text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
-        }`}
-        aria-label="Exclude"
-      >
-        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
       </button>
     </div>
   )
