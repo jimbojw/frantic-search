@@ -19,6 +19,8 @@ import {
   parseBreakdown,
   toggleUniquePrints,
   hasUniquePrints,
+  appendTerm,
+  prependTerm,
 } from './query-edit'
 
 function buildBreakdown(query: string): BreakdownNode {
@@ -1184,5 +1186,69 @@ describe('hasUniquePrints', () => {
 
   it('returns true when unique:prints is among other terms', () => {
     expect(hasUniquePrints(buildBreakdown('r:mythic unique:prints'))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// appendTerm (Spec 054)
+// ---------------------------------------------------------------------------
+
+describe('appendTerm', () => {
+  it('returns just the term for an empty query', () => {
+    expect(appendTerm('', 'f:commander', null)).toBe('f:commander')
+  })
+
+  it('appends term to a simple query', () => {
+    expect(appendTerm('t:creature', 'f:commander', buildBreakdown('t:creature')))
+      .toBe('t:creature f:commander')
+  })
+
+  it('wraps OR-root query in parens before appending', () => {
+    expect(appendTerm('a OR b', 'f:commander', buildBreakdown('a OR b')))
+      .toBe('(a OR b) f:commander')
+  })
+
+  it('seals unclosed delimiters before appending', () => {
+    expect(appendTerm('name:"ang', 'f:commander', buildBreakdown('name:"ang')))
+      .toBe('name:"ang" f:commander')
+  })
+
+  it('trims whitespace before appending', () => {
+    expect(appendTerm('  t:creature  ', 'f:commander', buildBreakdown('t:creature')))
+      .toBe('t:creature f:commander')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// prependTerm (Spec 054)
+// ---------------------------------------------------------------------------
+
+describe('prependTerm', () => {
+  it('returns just the term for an empty query', () => {
+    expect(prependTerm('', 'f:commander', null)).toBe('f:commander')
+  })
+
+  it('prepends term to a simple query', () => {
+    expect(prependTerm('t:creature', 'f:commander', buildBreakdown('t:creature')))
+      .toBe('f:commander t:creature')
+  })
+
+  it('wraps OR-root query in parens before prepending', () => {
+    expect(prependTerm('a OR b', 'f:commander', buildBreakdown('a OR b')))
+      .toBe('f:commander (a OR b)')
+  })
+
+  it('seals unclosed delimiters before prepending', () => {
+    expect(prependTerm('name:"ang', 'f:commander', buildBreakdown('name:"ang')))
+      .toBe('f:commander name:"ang"')
+  })
+
+  it('trims whitespace before prepending', () => {
+    expect(prependTerm('  t:creature  ', 'f:commander', buildBreakdown('t:creature')))
+      .toBe('f:commander t:creature')
+  })
+
+  it('handles whitespace-only query as empty', () => {
+    expect(prependTerm('   ', 'f:commander', null)).toBe('f:commander')
   })
 })

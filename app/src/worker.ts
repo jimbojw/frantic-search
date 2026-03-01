@@ -233,21 +233,90 @@ async function init(): Promise<void> {
     const msg = e.data
     if (msg.type !== 'search') return
 
+    const hasPinned = !!msg.pinnedQuery?.trim()
+    const hasLive = !!msg.query.trim()
+
+    if (!hasLive && !hasPinned) return
+
+    // Pinned-only: evaluate for breakdown counts, no results
+    if (hasPinned && !hasLive) {
+      const pinnedAst = parse(msg.pinnedQuery!)
+      const pinnedEval = cache.evaluate(pinnedAst)
+      const pinnedBreakdown = toBreakdown(pinnedEval.result)
+      const emptyHistograms: Histograms = {
+        colorIdentity: [0, 0, 0, 0, 0, 0, 0],
+        manaValue: [0, 0, 0, 0, 0, 0, 0, 0],
+        cardType: [0, 0, 0, 0, 0, 0, 0, 0],
+      }
+      const indices = new Uint32Array(0)
+      const resultMsg: FromWorker & { type: 'result' } = {
+        type: 'result', queryId: msg.queryId, indices,
+        breakdown: { type: 'NOP', label: '', matchCount: 0 },
+        pinnedBreakdown, histograms: emptyHistograms,
+        hasPrintingConditions: false, uniquePrints: false,
+      }
+      post(resultMsg, [indices.buffer])
+      return
+    }
+
     const ast = parse(msg.query)
-    const { result, indices: rawIndices, printingIndices: rawPrintingIndices, hasPrintingConditions, uniquePrints } = cache.evaluate(ast)
-    const breakdown = toBreakdown(result)
-    const deduped = Array.from(rawIndices)
+    const liveEval = cache.evaluate(ast)
+    const breakdown = toBreakdown(liveEval.result)
+
+    let deduped: number[]
+    let rawPrintingIndices = liveEval.printingIndices
+    let hasPrintingConditions = liveEval.hasPrintingConditions
+    let uniquePrints = liveEval.uniquePrints
+    let pinnedBreakdown: BreakdownNode | undefined
+
+    if (hasPinned) {
+      const pinnedAst = parse(msg.pinnedQuery!)
+      const pinnedEval = cache.evaluate(pinnedAst)
+      pinnedBreakdown = toBreakdown(pinnedEval.result)
+
+      // Intersect card indices
+      const pinnedSet = new Set<number>(pinnedEval.indices)
+      deduped = Array.from(liveEval.indices).filter(i => pinnedSet.has(i))
+
+      // Intersect printing indices if both have them
+      if (rawPrintingIndices && pinnedEval.printingIndices) {
+        const pinnedPrintSet = new Set<number>(pinnedEval.printingIndices)
+        const filtered: number[] = []
+        for (let i = 0; i < rawPrintingIndices.length; i++) {
+          if (pinnedPrintSet.has(rawPrintingIndices[i])) filtered.push(rawPrintingIndices[i])
+        }
+        rawPrintingIndices = new Uint32Array(filtered)
+      } else if (rawPrintingIndices && !pinnedEval.printingIndices) {
+        // Live has printing results, pinned doesn't — filter live printings
+        // to only those whose canonical face is in the pinned card set.
+        if (printingIndex) {
+          const filtered: number[] = []
+          for (let i = 0; i < rawPrintingIndices.length; i++) {
+            const cardIdx = printingIndex.canonicalFaceRef[rawPrintingIndices[i]]
+            if (pinnedSet.has(cardIdx)) filtered.push(rawPrintingIndices[i])
+          }
+          rawPrintingIndices = new Uint32Array(filtered)
+        }
+      }
+
+      hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
+      uniquePrints = uniquePrints || pinnedEval.uniquePrints
+    } else {
+      deduped = Array.from(liveEval.indices)
+    }
+
+    const combinedQuery = hasPinned ? `${msg.pinnedQuery} ${msg.query}` : msg.query
     const bareWords = collectBareWords(ast)
       .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
       .filter(w => w.length > 0)
-    seededSort(deduped, msg.query, index.combinedNamesNormalized, bareWords, sessionSalt)
+    seededSort(deduped, combinedQuery, index.combinedNamesNormalized, bareWords, sessionSalt)
 
     const histograms = computeHistograms(deduped, index)
     const indices = new Uint32Array(deduped)
     const printingIndices = rawPrintingIndices
     if (printingIndices) {
       seededSortPrintings(
-        printingIndices, msg.query,
+        printingIndices, combinedQuery,
         printingIndex!.canonicalFaceRef,
         index.combinedNamesNormalized, bareWords, sessionSalt,
       )
@@ -255,7 +324,7 @@ async function init(): Promise<void> {
     const transfer: Transferable[] = [indices.buffer]
     if (printingIndices) transfer.push(printingIndices.buffer)
     const resultMsg: FromWorker & { type: 'result' } = {
-      type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
+      type: 'result', queryId: msg.queryId, indices, breakdown, pinnedBreakdown, histograms,
       printingIndices, hasPrintingConditions, uniquePrints,
     }
     post(resultMsg, transfer)

@@ -211,7 +211,7 @@ export function removeNode(
 // Append helper (seal + OR-root wrapping)
 // ---------------------------------------------------------------------------
 
-function appendTerm(
+export function appendTerm(
   query: string,
   term: string,
   breakdown: BreakdownNode | null,
@@ -221,6 +221,18 @@ function appendTerm(
   const sealed = sealQuery(trimmed)
   const needsParens = breakdown?.type === 'OR'
   return needsParens ? `(${sealed}) ${term}` : `${sealed} ${term}`
+}
+
+export function prependTerm(
+  query: string,
+  term: string,
+  breakdown: BreakdownNode | null,
+): string {
+  const trimmed = query.trim()
+  if (!trimmed) return term
+  const sealed = sealQuery(trimmed)
+  const needsParens = breakdown?.type === 'OR'
+  return needsParens ? `${term} (${sealed})` : `${term} ${sealed}`
 }
 
 // ---------------------------------------------------------------------------

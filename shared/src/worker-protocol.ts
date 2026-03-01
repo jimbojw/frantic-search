@@ -4,6 +4,7 @@ export type ToWorker = {
   type: 'search'
   queryId: number
   query: string
+  pinnedQuery?: string
 }
 
 export type DisplayColumns = {
@@ -63,4 +64,4 @@ export type FromWorker =
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean }

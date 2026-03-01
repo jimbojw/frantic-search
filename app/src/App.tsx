@@ -7,6 +7,7 @@ import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import InlineBreakdown from './InlineBreakdown'
+import PinnedBreakdown from './PinnedBreakdown'
 import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdown'
 import SparkBars from './SparkBars'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
@@ -29,6 +30,8 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
+import { appendTerm, prependTerm, removeNode, parseBreakdown } from './query-edit'
+import { reconstructQuery } from './InlineBreakdown'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -67,6 +70,20 @@ function App() {
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniquePrints, setUniquePrints] = createSignal(false)
+  const [pinnedQuery, setPinnedQuery] = createSignal(
+    localStorage.getItem('frantic-pinned-query') ?? ''
+  )
+  const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
+  const [pinnedExpanded, setPinnedExpanded] = createSignal(
+    localStorage.getItem('frantic-pinned-expanded') !== 'false'
+  )
+  function togglePinned() {
+    setPinnedExpanded(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-pinned-expanded', String(next))
+      return next
+    })
+  }
   const [breakdownExpanded, setBreakdownExpanded] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
   )
@@ -282,6 +299,7 @@ function App() {
         if (msg.queryId === latestQueryId) {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
+          setPinnedBreakdown(msg.pinnedBreakdown ?? null)
           setHistograms(msg.histograms)
           setPrintingIndices(msg.printingIndices)
           setHasPrintingConditions(msg.hasPrintingConditions)
@@ -292,10 +310,29 @@ function App() {
   }
 
   createEffect(() => {
+    const pq = pinnedQuery()
+    if (pq) localStorage.setItem('frantic-pinned-query', pq)
+    else localStorage.removeItem('frantic-pinned-query')
+  })
+
+  createEffect(() => {
     const q = query().trim()
-    if (workerStatus() === 'ready' && q) {
+    const pq = pinnedQuery().trim()
+    if (workerStatus() === 'ready' && (q || pq)) {
       latestQueryId++
-      worker.postMessage({ type: 'search', queryId: latestQueryId, query: query() })
+      worker.postMessage({
+        type: 'search', queryId: latestQueryId, query: query(),
+        pinnedQuery: pq || undefined,
+      })
+    }
+    if (!q && !pq) {
+      setIndices(new Uint32Array(0))
+      setBreakdown(null)
+      setPinnedBreakdown(null)
+      setHistograms(null)
+      setPrintingIndices(undefined)
+      setHasPrintingConditions(false)
+      setUniquePrints(false)
     } else if (!q) {
       setIndices(new Uint32Array(0))
       setBreakdown(null)
@@ -426,6 +463,54 @@ function App() {
     setCardId('')
     setHasEverFocused(false)
     window.scrollTo(0, 0)
+  }
+
+  function handlePin(nodeLabel: string) {
+    const bd = breakdown()
+    if (!bd) return
+    const liveQ = query()
+    const pinnedQ = pinnedQuery()
+
+    // Find the matching node and splice it out of the live query
+    const newLive = findAndRemoveNode(liveQ, bd, nodeLabel)
+    setQuery(newLive)
+
+    // Append to pinned query
+    const pinnedBd = parseBreakdown(pinnedQ)
+    setPinnedQuery(appendTerm(pinnedQ, nodeLabel, pinnedBd))
+  }
+
+  function handleUnpin(nodeLabel: string) {
+    const bd = pinnedBreakdown()
+    if (!bd) return
+    const pinnedQ = pinnedQuery()
+    const liveQ = query()
+
+    // Find the matching node and splice it out of the pinned query
+    const newPinned = findAndRemoveNode(pinnedQ, bd, nodeLabel)
+    setPinnedQuery(newPinned)
+
+    // Prepend to live query
+    const liveBd = parseBreakdown(liveQ)
+    setQuery(prependTerm(liveQ, nodeLabel, liveBd))
+  }
+
+  function handlePinnedRemove(newPinnedQuery: string) {
+    setPinnedQuery(newPinnedQuery)
+  }
+
+  function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
+    if (bd.label === nodeLabel && (!bd.children || bd.children.length === 0)) {
+      return removeNode(q, bd, bd)
+    }
+    if (bd.children) {
+      for (const child of bd.children) {
+        if (reconstructQuery(child) === nodeLabel) {
+          return removeNode(q, child, bd)
+        }
+      }
+    }
+    return q
   }
 
   return (
@@ -568,6 +653,19 @@ function App() {
               </svg>
             </button>
           </div>
+          <Show when={pinnedBreakdown()}>
+            {(pbd) => (
+              <PinnedBreakdown
+                breakdown={pbd()}
+                cardCount={totalCards()}
+                printingCount={showPrintingResults() ? totalPrintingItems() : undefined}
+                expanded={pinnedExpanded()}
+                onToggle={togglePinned}
+                onUnpin={(nodeLabel) => { flushPendingCommit(); handleUnpin(nodeLabel) }}
+                onRemove={(q) => { flushPendingCommit(); handlePinnedRemove(q) }}
+              />
+            )}
+          </Show>
           <Show when={breakdown()}>
             {(bd) => (
               <InlineBreakdown
@@ -576,7 +674,7 @@ function App() {
                 printingCount={showPrintingResults() ? totalPrintingItems() : undefined}
                 expanded={breakdownExpanded()}
                 onToggle={toggleBreakdown}
-                onNodeClick={(q) => { flushPendingCommit(); setQuery(q) }}
+                onPin={(nodeLabel) => { flushPendingCommit(); handlePin(nodeLabel) }}
                 onNodeRemove={(q) => { flushPendingCommit(); setQuery(q) }}
               />
             )}
