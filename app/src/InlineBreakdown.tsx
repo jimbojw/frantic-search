@@ -62,9 +62,29 @@ function nonNopCount(node: BreakdownNode): number {
   return node.children?.filter(c => c.type !== 'NOP').length ?? 0
 }
 
+function childKeyword(child: BreakdownNode): string {
+  if (child.type === 'AND' || child.type === 'OR') return child.type
+  const label = child.label
+  if (child.type === 'NOT') {
+    const inner = label.startsWith('-') ? label.slice(1) : label
+    const m = inner.match(/^[^:=!<>]+/)
+    return '-' + (m ? m[0] : inner)
+  }
+  if (child.type === 'FIELD' || child.type === 'REGEX_FIELD') {
+    const m = label.match(/^[^:=!<>]+/)
+    return m ? m[0] : label
+  }
+  return label
+}
+
+const MAX_PREVIEW_KEYWORDS = 3
+
 function chipLabel(node: BreakdownNode): string {
   if (node.type === 'AND' || node.type === 'OR') {
-    return `${node.type} (${nonNopCount(node)})`
+    const kids = (node.children ?? []).filter(c => c.type !== 'NOP')
+    const preview = kids.slice(0, MAX_PREVIEW_KEYWORDS).map(childKeyword)
+    if (kids.length > MAX_PREVIEW_KEYWORDS) preview.push('\u2026')
+    return `${node.type} (${preview.join(', ')})`
   }
   return node.label
 }
@@ -100,6 +120,8 @@ export function BreakdownChip(props: {
   error?: string
   pinned: boolean
   nop?: boolean
+  /** When set, only this substring gets syntax highlighting; the rest (e.g. " (3)") renders as plain text. */
+  labelHighlightOnly?: string
   onClick?: () => void
   onRemove?: () => void
 }) {
@@ -128,7 +150,14 @@ export function BreakdownChip(props: {
       </Show>
       <span class="truncate">
         <Show when={useHighlight()} fallback={props.label}>
-          <HighlightedLabel label={props.label} />
+          <Show when={props.labelHighlightOnly !== undefined} fallback={
+            <HighlightedLabel label={props.label} />
+          }>
+            <>
+              <HighlightedLabel label={props.labelHighlightOnly!} />
+              <span class="opacity-60">{props.label.slice(props.labelHighlightOnly!.length)}</span>
+            </>
+          </Show>
         </Show>
       </span>
       <span
@@ -187,6 +216,7 @@ export function ChipTreeNode(props: {
           error={props.node.error}
           pinned={props.pinned}
           nop={isNop()}
+          labelHighlightOnly={isAndOr() ? props.node.type : undefined}
           onClick={isPinnable() ? () => props.onChipClick(reconstructQuery(props.node)) : undefined}
           onRemove={removeHandler()}
         />
