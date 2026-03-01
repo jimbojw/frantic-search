@@ -582,7 +582,7 @@ function App() {
               onClose={toggleTerms}
             />
           </Show>
-          <div class={`relative ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
+          <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <Show when={textareaMode()} fallback={
               <div class="grid overflow-hidden">
                 <div ref={inputHlRef} class="hl-layer overflow-hidden whitespace-pre px-4 py-3 pl-14 pr-10">
