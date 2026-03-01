@@ -2,6 +2,7 @@
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints } from './query-edit'
+import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 
 // ---------------------------------------------------------------------------
 // Chip data
@@ -147,7 +148,17 @@ function TermChip(props: {
       onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, props.chip))}
       class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
-      {props.chip.label}
+      {props.state === 'neutral' ? (
+        <For each={buildSpans(props.chip.label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      ) : (
+        props.chip.label
+      )}
     </button>
   )
 }
@@ -174,7 +185,17 @@ function UniquePrintsChip(props: {
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
     >
-      unique:prints
+      {props.active ? (
+        'unique:prints'
+      ) : (
+        <For each={buildSpans('unique:prints')}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      )}
     </button>
   )
 }

@@ -185,3 +185,7 @@ When appending to a query whose root is an OR node, the existing parenthesizatio
 6. Land Cycles chips flex-wrap (no horizontal scroll).
 7. The close (×) and help (?) buttons remain functional.
 8. `cycleChip` has unit tests covering all transitions.
+
+## Implementation Notes
+
+- 2026-03-01: Added syntax highlighting to neutral-state chips (and inactive `unique:prints` chip) using `buildSpans` and `ROLE_CLASSES` from QueryHighlight. Field names and operators render in blue, values in gray, reinforcing syntax learning.
