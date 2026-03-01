@@ -227,7 +227,7 @@ export function BreakdownLip(props: {
       class={`flex items-center justify-between gap-4 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
     >
       <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-        <svg class={`size-2.5 fill-current transition-transform ${props.expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
+        <svg class={`size-2.5 fill-current transition-transform ${props.expanded ? '-rotate-90' : ''}`} viewBox="0 0 24 24">
           <path d="M8 5l8 7-8 7z" />
         </svg>
         {props.label}
