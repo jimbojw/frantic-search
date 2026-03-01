@@ -602,7 +602,7 @@ function App() {
                   onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
                   onBlur={() => setInputFocused(false)}
                   disabled={workerStatus() === 'error'}
-                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
+                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
                 />
               </div>
             }>
@@ -624,7 +624,7 @@ function App() {
                   onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
                   onBlur={() => setInputFocused(false)}
                   disabled={workerStatus() === 'error'}
-                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
                 />
               </div>
             </Show>

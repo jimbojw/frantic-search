@@ -116,7 +116,7 @@ export default function QueryHighlight(props: { query: string; class?: string })
   return (
     <pre
       aria-hidden="true"
-      class={`pointer-events-none font-sans ${props.class ?? ''}`}
+      class={`pointer-events-none font-mono ${props.class ?? ''}`}
     >
       <For each={spans()}>
         {(span) =>
