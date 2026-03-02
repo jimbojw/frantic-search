@@ -689,7 +689,7 @@ function App() {
               />
             )}
           </Show>
-          <Show when={breakdown()}>
+          <Show when={query().trim() !== '' && breakdown()}>
             {(bd) => (
               <InlineBreakdown
                 breakdown={bd()}
