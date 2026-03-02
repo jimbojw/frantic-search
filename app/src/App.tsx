@@ -553,7 +553,7 @@ function App() {
           type="button"
           onClick={() => navigateHome()}
           aria-label="Go to home"
-          class={`w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-4 bg-[center_23%] rounded-t-xl rounded-b-none mb-0' : 'h-14 bg-[center_20%] rounded-xl mb-4'}`}
+          class={`w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-6 bg-[center_23%] rounded-xl mb-2' : 'h-14 bg-[center_20%] rounded-xl mb-4'}`}
           style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
         >
           <img
@@ -573,7 +573,7 @@ function App() {
           </p>
         </div>
 
-        <div class={`overflow-hidden border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 ${headerCollapsed() ? 'rounded-b-xl rounded-t-none' : 'rounded-xl'}`}>
+        <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
           <Show when={termsExpanded()}>
             <TermsDrawer
               query={query()}
