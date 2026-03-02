@@ -659,6 +659,28 @@ export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Bimodal toggle: include:extras (Spec 057)
+// ---------------------------------------------------------------------------
+
+const INCLUDE_FIELDS = ['include']
+
+export function toggleIncludeExtras(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  const node = breakdown
+    ? findFieldNode(breakdown, INCLUDE_FIELDS, ':', false, v => v === 'extras')
+    : null
+  if (node) return removeNode(query, node, breakdown!)
+  return appendTerm(query, 'include:extras', breakdown)
+}
+
+export function hasIncludeExtras(breakdown: BreakdownNode | null): boolean {
+  if (!breakdown) return false
+  return findFieldNode(breakdown, INCLUDE_FIELDS, ':', false, v => v === 'extras') !== null
+}
+
+// ---------------------------------------------------------------------------
 // View mode term (Spec 058)
 // ---------------------------------------------------------------------------
 

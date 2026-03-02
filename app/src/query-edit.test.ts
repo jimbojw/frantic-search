@@ -19,6 +19,8 @@ import {
   parseBreakdown,
   toggleUniquePrints,
   hasUniquePrints,
+  toggleIncludeExtras,
+  hasIncludeExtras,
   appendTerm,
   prependTerm,
   setViewTerm,
@@ -1276,6 +1278,71 @@ describe('hasUniquePrints', () => {
 
   it('returns true when unique:prints is among other terms', () => {
     expect(hasUniquePrints(buildBreakdown('r:mythic unique:prints'))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toggleIncludeExtras — bimodal toggle (Spec 057)
+// ---------------------------------------------------------------------------
+
+describe('toggleIncludeExtras', () => {
+  it('appends include:extras to empty query', () => {
+    expect(toggleIncludeExtras('', null)).toBe('include:extras')
+  })
+
+  it('removes include:extras when present', () => {
+    const q = 'include:extras'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('round-trips: absent → present → absent', () => {
+    let q = ''
+    q = toggleIncludeExtras(q, parseBreakdown(q))
+    expect(q).toBe('include:extras')
+    q = toggleIncludeExtras(q, parseBreakdown(q))
+    expect(q).toBe('')
+  })
+
+  it('preserves surrounding terms when appending', () => {
+    const q = 'is:gamechanger'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('is:gamechanger include:extras')
+  })
+
+  it('preserves surrounding terms when removing', () => {
+    const q = 'is:gamechanger include:extras'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('is:gamechanger')
+  })
+
+  it('preserves surrounding terms on both sides when removing', () => {
+    const q = 'r:mythic include:extras unique:prints'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('r:mythic unique:prints')
+  })
+
+  it('wraps OR-root query in parens when appending', () => {
+    const q = 'r:mythic OR r:rare'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('(r:mythic OR r:rare) include:extras')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// hasIncludeExtras — state detection
+// ---------------------------------------------------------------------------
+
+describe('hasIncludeExtras', () => {
+  it('returns false for null breakdown', () => {
+    expect(hasIncludeExtras(null)).toBe(false)
+  })
+
+  it('returns false when include:extras is absent', () => {
+    expect(hasIncludeExtras(buildBreakdown('is:gamechanger'))).toBe(false)
+  })
+
+  it('returns true when include:extras is present', () => {
+    expect(hasIncludeExtras(buildBreakdown('include:extras'))).toBe(true)
+  })
+
+  it('returns true when include:extras is among other terms', () => {
+    expect(hasIncludeExtras(buildBreakdown('is:gamechanger include:extras'))).toBe(true)
   })
 })
 

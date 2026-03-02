@@ -99,6 +99,10 @@ Re-export `NON_TOURNAMENT_MASK` from `eval-printing.ts` so the app workspace can
 - Store `indicesIncludingExtras` and `printingIndicesIncludingExtras` from the result message.
 - Replace "No cards found" with a conditional hint when the filter hid results.
 
+### Terms Drawer chip (implementation follow-up)
+
+The Terms Drawer (`app/src/TermsDrawer.tsx`) exposes an `include:extras` chip on the FORMATS, ROLES, RARITIES, and PRINTINGS tabs. On RARITIES and PRINTINGS it appears alongside `unique:prints` in the modifier section; on FORMATS and ROLES it appears alone. Uses `toggleIncludeExtras` and `hasIncludeExtras` from `query-edit.ts`.
+
 ## Acceptance Criteria
 
 1. A default query (e.g., `t:creature`) excludes cards that are neither legal nor restricted in any format.

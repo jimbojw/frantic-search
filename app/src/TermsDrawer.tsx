@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 
 // ---------------------------------------------------------------------------
@@ -165,10 +165,11 @@ function TermChip(props: {
 }
 
 // ---------------------------------------------------------------------------
-// Bimodal chip: unique:prints
+// Bimodal chips: unique:prints, include:extras
 // ---------------------------------------------------------------------------
 
 const UNIQUE_PRINTS_TABS: ReadonlySet<TabId> = new Set(['rarities', 'printings'])
+const MODIFIER_TABS: ReadonlySet<TabId> = new Set(['formats', 'roles', 'rarities', 'printings'])
 
 function UniquePrintsChip(props: {
   active: boolean
@@ -190,6 +191,37 @@ function UniquePrintsChip(props: {
         'unique:prints'
       ) : (
         <For each={buildSpans('unique:prints')}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      )}
+    </button>
+  )
+}
+
+function IncludeExtrasChip(props: {
+  active: boolean
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(toggleIncludeExtras(props.query, props.breakdown))}
+      class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
+        props.active
+          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
+          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+      }`}
+    >
+      {props.active ? (
+        'include:extras'
+      ) : (
+        <For each={buildSpans('include:extras')}>
           {(span) =>
             span.role
               ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
@@ -289,10 +321,18 @@ export default function TermsDrawer(props: {
               )}
             </For>
           </div>
-          <Show when={UNIQUE_PRINTS_TABS.has(activeTab())}>
-            <div class="flex items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
-              <UniquePrintsChip
-                active={hasUniquePrints(bd())}
+          <Show when={MODIFIER_TABS.has(activeTab())}>
+            <div class="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
+              <Show when={UNIQUE_PRINTS_TABS.has(activeTab())}>
+                <UniquePrintsChip
+                  active={hasUniquePrints(bd())}
+                  query={props.query}
+                  breakdown={bd()}
+                  onSetQuery={props.onSetQuery}
+                />
+              </Show>
+              <IncludeExtrasChip
+                active={hasIncludeExtras(bd())}
                 query={props.query}
                 breakdown={bd()}
                 onSetQuery={props.onSetQuery}
