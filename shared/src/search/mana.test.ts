@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { parseManaSymbols, manaContains, computeCmc } from "./mana";
+import { parseManaSymbols, manaContains, manaEquals, computeCmc } from "./mana";
 
 describe("parseManaSymbols", () => {
   test("empty string produces empty map", () => {
@@ -124,6 +124,26 @@ describe("manaContains", () => {
   test("hybrid/phyrexian key matches only itself", () => {
     expect(manaContains({ generic: 1, "b/p": 2 }, { "b/p": 1 })).toBe(true);
     expect(manaContains({ generic: 1, "b/p": 2 }, { "b/p": 3 })).toBe(false);
+  });
+});
+
+describe("manaEquals", () => {
+  test("identical maps return true", () => {
+    expect(manaEquals({ generic: 5, u: 2 }, { generic: 5, u: 2 })).toBe(true);
+    expect(manaEquals({}, {})).toBe(true);
+  });
+
+  test("different values return false", () => {
+    expect(manaEquals({ generic: 5, u: 2 }, { generic: 6, u: 2 })).toBe(false);
+    expect(manaEquals({ generic: 5, u: 2 }, { generic: 5, u: 3 })).toBe(false);
+  });
+
+  test("extra key in card returns false", () => {
+    expect(manaEquals({ generic: 5, u: 2, r: 1 }, { generic: 5, u: 2 })).toBe(false);
+  });
+
+  test("extra key in query returns false", () => {
+    expect(manaEquals({ generic: 5, u: 2 }, { generic: 5, u: 2, r: 1 })).toBe(false);
   });
 });
 

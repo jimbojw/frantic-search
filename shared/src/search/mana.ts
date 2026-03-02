@@ -60,6 +60,20 @@ export function manaContains(
 }
 
 /**
+ * Returns true if `card` and `query` have identical symbol maps (same keys, same values).
+ */
+export function manaEquals(
+  card: Record<string, number>,
+  query: Record<string, number>,
+): boolean {
+  const allKeys = new Set([...Object.keys(card), ...Object.keys(query)]);
+  for (const key of allKeys) {
+    if ((card[key] ?? 0) !== (query[key] ?? 0)) return false;
+  }
+  return true;
+}
+
+/**
  * Compute the converted mana cost (mana value) from a parsed symbol map.
  * X contributes 0. Numeric hybrids like {2/W} contribute the numeric part.
  */

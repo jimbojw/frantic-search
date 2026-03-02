@@ -277,6 +277,22 @@ describe("evaluate", () => {
     expect(matchCount("m:{b/p}")).toBe(1);
   });
 
+  test("mana= exact match vs mana: superset", () => {
+    expect(matchCount("mana=1")).toBe(1);   // only Sol Ring {1}
+    expect(matchCount("mana:1")).toBe(5);    // any with generic>=1
+    expect(matchCount("mana=uu")).toBe(1);   // only Counterspell {U}{U}
+    expect(matchCount("mana:uu")).toBe(1);   // same in this pool
+  });
+
+  test("mana> strict superset excludes exact", () => {
+    expect(matchCount("mana>=uu")).toBe(1);  // Counterspell
+    expect(matchCount("mana>uu")).toBe(0);   // no card has more than 2U
+  });
+
+  test("mana<= subset: card has at most query symbols", () => {
+    expect(matchCount("mana<=uu")).toBe(2);  // Sol Ring {}, Counterspell {U}{U}
+  });
+
   test("exact name with !", () => {
     expect(matchCount('!"Lightning Bolt"')).toBe(1);
     expect(matchCount("!bolt")).toBe(0);

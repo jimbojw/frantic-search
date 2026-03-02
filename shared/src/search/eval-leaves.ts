@@ -5,7 +5,7 @@ import {
   COLOR_FROM_LETTER, COLOR_NAMES, COLOR_COLORLESS, COLOR_MULTICOLOR, COLOR_IMPOSSIBLE,
   FORMAT_NAMES,
 } from "../bits";
-import { parseManaSymbols, manaContains } from "./mana";
+import { parseManaSymbols, manaContains, manaEquals } from "./mana";
 import { parseStatValue } from "./stats";
 import { evalIsKeyword } from "./eval-is";
 
@@ -205,7 +205,30 @@ export function evalLeafField(
     case "mana": {
       const querySymbols = parseManaSymbols(valLower);
       for (let i = 0; i < n; i++) {
-        if (manaContains(index.manaSymbols[i], querySymbols)) buf[cf[i]] = 1;
+        const cardSymbols = index.manaSymbols[i];
+        let match = false;
+        switch (op) {
+          case ":":
+          case ">=":
+            match = manaContains(cardSymbols, querySymbols);
+            break;
+          case "=":
+            match = manaEquals(cardSymbols, querySymbols);
+            break;
+          case ">":
+            match = manaContains(cardSymbols, querySymbols) && !manaEquals(cardSymbols, querySymbols);
+            break;
+          case "<=":
+            match = manaContains(querySymbols, cardSymbols);
+            break;
+          case "<":
+            match = manaContains(querySymbols, cardSymbols) && !manaEquals(cardSymbols, querySymbols);
+            break;
+          case "!=":
+            match = !manaEquals(cardSymbols, querySymbols);
+            break;
+        }
+        if (match) buf[cf[i]] = 1;
       }
       break;
     }

@@ -14,3 +14,16 @@
     contains:
       - "Emrakul, the Aeons Torn"
     count_min: 10
+
+- name: "Mana exact match 5UU (Issue #45)"
+  query: "mana=5uu"
+  scryfall_query: "mana=5uu"
+  assertions:
+    count_min: 90
+    count_max: 105
+
+- name: "Compound mana: subset + strict superset + name"
+  query: "mana<=1w mana>w name:kje"
+  scryfall_query: "mana<=1w mana>w name:kje"
+  assertions:
+    count: 4

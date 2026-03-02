@@ -64,7 +64,7 @@ Walk the input left-to-right:
 - Otherwise, the character (lowercased) is the symbol key; increment by 1.
 - Unclosed `{` at end of input: treat remaining characters as bare.
 
-### Comparison function
+### Comparison functions
 
 ```typescript
 function manaContains(card: Record<string, number>, query: Record<string, number>): boolean;
@@ -72,9 +72,11 @@ function manaContains(card: Record<string, number>, query: Record<string, number
 
 Returns `true` if for every key in `query`, `card[key] >= query[key]`. Keys absent from `card` are treated as 0.
 
-This implements the `:` (and `>=`) operator. Other operators if/when supported:
-- `=`: maps are identical (same keys, same values).
-- Future: `<`, `>`, `<=` on total mana value could use a separate `cmc`/`mv` field rather than symbol maps.
+```typescript
+function manaEquals(card: Record<string, number>, query: Record<string, number>): boolean;
+```
+
+Returns `true` if `card` and `query` have identical symbol maps (same keys, same values).
 
 ## Integration points
 
@@ -84,19 +86,16 @@ Pre-compute `manaSymbols: Record<string, number>[]` (one entry per face row) dur
 
 ### Evaluator
 
-The `"mana"` case in `evalLeafField` changes from:
+The `"mana"` case in `evalLeafField` parses the query value once and switches on `node.operator`:
 
-```typescript
-buf[i] = index.manaCostsLower[i].includes(valLower) ? 1 : 0;
-```
-
-to:
-
-```typescript
-const querySymbols = parseManaSymbols(valLower);
-// ... (querySymbols parsed once, outside the loop)
-buf[i] = manaContains(index.manaSymbols[i], querySymbols) ? 1 : 0;
-```
+| Operator | Logic |
+|----------|-------|
+| `:` or `>=` | Superset: `manaContains(card, query)` — card has at least these symbols |
+| `=` | Exact: `manaEquals(card, query)` — maps identical |
+| `>` | Strict superset: `manaContains(card, query) && !manaEquals(card, query)` |
+| `<=` | Subset: `manaContains(query, card)` — card has at most these symbols |
+| `<` | Strict subset: `manaContains(query, card) && !manaEquals(card, query)` |
+| `!=` | Not equal: `!manaEquals(card, query)` |
 
 ### AST
 
@@ -144,6 +143,17 @@ No changes. The AST `FieldNode.value` remains the raw query string. The evaluato
 | `{ r: 1 }` | `{}` | `true` |
 | `{}` | `{ r: 1 }` | `false` |
 
+### `manaEquals` unit tests
+
+| Card map | Query map | Expected |
+|----------|-----------|----------|
+| `{ generic: 5, u: 2 }` | `{ generic: 5, u: 2 }` | `true` |
+| `{}` | `{}` | `true` |
+| `{ generic: 5, u: 2 }` | `{ generic: 6, u: 2 }` | `false` |
+| `{ generic: 5, u: 2 }` | `{ generic: 5, u: 3 }` | `false` |
+| `{ generic: 5, u: 2, r: 1 }` | `{ generic: 5, u: 2 }` | `false` |
+| `{ generic: 5, u: 2 }` | `{ generic: 5, u: 2, r: 1 }` | `false` |
+
 ### Evaluator integration tests (in `evaluator.test.ts`)
 
 Update existing mana tests and add new ones against the synthetic card pool:
@@ -156,12 +166,16 @@ Update existing mana tests and add new ones against the synthetic card pool:
 - `m:r{r}` — same as `m:rr` (0)
 - `m:{r}r` — same as `m:rr` (0)
 - `m:{b/p}` — should match 1 (Dismember: `{1}{B/P}{B/P}`)
+- `mana=1` vs `mana:1` — exact match returns 1 (Sol Ring only), superset returns 5
+- `mana=uu` exact match
+- `mana>=uu` vs `mana>uu` — strict superset excludes exact
+- `mana<=uu` subset semantics
 
 ## File organization
 
 ```
 shared/src/search/
-├── mana.ts           # parseManaSymbols, manaContains
+├── mana.ts           # parseManaSymbols, manaContains, manaEquals
 ├── mana.test.ts      # unit tests for the above
 ├── evaluator.ts      # updated mana case
 ├── card-index.ts     # pre-computed manaSymbols[]
