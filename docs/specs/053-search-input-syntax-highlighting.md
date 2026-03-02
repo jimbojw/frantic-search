@@ -1,6 +1,6 @@
 # Spec 053: Search Input Syntax Highlighting
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 049 (Expandable Search Input)
 
