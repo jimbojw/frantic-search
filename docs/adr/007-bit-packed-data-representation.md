@@ -8,7 +8,7 @@ Each MTG card has several fields that are small, finite sets:
 
 - **Colors** (W, U, B, R, G) — 5 possible values, often in combination.
 - **Color Identity** — same 5 values.
-- **Rarity** — 4 values (Common, Uncommon, Rare, Mythic).
+- **Rarity** — 5 values (Common, Uncommon, Rare, Special, Mythic).
 - **Power/Toughness** — numeric values plus special tokens (`*`, `X`, `1+*`, etc.).
 - **Types/Supertypes** — a bounded set (Creature, Instant, Sorcery, Legendary, etc.).
 

@@ -119,18 +119,19 @@ export const index = new CardIndex(TEST_DATA);
 // Printing #5  Lightning Bolt (face 1) | CMR  | uncommon | etched  | $2.00 | 2015 | 2020-11-20
 // Printing #6  Lightning Bolt (face 1) | WCD  | rare     | nonfoil | $0.10 | 2015 | 1998-08-12 | GoldBorder
 // Printing #7  Sol Ring       (face 3) | OC21 | uncommon | nonfoil | $0.50 | 2015 | 2021-06-18 | Oversized
+// Printing #8  Lightning Bolt (face 1) | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06
 
 export const TEST_PRINTING_DATA: PrintingColumnarData = {
-  canonical_face_ref: [1, 1, 1, 3, 3, 1, 1, 3],
-  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f", "p-g", "p-h"],
-  collector_numbers: ["261", "261", "113", "280", "280", "187", "64", "280"],
-  set_indices: [0, 0, 1, 2, 2, 3, 4, 5],
-  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Rare, Rarity.Uncommon],
-  printing_flags: [0, 0, 0, 0, 0, 0, PrintingFlag.GoldBorder, PrintingFlag.Oversized],
-  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched, Finish.Nonfoil, Finish.Nonfoil],
-  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
-  price_usd: [100, 300, 50, 75, 500, 200, 10, 50],
-  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618],
+  canonical_face_ref: [1, 1, 1, 3, 3, 1, 1, 3, 1],
+  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f", "p-g", "p-h", "p-i"],
+  collector_numbers: ["261", "261", "113", "280", "280", "187", "64", "280", "1"],
+  set_indices: [0, 0, 1, 2, 2, 3, 4, 5, 6],
+  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Rare, Rarity.Uncommon, Rarity.Special],
+  printing_flags: [0, 0, 0, 0, 0, 0, PrintingFlag.GoldBorder, PrintingFlag.Oversized, 0],
+  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil],
+  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
+  price_usd: [100, 300, 50, 75, 500, 200, 10, 50, 200],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },
@@ -138,6 +139,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     { code: "CMR", name: "Commander Legends", released_at: 20201120 },
     { code: "WCD", name: "World Championship Decks", released_at: 19980812 },
     { code: "OC21", name: "Commander 2021 Oversized", released_at: 20210618 },
+    { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106 },
   ],
 };
 

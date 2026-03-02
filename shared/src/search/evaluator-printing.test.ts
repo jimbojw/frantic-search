@@ -60,6 +60,18 @@ describe("printing-domain leaves", () => {
     expect(cardCount("rarity>=rare")).toBe(1);
   });
 
+  test("rarity:special matches Lightning Bolt (SLD printing)", () => {
+    expect(cardCount("rarity:special")).toBe(1);
+  });
+
+  test("rarity>=rare includes special (special is between rare and mythic)", () => {
+    expect(cardCount("rarity>=rare")).toBe(1);
+  });
+
+  test("rarity<mythic includes special-rarity printings", () => {
+    expect(cardCount("rarity<mythic")).toBe(2);
+  });
+
   test("price>=5 matches Sol Ring (foil at $5.00)", () => {
     expect(cardCount("price>=5")).toBe(1);
   });
@@ -214,8 +226,8 @@ describe("NOT with printing domain", () => {
   test("-set:mh2 lightning printingIndices excludes MH2 rows", () => {
     const { printingIndices } = evaluate("-set:mh2 lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt's non-MH2 printings: A25 nonfoil (row 2), CMR etched (row 5), WCD gold (row 6)
-    expect(Array.from(printingIndices!)).toEqual([2, 5, 6]);
+    // Bolt's non-MH2 printings: A25 (row 2), CMR etched (row 5), WCD (row 6), SLD (row 8)
+    expect(Array.from(printingIndices!)).toEqual([2, 5, 6, 8]);
   });
 });
 
@@ -335,9 +347,9 @@ describe("matchCount domain semantics", () => {
   });
 
   test("NOT of printing: matchCount is printing-row count", () => {
-    // -set:mh2 stays in printing domain: 6 non-MH2 rows (2,3,4,5,6,7).
+    // -set:mh2 stays in printing domain: 7 non-MH2 rows (2,3,4,5,6,7,8).
     const { result } = evaluate("-set:mh2");
-    expect(result.matchCount).toBe(6);
+    expect(result.matchCount).toBe(7);
   });
 });
 
@@ -393,17 +405,17 @@ describe("printing-level format legality", () => {
   test("f:commander with printing data produces printing-domain result", () => {
     const { result } = evaluate("f:commander");
     // All 9 cards are commander-legal, but matchCount is printing-row count
-    // for printing-domain results. Tournament-usable rows: 0-5 (6 rows).
+    // for printing-domain results. Tournament-usable rows: 0,1,2,3,4,5,8 (7 rows).
     // Rows 6 (GoldBorder) and 7 (Oversized) are excluded.
-    expect(result.matchCount).toBe(6);
+    expect(result.matchCount).toBe(7);
   });
 
   test("f:commander excludes gold-bordered printings", () => {
     const { printingIndices } = evaluate("f:commander unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt has 5 printings: rows 0,1,2,5 (normal) + row 6 (GoldBorder).
+    // Bolt has 6 printings: rows 0,1,2,5,8 (normal) + row 6 (GoldBorder).
     // f:commander should exclude row 6.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5]);
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8]);
   });
 
   test("f:commander excludes oversized printings", () => {
@@ -428,8 +440,8 @@ describe("printing-level format legality", () => {
   test("f:modern with printing data — Bolt has modern-legal non-gold printings", () => {
     const { printingIndices } = evaluate("f:modern unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt is modern-legal. Normal printings: rows 0,1,2,5. Row 6 (gold) excluded.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5]);
+    // Bolt is modern-legal. Normal printings: rows 0,1,2,5,8. Row 6 (gold) excluded.
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8]);
   });
 
   test("f:pioneer filters at card level — Bolt is not pioneer-legal", () => {
@@ -591,19 +603,19 @@ describe("unique:prints", () => {
   test("unique:prints with face-only query expands all printings", () => {
     const output = evaluate("t:instant unique:prints");
     // t:instant matches 4 cards (Bolt, Counterspell, Azorius Charm, Dismember).
-    // Only Bolt has printings (rows 0,1,2,5,6). Others have none.
+    // Only Bolt has printings (rows 0,1,2,5,6,8). Others have none.
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(4);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8]);
   });
 
   test("unique:prints alone expands all printings of all cards", () => {
     const output = evaluate("unique:prints");
-    // All 9 cards match. Printings: rows 0-7 (Bolt and Sol Ring).
+    // All 9 cards match. Printings: Bolt (0,1,2,5,6,8) + Sol Ring (3,4,7).
     expect(output.indices.length).toBe(9);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 3, 4, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 3, 4, 7]);
   });
 
   test("unique:prints with printing conditions returns only matching printings", () => {
@@ -631,15 +643,15 @@ describe("unique:prints", () => {
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(2); // Bolt + Sol Ring
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7, 8]);
   });
 
   test("-is:foil unique:prints returns non-foil printings", () => {
-    // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7}.
+    // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7,8}.
     const output = evaluate("-is:foil unique:prints");
     expect(output.uniquePrints).toBe(true);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7, 8]);
   });
 
   test("unique:prints is not treated as a filter (does not affect card count)", () => {

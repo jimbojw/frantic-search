@@ -76,6 +76,7 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
   ],
   rarities: [
     rarityChip('mythic'),
+    rarityChip('special'),
     rarityChip('rare'),
     rarityChip('uncommon'),
     rarityChip('common'),

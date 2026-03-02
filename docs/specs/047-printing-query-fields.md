@@ -35,13 +35,13 @@ The value is matched against the `code` field of `set_lookup[set_indices[i]]`. E
 | `:`, `=` | Printing has this exact rarity |
 | `>`, `>=`, `<`, `<=` | Ordinal rarity comparison |
 
-Rarity values: `common`, `uncommon`, `rare`, `mythic` (plus abbreviations `c`, `u`, `r`, `m`).
+Rarity values: `common`, `uncommon`, `rare`, `special`, `mythic` (plus abbreviations `c`, `u`, `r`, `s`, `m`).
 
-Ordinal ordering for comparison operators: common(0) < uncommon(1) < rare(2) < mythic(3).
+Ordinal ordering for comparison operators: common(0) < uncommon(1) < rare(2) < special(3) < mythic(4).
 
-Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8`). For `:` and `=`, test `rarity[i] & targetBit`. For comparisons like `r>=rare`, build a mask of all qualifying rarities (`rare | mythic = 0b1100`) and test `rarity[i] & mask`.
+Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8, special=16`). For `:` and `=`, test `rarity[i] & targetBit`. For comparisons like `r>=rare`, build a mask of all qualifying rarities (`rare | special | mythic = 0b11100`) and test `rarity[i] & mask`.
 
-Examples: `r:mythic`, `rarity>=rare`, `r:c`
+Examples: `r:mythic`, `rarity>=rare`, `r:special`, `r:c`
 
 ### `is:foil` / `is:etched` — Finish
 
@@ -141,6 +141,7 @@ export const Rarity = {
   Uncommon: 1 << 1,
   Rare: 1 << 2,
   Mythic: 1 << 3,
+  Special: 1 << 4,
 } as const;
 
 export const RARITY_NAMES: Record<string, number> = {
@@ -148,13 +149,15 @@ export const RARITY_NAMES: Record<string, number> = {
   uncommon: Rarity.Uncommon, u: Rarity.Uncommon,
   rare: Rarity.Rare, r: Rarity.Rare,
   mythic: Rarity.Mythic, m: Rarity.Mythic,
+  special: Rarity.Special, s: Rarity.Special,
 };
 
 export const RARITY_ORDER: Record<number, number> = {
   [Rarity.Common]: 0,
   [Rarity.Uncommon]: 1,
   [Rarity.Rare]: 2,
-  [Rarity.Mythic]: 3,
+  [Rarity.Special]: 3,
+  [Rarity.Mythic]: 4,
 };
 
 export const Finish = {
