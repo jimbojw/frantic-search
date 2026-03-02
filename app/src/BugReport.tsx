@@ -62,11 +62,16 @@ function buildReportBody(
   resultCount: number,
   breakdown: BreakdownNode | null,
   scryfall: ScryfallStatus,
+  printingCount?: number,
 ): string {
+  const actualText =
+    printingCount !== undefined
+      ? `${resultCount.toLocaleString()} cards (${printingCount.toLocaleString()} printings)`
+      : `${resultCount.toLocaleString()} results`
   const sections = [
     `## Query\n\n\`${query}\``,
     `## Expected\n\n${expected || '(not provided)'}`,
-    `## Actual\n\n${resultCount.toLocaleString()} results`,
+    `## Actual\n\n${actualText}`,
   ]
 
   if (breakdown) {
@@ -117,6 +122,7 @@ export default function BugReport(props: {
   query: string
   breakdown: BreakdownNode | null
   resultCount: number
+  printingCount?: number
 }) {
   const [expected, setExpected] = createSignal('')
   const [scryfall, setScryfall] = createSignal<ScryfallStatus>({ state: 'idle' })
@@ -129,6 +135,7 @@ export default function BugReport(props: {
       props.resultCount,
       props.breakdown,
       scryfall(),
+      props.printingCount,
     )
   }
 
@@ -191,7 +198,11 @@ export default function BugReport(props: {
 
       <section class="mb-6">
         <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Result count</h2>
-        <p class="text-sm text-gray-700 dark:text-gray-300">{props.resultCount.toLocaleString()} results</p>
+        <p class="text-sm text-gray-700 dark:text-gray-300">
+          {props.printingCount !== undefined
+            ? `${props.resultCount.toLocaleString()} cards (${props.printingCount.toLocaleString()} printings)`
+            : `${props.resultCount.toLocaleString()} results`}
+        </p>
       </section>
 
       {/* User input */}

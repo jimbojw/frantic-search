@@ -545,7 +545,16 @@ function App() {
         })()}
       </Show>
       <Show when={view() === 'report'}>
-        <BugReport query={query()} breakdown={breakdown()} resultCount={totalCards()} />
+        <BugReport
+          query={query()}
+          breakdown={breakdown()}
+          resultCount={totalCards()}
+          printingCount={
+            hasPrintingConditions() || uniquePrints()
+              ? totalPrintingItems()
+              : undefined
+          }
+        />
       </Show>
       <Show when={view() === 'search'}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>

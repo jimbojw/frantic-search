@@ -63,7 +63,7 @@ The breakdown tree, rendered in the same format as the `QueryBreakdown` componen
 
 #### Result Count
 
-"0 results" or "N results" — confirms the outcome.
+"0 results" or "N results" — confirms the outcome. When the query contains printing-level terms (e.g., `set:`, `r:`, `is:foil`) or `unique:prints`, the report additionally shows printing count: "N cards (M printings)".
 
 ### User Input
 
@@ -138,7 +138,7 @@ The query is truncated to ~80 characters if long. The user can edit the title on
 
 ## Actual
 
-<N> results
+<N> results — or, when the query has printing-level semantics, "N cards (M printings)".
 
 ## Breakdown
 
