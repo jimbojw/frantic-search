@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
-import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES } from "../bits";
+import type { CardIndex } from "./card-index";
+import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, PrintingFlag } from "../bits";
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "price", "collectornumber", "frame", "year", "date",
+  "legal", "banned", "restricted",
 ]);
+
+export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
+  "legal", "banned", "restricted",
+]);
+
+export const NON_TOURNAMENT_MASK = PrintingFlag.GoldBorder | PrintingFlag.Oversized;
 
 export function isPrintingField(canonical: string): boolean {
   return PRINTING_FIELDS.has(canonical);
@@ -83,6 +91,7 @@ export function evalPrintingField(
   val: string,
   pIdx: PrintingIndex,
   buf: Uint8Array,
+  cardIndex?: CardIndex,
 ): string | null {
   const n = pIdx.printingCount;
   const valLower = val.toLowerCase();
@@ -173,6 +182,22 @@ export function evalPrintingField(
           case "<=": match = d <= queryDate; break;
         }
         if (match) buf[i] = 1;
+      }
+      break;
+    }
+    case "legal":
+    case "banned":
+    case "restricted": {
+      if (!cardIndex) return `card index unavailable for legality check`;
+      const formatBit = FORMAT_NAMES[valLower];
+      if (formatBit === undefined) return `unknown format "${val}"`;
+      const col = canonical === "legal" ? cardIndex.legalitiesLegal
+        : canonical === "banned" ? cardIndex.legalitiesBanned
+        : cardIndex.legalitiesRestricted;
+      const cfRef = pIdx.canonicalFaceRef;
+      const flags = pIdx.printingFlags;
+      for (let i = 0; i < n; i++) {
+        if ((col[cfRef[i]] & formatBit) && !(flags[i] & NON_TOURNAMENT_MASK)) buf[i] = 1;
       }
       break;
     }

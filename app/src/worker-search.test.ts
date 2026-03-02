@@ -7,7 +7,7 @@ const cache = new NodeCache(index, printingIndex)
 const sessionSalt = 12345
 
 describe('runSearch pinned lip counts (issue #52)', () => {
-  it('pinned-only face query returns pinnedIndicesCount and forwards hasPrintingConditions/uniquePrints', () => {
+  it('pinned-only format query returns pinnedIndicesCount with printing-level filtering', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: '', pinnedQuery: 'f:commander' },
       cache,
@@ -16,9 +16,11 @@ describe('runSearch pinned lip counts (issue #52)', () => {
       sessionSalt,
     })
     expect(result.pinnedBreakdown).toBeDefined()
-    expect(result.pinnedIndicesCount).toBe(9) // all 9 cards in fixture are commander-legal
-    expect(result.pinnedPrintingCount).toBeUndefined() // face-only query, no printing count
-    expect(result.hasPrintingConditions).toBe(false)
+    // f:commander is now a printing-domain field: only cards with tournament-usable
+    // printings match. Only Bolt and Sol Ring have printings in the fixture.
+    expect(result.pinnedIndicesCount).toBe(2)
+    expect(result.pinnedPrintingCount).toBe(6) // 6 tournament-usable printing rows
+    expect(result.hasPrintingConditions).toBe(true)
     expect(result.uniquePrints).toBe(false)
   })
 
@@ -47,7 +49,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     })
     expect(result.pinnedBreakdown).toBeDefined()
     expect(result.pinnedIndicesCount).toBe(4) // Bolt, Counterspell, Azorius Charm, Dismember
-    expect(result.pinnedPrintingCount).toBe(4) // Bolt has 4 printings in fixture (0,1,2,5), others have none
+    expect(result.pinnedPrintingCount).toBe(5) // Bolt has 5 printings in fixture (0,1,2,5,6), others have none
     expect(result.uniquePrints).toBe(true)
   })
 
@@ -66,7 +68,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.printingIndices?.length).toBe(2) // intersection of printings
   })
 
-  it('both non-empty face-only pinned returns pinnedIndicesCount, no pinnedPrintingCount', () => {
+  it('both non-empty pinned format query filters by printing legality', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:creature', pinnedQuery: 'f:commander' },
       cache,
@@ -75,8 +77,10 @@ describe('runSearch pinned lip counts (issue #52)', () => {
       sessionSalt,
     })
     expect(result.pinnedBreakdown).toBeDefined()
-    expect(result.pinnedIndicesCount).toBe(9)
-    expect(result.pinnedPrintingCount).toBeUndefined()
-    expect(result.indices.length).toBe(4) // commander-legal creatures
+    // f:commander is printing-domain: only Bolt and Sol Ring have tournament-usable printings.
+    expect(result.pinnedIndicesCount).toBe(2)
+    expect(result.pinnedPrintingCount).toBe(6) // 6 tournament-usable printing rows
+    // Intersection: creatures ∩ cards-with-commander-printings = 0 (Bolt/Sol Ring aren't creatures)
+    expect(result.indices.length).toBe(0)
   })
 })

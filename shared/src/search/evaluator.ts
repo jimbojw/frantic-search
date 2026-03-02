@@ -7,7 +7,7 @@ import {
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
-import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting } from "./eval-printing";
+import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 
 export { FIELD_ALIASES } from "./eval-leaves";
@@ -86,9 +86,11 @@ export class NodeCache {
 
   setPrintingIndex(pIdx: PrintingIndex): void {
     this._printingIndex = pIdx;
-    // Invalidate any cached printing-domain results since the data changed.
+    // Invalidate all cached results: printing-domain nodes need new data,
+    // and face-fallback fields (legal/banned/restricted) must re-evaluate
+    // in the printing domain now that printing data is available.
     for (const [, interned] of this.nodes) {
-      if (interned.computed?.domain === "printing") {
+      if (interned.computed) {
         interned.computed = undefined;
       }
     }
@@ -184,7 +186,16 @@ export class NodeCache {
         if (canonical === "is") {
           return PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
         }
-        return canonical !== undefined && isPrintingField(canonical);
+        if (canonical !== undefined && isPrintingField(canonical)) {
+          // Face-fallback fields only count as printing leaves when
+          // printing data is actually available; otherwise they evaluate
+          // in the face domain and should not trigger hasPrintingConditions.
+          if (FACE_FALLBACK_PRINTING_FIELDS.has(canonical)) {
+            return this._printingIndex !== null;
+          }
+          return true;
+        }
+        return false;
       }
       case "NOT": return this._hasPrintingLeaves(ast.child);
       case "AND": case "OR": return ast.children.some(c => this._hasPrintingLeaves(c));
@@ -335,7 +346,7 @@ export class NodeCache {
               if (status === "unknown") error = `unknown keyword "${ast.value}"`;
             }
           } else if (canonical && ast.value !== "") {
-            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf);
+            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index);
           }
 
           const ms = performance.now() - t0;
@@ -349,13 +360,18 @@ export class NodeCache {
         }
 
         if (isPrintingDomain && !this._printingIndex) {
-          // Printing data not loaded yet — return error-like result
-          interned.computed = {
-            buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
-            error: `printing data not loaded`,
-          };
-          timings.set(interned.key, { cached: false, evalMs: 0 });
-          break;
+          // Face-fallback fields (legal/banned/restricted) fall through to
+          // face-domain evaluation when printing data is not yet loaded.
+          if (canonical && FACE_FALLBACK_PRINTING_FIELDS.has(canonical)) {
+            // Fall through to face-domain evaluation below.
+          } else {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: `printing data not loaded`,
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
         }
 
         // Face-domain evaluation (existing logic)

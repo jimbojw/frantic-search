@@ -38,6 +38,7 @@ interface DefaultCard {
   promo?: boolean;
   digital?: boolean;
   highres_image?: boolean;
+  oversized?: boolean;
   border_color?: string;
   frame?: string;
   frame_effects?: string[];
@@ -70,6 +71,10 @@ function encodeFrame(frame: string | undefined): number {
   return FRAME_FROM_STRING[frame ?? ""] ?? 0;
 }
 
+// Sets with non-standard card backs that are not tournament-legal.
+// 30th Anniversary Edition has black front borders but a gold card back.
+const NON_TOURNAMENT_BACK_SETS = new Set(["30a"]);
+
 function encodePrintingFlags(card: DefaultCard): number {
   let flags = 0;
   if (card.full_art) flags |= PrintingFlag.FullArt;
@@ -80,6 +85,10 @@ function encodePrintingFlags(card: DefaultCard): number {
   if (card.highres_image) flags |= PrintingFlag.HighresImage;
   if (card.border_color === "borderless") flags |= PrintingFlag.Borderless;
   if (card.frame_effects?.includes("extendedart")) flags |= PrintingFlag.ExtendedArt;
+  if (card.border_color === "gold" || NON_TOURNAMENT_BACK_SETS.has(card.set ?? "")) {
+    flags |= PrintingFlag.GoldBorder;
+  }
+  if (card.oversized) flags |= PrintingFlag.Oversized;
   return flags;
 }
 

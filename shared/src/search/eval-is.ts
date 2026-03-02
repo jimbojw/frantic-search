@@ -227,7 +227,7 @@ function hasPhyrexianSymbol(text: string): boolean {
 export const PRINTING_IS_KEYWORDS = new Set([
   "foil", "nonfoil", "etched",
   "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
-  "borderless", "extended",
+  "borderless", "extended", "oversized",
 ]);
 
 export const UNSUPPORTED_IS_KEYWORDS = new Set([
@@ -426,6 +426,9 @@ export function evalPrintingIsKeyword(
       break;
     case "extended":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.ExtendedArt) buf[i] = 1;
+      break;
+    case "oversized":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Oversized) buf[i] = 1;
       break;
     default:
       return "unknown";
