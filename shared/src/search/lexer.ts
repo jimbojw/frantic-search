@@ -15,11 +15,15 @@ function isSpecial(ch: string): boolean {
   return (
     ch in SINGLE_CHAR_TOKENS ||
     ch === "=" ||
-    ch === "!" ||
     ch === "<" ||
     ch === ">" ||
     ch === '"'
   );
+}
+
+/** True when we should stop word accumulation (so != can be lexed as NEQ). */
+function isWordBreak(ch: string, nextCh: string): boolean {
+  return isWhitespace(ch) || isSpecial(ch) || (ch === "!" && nextCh === "=");
 }
 
 export function lex(input: string): Token[] {
@@ -110,7 +114,10 @@ export function lex(input: string): Token[] {
     }
 
     const start = pos;
-    while (pos < input.length && !isWhitespace(input[pos]) && !isSpecial(input[pos])) {
+    while (pos < input.length) {
+      const ch = input[pos];
+      const nextCh = pos + 1 < input.length ? input[pos + 1] : "";
+      if (isWordBreak(ch, nextCh)) break;
       pos++;
     }
     if (pos > start) {

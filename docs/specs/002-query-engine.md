@@ -67,7 +67,7 @@ operator  = ":" | "=" | "!=" | "<" | ">" | "<=" | ">="
 
 Precedence, tightest to loosest: parentheses → negation/exact → implicit AND → explicit OR.
 
-Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches. `!` before a word or quoted string is an exact-name match.
+Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches. `!` before a word or quoted string is an exact-name match — but only when the `!` is at **term-start** (preceded by whitespace or start of input). An exclamation point that immediately follows a character from a bare value or field value is treated as part of that value, not as the exact-name prefix. For example, `a!b` lexes as a single bare word `a!b`; `name:a!b` lexes as a field with value `a!b`.
 
 ## Token Types
 
@@ -75,7 +75,7 @@ The lexer produces a flat array of tokens. Each token has a `type` and a `value`
 
 | Token     | Matches                                           | Examples                |
 |-----------|---------------------------------------------------|-------------------------|
-| `WORD`    | Contiguous non-whitespace, non-special characters  | `lightning`, `c`, `wu`  |
+| `WORD`    | Contiguous non-whitespace, non-special characters. `!` is **not** special when it immediately follows a word character — it is consumed as part of the word. | `lightning`, `c`, `wu`, `a!b` |
 | `QUOTED`  | Content between matching `"` or `'` (stripped)     | `"enters the"`, `'can"t'` |
 | `REGEX`   | Content between `/` delimiters (`\/` escapes `/`)  | `/^{T}:/`               |
 | `COLON`   | `:`                                                |                         |
@@ -88,7 +88,7 @@ The lexer produces a flat array of tokens. Each token has a `type` and a `value`
 | `LPAREN`  | `(`                                                |                         |
 | `RPAREN`  | `)`                                                |                         |
 | `DASH`    | `-` when preceding an atom (not inside a word)     |                         |
-| `BANG`    | `!` when not followed by `=` (exact-name prefix)   | `!fire`                 |
+| `BANG`    | `!` when at term-start (preceded by whitespace or start of input) and not followed by `=` (exact-name prefix) | `!fire`                 |
 | `OR`      | The literal keyword `OR` (case-insensitive)        | `OR`, `or`, `Or`        |
 | `EOF`     | End of input                                       |                         |
 
@@ -461,3 +461,14 @@ test("trailing operator", () => {
   Root-level NOP produces zero indices. NOP uses `matchCount: -1` as a
   sentinel; the UI displays `--`. This fixes the bug where `a OR` returned
   the entire card pool because the empty AND right operand matched all cards.
+- 2026-03-02: Mid-value exclamation point (issue #54). Spec updated so that
+  `!` is only special (BANG token) when at term-start (preceded by whitespace
+  or start of input). When `!` immediately follows a word character, it is
+  consumed as part of the WORD. Thus `a!b` lexes as one bare word; `name:a!b`
+  lexes as a field with value `a!b`. Implemented: removed `!` from `isSpecial`
+  for word accumulation; added `isWordBreak` so `!=` still lexes as NEQ.
+- 2026-03-02: Scryfall's undocumented `!`-as-operator. Empirical testing shows
+  Scryfall treats `!` between field and value (e.g., `ci!ur`, `mana!bb`) as a
+  synonym for `=`. This is not in their syntax guide. We do not support it;
+  we follow documented behavior only. See `docs/guides/scryfall-comparison.md`
+  § "Scryfall's Undocumented Behavior".

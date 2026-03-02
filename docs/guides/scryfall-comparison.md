@@ -62,6 +62,15 @@ These are expected differences documented in ADR-013, not bugs:
 - **Specialize variants**: Alchemy's Specialize mechanic creates 5 color-specific forms per base card. Scryfall's bulk data includes them as separate oracle entries, but Scryfall's search hides them. We show them. They are identifiable by `games: ["arena"]`, `digital: true`, and all legalities being `not_legal`.
 - **Playtest/event cards**: Cards from `set_type: "funny"` (Mystery Booster playtest cards, Unknown Event cards, etc.) appear in the bulk data but Scryfall's search excludes them.
 
+## Scryfall's Undocumented Behavior (Not Supported)
+
+The [Scryfall syntax guide](https://scryfall.com/docs/syntax) does not document the following, but empirical testing shows Scryfall accepts it:
+
+- **`!` as operator synonym for `=`**: When `!` appears between certain field names and values (e.g., `ci!ur`, `mana!bb`, others?), Scryfall treats it as an exact-equality operator, identical to `=`. So `ci!ur` returns the same results as `ci=ur` (color identity exactly RU), and `mana!bb` matches `mana=bb`.
+- **`!` as bare word character**: While the fields `ci` and `mana` do interpret `!` as equality, the fields `set` and `name` do not. So the query `set!usg` finds nothing, and `set!s` finds six results.
+
+Due to the apparent lack of a clear principle guiding Scryfall's exclamation point behavior, Frantic Search does **not** attempt to support exclamation point as an equality synonym. In Frantic Search, `ci!ur` parses as a bare word `ci!ur`. Use `ci=ur` or `mana=bb` for exact-equality queries.
+
 ## Inspecting Raw Card Data
 
 To examine a specific card's raw Scryfall data:

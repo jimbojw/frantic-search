@@ -263,6 +263,39 @@ describe("lex", () => {
     ]);
   });
 
+  test("mid-bare-value ! is part of word", () => {
+    expect(lex("a!b")).toMatchObject([
+      { type: "WORD", value: "a!b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("mid-field-value ! is part of word", () => {
+    expect(lex("name:a!b")).toMatchObject([
+      { type: "WORD", value: "name" },
+      { type: "COLON", value: ":" },
+      { type: "WORD", value: "a!b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("! at term-start still BANG", () => {
+    expect(lex("!fire")).toMatchObject([
+      { type: "BANG", value: "!" },
+      { type: "WORD", value: "fire" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
+  test("! after whitespace still BANG", () => {
+    expect(lex("a !b")).toMatchObject([
+      { type: "WORD", value: "a" },
+      { type: "BANG", value: "!" },
+      { type: "WORD", value: "b" },
+      { type: "EOF", value: "" },
+    ]);
+  });
+
   test("hyphen mid-word is part of the word", () => {
     expect(lex("a-b")).toMatchObject([
       { type: "WORD", value: "a-b" },
@@ -418,6 +451,11 @@ describe("lex", () => {
     test("hyphenated word span", () => {
       const tokens = lex("a-b");
       expect(tokens[0]).toEqual({ type: "WORD", value: "a-b", start: 0, end: 3 });
+    });
+
+    test("mid-value exclamation word span", () => {
+      const tokens = lex("a!b");
+      expect(tokens[0]).toEqual({ type: "WORD", value: "a!b", start: 0, end: 3 });
     });
 
     test("invariant: input.slice(start, end) reproduces source text", () => {

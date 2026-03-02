@@ -111,6 +111,14 @@ describe("parse", () => {
     expect(parse("!fire")).toMatchObject(exact("fire"));
   });
 
+  test("bare word with mid !", () => {
+    expect(parse("a!b")).toMatchObject(bare("a!b"));
+  });
+
+  test("field value with mid !", () => {
+    expect(parse("name:a!b")).toMatchObject(field("name", ":", "a!b"));
+  });
+
   test("exact name with ! and quoted string", () => {
     expect(parse('!"Lightning Bolt"')).toMatchObject(exact("Lightning Bolt"));
   });
