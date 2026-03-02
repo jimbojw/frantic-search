@@ -7,7 +7,7 @@
     "cli": "npm run -s run -w cli --",
     "etl": "npm run -s run -w etl --",
     "generate-icons": "./scripts/generate-icons.sh",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present && npm run cli -- compliance"
   },
   "keywords": [],
   "author": "",

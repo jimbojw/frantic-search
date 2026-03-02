@@ -153,7 +153,7 @@ For CI, there are two options:
 1. **Pre-built artifact (recommended).** Cache `data/dist/columns.json` as a CI artifact, refreshed periodically (e.g., weekly or on-demand). This avoids a network dependency and keeps runs fast.
 2. **On-the-fly ETL.** Run the download and process steps before the compliance suite. This guarantees freshness but adds ~30 seconds and a Scryfall network dependency to every CI run.
 
-The compliance suite should **not** be part of the default `npm test` command. It is a separate CI step (or manual step) with its own data prerequisites.
+The compliance suite runs as part of the default `npm test` command (root package.json). It executes after workspace unit tests. It requires `data/dist/columns.json` — run `npm run etl -- download && npm run etl -- process` first if missing.
 
 ## Error Handling
 
@@ -172,7 +172,7 @@ The compliance suite should **not** be part of the default `npm test` command. I
 When you discover a new edge case (via bug report, spec work, or manual comparison):
 
 1. Write a test case in the appropriate suite file.
-2. Run `npm run cli -- compliance` to verify it passes locally.
+2. Run `npm test` (or `npm run cli -- compliance`) to verify it passes locally.
 3. Run `npm run cli -- compliance --verify` to confirm Scryfall agrees (if applicable).
 4. If Scryfall disagrees and we're intentionally diverging, add a `divergence` annotation with a reference to the relevant spec or ADR.
 
@@ -195,3 +195,7 @@ Findings migrate from specs into the compliance suite as test cases. Specs retai
 4. At least one suite file exists with at least 5 test cases covering empirical findings from Specs 032–034 (is-operator keywords, card-level evaluation, numeric stat values).
 5. The runner produces clear, readable output: test name, query, pass/fail, and on failure, which assertion failed and why.
 6. Adding a new test case requires only editing a YAML file — no TypeScript changes needed.
+
+## Implementation Notes
+
+- 2026-03-02: Root `npm test` now runs the compliance suite after workspace tests. The spec previously stated compliance should be a separate step; it is now integrated so `npm test` provides full coverage. Requires `data/dist/columns.json` (ETL output).
