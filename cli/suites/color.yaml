@@ -21,3 +21,8 @@
     contains:
       - "Ornithopter"
     count_min: 200
+
+- name: "Color identity count: ci=2 with land and oracle text"
+  query: 'ci=2 t:land o:"~ enters tapped." o:"When ~ enters, you gain 1 life."'
+  assertions:
+    count: 20

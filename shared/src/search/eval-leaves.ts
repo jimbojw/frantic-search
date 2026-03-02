@@ -107,6 +107,29 @@ export function evalLeafField(
     case "color":
     case "identity": {
       const col = canonical === "color" ? index.colors : index.colorIdentity;
+
+      // Numeric value → color count comparison (Spec 055)
+      if (/^\d+$/.test(val)) {
+        const queryNum = Number(val);
+        if (!Number.isInteger(queryNum) || queryNum < 0) break;
+        if (queryNum > 5) return "color count must be 0–5";
+        for (let i = 0; i < n; i++) {
+          let v = col[i];
+          v = (v & 0x55) + ((v >> 1) & 0x55);
+          v = (v & 0x33) + ((v >> 2) & 0x33);
+          const count = (v + (v >> 4)) & 0x0f;
+          const match = (op === ":" || op === "=") ? count === queryNum
+            : op === "!=" ? count !== queryNum
+            : op === ">" ? count > queryNum
+            : op === "<" ? count < queryNum
+            : op === ">=" ? count >= queryNum
+            : op === "<=" ? count <= queryNum
+            : false;
+          if (match) buf[cf[i]] = 1;
+        }
+        break;
+      }
+
       const queryMask = parseColorValue(val);
 
       if (queryMask === COLOR_IMPOSSIBLE) {

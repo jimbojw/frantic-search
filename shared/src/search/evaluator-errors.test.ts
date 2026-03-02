@@ -100,6 +100,45 @@ describe("colorless+color contradiction", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Color count out of range (Spec 055)
+// ---------------------------------------------------------------------------
+
+describe("color count out of range (Spec 055)", () => {
+  function getResult(query: string) {
+    const cache = new NodeCache(index);
+    return cache.evaluate(parse(query)).result;
+  }
+
+  test("ci:6 produces error", () => {
+    const result = getResult("ci:6");
+    expect(result.error).toBe("color count must be 0–5");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("c:6 produces error (color field)", () => {
+    const result = getResult("c:6");
+    expect(result.error).toBe("color count must be 0–5");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("ci:99 produces error", () => {
+    const result = getResult("ci:99");
+    expect(result.error).toBe("color count must be 0–5");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("error node in AND is skipped — t:creature ci:6 matches same as t:creature", () => {
+    expect(matchCount("t:creature ci:6")).toBe(matchCount("t:creature"));
+  });
+
+  test("NOT of error propagates error — -ci:6", () => {
+    const result = getResult("-ci:6");
+    expect(result.error).toBe("color count must be 0–5");
+    expect(result.matchCount).toBe(-1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Non-destructive error handling (Spec 039)
 // ---------------------------------------------------------------------------
 

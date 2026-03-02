@@ -473,3 +473,9 @@ test("trailing operator", () => {
   synonym for `=`. This is not in their syntax guide. We do not support it;
   we follow documented behavior only. See `docs/guides/scryfall-comparison.md`
   § "Scryfall's Undocumented Behavior".
+- 2026-03-02: Color/identity number queries (issue #43, Spec 055). The
+  `color:`/`identity:` fields now accept numeric values (`ci:2`, `c>=3`,
+  etc.) to filter by the number of colors (popcount of the color bitmask).
+  Numeric detection (`/^\d+$/`) runs before the existing color-name/letter
+  pipeline. The `:` operator means equality for numeric values (matching
+  Scryfall). See Spec 055 for full design and test strategy.

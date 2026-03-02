@@ -517,6 +517,40 @@ describe("evaluate", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Color/identity number queries (Spec 055)
+  // -------------------------------------------------------------------------
+
+  describe("color/identity number queries (Spec 055)", () => {
+    test("ci:2 matches exactly 2-color identity", () => {
+      expect(matchCount("ci:2")).toBe(2); // Azorius Charm, Ayara
+    });
+    test("ci:0 matches colorless", () => { expect(matchCount("ci:0")).toBe(1); });
+    test("ci:1 matches monocolor", () => { expect(matchCount("ci:1")).toBe(6); });
+    test("ci:3 matches nothing in pool", () => { expect(matchCount("ci:3")).toBe(0); });
+    test("ci:5 matches nothing in pool", () => { expect(matchCount("ci:5")).toBe(0); });
+    test("ci>=2 matches 2+ colors", () => { expect(matchCount("ci>=2")).toBe(2); });
+    test("ci>=1 matches non-colorless", () => { expect(matchCount("ci>=1")).toBe(8); });
+    test("ci<=1 matches colorless + monocolor", () => { expect(matchCount("ci<=1")).toBe(7); });
+    test("ci>0 matches non-colorless", () => { expect(matchCount("ci>0")).toBe(8); });
+    test("ci<2 matches colorless + monocolor", () => { expect(matchCount("ci<2")).toBe(7); });
+    test("ci!=1 matches 0 and 2-color", () => { expect(matchCount("ci!=1")).toBe(3); });
+    test("ci=2 same as ci:2", () => { expect(matchCount("ci=2")).toBe(2); });
+    test("c:0 matches colorless face", () => { expect(matchCount("c:0")).toBe(1); });
+    test("c:1 matches monocolor faces", () => { expect(matchCount("c:1")).toBe(7); }); // 6 single-face + Ayara front
+    test("c:2 matches 2-color faces", () => { expect(matchCount("c:2")).toBe(2); });
+    test("-ci:2 matches non-2-color", () => { expect(matchCount("-ci:2")).toBe(7); });
+    test("-ci:0 matches non-colorless", () => { expect(matchCount("-ci:0")).toBe(8); });
+    test("ci:1 t:creature matches monocolor creatures", () => { expect(matchCount("ci:1 t:creature")).toBe(3); });
+    test("ci>=1 t:instant matches non-colorless instants", () => { expect(matchCount("ci>=1 t:instant")).toBe(4); });
+    test("id:2 alias works", () => { expect(matchCount("id:2")).toBe(2); });
+    test("commander:1 alias works", () => { expect(matchCount("commander:1")).toBe(6); });
+    test("cmd:0 alias works", () => { expect(matchCount("cmd:0")).toBe(1); });
+    test("ci:wub still matches letter-sequence (not numeric)", () => {
+      expect(matchCount("ci:wub")).toBeGreaterThan(0);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Combined name search (Spec 018)
   // -------------------------------------------------------------------------
 
