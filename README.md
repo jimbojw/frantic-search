@@ -1,10 +1,10 @@
-[![Frantic Search card art by Mitchell Malloy](https://wsrv.nl/?url=cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg&w=900&h=80&fit=cover&a=focal&fpx=0.5&fpy=0.23)](https://jimbojw.github.io/frantic-search/)
+[![Frantic Search card art by Mitchell Malloy](https://wsrv.nl/?url=cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg&w=900&h=80&fit=cover&a=focal&fpx=0.5&fpy=0.23)](https://franticsearch.gg/)
 
 # Frantic Search
 
 A single-page app (SPA), mobile optimized, for performing instant search across Magic: The Gathering cards. Built with TypeScript, Node.js, and Vite.
 
-**[Try it live →](https://jimbojw.github.io/frantic-search/)**
+**[Try it live →](https://franticsearch.gg/)**
 
 ## Project Structure
 
