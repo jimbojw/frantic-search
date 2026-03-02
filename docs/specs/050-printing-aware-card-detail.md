@@ -67,6 +67,10 @@ Finish and price depend on how many finish variants exist for that `scryfall_id`
 
 The external link updates to use the printing's scryfall_id when available, so it navigates to the specific printing's page on Scryfall.
 
+### All prints button
+
+The All prints button navigates to `!"{name}" unique:prints include:extras view:images`. The `include:extras` modifier bypasses the default playable filter so non-tournament printings (gold-bordered, oversized, etc.) are shown. The `view:images` modifier displays results in Images view for browsing printings as a grid.
+
 ### Fallback
 
 When no printing data is available (oracle-level URL, or printings not yet loaded), the page renders identically to the existing behavior.
