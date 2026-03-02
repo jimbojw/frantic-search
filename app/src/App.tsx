@@ -30,7 +30,8 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
-import { appendTerm, prependTerm, removeNode, parseBreakdown } from './query-edit'
+import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms } from './query-edit'
+import { extractViewMode } from './view-query'
 import { reconstructQuery, HighlightedLabel } from './InlineBreakdown'
 
 declare const __REPO_URL__: string
@@ -54,16 +55,17 @@ function App() {
   const [errorCause, setErrorCause] = createSignal<'stale' | 'network' | 'unknown'>('unknown')
   const [display, setDisplay] = createSignal<DisplayColumns | null>(null)
   const [indices, setIndices] = createSignal<Uint32Array>(new Uint32Array(0))
-  const storedMode = localStorage.getItem('frantic-view-mode')
-  const [viewMode, setViewMode] = createSignal<ViewMode>(
-    storedMode && isViewMode(storedMode) ? storedMode : 'slim'
+  const [pinnedQuery, setPinnedQuery] = createSignal(
+    localStorage.getItem('frantic-pinned-query') ?? ''
   )
-  function changeViewMode(mode: ViewMode) {
-    setViewMode(mode)
-    localStorage.setItem('frantic-view-mode', mode)
-    setVisibleCount(BATCH_SIZES[mode])
-  }
-  const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
+  createEffect(() => {
+    const stored = localStorage.getItem('frantic-view-mode')
+    if (!stored || !isViewMode(stored)) return
+    const pq = pinnedQuery()
+    if (extractViewMode(pq) !== 'slim') return
+    setPinnedQuery(appendTerm(pq, `view:${stored}`, parseBreakdown(pq)))
+    localStorage.removeItem('frantic-view-mode')
+  })
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
   const [histograms, setHistograms] = createSignal<Histograms | null>(null)
   const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
@@ -72,9 +74,6 @@ function App() {
   const [uniquePrints, setUniquePrints] = createSignal(false)
   const [indicesIncludingExtras, setIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [printingIndicesIncludingExtras, setPrintingIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
-  const [pinnedQuery, setPinnedQuery] = createSignal(
-    localStorage.getItem('frantic-pinned-query') ?? ''
-  )
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
@@ -140,6 +139,30 @@ function App() {
     })
   }
 
+  const effectiveQuery = createMemo(() => {
+    const p = pinnedQuery().trim()
+    const q = query().trim()
+    if (!p) return q
+    if (!q) return p
+    return sealQuery(p) + ' ' + sealQuery(q)
+  })
+  const viewMode = createMemo(() => extractViewMode(effectiveQuery()))
+  function changeViewMode(mode: ViewMode) {
+    flushPendingCommit()
+    const bd = parseBreakdown(query())
+    const cleared = clearViewTerms(query(), bd)
+    const p = pinnedQuery().trim()
+    const q = cleared.trim()
+    const effectiveAfter = !p ? q : !q ? p : sealQuery(p) + ' ' + sealQuery(q)
+    if (extractViewMode(effectiveAfter) === mode) {
+      setQuery(cleared)
+    } else {
+      setQuery(appendTerm(cleared, `view:${mode}`, parseBreakdown(cleared)))
+    }
+    setVisibleCount(BATCH_SIZES[mode])
+  }
+  const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
+
   const facesOf = createMemo(() => {
     const d = display()
     return d ? buildFacesOf(d.canonical_face) : new Map<number, number[]>()
@@ -166,6 +189,7 @@ function App() {
   createEffect(() => {
     indices()
     printingIndices()
+    viewMode()
     setVisibleCount(batchSize())
   })
 

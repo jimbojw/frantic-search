@@ -59,6 +59,8 @@ function serializeNode(node: ASTNode, parentType?: string): string {
 
     case "FIELD": {
       if (node.value === "") return "";
+      // Frantic Search–specific display modifier — strip for Scryfall (Spec 058)
+      if (node.field.toLowerCase() === "view") return "";
       const val = isDateField(node.field) ? padDate(node.value) : node.value;
       const quoted = needsQuoting(val) ? `"${val}"` : val;
       return `${node.field}${node.operator}${quoted}`;

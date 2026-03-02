@@ -27,36 +27,7 @@ The ThumbHash ETL pipeline (Spec 017) already generates both art crop and card i
 
 ### View mode signal
 
-Replace:
-
-```typescript
-const [showOracleText, setShowOracleText] = createSignal(false)
-```
-
-With:
-
-```typescript
-type ViewMode = 'slim' | 'detail' | 'images' | 'full'
-
-const [viewMode, setViewMode] = createSignal<ViewMode>(
-  (localStorage.getItem('frantic-view-mode') as ViewMode) || 'slim'
-)
-```
-
-Persist on change:
-
-```typescript
-function cycleViewMode(mode: ViewMode) {
-  setViewMode(mode)
-  localStorage.setItem('frantic-view-mode', mode)
-}
-```
-
-Derive `showOracleText` where still needed:
-
-```typescript
-const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
-```
+**Superseded by Spec 058.** View mode is now derived from the effective query via `extractViewMode(effectiveQuery)`; the toggle updates the live query with a `view:` term. The `showOracleText` derivation remains: `viewMode() === 'detail' || viewMode() === 'full'`.
 
 ### View mode toggle UI
 
@@ -201,7 +172,7 @@ The Images grid uses `grid-cols-2` on small screens, scaling up to 4 columns on 
 
 ### View mode persistence
 
-The `localStorage` key `frantic-view-mode` stores the raw string. Invalid values (e.g., from a future removal of a mode) fall back to `'slim'` via the `|| 'slim'` default.
+**Superseded by Spec 058.** View mode is now persisted as a `view:` query term (derived from the effective query), not in `localStorage`. See Spec 058 for migration and semantics.
 
 ### Batch size on mode switch
 
@@ -211,7 +182,7 @@ When switching view modes, `visibleCount` resets to the new mode's batch size. T
 
 1. The "Oracle text" pill is replaced by a four-segment toggle: Slim, Detail, Images, Full.
 2. The active view mode is visually highlighted (blue) in the toggle.
-3. The selected view mode is persisted to `localStorage` under `frantic-view-mode`.
+3. ~~The selected view mode is persisted to `localStorage` under `frantic-view-mode`.~~ **Superseded by Spec 058:** view mode is now a `view:` query term.
 4. **Slim** renders identically to the current default (art crop thumbnail + name/type/mana cost).
 5. **Detail** renders identically to the current "Oracle text on" mode.
 6. **Images** renders a responsive grid (2–4 columns) of card face images with ThumbHash placeholders.

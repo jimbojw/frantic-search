@@ -659,6 +659,29 @@ export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// View mode term (Spec 058)
+// ---------------------------------------------------------------------------
+
+const VIEW_FIELDS = ['view']
+
+function isViewLabel(label: string): boolean {
+  return isFieldLabel(label, VIEW_FIELDS, [':'])
+}
+
+export function clearViewTerms(query: string, breakdown: BreakdownNode | null): string {
+  return clearFieldTerms(query, breakdown, isViewLabel)
+}
+
+export function setViewTerm(
+  query: string,
+  breakdown: BreakdownNode | null,
+  mode: 'slim' | 'detail' | 'images' | 'full',
+): string {
+  const cleared = clearViewTerms(query, breakdown)
+  return appendTerm(cleared, `view:${mode}`, parseBreakdown(cleared))
+}
+
+// ---------------------------------------------------------------------------
 // Clear field-family filters (generic)
 // ---------------------------------------------------------------------------
 

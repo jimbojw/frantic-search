@@ -745,3 +745,25 @@ describe("include:extras", () => {
     expect(output.includeExtras).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// view: (Spec 058 — display modifier, does not filter)
+// ---------------------------------------------------------------------------
+
+describe("view:", () => {
+  test("view:slim does not filter (matches all)", () => {
+    const output = evaluate("view:slim");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("view:images combined with filter does not affect card count", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant view:images");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
+
+  test("view:invalid does not filter (display modifier, ignored for filtering)", () => {
+    const output = evaluate("t:creature view:invalid");
+    expect(output.indices.length).toBe(4); // t:creature count
+  });
+});

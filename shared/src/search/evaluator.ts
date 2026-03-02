@@ -345,6 +345,16 @@ export class NodeCache {
           break;
         }
 
+        if (ast.field.toLowerCase() === "view") {
+          // Display modifier only — does not filter. Valid or invalid, treat as
+          // match-all so view: terms have no effect on results (Spec 058).
+          const buf = new Uint8Array(n);
+          fillCanonical(buf, this.index.canonicalFace, n);
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
         // Check if this is a printing-domain field or is: keyword

@@ -21,6 +21,8 @@ import {
   hasUniquePrints,
   appendTerm,
   prependTerm,
+  setViewTerm,
+  clearViewTerms,
 } from './query-edit'
 import { reconstructQuery } from './InlineBreakdown'
 
@@ -1338,5 +1340,48 @@ describe('prependTerm', () => {
 
   it('handles whitespace-only query as empty', () => {
     expect(prependTerm('   ', 'f:commander', null)).toBe('f:commander')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// setViewTerm (Spec 058)
+// ---------------------------------------------------------------------------
+
+describe('setViewTerm', () => {
+  it('appends view: term to empty query', () => {
+    expect(setViewTerm('', null, 'images')).toBe('view:images')
+  })
+
+  it('appends view: term when none exists', () => {
+    expect(setViewTerm('t:creature', buildBreakdown('t:creature'), 'detail'))
+      .toBe('t:creature view:detail')
+  })
+
+  it('replaces existing view: term', () => {
+    expect(setViewTerm('view:slim', buildBreakdown('view:slim'), 'images'))
+      .toBe('view:images')
+  })
+
+  it('removes all view: terms and appends new one', () => {
+    expect(setViewTerm('view:slim view:detail', buildBreakdown('view:slim view:detail'), 'full'))
+      .toBe('view:full')
+  })
+
+  it('clears invalid view: and sets valid', () => {
+    expect(setViewTerm('view:invalid t:creature', buildBreakdown('view:invalid t:creature'), 'images'))
+      .toBe('t:creature view:images')
+  })
+})
+
+describe('clearViewTerms', () => {
+  it('removes view: term', () => {
+    expect(clearViewTerms('view:images', buildBreakdown('view:images'))).toBe('')
+  })
+  it('removes view: but preserves other terms', () => {
+    expect(clearViewTerms('t:creature view:full', buildBreakdown('t:creature view:full')))
+      .toBe('t:creature')
+  })
+  it('returns query unchanged when no view: terms', () => {
+    expect(clearViewTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
   })
 })
