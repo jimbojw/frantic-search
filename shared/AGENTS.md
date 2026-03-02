@@ -49,3 +49,4 @@ Tests are `.test.ts` siblings of their source files (e.g., `lexer.test.ts`).
 - **`ColumnarData` is the wire format.** `CardIndex` wraps it with pre-computed fields (lowercased strings, etc.) for evaluation. Don't conflate the two.
 - **`bits.ts` is the single source of truth** for bitmask definitions. Both ETL (encoding) and the query engine (filtering) depend on it. Changing a bit position is a breaking change.
 - **The parser never throws.** Malformed input produces a best-effort AST. See Spec 002 § "Error Recovery" for the rules.
+- **Pre-allocated buffers in the query pipeline.** Use `Uint8Array` bitmasks and fixed-length `Uint32Array`s. Avoid `Set` and dynamic `array.push()` — they add GC pressure and diverge from the evaluator's idiom. Count first, allocate once, then fill. This applies to the evaluator, worker combination logic, and any code that processes query results.

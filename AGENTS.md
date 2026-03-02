@@ -58,6 +58,7 @@ These are the most important ADRs. Read them in full before making changes in th
 - Shared code is imported via workspace resolution: `@frantic-search/shared`.
 - Bitmask constants live in `shared/src/bits.ts` and are the single source of truth for encoding/decoding.
 - SPDX license headers (`// SPDX-License-Identifier: Apache-2.0`) on source files.
+- Query pipeline code uses pre-allocated `Uint8Array`/`Uint32Array` buffers — no `Set`, no `push()`. See `shared/AGENTS.md` § "Key Design Constraints" for details.
 
 ## Data Directory
 
