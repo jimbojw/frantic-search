@@ -1,6 +1,6 @@
 # Spec 010: Sort Directives
 
-**Status:** Draft
+**Status:** Superseded by Spec 059
 
 ## Goal
 
