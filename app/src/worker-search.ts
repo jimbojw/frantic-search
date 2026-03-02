@@ -173,7 +173,9 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   if (!includeExtras) {
     const preFaceCount = deduped.length
-    deduped = deduped.filter(fi => index.legalitiesLegal[fi] !== 0)
+    deduped = deduped.filter(fi =>
+      (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0
+    )
     if (deduped.length < preFaceCount) {
       indicesIncludingExtras = preFaceCount
     }
@@ -185,7 +187,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
         const p = rawPrintingIndices[i]
         if (
           !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
-          index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] !== 0
+          (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+            index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
         ) {
           filtered.push(p)
         }

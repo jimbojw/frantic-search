@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
-import { NodeCache, index, printingIndex, TEST_DATA, TEST_PRINTING_DATA, CardFlag } from '@frantic-search/shared'
+import { NodeCache, index, printingIndex, TEST_DATA, TEST_PRINTING_DATA, CardFlag, Format } from '@frantic-search/shared'
 import { CardIndex } from '@frantic-search/shared'
 import { PrintingIndex } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
@@ -107,8 +107,23 @@ const funnyIndex = new CardIndex(funnyData)
 const funnyPrintingIndex = new PrintingIndex(TEST_PRINTING_DATA)
 const funnyCache = new NodeCache(funnyIndex, funnyPrintingIndex)
 
+// Fixture with a restricted-only card (Balance-like): face 9 has legal=0, restricted=Vintage
+const restrictedOnlyData = {
+  ...TEST_DATA,
+  legalities_legal: [
+    ...TEST_DATA.legalities_legal.slice(0, 9),
+    0, // face 9: not legal anywhere
+  ],
+  legalities_restricted: [
+    ...TEST_DATA.legalities_restricted.slice(0, 9),
+    Format.Vintage, // face 9: restricted in Vintage (playable)
+  ],
+}
+const restrictedOnlyIndex = new CardIndex(restrictedOnlyData)
+const restrictedOnlyCache = new NodeCache(restrictedOnlyIndex, funnyPrintingIndex)
+
 describe('default playable filter (Spec 057)', () => {
-  it('excludes cards not legal in any format by default', () => {
+  it('excludes cards not legal or restricted in any format by default', () => {
     // t:instant matches 4 cards: Bolt, Counterspell, Azorius Charm, Dismember.
     // Dismember has legalities_legal=0, so the playable filter excludes it.
     const result = runSearch({
@@ -119,6 +134,19 @@ describe('default playable filter (Spec 057)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(3)
+  })
+
+  it('includes cards that are restricted-only (e.g. Balance in Vintage) by default', () => {
+    // t:instant matches 4 cards. Face 9 is restricted in Vintage, so playable.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant' },
+      cache: restrictedOnlyCache,
+      index: restrictedOnlyIndex,
+      printingIndex: funnyPrintingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(4)
+    expect(result.indicesIncludingExtras).toBeUndefined()
   })
 
   it('populates indicesIncludingExtras when filter removes results', () => {

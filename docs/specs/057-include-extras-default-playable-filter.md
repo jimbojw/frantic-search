@@ -21,7 +21,7 @@ To include them, Scryfall requires the special term `include:extras`. Frantic Se
 
 A card/printing is _playable_ iff:
 
-1. **Card-level:** The card is legal in at least one format — `legalitiesLegal[face] !== 0`.
+1. **Card-level:** The card is legal or restricted in at least one format — `(legalitiesLegal[face] | legalitiesRestricted[face]) !== 0`.
 2. **Printing-level:** When printing data is available, the printing is tournament-usable — `!(printingFlags[p] & NON_TOURNAMENT_MASK)`.
 
 ## Design
@@ -41,8 +41,8 @@ Applied as a post-evaluation step in `runSearch()`, after pinned+live combinatio
 
 1. Check `includeExtras` from both live and pinned evaluations. If either is `true`, skip the filter entirely.
 2. Record pre-filter counts: `indicesIncludingExtras` (face count) and `printingIndicesIncludingExtras` (printing count, when printing data is relevant).
-3. Filter the `deduped` face array: keep only faces where `legalitiesLegal[face] !== 0`.
-4. Filter `rawPrintingIndices` (when present): keep only printings where `!(printingFlags[p] & NON_TOURNAMENT_MASK)` AND `legalitiesLegal[canonicalFaceRef[p]] !== 0`.
+3. Filter the `deduped` face array: keep only faces where `(legalitiesLegal[face] | legalitiesRestricted[face]) !== 0`.
+4. Filter `rawPrintingIndices` (when present): keep only printings where `!(printingFlags[p] & NON_TOURNAMENT_MASK)` AND `(legalitiesLegal[canonicalFaceRef[p]] | legalitiesRestricted[canonicalFaceRef[p]]) !== 0`.
 5. Histograms and sorting operate on the filtered results.
 
 Pre-filter counts are populated only when `include:extras` is **not** in the query and the filter actually removed something (i.e., the pre-filter count differs from the post-filter count).
@@ -101,7 +101,7 @@ Re-export `NON_TOURNAMENT_MASK` from `eval-printing.ts` so the app workspace can
 
 ## Acceptance Criteria
 
-1. A default query (e.g., `t:creature`) excludes cards that are `not_legal` in every format.
+1. A default query (e.g., `t:creature`) excludes cards that are neither legal nor restricted in any format.
 2. A default query with `unique:prints` excludes non-tournament printings (gold-bordered, oversized, 30A).
 3. `include:extras` in the live query bypasses the playable filter — all matches shown.
 4. `include:extras` in the pinned query bypasses the playable filter for all results.
