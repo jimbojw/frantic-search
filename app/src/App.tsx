@@ -31,7 +31,7 @@ import {
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
 import { appendTerm, prependTerm, removeNode, parseBreakdown } from './query-edit'
-import { reconstructQuery } from './InlineBreakdown'
+import { reconstructQuery, HighlightedLabel } from './InlineBreakdown'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -70,6 +70,8 @@ function App() {
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniquePrints, setUniquePrints] = createSignal(false)
+  const [indicesIncludingExtras, setIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
+  const [printingIndicesIncludingExtras, setPrintingIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [pinnedQuery, setPinnedQuery] = createSignal(
     localStorage.getItem('frantic-pinned-query') ?? ''
   )
@@ -308,6 +310,8 @@ function App() {
           setPrintingIndices(msg.printingIndices)
           setHasPrintingConditions(msg.hasPrintingConditions)
           setUniquePrints(msg.uniquePrints)
+          setIndicesIncludingExtras(msg.indicesIncludingExtras)
+          setPrintingIndicesIncludingExtras(msg.printingIndicesIncludingExtras)
         }
         break
     }
@@ -339,6 +343,8 @@ function App() {
       setPrintingIndices(undefined)
       setHasPrintingConditions(false)
       setUniquePrints(false)
+      setIndicesIncludingExtras(undefined)
+      setPrintingIndicesIncludingExtras(undefined)
     } else if (!q) {
       setIndices(new Uint32Array(0))
       setBreakdown(null)
@@ -346,6 +352,8 @@ function App() {
       setPrintingIndices(undefined)
       setHasPrintingConditions(false)
       setUniquePrints(false)
+      setIndicesIncludingExtras(undefined)
+      setPrintingIndicesIncludingExtras(undefined)
     }
   })
 
@@ -838,9 +846,31 @@ function App() {
                     </p>
                   </Show>
                   <Show when={totalCards() > 0} fallback={
-                    <p class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-                      No cards found
-                    </p>
+                    <div class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
+                      <p>No cards found</p>
+                      <Show when={indicesIncludingExtras()}>
+                        {(extrasCount) => {
+                          const pExtras = printingIndicesIncludingExtras()
+                          const showPrintings = () => pExtras !== undefined && (uniquePrints() || hasPrintingConditions())
+                          return (
+                            <p class="mt-1">
+                              Try again with{' '}
+                              <button
+                                type="button"
+                                onClick={() => setQuery(appendTerm(query(), 'include:extras', parseBreakdown(query())))}
+                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                              >
+                                <HighlightedLabel label="include:extras" />
+                              </button>
+                              {' '}({extrasCount()} {extrasCount() === 1 ? 'card' : 'cards'}
+                              <Show when={showPrintings()}>
+                                , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
+                              </Show>)?
+                            </p>
+                          )
+                        }}
+                      </Show>
+                    </div>
                   }>
                     <Show when={viewMode() === 'images'} fallback={
                       <ul class="divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-800">

@@ -119,4 +119,5 @@ export interface EvalOutput {
   hasPrintingConditions: boolean;
   printingsUnavailable: boolean;
   uniquePrints: boolean;
+  includeExtras: boolean;
 }

@@ -16,7 +16,7 @@ type HighlightRole =
   | 'keyword'
 
 // Fields the evaluator handles directly, outside FIELD_ALIASES
-const EXTRA_KNOWN_FIELDS = new Set(['unique'])
+const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include'])
 
 const OPERATORS = new Set<string>([
   TokenType.COLON,

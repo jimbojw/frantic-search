@@ -64,4 +64,4 @@ export type FromWorker =
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number }

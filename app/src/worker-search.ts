@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, seededSortPrintings, collectBareWords } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 
 function leafLabel(qnr: QueryNodeResult): string {
@@ -135,6 +135,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let rawPrintingIndices = liveEval.printingIndices
   let hasPrintingConditions = liveEval.hasPrintingConditions
   let uniquePrints = liveEval.uniquePrints
+  let includeExtras = liveEval.includeExtras
   let pinnedBreakdown: BreakdownNode | undefined
   let pinnedIndicesCount: number | undefined
   let pinnedPrintingCount: number | undefined
@@ -160,8 +161,40 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
     hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
     uniquePrints = uniquePrints || pinnedEval.uniquePrints
+    includeExtras = includeExtras || pinnedEval.includeExtras
   } else {
     deduped = Array.from(liveEval.indices)
+  }
+
+  // Default playable filter (Spec 057): exclude non-playable cards and
+  // non-tournament printings unless include:extras is in the query.
+  let indicesIncludingExtras: number | undefined
+  let printingIndicesIncludingExtras: number | undefined
+
+  if (!includeExtras) {
+    const preFaceCount = deduped.length
+    deduped = deduped.filter(fi => index.legalitiesLegal[fi] !== 0)
+    if (deduped.length < preFaceCount) {
+      indicesIncludingExtras = preFaceCount
+    }
+
+    if (rawPrintingIndices && printingIndex) {
+      const preLen = rawPrintingIndices.length
+      const filtered: number[] = []
+      for (let i = 0; i < preLen; i++) {
+        const p = rawPrintingIndices[i]
+        if (
+          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+          index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] !== 0
+        ) {
+          filtered.push(p)
+        }
+      }
+      if (filtered.length < preLen) {
+        printingIndicesIncludingExtras = preLen
+        rawPrintingIndices = new Uint32Array(filtered)
+      }
+    }
   }
 
   const combinedQuery = hasPinned ? `${msg.pinnedQuery} ${msg.query}` : msg.query
@@ -187,6 +220,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
+    ...(indicesIncludingExtras !== undefined && { indicesIncludingExtras }),
+    ...(printingIndicesIncludingExtras !== undefined && { printingIndicesIncludingExtras }),
   }
   return result
 }

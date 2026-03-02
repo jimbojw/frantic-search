@@ -669,3 +669,67 @@ describe("unique:prints", () => {
     expect(output.result.matchCount).toBe(9);
   });
 });
+
+// ---------------------------------------------------------------------------
+// include:extras
+// ---------------------------------------------------------------------------
+
+describe("include:extras", () => {
+  test("include:extras flag is set on output", () => {
+    const output = evaluate("include:extras");
+    expect(output.includeExtras).toBe(true);
+  });
+
+  test("include:extras matches all cards (does not reduce results)", () => {
+    const output = evaluate("include:extras");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("include:extras combined with filter does not affect card count", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant include:extras");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
+
+  test("includeExtras is false for normal queries", () => {
+    const output = evaluate("t:creature");
+    expect(output.includeExtras).toBe(false);
+  });
+
+  test("includeExtras is false for unique:prints", () => {
+    const output = evaluate("unique:prints");
+    expect(output.includeExtras).toBe(false);
+  });
+
+  test("include:extras with unique:prints sets both flags", () => {
+    const output = evaluate("include:extras unique:prints");
+    expect(output.includeExtras).toBe(true);
+    expect(output.uniquePrints).toBe(true);
+  });
+
+  test("include:extras breakdown shows modifier, not filter", () => {
+    const output = evaluate("include:extras");
+    expect(output.result.matchCount).toBe(9);
+  });
+
+  test("include:foo produces an error", () => {
+    const output = evaluate("include:foo");
+    expect(output.result.error).toBeDefined();
+    expect(output.result.error).toContain("foo");
+  });
+
+  test("hasPrintingConditions is false for pure include:extras", () => {
+    const output = evaluate("include:extras");
+    expect(output.hasPrintingConditions).toBe(false);
+  });
+
+  test("include:extras inside NOT still sets the flag", () => {
+    const output = evaluate("-include:extras t:creature");
+    expect(output.includeExtras).toBe(true);
+  });
+
+  test("include:extras inside OR still sets the flag", () => {
+    const output = evaluate("t:creature OR include:extras");
+    expect(output.includeExtras).toBe(true);
+  });
+});

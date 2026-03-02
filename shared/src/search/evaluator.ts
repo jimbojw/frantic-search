@@ -113,11 +113,12 @@ export class NodeCache {
     const result = this.buildResult(root, timings);
 
     const uniquePrints = this._hasUniquePrints(ast);
+    const includeExtras = this._hasIncludeExtras(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
 
     if (ast.type === "NOP" || root.computed!.error) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniquePrints };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniquePrints, includeExtras };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -175,7 +176,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniquePrints };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniquePrints, includeExtras };
   }
 
   private _hasPrintingLeaves(ast: ASTNode): boolean {
@@ -209,6 +210,16 @@ export class NodeCache {
         return ast.field.toLowerCase() === "unique" && ast.value.toLowerCase() === "prints";
       case "NOT": return this._hasUniquePrints(ast.child);
       case "AND": case "OR": return ast.children.some(c => this._hasUniquePrints(c));
+      default: return false;
+    }
+  }
+
+  private _hasIncludeExtras(ast: ASTNode): boolean {
+    switch (ast.type) {
+      case "FIELD":
+        return ast.field.toLowerCase() === "include" && ast.value.toLowerCase() === "extras";
+      case "NOT": return this._hasIncludeExtras(ast.child);
+      case "AND": case "OR": return ast.children.some(c => this._hasIncludeExtras(c));
       default: return false;
     }
   }
@@ -317,6 +328,19 @@ export class NodeCache {
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
+        if (ast.field.toLowerCase() === "include") {
+          const val = ast.value.toLowerCase();
+          if (val === "extras") {
+            const buf = new Uint8Array(n);
+            fillCanonical(buf, this.index.canonicalFace, n);
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
+          } else {
+            interned.computed = { buf: new Uint8Array(n), domain: "face", matchCount: -1, productionMs: 0, error: `unknown include value "${ast.value}"` };
+          }
           timings.set(interned.key, { cached: false, evalMs: 0 });
           break;
         }
