@@ -22,6 +22,7 @@ import {
   appendTerm,
   prependTerm,
 } from './query-edit'
+import { reconstructQuery } from './InlineBreakdown'
 
 function buildBreakdown(query: string): BreakdownNode {
   return parseBreakdown(query)!
@@ -236,6 +237,93 @@ describe('removeNode', () => {
     const bd = buildBreakdown(q)
     const target = findFieldNode(bd, CI_FIELDS, ':', true)!
     expect(removeNode(q, target, bd)).toBe('t:creature')
+  })
+
+  it('removes f:modern from f:modern f:commander (issue 48 — parseBreakdown spans)', () => {
+    const q = 'f:modern f:commander'
+    const bd = parseBreakdown(q)!
+    const child = bd.children!.find(c => reconstructQuery(c) === 'f:modern')
+    expect(child).toBeDefined()
+    expect(removeNode(q, child!, bd)).toBe('f:commander')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Pin/unpin sequence (issue 48 — stale-breakdown regression)
+// ---------------------------------------------------------------------------
+
+function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
+  if (bd.label === nodeLabel && (!bd.children || bd.children.length === 0)) {
+    return removeNode(q, bd, bd)
+  }
+  if (bd.children) {
+    for (const child of bd.children) {
+      if (reconstructQuery(child) === nodeLabel) {
+        return removeNode(q, child, bd)
+      }
+    }
+  }
+  return q
+}
+
+function simPin(live: string, pinned: string, nodeLabel: string): { live: string; pinned: string } {
+  const liveBd = parseBreakdown(live.trim())
+  if (!liveBd) return { live, pinned }
+  const newLive = findAndRemoveNode(live.trim(), liveBd, nodeLabel)
+  const pinnedBd = parseBreakdown(pinned)
+  return { live: newLive, pinned: appendTerm(pinned, nodeLabel, pinnedBd) }
+}
+
+function simUnpin(live: string, pinned: string, nodeLabel: string): { live: string; pinned: string } {
+  const pinnedBd = parseBreakdown(pinned.trim())
+  if (!pinnedBd) return { live, pinned }
+  const newPinned = findAndRemoveNode(pinned.trim(), pinnedBd, nodeLabel)
+  const liveBd = parseBreakdown(live)
+  return { live: prependTerm(live, nodeLabel, liveBd), pinned: newPinned }
+}
+
+describe('pin/unpin sequence (issue 48)', () => {
+  it('unpin f:modern from f:modern f:commander yields f:commander pinned', () => {
+    let live = ''
+    let pinned = 'f:modern f:commander'
+    const r = simUnpin(live, pinned, 'f:modern')
+    expect(r.pinned).toBe('f:commander')
+    expect(r.live).toBe('f:modern')
+  })
+
+  it('full pin/unpin reorder sequence does not corrupt pinned query', () => {
+    let live = ''
+    let pinned = ''
+    // Pin f:commander from TERMS
+    live = 'f:commander'
+    const r1 = simPin(live, pinned, 'f:commander')
+    live = r1.live
+    pinned = r1.pinned
+    expect(pinned).toBe('f:commander')
+    expect(live).toBe('')
+    // Pin f:modern from TERMS
+    live = 'f:modern'
+    const r2 = simPin(live, pinned, 'f:modern')
+    live = r2.live
+    pinned = r2.pinned
+    expect(pinned).toBe('f:commander f:modern')
+    expect(live).toBe('')
+    // Unpin f:commander (pinned → live)
+    const r3 = simUnpin(live, pinned, 'f:commander')
+    live = r3.live
+    pinned = r3.pinned
+    expect(pinned).toBe('f:modern')
+    expect(live).toBe('f:commander')
+    // Pin f:commander from live (order flips: pinned was f:modern, now f:modern f:commander)
+    const r4 = simPin(live, pinned, 'f:commander')
+    live = r4.live
+    pinned = r4.pinned
+    expect(pinned).toBe('f:modern f:commander')
+    expect(live).toBe('')
+    // Unpin f:modern — this was the bug: produced f:modern f:c
+    const r5 = simUnpin(live, pinned, 'f:modern')
+    expect(r5.pinned).toBe('f:commander')
+    expect(r5.live).toBe('f:modern')
   })
 })
 

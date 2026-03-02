@@ -466,10 +466,10 @@ function App() {
   }
 
   function handlePin(nodeLabel: string) {
-    const bd = breakdown()
-    if (!bd) return
-    const liveQ = query()
+    const liveQ = query().trim()
     const pinnedQ = pinnedQuery()
+    const bd = parseBreakdown(liveQ)
+    if (!bd) return
 
     // Find the matching node and splice it out of the live query
     const newLive = findAndRemoveNode(liveQ, bd, nodeLabel)
@@ -481,10 +481,10 @@ function App() {
   }
 
   function handleUnpin(nodeLabel: string) {
-    const bd = pinnedBreakdown()
-    if (!bd) return
-    const pinnedQ = pinnedQuery()
+    const pinnedQ = pinnedQuery().trim()
     const liveQ = query()
+    const bd = parseBreakdown(pinnedQ)
+    if (!bd) return
 
     // Find the matching node and splice it out of the pinned query
     const newPinned = findAndRemoveNode(pinnedQ, bd, nodeLabel)
