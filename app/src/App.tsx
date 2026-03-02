@@ -74,6 +74,8 @@ function App() {
     localStorage.getItem('frantic-pinned-query') ?? ''
   )
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
+  const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
+  const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
   const [pinnedExpanded, setPinnedExpanded] = createSignal(
     localStorage.getItem('frantic-pinned-expanded') !== 'false'
   )
@@ -300,6 +302,8 @@ function App() {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
           setPinnedBreakdown(msg.pinnedBreakdown ?? null)
+          setPinnedIndicesCount(msg.pinnedIndicesCount)
+          setPinnedPrintingCount(msg.pinnedPrintingCount)
           setHistograms(msg.histograms)
           setPrintingIndices(msg.printingIndices)
           setHasPrintingConditions(msg.hasPrintingConditions)
@@ -329,6 +333,8 @@ function App() {
       setIndices(new Uint32Array(0))
       setBreakdown(null)
       setPinnedBreakdown(null)
+      setPinnedIndicesCount(undefined)
+      setPinnedPrintingCount(undefined)
       setHistograms(null)
       setPrintingIndices(undefined)
       setHasPrintingConditions(false)
@@ -666,8 +672,8 @@ function App() {
             {(pbd) => (
               <PinnedBreakdown
                 breakdown={pbd()}
-                cardCount={totalCards()}
-                printingCount={showPrintingResults() ? totalPrintingItems() : undefined}
+                cardCount={pinnedIndicesCount() ?? 0}
+                printingCount={pinnedPrintingCount()}
                 expanded={pinnedExpanded()}
                 onToggle={togglePinned}
                 onUnpin={(nodeLabel) => { flushPendingCommit(); handleUnpin(nodeLabel) }}

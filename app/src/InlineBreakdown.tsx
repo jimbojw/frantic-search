@@ -267,7 +267,7 @@ export function BreakdownLip(props: {
       </span>
       <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
         {props.cardCount.toLocaleString()} cards
-        <Show when={props.printingCount !== undefined && props.printingCount > 0}>
+        <Show when={props.printingCount !== undefined}>
           {' '}({props.printingCount!.toLocaleString()} printings)
         </Show>
       </span>
