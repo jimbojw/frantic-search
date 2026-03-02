@@ -41,8 +41,8 @@ Applied as a post-evaluation step in `runSearch()`, after pinned+live combinatio
 
 1. Check `includeExtras` from both live and pinned evaluations. If either is `true`, skip the filter entirely.
 2. Record pre-filter counts: `indicesIncludingExtras` (face count) and `printingIndicesIncludingExtras` (printing count, when printing data is relevant).
-3. Filter the `deduped` face array: keep only faces where `(legalitiesLegal[face] | legalitiesRestricted[face]) !== 0`.
-4. Filter `rawPrintingIndices` (when present): keep only printings where `!(printingFlags[p] & NON_TOURNAMENT_MASK)` AND `(legalitiesLegal[canonicalFaceRef[p]] | legalitiesRestricted[canonicalFaceRef[p]]) !== 0`.
+3. **When `hasPrintingConditions` and `rawPrintingIndices` exist (Issue #58):** The face result is **derived** from the filtered printing indices (unique canonical faces). Filter `rawPrintingIndices` first: keep only printings where `!(printingFlags[p] & NON_TOURNAMENT_MASK)` AND `(legalitiesLegal[canonicalFaceRef[p]] | legalitiesRestricted[canonicalFaceRef[p]]) !== 0`. Then set `deduped` to the unique canonical faces from the filtered printings. Cards with no surviving printings are excluded. Do not filter `deduped` independently.
+4. **When printing conditions are absent:** Filter the `deduped` face array: keep only faces where `(legalitiesLegal[face] | legalitiesRestricted[face]) !== 0`. Filter `rawPrintingIndices` (when present) as above.
 5. Histograms and sorting operate on the filtered results.
 
 Pre-filter counts are populated only when `include:extras` is **not** in the query and the filter actually removed something (i.e., the pre-filter count differs from the post-filter count).
@@ -109,3 +109,4 @@ Re-export `NON_TOURNAMENT_MASK` from `eval-printing.ts` so the app workspace can
 6. `include:foo` produces an error in the query breakdown.
 7. `include:extras` is `false` by default for all queries without it.
 8. Histograms reflect the filtered (post-playable-filter) results.
+9. When a query has printing conditions (e.g. `set:30a`) and the playable filter removes all matching printings, the result is zero cards (Issue #58).

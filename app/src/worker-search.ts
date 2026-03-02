@@ -172,15 +172,9 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let printingIndicesIncludingExtras: number | undefined
 
   if (!includeExtras) {
-    const preFaceCount = deduped.length
-    deduped = deduped.filter(fi =>
-      (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0
-    )
-    if (deduped.length < preFaceCount) {
-      indicesIncludingExtras = preFaceCount
-    }
-
-    if (rawPrintingIndices && printingIndex) {
+    if (hasPrintingConditions && rawPrintingIndices && printingIndex) {
+      // Printing-derived path (Issue #58): filter printings first, then derive
+      // deduped from them. Cards with no surviving printings are excluded.
       const preLen = rawPrintingIndices.length
       const filtered: number[] = []
       for (let i = 0; i < preLen; i++) {
@@ -195,7 +189,54 @@ export function runSearch(params: RunSearchParams): SearchResult {
       }
       if (filtered.length < preLen) {
         printingIndicesIncludingExtras = preLen
-        rawPrintingIndices = new Uint32Array(filtered)
+      }
+      // Derive deduped from filtered printings (unique canonical faces, first-occurrence order)
+      const seen = new Set<number>()
+      const derived: number[] = []
+      for (let i = 0; i < filtered.length; i++) {
+        const cf = printingIndex.canonicalFaceRef[filtered[i]]
+        if (!seen.has(cf)) {
+          seen.add(cf)
+          derived.push(cf)
+        }
+      }
+      deduped = derived
+      // When derived is empty but unfiltered had results, populate indicesIncludingExtras for hint
+      if (deduped.length === 0 && preLen > 0) {
+        const unfilteredFaces = new Set<number>()
+        for (let i = 0; i < preLen; i++) {
+          unfilteredFaces.add(printingIndex.canonicalFaceRef[rawPrintingIndices[i]])
+        }
+        indicesIncludingExtras = unfilteredFaces.size
+      }
+      rawPrintingIndices = new Uint32Array(filtered)
+    } else {
+      // Card-only path: filter deduped by card playability; filter printings when present
+      const preFaceCount = deduped.length
+      deduped = deduped.filter(fi =>
+        (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0
+      )
+      if (deduped.length < preFaceCount) {
+        indicesIncludingExtras = preFaceCount
+      }
+
+      if (rawPrintingIndices && printingIndex) {
+        const preLen = rawPrintingIndices.length
+        const filtered: number[] = []
+        for (let i = 0; i < preLen; i++) {
+          const p = rawPrintingIndices[i]
+          if (
+            !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+            (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+              index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+          ) {
+            filtered.push(p)
+          }
+        }
+        if (filtered.length < preLen) {
+          printingIndicesIncludingExtras = preLen
+          rawPrintingIndices = new Uint32Array(filtered)
+        }
       }
     }
   }

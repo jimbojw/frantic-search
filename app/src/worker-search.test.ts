@@ -263,3 +263,73 @@ describe('default playable filter (Spec 057)', () => {
     expect(totalFromHistogram).toBe(3)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue #58: Set query zero results when no playable printings match
+// ---------------------------------------------------------------------------
+// Fixture: set:wcd matches only printing #6 (Bolt in World Championship Decks),
+// which has GoldBorder and is filtered out by the playable filter.
+describe('set query zero results when no playable printings (Issue #58)', () => {
+  it('set query with all printings filtered returns 0 results and populates extras hint', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:wcd' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.indicesIncludingExtras).toBe(1)
+    expect(result.printingIndicesIncludingExtras).toBe(1)
+  })
+
+  it('set query with include:extras shows non-tournament printings', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:wcd include:extras' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(1)
+    expect(result.printingIndices?.length).toBe(1)
+    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.printingIndicesIncludingExtras).toBeUndefined()
+  })
+
+  it('set query with tournament printings unchanged', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:mh2' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(1)
+    expect(result.indicesIncludingExtras).toBeUndefined()
+  })
+
+  it('set + face condition with all printings filtered returns 0 results', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:wcd t:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    // Bolt is instant, not creature; intersection is empty before playable filter
+    expect(result.indices.length).toBe(0)
+  })
+
+  it('face-only query unchanged when no printing conditions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBeGreaterThan(0)
+    expect(result.hasPrintingConditions).toBe(false)
+  })
+})
