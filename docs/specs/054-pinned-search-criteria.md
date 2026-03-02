@@ -82,6 +82,19 @@ The main thread sends `pinnedQuery` when it is non-empty. It sends a search mess
 
 Per-node match counts in each breakdown reflect that query evaluated in isolation — they are not filtered by the other query. The lip counts (total cards) reflect the intersection.
 
+#### Printing-level result combination (both non-empty)
+
+`uniquePrints` and `hasPrintingConditions` are OR'd across both evaluations — they apply to the effective query as a whole. A `unique:prints` term in either query has the same effect as if it appeared in a single combined query.
+
+`printingIndices` combination depends on which evaluation produced them:
+
+| Live has `printingIndices` | Pinned has `printingIndices` | Behavior |
+|---|---|---|
+| Yes | Yes | Intersect the two printing index sets. |
+| Yes | No | Filter live's printing indices to rows whose canonical face is in the pinned card set. |
+| No | Yes | Filter pinned's printing indices to rows whose canonical face is in the intersected card set. |
+| No | No | No printing indices in output. |
+
 ### Results visibility
 
 The live query is the sole determiner of whether results are shown, as today. If the live query is empty, no results grid appears even if the pinned query is non-empty. The PINNED drawer may still be visible with its own breakdown counts.

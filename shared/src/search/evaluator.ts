@@ -145,12 +145,14 @@ export class NodeCache {
       // matching cards. When printing conditions ARE present, fall through to
       // the hasPrintingConditions branch which intersects with printing-domain
       // leaf buffers — unique:prints then only controls display-layer dedup.
-      const rows: number[] = [];
+      let total = 0;
+      for (const fi of indices) total += this._printingIndex.printingsOf(fi).length;
+      printingIndices = new Uint32Array(total);
+      let k = 0;
       for (const fi of indices) {
         const pRows = this._printingIndex.printingsOf(fi);
-        for (const p of pRows) rows.push(p);
+        for (const p of pRows) printingIndices[k++] = p;
       }
-      printingIndices = new Uint32Array(rows);
     } else if (hasPrintingConditions && this._printingIndex) {
       let printBuf: Uint8Array;
       if (root.computed!.domain === "printing") {

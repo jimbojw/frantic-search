@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, BreakdownNode, DisplayColumns, PrintingDisplayColumns, QueryNodeResult, Histograms } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, parse, seededSort, seededSortPrintings, collectBareWords } from '@frantic-search/shared'
+import { combinePrintingIndices } from './combine-printing-indices'
 
 declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
@@ -278,25 +279,11 @@ async function init(): Promise<void> {
       const pinnedSet = new Set<number>(pinnedEval.indices)
       deduped = Array.from(liveEval.indices).filter(i => pinnedSet.has(i))
 
-      // Intersect printing indices if both have them
-      if (rawPrintingIndices && pinnedEval.printingIndices) {
-        const pinnedPrintSet = new Set<number>(pinnedEval.printingIndices)
-        const filtered: number[] = []
-        for (let i = 0; i < rawPrintingIndices.length; i++) {
-          if (pinnedPrintSet.has(rawPrintingIndices[i])) filtered.push(rawPrintingIndices[i])
-        }
-        rawPrintingIndices = new Uint32Array(filtered)
-      } else if (rawPrintingIndices && !pinnedEval.printingIndices) {
-        // Live has printing results, pinned doesn't — filter live printings
-        // to only those whose canonical face is in the pinned card set.
-        if (printingIndex) {
-          const filtered: number[] = []
-          for (let i = 0; i < rawPrintingIndices.length; i++) {
-            const cardIdx = printingIndex.canonicalFaceRef[rawPrintingIndices[i]]
-            if (pinnedSet.has(cardIdx)) filtered.push(rawPrintingIndices[i])
-          }
-          rawPrintingIndices = new Uint32Array(filtered)
-        }
+      if (printingIndex) {
+        rawPrintingIndices = combinePrintingIndices(
+          rawPrintingIndices, pinnedEval.printingIndices,
+          deduped, printingIndex.canonicalFaceRef, printingIndex.printingCount,
+        )
       }
 
       hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
