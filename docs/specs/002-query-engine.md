@@ -295,6 +295,7 @@ The parser must handle incomplete input gracefully, since it runs on every keyst
 - **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
 - **Empty operand:** When `parseAndGroup` finds no term-starting tokens, it produces a `NopNode` instead of an empty AND. This arises from trailing `OR` (`a OR`), leading `OR` (`OR a`), double `OR` (`a OR OR b`), empty parentheses (`()`), and empty input.
 - **Unknown field:** `x:foo` → parse normally. The evaluator detects the unknown field and marks the node as an error (Spec 039). Error nodes are skipped in AND/OR reduction, preventing a single malformed term from zeroing out sibling results.
+- **Empty exact-name:** `!`, `!'`, `!"`, `!''`, `!""` parse as `EXACT(value="")`. The evaluator treats empty EXACT as an error (Spec 039). Error nodes are skipped in AND/OR.
 
 The parser should never throw on user input. Malformed input produces a best-effort AST.
 

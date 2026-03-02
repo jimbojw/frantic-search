@@ -127,6 +127,12 @@ describe("parse", () => {
     expect(parse("!'Lightning Bolt'")).toMatchObject(exact("Lightning Bolt"));
   });
 
+  test("empty exact-name variants parse as EXACT(value='') (Issue #53)", () => {
+    for (const input of ["!", "!'", '!"', "!''", '!""']) {
+      expect(parse(input)).toMatchObject({ type: "EXACT", value: "" });
+    }
+  });
+
   test("regex field value", () => {
     expect(parse("o:/^{T}:/")).toMatchObject(
       regexField("o", ":", "^{T}:"),

@@ -298,6 +298,15 @@ describe("evaluate", () => {
     expect(matchCount("!bolt")).toBe(0);
   });
 
+  test("empty exact-name produces error (Issue #53)", () => {
+    const cache = new NodeCache(index);
+    for (const query of ["!", "!'", '!"', "!''", '!""']) {
+      const { result } = cache.evaluate(parse(query));
+      expect(result.error).toBe("exact name requires a non-empty value");
+      expect(result.matchCount).toBe(-1);
+    }
+  });
+
   test("implicit AND", () => {
     expect(matchCount("c:g t:creature")).toBe(2);
     expect(matchCount("c:w t:creature")).toBe(1);

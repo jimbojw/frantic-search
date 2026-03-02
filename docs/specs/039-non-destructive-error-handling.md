@@ -157,9 +157,15 @@ function evalLeafRegex(node: RegexFieldNode, index: CardIndex, buf: Uint8Array):
 }
 ```
 
-#### `evalLeafBareWord` and `evalLeafExact`
+#### `evalLeafBareWord`
 
-These cannot fail — bare words and exact-name matches always produce valid (possibly empty) result sets. They continue to return `null` (no error).
+Bare words cannot fail — they always produce valid (possibly empty) result sets. `evalLeafBareWord` continues to return `null` (no error).
+
+#### `evalLeafExact`
+
+Change return type to `string | null`. One error condition:
+
+1. **Empty exact-name value** — `!` (bare), `!'` or `!"` (unclosed quote), or `!''` or `!""` (closed empty) all parse as `EXACT(value="")`. No card has an empty name, so this is guaranteed zero results. Treat as error so the term is skipped in AND/OR (non-destructive). Return `"exact name requires a non-empty value"` when `node.value === ""`, otherwise `null`.
 
 ### 3. `computeTree` handles errors
 
@@ -181,7 +187,7 @@ case "FIELD": {
 }
 ```
 
-The same pattern applies to `REGEX_FIELD`. The `BARE` and `EXACT` cases are unchanged (they never error).
+The same pattern applies to `REGEX_FIELD` and `EXACT`. The `BARE` case is unchanged (it never errors).
 
 ### 4. AND/OR skip error children
 

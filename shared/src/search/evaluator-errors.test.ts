@@ -241,3 +241,45 @@ describe("non-destructive error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Empty exact-name (Issue #53)
+// ---------------------------------------------------------------------------
+
+describe("empty exact-name (Issue #53)", () => {
+  function getResult(query: string) {
+    const cache = new NodeCache(index);
+    return cache.evaluate(parse(query)).result;
+  }
+
+  test("! produces root error", () => {
+    const result = getResult("!");
+    expect(result.error).toMatch(/exact|empty/);
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("t:creature ! — error child skipped in AND", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("t:creature !")).toBe(creatureOnly);
+  });
+
+  test("t:creature OR ! — error child skipped in OR", () => {
+    const creatureOnly = matchCount("t:creature");
+    expect(matchCount("t:creature OR !")).toBe(creatureOnly);
+  });
+
+  test("-(!) propagates error", () => {
+    const result = getResult("-(!)");
+    expect(result.error).toBe("exact name requires a non-empty value");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("error child carries error and matchCount -1", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("t:creature !"));
+    const exactChild = result.children!.find(c => c.node.type === "EXACT");
+    expect(exactChild).toBeDefined();
+    expect(exactChild!.error).toBe("exact name requires a non-empty value");
+    expect(exactChild!.matchCount).toBe(-1);
+  });
+});

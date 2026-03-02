@@ -306,10 +306,12 @@ export function evalLeafBareWord(value: string, quoted: boolean, index: CardInde
   }
 }
 
-export function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): void {
+export function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8Array): string | null {
+  if (node.value === "") return "exact name requires a non-empty value";
   const cf = index.canonicalFace;
   const valLower = node.value.toLowerCase();
   for (let i = 0; i < index.faceCount; i++) {
     if (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) buf[cf[i]] = 1;
   }
+  return null;
 }

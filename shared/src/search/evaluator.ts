@@ -383,10 +383,14 @@ export class NodeCache {
       case "EXACT": {
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        evalLeafExact(ast, this.index, buf);
+        const error = evalLeafExact(ast, this.index, buf);
         const ms = performance.now() - t0;
-        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
+        if (error) {
+          interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
+        } else {
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+        }
+        timings.set(interned.key, { cached: false, evalMs: error ? 0 : ms });
         break;
       }
       case "REGEX_FIELD": {
