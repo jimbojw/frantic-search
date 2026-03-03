@@ -23,7 +23,7 @@ The app exposes two Scryfall search outlinks (results toolbar, bug report) that 
 | Invalid regex: `/[/` | Errors | Pass through with closed delimiters (user intent is clear) |
 | Bare regex: `/giant/` | Not supported | Parser expands to `OR(name:, type:, oracle:)`; serializer emits explicit OR |
 | Single quotes: `'bolt'` | Errors | Serialize as double quotes |
-| Partial dates: `date>=202` | Errors | Pad to `YYYY-MM-DD` using zero-fill |
+| Partial dates: `date>=202` | Errors | Expand to range per Spec 061 (complete values as-is; partial expanded) |
 | NOP nodes (malformed input) | N/A | Skip entirely |
 | Empty field value: `c:` | May error | Skip term |
 
@@ -51,15 +51,13 @@ raw query → parse() → ASTNode → toScryfallQuery() → canonical string →
 | `AND` | Children joined by space |
 | `OR` | Children joined by ` OR `, parenthesized when nested inside AND or NOT |
 
-### Date padding
+### Date and year canonicalization
 
-For `FIELD` nodes where the field resolves to `date` via `FIELD_ALIASES`, partial date values are padded to `YYYY-MM-DD` using the same zero-fill strategy as the evaluator (`eval-printing.ts`):
+For `FIELD` nodes where the field resolves to `date` or `year` via `FIELD_ALIASES`, use the range-based logic from **Spec 061**:
 
-- `202` → `2020-01-01`
-- `2021-0` → `2021-01-01`
-- `2021-06` → `2021-06-01`
-
-Special values (`now`, `today`, set codes) pass through unchanged — Scryfall supports them natively.
+- **Complete values** — Emit as-is: `date=2025`, `date=2025-02`, `year=2025`. Scryfall supports these natively.
+- **Partial values** — Expand to explicit range: `date=202` → `date>=2020-01-01 date<2030-01-01`; `date>202` → `date>=2030-01-01`; etc.
+- **Special values** (`now`, `today`, set codes) — Pass through unchanged.
 
 ## Scope of Changes
 
@@ -88,7 +86,7 @@ Tests drive the implementation (TDD). Each test parses a raw query string, feeds
 
 1. `toScryfallQuery(parse('"oracle'))` returns `"oracle"`.
 2. `toScryfallQuery(parse('/giant/'))` returns `(name:/giant/ OR type:/giant/ OR oracle:/giant/)`.
-3. `toScryfallQuery(parse('date>=202'))` returns `date>=2020-01-01`.
+3. `toScryfallQuery(parse('date>=202'))` returns `date>=2020-01-01`; `toScryfallQuery(parse('date=202'))` returns `date>=2020-01-01 date<2030-01-01` (Spec 061).
 4. `toScryfallQuery(parse("'bolt'"))` returns `"bolt"`.
 5. `toScryfallQuery(parse('c: t:creature'))` returns `t:creature` (empty field value dropped).
 6. NOP-only ASTs produce an empty string.

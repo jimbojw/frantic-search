@@ -100,34 +100,39 @@ Examples: `cn:1`, `cn:★3`, `number:1a`
 
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Printing was released in this year |
-| `>`, `>=`, `<`, `<=` | Year comparison |
+| `:`, `=` | Printing was released in this year (range-based) |
+| `>`, `>=`, `<`, `<=` | Year comparison (range-based) |
 
-The value is a four-digit year. Compared against `Math.floor(released_at / 10000)`.
+The value is a four-digit year or partial-year prefix (e.g. `202`). Uses the same range-based semantics as `date:` — see **Spec 061** for the unified model. **Important:** `year:` accepts only `YYYY` or partial-year; values with month/day (e.g. `year=2025-02`) produce an error.
 
-Examples: `year<=1994`, `year=2026`
+Examples: `year<=1994`, `year=2026`, `year=202`
 
 ### `date:` — Release date
 
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Exact date match |
-| `>`, `>=`, `<`, `<=` | Date comparison |
+| `:`, `=` | Date in range (half-open interval) |
+| `>`, `>=`, `<`, `<=` | Date comparison (range-based) |
 
-The value is parsed as a date and converted to a YYYYMMDD uint32 for comparison against `released_at`. Accepted formats:
+Uses a **unified range model** — every date value maps to a half-open interval `[lo, hi)`. See **Spec 061** for full semantics. Summary:
+
+- **Year:** `date=2025` → `[2025-01-01, 2026-01-01)` (Scryfall parity)
+- **Month:** `date=2025-02` → `[2025-02-01, 2025-03-01)`
+- **Day:** `date=2025-02-15` → `[2025-02-15, 2025-02-16)`
+- **Partial:** `date=202` → `[2020-01-01, 2030-01-01)` (narrow-as-you-type)
+
+Accepted formats:
 
 - **Full date:** `YYYY-MM-DD` (e.g., `2015-08-18`)
-- **Year and month:** `YYYY-MM` (e.g., `2020-08`) — day defaults to `01`
-- **Year only:** `YYYY` (e.g., `2020`) — month and day default to `01`
-- **Partial prefix:** Any prefix of `YYYY-MM-DD` is accepted. Missing digits within a component are right-padded with `0`, and out-of-range values are clamped (month to 1–12, day to 1–31). This enables progressive narrowing as the user types: `202` resolves to `2020-01-01`, `2025-0` resolves to `2025-01-01`, `2025-08-1` resolves to `2025-08-10`.
+- **Year and month:** `YYYY-MM` (e.g., `2020-08`)
+- **Year only:** `YYYY` (e.g., `2020`)
+- **Partial prefix:** Any prefix of `YYYY-MM-DD`; missing digits expand to full span (pad down for `lo`, pad up for `hi`).
 - **Special values:** `now` or `today` resolves to the current date.
 - **Set code:** A bare set code (e.g., `date>ori`) resolves to the set's `released_at` from `set_lookup`.
 
-Dashless numeric strings longer than 4 digits (e.g., `20200801`) are rejected. Non-numeric components are rejected and fall through to set code resolution.
-
 Rows where `released_at === 0` (unknown) are excluded from all date comparisons.
 
-Examples: `date>=2015-08-18`, `date>=2020`, `date>=2020-08`, `date>ori`, `date>now`
+Examples: `date=2025`, `date>=2015-08-18`, `date>2025`, `date=202`, `date>ori`, `date>now`
 
 ## Engine Changes
 
