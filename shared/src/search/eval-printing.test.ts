@@ -8,7 +8,7 @@ import {
   promoteFaceToPrinting,
 } from "./eval-printing";
 import type { PrintingColumnarData } from "../data";
-import { Rarity, Finish, Frame } from "../bits";
+import { Rarity, Finish, Frame, Game } from "../bits";
 
 // ---------------------------------------------------------------------------
 // Synthetic printing data (6 rows, 2 canonical faces)
@@ -34,6 +34,14 @@ const PRINTING_DATA: PrintingColumnarData = {
   frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
   price_usd: [100, 300, 50, 75, 500, 200],
   released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201106],
+  games: [
+    Game.Paper | Game.Arena,  // 0,1 MH2
+    Game.Paper | Game.Arena,
+    Game.Paper | Game.Arena,  // 2 A25
+    Game.Paper | Game.Mtgo,   // 3,4 C21
+    Game.Paper | Game.Mtgo,
+    Game.Paper | Game.Arena,  // 5 SLD
+  ],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },
@@ -62,7 +70,7 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "price", "collectornumber", "frame", "year", "date"]) {
+    for (const f of ["set", "rarity", "price", "collectornumber", "frame", "year", "date", "game"]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -253,6 +261,42 @@ describe("frame field", () => {
     const buf = new Uint8Array(idx.printingCount);
     evalPrintingField("frame", ":", "future", idx, buf);
     expect(marked(buf)).toEqual([1]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// game
+// ---------------------------------------------------------------------------
+
+describe("game field", () => {
+  test("game:arena matches rows with Arena availability", () => {
+    expect(marked(evalField("game", ":", "arena").buf)).toEqual([0, 1, 2, 5]);
+  });
+
+  test("game:paper matches rows with paper availability", () => {
+    expect(marked(evalField("game", ":", "paper").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  test("game:mtgo matches rows with MTGO availability", () => {
+    expect(marked(evalField("game", ":", "mtgo").buf)).toEqual([3, 4]);
+  });
+
+  test("game:arena is case-insensitive", () => {
+    expect(marked(evalField("game", ":", "ARENA").buf)).toEqual([0, 1, 2, 5]);
+  });
+
+  test("game!=arena matches rows without Arena", () => {
+    expect(marked(evalField("game", "!=", "arena").buf)).toEqual([3, 4]);
+  });
+
+  test("unknown game returns error", () => {
+    const { error } = evalField("game", ":", "xyz");
+    expect(error).toBe('unknown game "xyz"');
+  });
+
+  test("unsupported operator returns error", () => {
+    const { error } = evalField("game", ">", "arena");
+    expect(error).toContain('does not support operator');
   });
 });
 

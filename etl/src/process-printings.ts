@@ -12,6 +12,7 @@ import {
   RARITY_FROM_STRING,
   FINISH_FROM_STRING,
   FRAME_FROM_STRING,
+  GAME_NAMES,
   PrintingFlag,
   type PrintingColumnarData,
   type SetLookupEntry,
@@ -43,6 +44,7 @@ interface DefaultCard {
   frame?: string;
   frame_effects?: string[];
   finishes?: string[];
+  games?: string[];
   prices?: Record<string, string | null>;
 }
 
@@ -104,6 +106,15 @@ const PRICE_KEY_FOR_FINISH: Record<string, string> = {
   foil: "usd_foil",
   etched: "usd_etched",
 };
+
+function encodeGames(games: string[] | undefined): number {
+  if (!games || games.length === 0) return 0;
+  let bits = 0;
+  for (const g of games) {
+    bits |= GAME_NAMES[g.toLowerCase()] ?? 0;
+  }
+  return bits;
+}
 
 /** Encode an ISO date string (YYYY-MM-DD) as a uint32 YYYYMMDD integer. */
 function encodeDateYmd(dateStr: string | undefined): number {
@@ -219,6 +230,7 @@ export function processPrintings(verbose: boolean): void {
     frame: [],
     price_usd: [],
     released_at: [],
+    games: [],
     set_lookup: [],
   };
 
@@ -251,6 +263,7 @@ export function processPrintings(verbose: boolean): void {
     const rarityBits = encodeRarity(card.rarity);
     const flagBits = encodePrintingFlags(card);
     const frameBits = encodeFrame(card.frame);
+    const gamesBits = encodeGames(card.games);
 
     for (const finishStr of finishes) {
       const finishVal = FINISH_FROM_STRING[finishStr];
@@ -269,6 +282,7 @@ export function processPrintings(verbose: boolean): void {
       data.frame.push(frameBits);
       data.price_usd.push(priceCents);
       data.released_at.push(releasedAtYmd);
+      (data.games ??= []).push(gamesBits);
 
       totalEntries++;
     }

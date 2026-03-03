@@ -3,7 +3,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { PrintingIndex } from "./printing-index";
-import { Color, Format, Rarity, Finish, Frame, PrintingFlag } from "../bits";
+import { Color, Format, Rarity, Finish, Frame, Game, PrintingFlag } from "../bits";
 import type { ColumnarData, PrintingColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
@@ -132,6 +132,17 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
   frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
   price_usd: [100, 300, 50, 75, 500, 200, 10, 50, 200],
   released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106],
+  games: [
+    Game.Paper | Game.Arena,   // 0,1 MH2
+    Game.Paper | Game.Arena,
+    Game.Paper | Game.Arena,   // 2 A25
+    Game.Paper | Game.Mtgo,    // 3,4 C21
+    Game.Paper | Game.Mtgo,
+    Game.Paper | Game.Arena,   // 5 CMR
+    Game.Paper,                // 6 WCD
+    Game.Paper,                // 7 OC21
+    Game.Paper | Game.Arena,   // 8 SLD
+  ],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },

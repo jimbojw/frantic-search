@@ -32,6 +32,7 @@ export const FIELD_ALIASES: Record<string, string> = {
   frame: "frame",
   year: "year",
   date: "date",
+  game: "game",
 };
 
 function parseColorValue(value: string): number {

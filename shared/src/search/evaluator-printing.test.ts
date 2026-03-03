@@ -96,6 +96,18 @@ describe("printing-domain leaves", () => {
     expect(cardCount("date=2021")).toBe(2);
   });
 
+  test("game:arena matches Lightning Bolt (has Arena printings)", () => {
+    expect(cardCount("game:arena")).toBe(1);
+  });
+
+  test("game:paper matches both cards (all printings are paper)", () => {
+    expect(cardCount("game:paper")).toBe(2);
+  });
+
+  test("game:mtgo matches Sol Ring only (C21 has MTGO)", () => {
+    expect(cardCount("game:mtgo")).toBe(1);
+  });
+
   test("date>2025 matches nothing (no 2026+ printings in test data)", () => {
     expect(cardCount("date>2025")).toBe(0);
   });
@@ -177,6 +189,10 @@ describe("cross-domain AND", () => {
 
   test("c:r rarity:rare — red cards with rare printings (Lightning Bolt)", () => {
     expect(cardCount("c:r rarity:rare")).toBe(1);
+  });
+
+  test("t:instant game:arena — instants with Arena printings (Lightning Bolt)", () => {
+    expect(cardCount("t:instant game:arena")).toBe(1);
   });
 
   test("c:g set:mh2 — green cards in MH2 (none in test data)", () => {

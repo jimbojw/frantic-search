@@ -19,6 +19,8 @@ export {
   Frame,
   FRAME_FROM_STRING,
   FRAME_NAMES,
+  Game,
+  GAME_NAMES,
 } from "./bits";
 
 export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";

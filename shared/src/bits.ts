@@ -220,3 +220,20 @@ export const FRAME_FROM_STRING: Record<string, number> = {
 export const FRAME_NAMES: Record<string, number> = {
   ...FRAME_FROM_STRING,
 };
+
+// --- Game availability (bitmask, 5 bits) ---
+export const Game = {
+  Paper: 1 << 0,
+  Mtgo: 1 << 1,
+  Arena: 1 << 2,
+  Astral: 1 << 3,
+  Sega: 1 << 4,
+} as const;
+
+export const GAME_NAMES: Record<string, number> = {
+  paper: Game.Paper,
+  mtgo: Game.Mtgo,
+  arena: Game.Arena,
+  astral: Game.Astral,
+  sega: Game.Sega,
+};

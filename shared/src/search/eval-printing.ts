@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
-import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, PrintingFlag } from "../bits";
+import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag } from "../bits";
 import { parseDateRange } from "./date-range";
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "price", "collectornumber", "frame", "year", "date",
-  "legal", "banned", "restricted",
+  "game", "legal", "banned", "restricted",
 ]);
 
 export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
@@ -137,6 +137,22 @@ export function evalPrintingField(
           case ">=": match = d >= lo; break;
           case "<":  match = d < lo; break;
           case "<=": match = d < hi; break;
+        }
+        if (match) buf[i] = 1;
+      }
+      break;
+    }
+    case "game": {
+      const targetBit = GAME_NAMES[valLower];
+      if (targetBit === undefined) return `unknown game "${val}"`;
+      const games = pIdx.games;
+      for (let i = 0; i < n; i++) {
+        const g = games[i] ?? 0;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = (g & targetBit) !== 0; break;
+          case "!=": match = (g & targetBit) === 0; break;
+          default: return `game: does not support operator "${op}"`;
         }
         if (match) buf[i] = 1;
       }
