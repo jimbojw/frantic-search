@@ -218,6 +218,36 @@ describe("parse", () => {
     });
   });
 
+  describe("unique display aliases (Spec 048)", () => {
+    test("++ desugars to unique:prints", () => {
+      expect(parse("++")).toMatchObject(field("unique", ":", "prints"));
+    });
+
+    test("@@ desugars to unique:art", () => {
+      expect(parse("@@")).toMatchObject(field("unique", ":", "art"));
+    });
+
+    test("++ in combined query", () => {
+      expect(parse("t:creature ++")).toMatchObject(
+        and(field("t", ":", "creature"), field("unique", ":", "prints")),
+      );
+    });
+
+    test("@@ in combined query", () => {
+      expect(parse("lightning @@")).toMatchObject(
+        and(bare("lightning"), field("unique", ":", "art")),
+      );
+    });
+
+    test("negated ++ produces NOT over unique:prints", () => {
+      expect(parse("-++")).toMatchObject(not(field("unique", ":", "prints")));
+    });
+
+    test("negated @@ produces NOT over unique:art", () => {
+      expect(parse("-@@")).toMatchObject(not(field("unique", ":", "art")));
+    });
+  });
+
   describe("NOP nodes", () => {
     test("trailing OR produces NOP right operand", () => {
       const ast = parse("a OR");

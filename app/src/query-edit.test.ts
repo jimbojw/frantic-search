@@ -1230,6 +1230,11 @@ describe('toggleUniquePrints', () => {
     expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('')
   })
 
+  it('removes ++ alias when present (Spec 048)', () => {
+    const q = 't:creature ++'
+    expect(toggleUniquePrints(q, buildBreakdown(q))).toBe('t:creature')
+  })
+
   it('round-trips: absent → present → absent', () => {
     let q = ''
     q = toggleUniquePrints(q, parseBreakdown(q))
@@ -1278,6 +1283,11 @@ describe('hasUniquePrints', () => {
 
   it('returns true when unique:prints is among other terms', () => {
     expect(hasUniquePrints(buildBreakdown('r:mythic unique:prints'))).toBe(true)
+  })
+
+  it('returns true when ++ alias is present (Spec 048)', () => {
+    expect(hasUniquePrints(buildBreakdown('++'))).toBe(true)
+    expect(hasUniquePrints(buildBreakdown('t:creature ++'))).toBe(true)
   })
 })
 

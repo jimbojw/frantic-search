@@ -26,12 +26,23 @@ describe("queryForSortSeed", () => {
     expect(queryForSortSeed("c:r unique:prints t:instant")).toBe("c:r t:instant");
   });
 
+  it("strips ++ and @@ aliases (Spec 048)", () => {
+    expect(queryForSortSeed("t:creature ++")).toBe("t:creature");
+    expect(queryForSortSeed("t:creature @@")).toBe("t:creature");
+    expect(queryForSortSeed("++")).toBe("");
+    expect(queryForSortSeed("c:r ++ t:instant")).toBe("c:r t:instant");
+  });
+
   it("unique: variants produce same result", () => {
     const a = queryForSortSeed("t:creature view:detail");
     const b = queryForSortSeed("t:creature unique:prints");
     const c = queryForSortSeed("t:creature unique:art");
+    const d = queryForSortSeed("t:creature ++");
+    const e = queryForSortSeed("t:creature @@");
     expect(a).toBe(b);
     expect(b).toBe(c);
+    expect(c).toBe(d);
+    expect(d).toBe(e);
     expect(a).toBe("t:creature");
   });
 

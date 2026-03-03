@@ -785,6 +785,24 @@ describe("unique:prints", () => {
     // The unique:prints node should appear in the breakdown
     expect(output.result.matchCount).toBe(9);
   });
+
+  test("++ alias sets uniqueMode prints (Spec 048)", () => {
+    const output = evaluate("++");
+    expect(output.uniqueMode).toBe("prints");
+  });
+
+  test("@@ alias sets uniqueMode art (Spec 048)", () => {
+    const output = evaluate("@@");
+    expect(output.uniqueMode).toBe("art");
+  });
+
+  test("++ and unique:prints produce same uniqueMode", () => {
+    expect(evaluate("t:creature ++").uniqueMode).toBe(evaluate("t:creature unique:prints").uniqueMode);
+  });
+
+  test("@@ and unique:art produce same uniqueMode", () => {
+    expect(evaluate("t:creature @@").uniqueMode).toBe(evaluate("t:creature unique:art").uniqueMode);
+  });
 });
 
 // ---------------------------------------------------------------------------

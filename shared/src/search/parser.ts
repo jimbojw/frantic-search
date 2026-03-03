@@ -141,6 +141,21 @@ class Parser {
           valueSpan: { start: op.end, end: op.end },
         };
       }
+      // Scryfall display aliases (Spec 048): ++ → unique:prints, @@ → unique:art
+      if (word.value === "++") {
+        return {
+          type: "FIELD", field: "unique", operator: ":", value: "prints",
+          span: { start: word.start, end: word.end },
+          valueSpan: { start: word.start, end: word.end },
+        };
+      }
+      if (word.value === "@@") {
+        return {
+          type: "FIELD", field: "unique", operator: ":", value: "art",
+          span: { start: word.start, end: word.end },
+          valueSpan: { start: word.start, end: word.end },
+        };
+      }
       return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
     }
 
