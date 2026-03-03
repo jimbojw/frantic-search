@@ -45,6 +45,7 @@ function extractPrintingDisplayColumns(data: PrintingColumnarData): PrintingDisp
     finish: data.finish,
     price_usd: data.price_usd,
     canonical_face_ref: data.canonical_face_ref,
+    illustration_id_index: data.illustration_id_index,
   }
 }
 

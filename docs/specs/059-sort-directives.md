@@ -175,11 +175,11 @@ Spec 010 proposed extracting sort directives during parsing into a `ParseResult 
 2. **Breakdown UI.** Sort terms appear in the query breakdown as chips. They are pinnable, unpinnable, and removable via ×. This requires them to be AST nodes with spans.
 3. **Query editing.** `removeNode`, `appendTerm`, `cycleChip`, and the entire `query-edit.ts` infrastructure operates on AST nodes. Extracting sort during parsing would bypass all of this.
 
-### Printing-domain sort implies `unique:prints`
+### Printing-domain sort implies printing expansion
 
-When `sortBy.isPrintingDomain` is `true`, the worker treats `uniquePrints` as `true` even if `unique:prints` is not in the query. This is because sorting by a printing-level field (price, date, rarity) is meaningless over deduplicated cards — the user must see individual printings to observe the sort order.
+When `sortBy.isPrintingDomain` is `true`, the worker treats `uniqueMode` as `prints` for expansion purposes even if `unique:prints` is not in the query. This is because sorting by a printing-level field (price, date, rarity) is meaningless over deduplicated cards — the user must see individual printings to observe the sort order.
 
-The evaluator does **not** set `uniquePrints = true` for printing-domain sorts. The implication is handled in the worker, which is where `uniquePrints` is consumed. This keeps the evaluator honest (it reports what the query literally says) and lets the worker apply the implication.
+The evaluator does **not** set `uniqueMode = 'prints'` for printing-domain sorts. The implication is handled in the worker, which is where `uniqueMode` is consumed. This keeps the evaluator honest (it reports what the query literally says) and lets the worker apply the implication.
 
 ### Evaluation pipeline (updated)
 
@@ -190,7 +190,7 @@ input → lexer → tokens → parser → ASTNode
                             evaluator (modifier detection)
                                      │
                                      ▼
-                            EvalOutput { indices, sortBy, uniquePrints, ... }
+                            EvalOutput { indices, sortBy, uniqueMode, ... }
                                      │
                                      ▼
                             worker: combine pinned + live
@@ -431,7 +431,7 @@ Strip `sort:` FIELD nodes in `serializeNode` (same as `view:`). When a sort dire
 
 - Import `SortDirective`, `sortByField`, `sortPrintingsByField` from `@frantic-search/shared`.
 - After combining pinned + live `EvalOutput`, resolve the effective `sortBy` (live wins over pinned).
-- When `sortBy.isPrintingDomain` and `!uniquePrints`, set `uniquePrints = true` and expand printing indices (same as the existing `uniquePrints` expansion path).
+- When `sortBy.isPrintingDomain` and `uniqueMode === 'cards'`, treat as `prints` for expansion (expand printing indices; same as the existing expansion path).
 - Replace `seededSort` / `seededSortPrintings` calls with `sortByField` / `sortPrintingsByField` when `sortBy` is present. Fall back to `seededSort` when absent.
 
 ### `app/src/TermsDrawer.tsx`
@@ -531,7 +531,7 @@ test("no sort directive preserves seededSort behavior", ...);
 
 ```typescript
 test("sort:name applied after playable filter", ...);
-test("printing-domain sort implies uniquePrints", ...);
+test("printing-domain sort implies expansion", ...);
 test("pinned sort: is overridden by live sort:", ...);
 test("pinned sort: applies when live has no sort:", ...);
 ```

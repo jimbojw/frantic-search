@@ -69,14 +69,14 @@ The main thread sends `pinnedQuery` when it is non-empty. It sends a search mess
   pinnedPrintingCount?: number;
   histograms: Histograms;
   printingIndices?: Uint32Array;
-  hasPrintingConditions: boolean; uniquePrints: boolean;
+  hasPrintingConditions: boolean; uniqueMode: 'cards' | 'prints' | 'art';
 }
 ```
 
 `pinnedBreakdown` is present when the worker received a non-empty `pinnedQuery`. When present, the result also includes:
 
 - `pinnedIndicesCount: number` — count of cards matching the pinned query alone.
-- `pinnedPrintingCount?: number` — count of printing rows matching the pinned query alone; present only when the pinned query has `hasPrintingConditions` or `uniquePrints`.
+- `pinnedPrintingCount?: number` — count of printing rows matching the pinned query alone; present only when the pinned query has `hasPrintingConditions` or `uniqueMode` is `prints` or `art`.
 
 **Why separate metadata for pinned?** The MATCHES lip derives its counts from the result arrays (`indices`, `printingIndices`) — those are the combined results and their lengths are the intersection counts. The PINNED lip needs counts for the pinned query in isolation. The worker never transfers the pinned-only arrays; it only sends the combined results. So we must send `pinnedIndicesCount` and `pinnedPrintingCount` explicitly. The root `pinnedBreakdown.matchCount` cannot be used because it is domain-ambiguous (printing-domain queries report printing-row count there, not card count).
 
@@ -84,7 +84,7 @@ The main thread sends `pinnedQuery` when it is non-empty. It sends a search mess
 
 1. **Both non-empty:** Parse and evaluate pinned and live ASTs separately. Intersect their index sets. Compute histograms and sort from the intersection. Return both breakdowns.
 2. **Only live non-empty:** Same as today.
-3. **Only pinned non-empty:** Evaluate pinned AST. Return `pinnedBreakdown` with counts, empty `indices`, empty histograms. Return `hasPrintingConditions` and `uniquePrints` from the pinned evaluation (not hardcoded).
+3. **Only pinned non-empty:** Evaluate pinned AST. Return `pinnedBreakdown` with counts, empty `indices`, empty histograms. Return `hasPrintingConditions` and `uniqueMode` from the pinned evaluation (not hardcoded).
 4. **Both empty:** Not sent.
 
 Per-node match counts in each breakdown reflect that query evaluated in isolation — they are not filtered by the other query.
@@ -96,7 +96,7 @@ Per-node match counts in each breakdown reflect that query evaluated in isolatio
 
 #### Printing-level result combination (both non-empty)
 
-`uniquePrints` and `hasPrintingConditions` are OR'd across both evaluations — they apply to the effective query as a whole. A `unique:prints` term in either query has the same effect as if it appeared in a single combined query.
+`uniqueMode` and `hasPrintingConditions` are resolved across both evaluations — they apply to the effective query as a whole. A `unique:prints` or `unique:art` term in either query has the same effect as if it appeared in a single combined query.
 
 `printingIndices` combination depends on which evaluation produced them:
 
@@ -212,6 +212,6 @@ Tapping the banner clears the live query but does **not** clear the pinned query
 
 ## Implementation Notes
 
-- 2026-03-02: Issue #52 fix — PINNED lip shows pinned-only card and printing counts; MATCHES lip shows intersection. Worker returns `pinnedIndicesCount` and `pinnedPrintingCount` when `pinnedBreakdown` is present. Pinned-only branch now forwards `hasPrintingConditions` and `uniquePrints` from the pinned evaluation.
+- 2026-03-02: Issue #52 fix — PINNED lip shows pinned-only card and printing counts; MATCHES lip shows intersection. Worker returns `pinnedIndicesCount` and `pinnedPrintingCount` when `pinnedBreakdown` is present. Pinned-only branch now forwards `hasPrintingConditions` and `uniqueMode` from the pinned evaluation.
 - 2026-03-02: Pin/unpin handlers use `parseBreakdown(query)` instead of the worker's breakdown for splice operations. This avoids stale-span bugs when the query string updates faster than the worker can respond (e.g., rapid pin/unpin sequences that reorder terms). Same pattern as TERMS drawer (Spec 044) and `cycleChip`.
 - 2026-03-01: Unified chip rendering across all breakdown cases. All nodes (leaves, NOT-leaves, AND, OR) render as `BreakdownChip` components. AND/OR nodes display labels with non-NOP child counts (e.g. `AND (2)`, `OR (3)`). Flat-OR is now classified as nested (root OR chip is visible with indented children) while flat-AND remains simple (flex-wrap leaf chips, no root chip). The pin icon is always visible on all chips: filled blue for pinned, stroked gray for live. NOP nodes render as inert chips with no pin icon, no click handler, and no × button. OR nodes with exactly one non-NOP child are not pinnable (the single child is the rational pin target). Root nodes of nested trees now have × buttons — tapping × on a root clears the entire query.

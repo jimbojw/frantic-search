@@ -49,5 +49,6 @@ export interface PrintingColumnarData {
   games?: number[];
   promo_types_flags_0?: number[];
   promo_types_flags_1?: number[];
+  illustration_id_index?: number[];
   set_lookup: SetLookupEntry[];
 }

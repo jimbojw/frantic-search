@@ -3,14 +3,47 @@ import {
   type ASTNode,
   type QueryNodeResult,
   type EvalOutput,
+  type UniqueMode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
+import { parse } from "./parser";
 
 export { FIELD_ALIASES } from "./eval-leaves";
+
+/** Extract effective unique mode from AST (last legal unique: term wins). */
+export function getUniqueModeFromAst(ast: ASTNode): "cards" | "prints" | "art" {
+  const LEGAL = new Set(["cards", "prints", "art"]);
+  const collected: string[] = [];
+  function walk(n: ASTNode): void {
+    switch (n.type) {
+      case "FIELD":
+        if (n.field.toLowerCase() === "unique" && LEGAL.has(n.value.toLowerCase())) {
+          collected.push(n.value.toLowerCase());
+        }
+        return;
+      case "NOT":
+        walk(n.child);
+        return;
+      case "AND":
+      case "OR":
+        for (const c of n.children) walk(c);
+        return;
+      default:
+        return;
+    }
+  }
+  walk(ast);
+  return (collected.length > 0 ? collected[collected.length - 1] : "cards") as "cards" | "prints" | "art";
+}
+
+/** Extract effective unique mode from query string (last legal unique: term wins). */
+export function getUniqueModeFromQuery(query: string): "cards" | "prints" | "art" {
+  return getUniqueModeFromAst(parse(query));
+}
 
 const SEP = "\x1E";
 
@@ -112,13 +145,13 @@ export class NodeCache {
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
 
-    const uniquePrints = this._hasUniquePrints(ast);
+    const uniqueMode = this._getUniqueMode(ast);
     const includeExtras = this._hasIncludeExtras(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
 
     if (ast.type === "NOP" || root.computed!.error) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniquePrints, includeExtras };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -143,11 +176,12 @@ export class NodeCache {
 
     let printingIndices: Uint32Array | undefined;
 
-    if (uniquePrints && !hasPrintingConditions && this._printingIndex) {
-      // unique:prints without printing conditions: expand all printings of
+    const needsPrintingExpansion = (uniqueMode === "prints" || uniqueMode === "art") && !hasPrintingConditions;
+    if (needsPrintingExpansion && this._printingIndex) {
+      // unique:prints or unique:art without printing conditions: expand all printings of
       // matching cards. When printing conditions ARE present, fall through to
       // the hasPrintingConditions branch which intersects with printing-domain
-      // leaf buffers — unique:prints then only controls display-layer dedup.
+      // leaf buffers — unique mode then only controls display-layer dedup.
       let total = 0;
       for (const fi of indices) total += this._printingIndex.printingsOf(fi).length;
       printingIndices = new Uint32Array(total);
@@ -179,7 +213,11 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniquePrints, includeExtras };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras };
+  }
+
+  private _getUniqueMode(ast: ASTNode): UniqueMode {
+    return getUniqueModeFromAst(ast);
   }
 
   private _hasPrintingLeaves(ast: ASTNode): boolean {
@@ -209,16 +247,6 @@ export class NodeCache {
       }
       case "NOT": return this._hasPrintingLeaves(ast.child);
       case "AND": case "OR": return ast.children.some(c => this._hasPrintingLeaves(c));
-      default: return false;
-    }
-  }
-
-  private _hasUniquePrints(ast: ASTNode): boolean {
-    switch (ast.type) {
-      case "FIELD":
-        return ast.field.toLowerCase() === "unique" && ast.value.toLowerCase() === "prints";
-      case "NOT": return this._hasUniquePrints(ast.child);
-      case "AND": case "OR": return ast.children.some(c => this._hasUniquePrints(c));
       default: return false;
     }
   }
@@ -333,7 +361,7 @@ export class NodeCache {
         break;
       }
       case "FIELD": {
-        if (ast.field.toLowerCase() === "unique" && ast.value.toLowerCase() === "prints") {
+        if (ast.field.toLowerCase() === "unique") {
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };

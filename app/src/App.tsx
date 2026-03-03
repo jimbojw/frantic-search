@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, For, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from '@frantic-search/shared'
 import { Finish, parse, toScryfallQuery } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
@@ -72,7 +72,7 @@ function App() {
   const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
-  const [uniquePrints, setUniquePrints] = createSignal(false)
+  const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
   const [indicesIncludingExtras, setIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [printingIndicesIncludingExtras, setPrintingIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
@@ -212,11 +212,11 @@ function App() {
     const pi = printingIndices()
     const pd = printingDisplay()
     if (!pi || !pd) return null
-    const uniqueMode = uniquePrints() ? 'prints' : 'cards'
     return dedupePrintingItems(
       Array.from(pi),
       (idx) => pd.canonical_face_ref[idx],
-      uniqueMode,
+      uniqueMode(),
+      pd.illustration_id_index ? (idx) => pd.illustration_id_index![idx] : undefined,
     )
   })
 
@@ -316,7 +316,7 @@ function App() {
           setHistograms(msg.histograms)
           setPrintingIndices(msg.printingIndices)
           setHasPrintingConditions(msg.hasPrintingConditions)
-          setUniquePrints(msg.uniquePrints)
+          setUniqueMode(msg.uniqueMode)
           setIndicesIncludingExtras(msg.indicesIncludingExtras)
           setPrintingIndicesIncludingExtras(msg.printingIndicesIncludingExtras)
         }
@@ -349,7 +349,7 @@ function App() {
       setHistograms(null)
       setPrintingIndices(undefined)
       setHasPrintingConditions(false)
-      setUniquePrints(false)
+      setUniqueMode('cards')
       setIndicesIncludingExtras(undefined)
       setPrintingIndicesIncludingExtras(undefined)
     } else if (!q) {
@@ -358,7 +358,7 @@ function App() {
       setHistograms(null)
       setPrintingIndices(undefined)
       setHasPrintingConditions(false)
-      setUniquePrints(false)
+      setUniqueMode('cards')
       setIndicesIncludingExtras(undefined)
       setPrintingIndicesIncludingExtras(undefined)
     }
@@ -603,7 +603,7 @@ function App() {
           breakdown={breakdown()}
           resultCount={totalCards()}
           printingCount={
-            hasPrintingConditions() || uniquePrints()
+            hasPrintingConditions() || uniqueMode() !== 'cards'
               ? totalPrintingItems()
               : undefined
           }
@@ -857,7 +857,7 @@ function App() {
                       <Show when={indicesIncludingExtras()}>
                         {(extrasCount) => {
                           const pExtras = printingIndicesIncludingExtras()
-                          const showPrintings = () => pExtras !== undefined && (uniquePrints() || hasPrintingConditions())
+                          const showPrintings = () => pExtras !== undefined && (uniqueMode() !== 'cards' || hasPrintingConditions())
                           return (
                             <p class="mt-1">
                               Try again with{' '}
@@ -893,7 +893,7 @@ function App() {
                                 return idx !== undefined && pd ? pd.scryfall_ids[idx] : d().scryfall_ids[ci]
                               }
                               const setBadge = () => {
-                                if (!hasPrintingConditions() && !uniquePrints()) return null
+                                if (!hasPrintingConditions() && uniqueMode() === 'cards') return null
                                 const idx = pi()
                                 const pd = pdc()
                                 if (idx === undefined || !pd) return null
@@ -985,7 +985,7 @@ function App() {
                                   const name = () => fullCardName(d(), faces())
                                   const isFoil = pd.finish[pi] === Finish.Foil
                                   const isEtched = pd.finish[pi] === Finish.Etched
-                                  const overlayClass = () => uniquePrints() && isFoil ? 'foil-overlay ' : uniquePrints() && isEtched ? 'etched-overlay ' : ''
+                                  const overlayClass = () => uniqueMode() === 'prints' && isFoil ? 'foil-overlay ' : uniqueMode() === 'prints' && isEtched ? 'etched-overlay ' : ''
                                   return (
                                     <li class="group px-4 py-3 text-sm">
                                       <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
@@ -1028,7 +1028,7 @@ function App() {
                                             {(() => {
                                               const sid = pd.scryfall_ids[pi]
                                               const group = finishGroupMap().get(sid)
-                                              if (group && group.length > 1 && !uniquePrints()) {
+                                              if (group && group.length > 1 && uniqueMode() === 'cards') {
                                                 return (<>
                                                   <dt class="font-medium text-gray-600 dark:text-gray-300">Finishes</dt>
                                                   <dd>{group.map(g => {
@@ -1110,13 +1110,13 @@ function App() {
                                     const isFoil = pd.finish[pi] === Finish.Foil
                                     const isEtched = pd.finish[pi] === Finish.Etched
                                     const finishLabel = () => {
-                                      if (uniquePrints()) return FINISH_LABELS[pd.finish[pi]] ?? null
+                                      if (uniqueMode() === 'prints') return FINISH_LABELS[pd.finish[pi]] ?? null
                                       const group = finishGroupMap().get(sid)
                                       if (!group || group.length <= 1) return null
                                       return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
                                     }
-                                    const overlayClass = () => uniquePrints() && isFoil ? 'foil-overlay' : uniquePrints() && isEtched ? 'etched-overlay' : ''
-                                    const metaClass = () => uniquePrints() && isFoil ? 'foil-meta' : uniquePrints() && isEtched ? 'etched-meta' : ''
+                                    const overlayClass = () => uniqueMode() === 'prints' && isFoil ? 'foil-overlay' : uniqueMode() === 'prints' && isEtched ? 'etched-overlay' : ''
+                                    const metaClass = () => uniqueMode() === 'prints' && isFoil ? 'foil-meta' : uniqueMode() === 'prints' && isEtched ? 'etched-meta' : ''
                                     return (
                                       <div class={`bg-white dark:bg-gray-900 flex flex-col ${overlayClass()}`}>
                                         <CardImage

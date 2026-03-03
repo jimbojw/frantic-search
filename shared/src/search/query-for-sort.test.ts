@@ -18,22 +18,27 @@ describe("queryForSortSeed", () => {
     expect(a).toBe("t:creature");
   });
 
-  it("strips unique:prints", () => {
+  it("strips unique: terms (cards, prints, art)", () => {
     expect(queryForSortSeed("t:creature unique:prints")).toBe("t:creature");
+    expect(queryForSortSeed("t:creature unique:cards")).toBe("t:creature");
+    expect(queryForSortSeed("t:creature unique:art")).toBe("t:creature");
     expect(queryForSortSeed("unique:prints")).toBe("");
     expect(queryForSortSeed("c:r unique:prints t:instant")).toBe("c:r t:instant");
   });
 
-  it("unique:prints variants produce same result", () => {
+  it("unique: variants produce same result", () => {
     const a = queryForSortSeed("t:creature view:detail");
     const b = queryForSortSeed("t:creature unique:prints");
+    const c = queryForSortSeed("t:creature unique:art");
     expect(a).toBe(b);
+    expect(b).toBe(c);
     expect(a).toBe("t:creature");
   });
 
-  it("strips both view: and unique:prints", () => {
+  it("strips both view: and unique:", () => {
     expect(queryForSortSeed("t:creature view:detail unique:prints")).toBe("t:creature");
     expect(queryForSortSeed("t:creature unique:prints view:slim")).toBe("t:creature");
+    expect(queryForSortSeed("t:creature unique:art view:images")).toBe("t:creature");
   });
 
   it("preserves trailing whitespace (tap-to-shuffle)", () => {

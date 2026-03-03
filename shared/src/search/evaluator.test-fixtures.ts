@@ -146,6 +146,8 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
   // poster=col1 bit1, rainbowfoil=col1 bit3, universesbeyond=col1 bit16, glossy=col1 bit19
   promo_types_flags_0: [0, 0, 0, 0, 0, 0, 0, 0, 0],
   promo_types_flags_1: [0, 1 << 3, 0, 1 << 19, 0, 0, 0, 0, (1 << 1) | (1 << 16)], // #1 rainbowfoil, #3 glossy, #8 poster+universesbeyond
+  // Face 1 (Bolt): p-a,p-b same art(0), p-c(1), p-f(2), p-g(3), p-i(4). Face 3 (Sol): p-d,p-e same(0), p-h(1)
+  illustration_id_index: [0, 0, 1, 0, 0, 2, 3, 1, 4],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },

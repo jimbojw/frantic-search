@@ -64,7 +64,7 @@ When the playable-filtered result set is empty but the unfiltered counts are non
 
 > No cards found. Try again with `include:extras` (N cards)?
 
-When printing counts are relevant (`uniquePrints` or `hasPrintingConditions`), include both:
+When printing counts are relevant (`uniqueMode` is `prints` or `art`, or `hasPrintingConditions`), include both:
 
 > No cards found. Try again with `include:extras` (N cards, M printings)?
 

@@ -112,12 +112,14 @@ export interface QueryNodeResult {
   children?: QueryNodeResult[];
 }
 
+export type UniqueMode = "cards" | "prints" | "art";
+
 export interface EvalOutput {
   result: QueryNodeResult;
   indices: Uint32Array;
   printingIndices?: Uint32Array;
   hasPrintingConditions: boolean;
   printingsUnavailable: boolean;
-  uniquePrints: boolean;
+  uniqueMode: UniqueMode;
   includeExtras: boolean;
 }

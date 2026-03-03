@@ -23,7 +23,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.pinnedIndicesCount).toBe(2)
     expect(result.pinnedPrintingCount).toBe(7) // 7 tournament-usable printing rows
     expect(result.hasPrintingConditions).toBe(true)
-    expect(result.uniquePrints).toBe(false)
+    expect(result.uniqueMode).toBe('cards')
   })
 
   it('pinned-only printing query returns pinnedIndicesCount and pinnedPrintingCount', () => {
@@ -38,7 +38,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.pinnedIndicesCount).toBe(1) // Lightning Bolt
     expect(result.pinnedPrintingCount).toBe(2) // MH2 has 2 printings (rare nonfoil, rare foil)
     expect(result.hasPrintingConditions).toBe(true)
-    expect(result.uniquePrints).toBe(false)
+    expect(result.uniqueMode).toBe('cards')
   })
 
   it('pinned-only unique:prints returns pinnedPrintingCount', () => {
@@ -52,7 +52,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.pinnedBreakdown).toBeDefined()
     expect(result.pinnedIndicesCount).toBe(4) // Bolt, Counterspell, Azorius Charm, Dismember
     expect(result.pinnedPrintingCount).toBe(6) // Bolt has 6 printings in fixture (0,1,2,5,6,8), others have none
-    expect(result.uniquePrints).toBe(true)
+    expect(result.uniqueMode).toBe('prints')
   })
 
   it('both non-empty returns pinnedIndicesCount and pinnedPrintingCount when pinned has printing terms', () => {

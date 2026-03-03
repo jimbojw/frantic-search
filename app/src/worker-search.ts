@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 
 function leafLabel(qnr: QueryNodeResult): string {
@@ -118,11 +118,11 @@ export function runSearch(params: RunSearchParams): SearchResult {
       breakdown: { type: 'NOP', label: '', matchCount: 0 },
       pinnedBreakdown, histograms: emptyHistograms,
       pinnedIndicesCount: pinnedEval.indices.length,
-      pinnedPrintingCount: (pinnedEval.hasPrintingConditions || pinnedEval.uniquePrints)
+      pinnedPrintingCount: (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards")
         ? (pinnedEval.printingIndices?.length ?? 0)
         : undefined,
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
-      uniquePrints: pinnedEval.uniquePrints,
+      uniqueMode: pinnedEval.uniqueMode,
     }
     return result
   }
@@ -134,7 +134,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let deduped: number[]
   let rawPrintingIndices = liveEval.printingIndices
   let hasPrintingConditions = liveEval.hasPrintingConditions
-  let uniquePrints = liveEval.uniquePrints
+  let uniqueMode = liveEval.uniqueMode
   let includeExtras = liveEval.includeExtras
   let pinnedBreakdown: BreakdownNode | undefined
   let pinnedIndicesCount: number | undefined
@@ -145,7 +145,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     const pinnedEval = cache.evaluate(pinnedAst)
     pinnedBreakdown = toBreakdown(pinnedEval.result)
     pinnedIndicesCount = pinnedEval.indices.length
-    if (pinnedEval.hasPrintingConditions || pinnedEval.uniquePrints) {
+    if (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards") {
       pinnedPrintingCount = pinnedEval.printingIndices?.length ?? 0
     }
 
@@ -160,7 +160,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     }
 
     hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
-    uniquePrints = uniquePrints || pinnedEval.uniquePrints
+    uniqueMode = getUniqueModeFromQuery(`${msg.pinnedQuery} ${msg.query}`)
     includeExtras = includeExtras || pinnedEval.includeExtras
   } else {
     deduped = Array.from(liveEval.indices)
@@ -261,7 +261,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   const result: SearchResult = {
     type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
-    printingIndices, hasPrintingConditions, uniquePrints,
+    printingIndices, hasPrintingConditions, uniqueMode,
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),

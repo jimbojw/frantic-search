@@ -4,7 +4,7 @@ import { parse } from "./parser";
 
 const DISPLAY_FIELDS: Array<{ field: string; value?: string }> = [
   { field: "view" },
-  { field: "unique", value: "prints" },
+  { field: "unique" }, // strips unique:cards, unique:prints, unique:art (value ignored)
 ];
 
 function isDisplayField(node: ASTNode): boolean {
@@ -12,7 +12,10 @@ function isDisplayField(node: ASTNode): boolean {
   const f = node.field.toLowerCase();
   const v = node.value.toLowerCase();
   for (const { field, value } of DISPLAY_FIELDS) {
-    if (f === field && (value === undefined || v === value)) return true;
+    if (f === field) {
+      if (value === undefined) return true; // any value matches
+      if (v === value) return true;
+    }
   }
   return false;
 }

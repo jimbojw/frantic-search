@@ -47,6 +47,8 @@ export type Histograms = {
   cardType: number[]       // [Lgn, Cre, Ins, Sor, Art, Enc, Plw, Lnd] — length 8
 }
 
+export type UniqueMode = "cards" | "prints" | "art";
+
 export type PrintingDisplayColumns = {
   scryfall_ids: string[]
   collector_numbers: string[]
@@ -56,6 +58,7 @@ export type PrintingDisplayColumns = {
   finish: number[]
   price_usd: number[]
   canonical_face_ref: number[]
+  illustration_id_index?: number[]
 }
 
 export type FromWorker =
@@ -64,4 +67,4 @@ export type FromWorker =
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniquePrints: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number }

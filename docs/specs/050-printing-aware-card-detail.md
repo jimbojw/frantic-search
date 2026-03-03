@@ -38,9 +38,11 @@ When navigating from search results to the card detail page, the scryfall_id pas
 | Slim / Detail | Printing conditions present | First matching printing's `scryfall_id` |
 | Full | Printing conditions, `unique:cards` (default) | First matching printing's `scryfall_id` (one per card) |
 | Full | Printing conditions, `unique:prints` | Specific printing's `scryfall_id` for each row |
+| Full | Printing conditions, `unique:art` | One `scryfall_id` per unique artwork |
 | Images | No printing conditions | Oracle card's `scryfall_id` |
 | Images | Printing conditions, `unique:cards` (default) | First matching printing's `scryfall_id` (one per card) |
 | Images | Printing conditions, `unique:prints` | Specific printing's `scryfall_id` for each row |
+| Images | Printing conditions, `unique:art` | One `scryfall_id` per unique artwork |
 
 ## CardDetail Changes
 

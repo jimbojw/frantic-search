@@ -161,6 +161,10 @@ Total: 52 bits for 52 values (49 discovered in initial bulk data scan plus `univ
 
 - `released_at: number[]` — uint32 in YYYYMMDD format (e.g., `20210618` for 2021-06-18). `0` = unknown. Enables numeric comparison for `date:` and `year:` queries. Year is derivable as `Math.floor(released_at / 10000)`.
 
+### Illustration index column
+
+- `illustration_id_index: number[]` — uint16. Per-printing index into the set of unique artworks for that card's canonical face. The canonical printing's artwork gets 0; each other unique artwork gets 1, 2, 3, … (stable order by first appearance in default_cards). Null/missing `illustration_id` in Scryfall data receives a synthetic distinct index per card so those printings still appear. Enables `unique:art` deduplication (Spec 048, Issue #75).
+
 ### Set lookup
 
 The `set_lookup` table also carries `released_at` per set (the release date of the first printing seen), enabling the `date>setcode` proxy syntax where a set code resolves to its release date at query time.
@@ -193,15 +197,18 @@ New module. The `processPrintings()` function:
 
 1. Reads `data/raw/default-cards.json` and `data/dist/columns.json`.
 2. Builds the `oracle_id → canonical_face_ref` map from `columns.json` (iterating `scryfall_ids` and using the existing oracle card data to extract `oracle_id`s — or reading oracle-cards.json directly for the mapping).
-3. Iterates each printing entry in `default-cards.json`:
+3. **Two-pass illustration index assignment:**
+   - **Pass 1 (build):** Iterate default_cards; for each canonical face, collect `Set<illustration_id>` using `card_faces?.[0]?.illustration_id ?? card.illustration_id` (front face only). Build `canonical_face → canonical_scryfall_id` from columns.json (`columns.scryfall_ids[cf]`).
+   - **Pass 2 (emit):** When emitting each row, assign `illustration_id_index`: canonical printing (where `card.id === canonical_scryfall_id`) gets 0; others get 1, 2, 3… in first-appearance order. Null `illustration_id` receives a synthetic index (maxRealIndex + 1, etc.) so each such printing is distinct.
+4. Iterates each printing entry in `default-cards.json`:
    a. Looks up `canonical_face_ref` via `oracle_id`. Drops unmapped printings.
    b. Encodes `rarity`, `printing_flags`, `frame` as bitmasks.
    c. Encodes `promo_types` (string array) into `promo_types_flags_0` and `promo_types_flags_1` via `PROMO_TYPE_FLAGS` bit mapping.
    d. Dictionary-encodes the set via a `SetEncoder` (analogous to `DictEncoder` but for uint16 indices).
    e. For each finish in `entry.finishes`:
-      - Emits a row with `finish` set to the enum value, `promo_types_flags_0` and `promo_types_flags_1` from step c.
+      - Emits a row with `finish` set to the enum value, `promo_types_flags_0` and `promo_types_flags_1` from step c, and `illustration_id_index` from step 3.
       - Picks the price from `entry.prices.usd` (nonfoil), `entry.prices.usd_foil` (foil), or `entry.prices.usd_etched` (etched). Parses the string to cents; null/missing → 0.
-4. Writes `data/dist/printings.json`.
+5. Writes `data/dist/printings.json`.
 
 Rows are emitted in iteration order (grouped by printing, finishes adjacent), which maximizes gzip compression of the duplicated `scryfall_ids` column.
 
@@ -238,3 +245,4 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 ## Implementation Notes
 
 - 2026-03-03: Added `promo_types_flags_0` and `promo_types_flags_1` columns for Scryfall `promo_types` (52 values). Bit assignment is alphabetical, with late additions appended. See issue #72.
+- 2026-03-03: Added `illustration_id_index` column for `unique:art` display modifier (Issue #75). Two-pass ETL: build illustration sets per canonical face, then assign indices (canonical = 0, others by first appearance; null illustration_id gets synthetic index).

@@ -26,14 +26,14 @@ export {
 
 export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";
 
-export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, BreakdownNode, Histograms } from "./worker-protocol";
+export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";
 
 export { TokenType } from "./search/ast";
 export type { ASTNode, Token, QueryNodeResult, Span } from "./search/ast";
 export { lex } from "./search/lexer";
 export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
-export { NodeCache, nodeKey, FIELD_ALIASES } from "./search/evaluator";
+export { NodeCache, nodeKey, FIELD_ALIASES, getUniqueModeFromQuery } from "./search/evaluator";
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";

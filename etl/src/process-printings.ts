@@ -24,9 +24,15 @@ import {
 // Scryfall default-cards shape (fields we care about)
 // ---------------------------------------------------------------------------
 
+interface DefaultCardFace {
+  illustration_id?: string;
+}
+
 interface DefaultCard {
   id?: string;
   oracle_id?: string;
+  illustration_id?: string;
+  card_faces?: DefaultCardFace[];
   name?: string;
   layout?: string;
   set?: string;
@@ -210,6 +216,24 @@ function buildOracleIdMap(verbose: boolean): Map<string, number> {
   return map;
 }
 
+/** Build canonical_face -> canonical printing scryfall_id from columns. */
+function buildCanonicalScryfallIdMap(): Map<number, string> {
+  const columnsRaw = fs.readFileSync(COLUMNS_PATH, "utf-8");
+  const columns: ColumnarData = JSON.parse(columnsRaw);
+  const map = new Map<number, string>();
+  for (let i = 0; i < columns.canonical_face.length; i++) {
+    if (columns.canonical_face[i] === i && columns.scryfall_ids[i]) {
+      map.set(i, columns.scryfall_ids[i]);
+    }
+  }
+  return map;
+}
+
+/** Front-face illustration_id (multiface uses card_faces[0]). */
+function getFrontIllustrationId(card: DefaultCard): string | undefined {
+  return card.card_faces?.[0]?.illustration_id ?? card.illustration_id;
+}
+
 // ---------------------------------------------------------------------------
 // Main processing
 // ---------------------------------------------------------------------------
@@ -227,10 +251,53 @@ export function processPrintings(verbose: boolean): void {
   }
 
   const oracleIdMap = buildOracleIdMap(verbose);
+  const canonicalScryfallIdMap = buildCanonicalScryfallIdMap();
 
   log(`Reading ${DEFAULT_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
   const defaultCards: DefaultCard[] = JSON.parse(raw);
+
+  // Pass 1: build illustration_id -> index per canonical face (Issue #75)
+  const faceIllustrationOrder = new Map<number, string[]>();
+  const faceIllustrationSeen = new Map<number, Set<string>>();
+  const canonicalKey = new Map<number, string>();
+  for (const card of defaultCards) {
+    const layout = card.layout ?? "normal";
+    if (FILTERED_LAYOUTS.has(layout)) continue;
+    const cf = oracleIdMap.get(card.oracle_id ?? "");
+    if (cf === undefined) continue;
+    const illId = getFrontIllustrationId(card);
+    const key = illId ?? `__null__:${card.id ?? ""}`;
+    let order = faceIllustrationOrder.get(cf);
+    let seen = faceIllustrationSeen.get(cf);
+    if (!order) {
+      order = [];
+      faceIllustrationOrder.set(cf, order);
+    }
+    if (!seen) {
+      seen = new Set();
+      faceIllustrationSeen.set(cf, seen);
+    }
+    if (!seen.has(key)) {
+      order.push(key);
+      seen.add(key);
+    }
+    const canonicalId = canonicalScryfallIdMap.get(cf);
+    if (canonicalId && card.id === canonicalId) {
+      canonicalKey.set(cf, key);
+    }
+  }
+  const illustrationIndexMap = new Map<number, Map<string, number>>();
+  for (const [cf, order] of faceIllustrationOrder) {
+    const map = new Map<string, number>();
+    const canKey = canonicalKey.get(cf);
+    if (canKey !== undefined) map.set(canKey, 0);
+    let idx = 1;
+    for (const key of order) {
+      if (key !== canKey) map.set(key, idx++);
+    }
+    illustrationIndexMap.set(cf, map);
+  }
 
   log(`Processing ${defaultCards.length} default card entries…`, verbose);
 
@@ -250,6 +317,7 @@ export function processPrintings(verbose: boolean): void {
     games: [],
     promo_types_flags_0: [],
     promo_types_flags_1: [],
+    illustration_id_index: [],
     set_lookup: [],
   };
 
@@ -285,6 +353,11 @@ export function processPrintings(verbose: boolean): void {
     const gamesBits = encodeGames(card.games);
     const promoFlags = encodePromoTypesFlags(card);
 
+    const illId = getFrontIllustrationId(card);
+    const illKey = illId ?? `__null__:${card.id ?? ""}`;
+    const illMap = illustrationIndexMap.get(canonicalFace);
+    const illIdx = illMap?.get(illKey) ?? 0;
+
     for (const finishStr of finishes) {
       const finishVal = FINISH_FROM_STRING[finishStr];
       if (finishVal === undefined) continue;
@@ -305,6 +378,7 @@ export function processPrintings(verbose: boolean): void {
       (data.games ??= []).push(gamesBits);
       data.promo_types_flags_0!.push(promoFlags.flags0);
       data.promo_types_flags_1!.push(promoFlags.flags1);
+      data.illustration_id_index!.push(illIdx);
 
       totalEntries++;
     }

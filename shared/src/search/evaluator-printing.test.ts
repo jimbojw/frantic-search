@@ -684,14 +684,30 @@ describe("printing error handling", () => {
 describe("unique:prints", () => {
   test("unique:prints flag is set on output", () => {
     const output = evaluate("unique:prints");
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
+  });
+
+  test("unique:art flag is set on output", () => {
+    const output = evaluate("unique:art");
+    expect(output.uniqueMode).toBe("art");
+  });
+
+  test("unique:cards is explicit and sets cards mode", () => {
+    const output = evaluate("unique:cards");
+    expect(output.uniqueMode).toBe("cards");
+  });
+
+  test("last legal unique: term wins", () => {
+    expect(evaluate("unique:prints unique:cards").uniqueMode).toBe("cards");
+    expect(evaluate("unique:cards unique:art").uniqueMode).toBe("art");
+    expect(evaluate("unique:art unique:prints").uniqueMode).toBe("prints");
   });
 
   test("unique:prints with face-only query expands all printings", () => {
     const output = evaluate("t:instant unique:prints");
     // t:instant matches 4 cards (Bolt, Counterspell, Azorius Charm, Dismember).
     // Only Bolt has printings (rows 0,1,2,5,6,8). Others have none.
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(4);
     expect(output.printingIndices).toBeDefined();
     expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8]);
@@ -709,7 +725,7 @@ describe("unique:prints", () => {
     // r:rare matches Bolt (rows 0,1,6 are rare). unique:prints should return
     // only the rare printing rows, not all Bolt printings.
     const output = evaluate("r:rare unique:prints");
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(1); // Bolt only
     expect(output.printingIndices).toBeDefined();
     expect(Array.from(output.printingIndices!)).toEqual([0, 1, 6]);
@@ -718,7 +734,7 @@ describe("unique:prints", () => {
   test("is:foil unique:prints returns only foil printings", () => {
     // Foil rows: #1 (Bolt MH2 foil), #4 (Sol Ring C21 foil).
     const output = evaluate("is:foil unique:prints");
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(2); // Bolt + Sol Ring
     expect(output.printingIndices).toBeDefined();
     expect(Array.from(output.printingIndices!)).toEqual([1, 4]);
@@ -728,7 +744,7 @@ describe("unique:prints", () => {
     // Nonfoil rows (finish !== Foil): #0, #2, #3, #5, #6, #7, #8.
     // Order: by face (indices), then printingsOf(face) — Bolt first, then Sol Ring.
     const output = evaluate("is:nonfoil unique:prints");
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(2); // Bolt + Sol Ring
     expect(output.printingIndices).toBeDefined();
     expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
@@ -738,7 +754,7 @@ describe("unique:prints", () => {
     // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7,8}.
     // Order: by face, then printingsOf(face).
     const output = evaluate("-is:foil unique:prints");
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
     expect(output.printingIndices).toBeDefined();
     expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
   });
@@ -751,7 +767,7 @@ describe("unique:prints", () => {
 
   test("unique:prints flag is false for normal queries", () => {
     const output = evaluate("t:creature");
-    expect(output.uniquePrints).toBe(false);
+    expect(output.uniqueMode).toBe("cards");
   });
 
   test("hasPrintingConditions is false for pure unique:prints (it's a modifier, not a condition)", () => {
@@ -805,7 +821,7 @@ describe("include:extras", () => {
   test("include:extras with unique:prints sets both flags", () => {
     const output = evaluate("include:extras unique:prints");
     expect(output.includeExtras).toBe(true);
-    expect(output.uniquePrints).toBe(true);
+    expect(output.uniqueMode).toBe("prints");
   });
 
   test("include:extras breakdown shows modifier, not filter", () => {
