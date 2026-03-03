@@ -1,0 +1,8 @@
+---
+description: Review AGENTS.md at start of every conversation
+alwaysApply: true
+---
+
+# Review AGENTS.md First
+
+At the start of every new conversation, read and apply the instructions in `AGENTS.md` (project root) before responding to the user's request. Treat it as required context for all work in this project.
