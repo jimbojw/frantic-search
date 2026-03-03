@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
 import { fnv1a, seededRank, collectBareWords, seededSort, seededSortPrintings } from "./ordering";
+import { queryForSortSeed } from "./query-for-sort";
 import type { ASTNode } from "./ast";
 
 // --- Helpers ---
@@ -226,6 +227,19 @@ describe("seededSort", () => {
     seededSort(a, "query", namesLower, ["light"], salt);
     seededSort(b, "query", namesLower, ["light"], salt);
     expect(a).toEqual(b);
+  });
+
+  test("view: and unique:prints variants produce same order (Issue #62)", () => {
+    const salt = 0xABCD;
+    const a = [0, 1, 2, 3];
+    const b = [0, 1, 2, 3];
+    seededSort(a, queryForSortSeed("t:creature view:detail"), namesLower, [], salt);
+    seededSort(b, queryForSortSeed("t:creature view:slim"), namesLower, [], salt);
+    expect(a).toEqual(b);
+
+    const c = [0, 1, 2, 3];
+    seededSort(c, queryForSortSeed("t:creature unique:prints"), namesLower, [], salt);
+    expect(a).toEqual(c);
   });
 });
 

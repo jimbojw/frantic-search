@@ -68,3 +68,4 @@ Because the live query is in the URL (`?q=`), sharing a link like `?q=lightning 
 8. The evaluator ignores `view:` for filtering (it is a display modifier only).
 9. Migration from `frantic-view-mode` in `localStorage` preserves existing preferences on first load.
 10. Scryfall outlinks (Spec 052) strip `view:` terms from the canonicalized query.
+11. The sort seed (Spec 019) omits `view:` terms so toggling view mode does not reshuffle results (Issue #62).

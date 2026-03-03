@@ -37,5 +37,6 @@ export { NodeCache, nodeKey, FIELD_ALIASES } from "./search/evaluator";
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";
+export { queryForSortSeed } from "./search/query-for-sort";
 export { seededSort, seededSortPrintings, collectBareWords } from "./search/ordering";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";

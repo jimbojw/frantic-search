@@ -184,6 +184,7 @@ When `uniquePrints` is true:
 8. The results header shows both card count and printing count when printing results are present.
 9. Before `printings.json` loads, queries with printing conditions show a "loading" notice and return no printing results.
 10. `unique:prints` has no effect on Slim and Detail modes.
+11. The sort seed (Spec 019) omits `unique:prints` so adding it does not reshuffle the card order (Issue #62).
 
 ## Implementation Notes
 

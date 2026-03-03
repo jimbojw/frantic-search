@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 
 function leafLabel(qnr: QueryNodeResult): string {
@@ -242,17 +242,18 @@ export function runSearch(params: RunSearchParams): SearchResult {
   }
 
   const combinedQuery = hasPinned ? `${msg.pinnedQuery} ${msg.query}` : msg.query
+  const sortSeed = queryForSortSeed(combinedQuery)
   const bareWords = collectBareWords(ast)
     .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
     .filter(w => w.length > 0)
-  seededSort(deduped, combinedQuery, index.combinedNamesNormalized, bareWords, sessionSalt)
+  seededSort(deduped, sortSeed, index.combinedNamesNormalized, bareWords, sessionSalt)
 
   const histograms = computeHistograms(deduped, index)
   const indices = new Uint32Array(deduped)
   const printingIndices = rawPrintingIndices
   if (printingIndices && printingIndex) {
     seededSortPrintings(
-      printingIndices, combinedQuery,
+      printingIndices, sortSeed,
       printingIndex.canonicalFaceRef,
       index.combinedNamesNormalized, bareWords, sessionSalt,
     )

@@ -10,6 +10,8 @@ Boost name-prefix matches to the top of search results while preserving the seed
 
 Spec 011 introduced deterministic random ordering via a seeded Fisher-Yates shuffle. The seed is derived from the literal query string (including whitespace), so the same query always produces the same card order, but the order is unpredictable — giving the app its "frantic" character. Using the raw query (rather than a normalized AST key) allows users to tap space at the end to shuffle results without changing the filter.
 
+**Display tokens omitted from seed (Issue #62):** Display-only modifiers (`view:`, `unique:prints`) are stripped from the query before seed derivation. Toggling view mode or adding `unique:prints` must not reshuffle the card order — the user is already looking at results and expects them to stay put. Trailing whitespace is preserved (tap-to-shuffle still works). Implementation: parse the query, walk the AST to collect spans of display-token nodes, splice them out right-to-left, collapse multiple spaces (but do not trim).
+
 This works well for filter-oriented queries (`t:creature c:red`) where no single result is more "expected" than another. But for the common use case of finding a card by name — the user types `light` and expects Lightning Bolt near the top — pure random ordering buries prefix matches among the ~323 cards containing "light" anywhere in their name.
 
 ### The tension
@@ -146,11 +148,12 @@ The sort replaces `seededShuffle` in the worker pipeline:
 AST → evaluate → matchingIndices → deduplicate → seededSort(deduped, seed, names, bareWords) → map to CardResult[]
 ```
 
-The worker extracts bare words from the AST before sorting and passes the literal query string as the seed (so trailing whitespace changes the order — enabling tap-to-shuffle):
+The worker extracts bare words from the AST before sorting and passes the query string as the seed after stripping display tokens (so trailing whitespace changes the order — enabling tap-to-shuffle — but `view:` and `unique:prints` do not):
 
 ```typescript
 const bareWords = collectBareWords(ast).map(w => w.toLowerCase());
-seededSort(deduped, msg.query, index.namesLower, bareWords);
+const sortSeed = queryForSortSeed(combinedQuery);  // strips view:, unique:prints
+seededSort(deduped, sortSeed, index.namesLower, bareWords);
 ```
 
 ### Printing-level ordering
@@ -198,6 +201,7 @@ When `ParseResult.sort` contains one or more directives, the worker applies `sor
 shared/src/search/
 ├── shuffle.ts          → renamed to ordering.ts
 ├── shuffle.test.ts     → renamed to ordering.test.ts
+├── query-for-sort.ts   → queryForSortSeed (Issue #62)
 ```
 
 `ordering.ts` exports:
