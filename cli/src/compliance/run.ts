@@ -50,7 +50,7 @@ function runLocalMode(suites: ReturnType<typeof loadAllSuites>, dataPath: string
   let printingIndex: PrintingIndex | null = null;
   if (fs.existsSync(PRINTINGS_PATH)) {
     const printingData: PrintingColumnarData = JSON.parse(fs.readFileSync(PRINTINGS_PATH, "utf-8"));
-    printingIndex = new PrintingIndex(printingData);
+    printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
   } else {
     process.stderr.write(`Warning: ${PRINTINGS_PATH} not found. Printing-domain queries will not work.\n`);
   }

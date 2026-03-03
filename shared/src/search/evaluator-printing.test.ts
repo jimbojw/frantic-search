@@ -725,20 +725,22 @@ describe("unique:prints", () => {
   });
 
   test("is:nonfoil unique:prints returns only nonfoil printings", () => {
-    // Nonfoil rows (finish !== Foil): #0, #2, #3, #5, #6, #7.
+    // Nonfoil rows (finish !== Foil): #0, #2, #3, #5, #6, #7, #8.
+    // Order: by face (indices), then printingsOf(face) — Bolt first, then Sol Ring.
     const output = evaluate("is:nonfoil unique:prints");
     expect(output.uniquePrints).toBe(true);
     expect(output.indices.length).toBe(2); // Bolt + Sol Ring
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7, 8]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
   });
 
   test("-is:foil unique:prints returns non-foil printings", () => {
     // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7,8}.
+    // Order: by face, then printingsOf(face).
     const output = evaluate("-is:foil unique:prints");
     expect(output.uniquePrints).toBe(true);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 3, 5, 6, 7, 8]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
   });
 
   test("unique:prints is not treated as a filter (does not affect card count)", () => {

@@ -171,8 +171,11 @@ export class NodeCache {
       const pCount = popcount(printBuf, this._printingIndex.printingCount);
       printingIndices = new Uint32Array(pCount);
       let k = 0;
-      for (let i = 0; i < this._printingIndex.printingCount; i++) {
-        if (printBuf[i]) printingIndices[k++] = i;
+      for (const fi of indices) {
+        const pRows = this._printingIndex.printingsOf(fi);
+        for (const p of pRows) {
+          if (printBuf[p]) printingIndices[k++] = p;
+        }
       }
     }
 

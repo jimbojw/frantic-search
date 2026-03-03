@@ -28,7 +28,7 @@ function loadIndex(dataPath: string): { data: ColumnarData; index: CardIndex; pr
   let printingIndex: PrintingIndex | null = null;
   if (fs.existsSync(PRINTINGS_PATH)) {
     const printingData: PrintingColumnarData = JSON.parse(fs.readFileSync(PRINTINGS_PATH, "utf-8"));
-    printingIndex = new PrintingIndex(printingData);
+    printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
   }
   return { data, index: new CardIndex(data), printingIndex };
 }

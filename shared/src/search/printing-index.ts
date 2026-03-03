@@ -23,7 +23,7 @@ export class PrintingIndex {
   /** Reverse map: canonical face index -> printing row indices. */
   private readonly _printingsOf: Map<number, number[]>;
 
-  constructor(data: PrintingColumnarData) {
+  constructor(data: PrintingColumnarData, canonicalScryfallIds?: string[]) {
     this.printingCount = data.canonical_face_ref.length;
     this.canonicalFaceRef = data.canonical_face_ref;
     this.scryfallIds = data.scryfall_ids;
@@ -53,6 +53,19 @@ export class PrintingIndex {
         this._printingsOf.set(cf, arr);
       }
       arr.push(i);
+    }
+
+    if (canonicalScryfallIds) {
+      for (const [cf, arr] of this._printingsOf) {
+        const canonicalId = canonicalScryfallIds[cf];
+        if (canonicalId) {
+          const idx = arr.findIndex((pi) => this.scryfallIds[pi] === canonicalId);
+          if (idx > 0) {
+            const [canonical] = arr.splice(idx, 1);
+            arr.unshift(canonical);
+          }
+        }
+      }
     }
   }
 

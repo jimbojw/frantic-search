@@ -81,13 +81,12 @@ async function readJsonWithProgress(response: Response): Promise<unknown> {
 
 const sessionSalt = (Math.random() * 0xffffffff) >>> 0
 
-async function fetchPrintings(): Promise<{ index: PrintingIndex; data: PrintingColumnarData } | null> {
+async function fetchPrintings(): Promise<PrintingColumnarData | null> {
   try {
     const url = new URL(/* @vite-ignore */ `../${__PRINTINGS_FILENAME__}`, import.meta.url)
     const response = await fetch(url)
     if (!response.ok) return null
-    const data = await response.json() as PrintingColumnarData
-    return { index: new PrintingIndex(data), data }
+    return (await response.json()) as PrintingColumnarData
   } catch {
     return null
   }
@@ -139,15 +138,17 @@ async function init(): Promise<void> {
   }
 
   const index = new CardIndex(data)
-  const printingsResult = await printingsPromise
-  const printingIndex = printingsResult?.index ?? null
+  const printingData = await printingsPromise
+  const printingIndex = printingData
+    ? new PrintingIndex(printingData, data.scryfall_ids)
+    : null
   const cache = new NodeCache(index, printingIndex)
   const display = extractDisplayColumns(data)
 
   post({ type: 'status', status: 'ready', display })
 
-  if (printingsResult) {
-    post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingsResult.data) })
+  if (printingData) {
+    post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })
   }
 
   self.onmessage = (e: MessageEvent<ToWorker>) => {
