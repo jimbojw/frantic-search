@@ -68,7 +68,9 @@ export function extractValue(label: string, operator: string): string {
 
 function nodeLabel(node: ASTNode): string {
   switch (node.type) {
-    case 'FIELD': return `${node.field}${node.operator}${node.value}`
+    case 'FIELD':
+      return (node as { sourceText?: string }).sourceText
+        ?? `${node.field}${node.operator}${node.value}`
     case 'BARE': return node.value
     case 'EXACT': return `!"${node.value}"`
     case 'REGEX_FIELD': return `${node.field}${node.operator}/${node.pattern}/`
@@ -174,6 +176,12 @@ function matchesLabel(
   operator: string,
   valuePredicate?: (value: string) => boolean,
 ): boolean {
+  // Display aliases ++ and @@ (Spec 048): match when searching for unique:prints or unique:art
+  if (field.some(f => f.toLowerCase() === 'unique') && operator === ':') {
+    if (label === '++' && (!valuePredicate || valuePredicate('prints'))) return true
+    if (label === '@@' && (!valuePredicate || valuePredicate('art'))) return true
+  }
+
   const opIdx = label.indexOf(operator)
   if (opIdx < 0) return false
   const labelField = label.slice(0, opIdx).toLowerCase()

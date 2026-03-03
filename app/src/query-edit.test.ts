@@ -1291,6 +1291,22 @@ describe('hasUniquePrints', () => {
   })
 })
 
+describe('parseBreakdown preserves alias display (Spec 048)', () => {
+  it('++ breakdown label is ++ not unique:prints', () => {
+    const bd = buildBreakdown('t:creature ++')
+    const uniqueChild = bd.children?.find(c => c.label === '++' || c.label === 'unique:prints')
+    expect(uniqueChild).toBeDefined()
+    expect(uniqueChild!.label).toBe('++')
+  })
+
+  it('@@ breakdown label is @@ not unique:art', () => {
+    const bd = buildBreakdown('t:creature @@')
+    const uniqueChild = bd.children?.find(c => c.label === '@@' || c.label === 'unique:art')
+    expect(uniqueChild).toBeDefined()
+    expect(uniqueChild!.label).toBe('@@')
+  })
+})
+
 // ---------------------------------------------------------------------------
 // toggleIncludeExtras — bimodal toggle (Spec 057)
 // ---------------------------------------------------------------------------

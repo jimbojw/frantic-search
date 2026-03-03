@@ -219,12 +219,16 @@ describe("parse", () => {
   });
 
   describe("unique display aliases (Spec 048)", () => {
-    test("++ desugars to unique:prints", () => {
-      expect(parse("++")).toMatchObject(field("unique", ":", "prints"));
+    test("++ desugars to unique:prints with sourceText", () => {
+      const ast = parse("++") as import("./ast").FieldNode;
+      expect(ast).toMatchObject(field("unique", ":", "prints"));
+      expect(ast.sourceText).toBe("++");
     });
 
-    test("@@ desugars to unique:art", () => {
-      expect(parse("@@")).toMatchObject(field("unique", ":", "art"));
+    test("@@ desugars to unique:art with sourceText", () => {
+      const ast = parse("@@") as import("./ast").FieldNode;
+      expect(ast).toMatchObject(field("unique", ":", "art"));
+      expect(ast.sourceText).toBe("@@");
     });
 
     test("++ in combined query", () => {

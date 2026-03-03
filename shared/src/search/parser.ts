@@ -147,6 +147,7 @@ class Parser {
           type: "FIELD", field: "unique", operator: ":", value: "prints",
           span: { start: word.start, end: word.end },
           valueSpan: { start: word.start, end: word.end },
+          sourceText: "++",
         };
       }
       if (word.value === "@@") {
@@ -154,6 +155,7 @@ class Parser {
           type: "FIELD", field: "unique", operator: ":", value: "art",
           span: { start: word.start, end: word.end },
           valueSpan: { start: word.start, end: word.end },
+          sourceText: "@@",
         };
       }
       return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };

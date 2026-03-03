@@ -6,7 +6,9 @@ import { combinePrintingIndices } from './combine-printing-indices'
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
   switch (n.type) {
-    case 'FIELD': return `${n.field}${n.operator}${n.value}`
+    case 'FIELD':
+      if (n.field.toLowerCase() === 'unique' && n.sourceText) return n.sourceText
+      return `${n.field}${n.operator}${n.value}`
     case 'BARE': return n.value
     case 'EXACT': return `!"${n.value}"`
     case 'REGEX_FIELD': return `${n.field}${n.operator}/${n.pattern}/`

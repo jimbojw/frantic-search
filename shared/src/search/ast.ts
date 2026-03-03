@@ -62,6 +62,8 @@ export interface FieldNode {
   value: string;
   span?: Span;
   valueSpan?: Span;
+  /** Display form for desugared aliases (e.g. "++", "@@"). Used by breakdown. */
+  sourceText?: string;
 }
 
 export interface BareWordNode {

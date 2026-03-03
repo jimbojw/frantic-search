@@ -43,9 +43,9 @@ The `unique:` modifier controls deduplication in Images and Full modes. It has n
 
 **Resolution rule (like `view:` in Spec 058):** The **last legal `unique:` term wins** across the combined pinned/live query. Invalid values (e.g., `unique:bogus`) are ignored; if no legal term remains, default to `unique:cards`.
 
-**Scryfall aliases:** The bare words `++` and `@@` are desugared to `unique:prints` and `unique:art` respectively ([Scryfall Display Keywords](https://scryfall.com/docs/syntax#display)). They behave identically to the canonical forms.
+**Scryfall aliases:** The bare words `++` and `@@` are desugared to `unique:prints` and `unique:art` respectively ([Scryfall Display Keywords](https://scryfall.com/docs/syntax#display)). They behave identically to the canonical forms. Desugared nodes carry `sourceText` (`"++"` or `"@@"`) so the breakdown displays the original token rather than the canonical form.
 
-`unique:cards`, `unique:prints`, and `unique:art` (and their aliases `++`, `@@`) are parsed as `FieldNode` with `field: "unique"` and `value` in `["cards", "prints", "art"]`. The parser desugars bare `++` and `@@` tokens into the corresponding FIELD nodes before evaluation. The evaluator does not process them as filters — they are extracted before evaluation and passed as `uniqueMode` to the display layer.
+`unique:cards`, `unique:prints`, and `unique:art` (and their aliases `++`, `@@`) are parsed as `FieldNode` with `field: "unique"` and `value` in `["cards", "prints", "art"]`. The parser desugars bare `++` and `@@` tokens into the corresponding FIELD nodes before evaluation, setting `sourceText` for display. The evaluator does not process them as filters — they are extracted before evaluation and passed as `uniqueMode` to the display layer.
 
 ## Result Protocol Changes
 
@@ -154,7 +154,7 @@ The results header shows card count (from `indices.length`) as today. When print
 
 ### Parsing
 
-The parser desugars bare words `++` and `@@` into `{ field: "unique", value: "prints" }` and `{ field: "unique", value: "art" }` respectively. The lexer emits them as WORD tokens; the parser converts them to FIELD nodes before they reach the evaluator.
+The parser desugars bare words `++` and `@@` into `{ field: "unique", value: "prints", sourceText: "++" }` and `{ field: "unique", value: "art", sourceText: "@@" }` respectively. The lexer emits them as WORD tokens; the parser converts them to FIELD nodes before they reach the evaluator. The breakdown uses `sourceText` when present so the user sees the original token (`++` or `@@`) rather than the canonical form.
 
 The evaluator recognizes `field === "unique"` with `value` in `["cards", "prints", "art"]`. When encountered:
 
@@ -207,3 +207,4 @@ The display layer derives the effective unique mode from the combined pinned/liv
 - 2026-03-03 (Issue #74): When building `_printingsOf`, PrintingIndex sorts each face's printing list so the canonical printing (from columns.json `scryfall_ids`) comes first. The evaluator collects `printingIndices` by iterating over matching faces and their `printingsOf(face)` (canonical-first) rather than raw printing row order. This ensures format-only queries (e.g., `f:commander celestus`) display the oracle card's canonical printing (Scryfall's default image) rather than an arbitrary printing from default_cards order.
 - 2026-03-03 (Issue #75): Implemented `unique:art`. Replaced `uniquePrints: boolean` with `uniqueMode: 'cards' | 'prints' | 'art'`. Added `illustration_id_index` to PrintingColumnarData and PrintingDisplayColumns. Parser accepts `unique:cards`, `unique:prints`, `unique:art`; last legal wins.
 - 2026-03-03: Added Scryfall display aliases: `++` for `unique:prints`, `@@` for `unique:art`. Parser desugars bare words to FIELD nodes; lexer unchanged.
+- 2026-03-03: Desugared nodes carry `sourceText` for display. Breakdown shows `++` or `@@` instead of canonical form. `nodeKey` includes `sourceText` for unique aliases so cache does not deduplicate them (preserves correct spans and labels).
