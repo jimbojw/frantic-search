@@ -517,6 +517,13 @@ describe("is: operator", () => {
     expect(foil.matchCount).toBe(-1);
   });
 
+  test("is:spotlight returns unsupported (per Spec 039)", () => {
+    const cache = new NodeCache(isIndex);
+    const result = cache.evaluate(parse("is:spotlight")).result;
+    expect(result.error).toBe('unsupported keyword "spotlight"');
+    expect(result.matchCount).toBe(-1);
+  });
+
   test("is: with comparison operators matches zero cards", () => {
     expect(isMatchCount("is>spell")).toBe(0);
     expect(isMatchCount("is<commander")).toBe(0);

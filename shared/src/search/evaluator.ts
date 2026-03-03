@@ -6,7 +6,7 @@ import {
 } from "./ast";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { PRINTING_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
+import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 
@@ -185,7 +185,13 @@ export class NodeCache {
         if (ast.field.toLowerCase() === "unique") return false;
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
         if (canonical === "is") {
-          return PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
+          if (!PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase())) return false;
+          // Face-fallback is: keywords only count as printing leaves when
+          // printing data is available; otherwise they evaluate in face domain.
+          if (FACE_FALLBACK_IS_KEYWORDS.has(ast.value.toLowerCase())) {
+            return this._printingIndex !== null;
+          }
+          return true;
         }
         if (canonical !== undefined && isPrintingField(canonical)) {
           // Face-fallback fields only count as printing leaves when
@@ -394,9 +400,12 @@ export class NodeCache {
         }
 
         if (isPrintingDomain && !this._printingIndex) {
-          // Face-fallback fields (legal/banned/restricted) fall through to
-          // face-domain evaluation when printing data is not yet loaded.
-          if (canonical && FACE_FALLBACK_PRINTING_FIELDS.has(canonical)) {
+          // Face-fallback fields (legal/banned/restricted) and is: keywords
+          // (universesbeyond/ub) fall through to face-domain evaluation when
+          // printing data is not yet loaded.
+          const isFaceFallbackField = canonical && FACE_FALLBACK_PRINTING_FIELDS.has(canonical);
+          const isFaceFallbackIs = isPrintingIs && FACE_FALLBACK_IS_KEYWORDS.has(ast.value.toLowerCase());
+          if (isFaceFallbackField || isFaceFallbackIs) {
             // Fall through to face-domain evaluation below.
           } else {
             interned.computed = {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { CardFlag, Finish, PrintingFlag } from "../bits";
+import { CardFlag, Finish, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
 
 // ---------------------------------------------------------------------------
 // is: keyword evaluation (Spec 032)
@@ -224,15 +224,18 @@ function hasPhyrexianSymbol(text: string): boolean {
   return false;
 }
 
+export const FACE_FALLBACK_IS_KEYWORDS = new Set(["universesbeyond", "ub"]);
+
 export const PRINTING_IS_KEYWORDS = new Set([
   "foil", "nonfoil", "etched",
   "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
   "borderless", "extended", "oversized",
+  ...Object.keys(PROMO_TYPE_FLAGS),
 ]);
 
 export const UNSUPPORTED_IS_KEYWORDS = new Set([
-  "glossy", "spotlight",
-  "booster", "masterpiece", "alchemy", "rebalanced", "colorshifted",
+  "spotlight",
+  "booster", "masterpiece", "colorshifted",
   "newinpauper", "meldpart", "meldresult",
 ]);
 
@@ -431,8 +434,20 @@ export function evalPrintingIsKeyword(
     case "oversized":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Oversized) buf[i] = 1;
       break;
-    default:
+    default: {
+      const entry = PROMO_TYPE_FLAGS[keyword];
+      if (entry) {
+        const bit = 1 << entry.bit;
+        const col0 = pIdx.promoTypesFlags0;
+        const col1 = pIdx.promoTypesFlags1;
+        for (let i = 0; i < n; i++) {
+          const flags = entry.column === 0 ? (col0[i] ?? 0) : (col1[i] ?? 0);
+          if (flags & bit) buf[i] = 1;
+        }
+        break;
+      }
       return "unknown";
+    }
   }
   return "ok";
 }

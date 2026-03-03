@@ -15,6 +15,8 @@ export class PrintingIndex {
   readonly priceUsd: number[];
   readonly releasedAt: number[];
   readonly games: number[];
+  readonly promoTypesFlags0: number[];
+  readonly promoTypesFlags1: number[];
   readonly setReleasedAt: number[];
   readonly knownSetCodes: Set<string>;
 
@@ -37,6 +39,8 @@ export class PrintingIndex {
     this.priceUsd = data.price_usd;
     this.releasedAt = data.released_at;
     this.games = data.games ?? [];
+    this.promoTypesFlags0 = data.promo_types_flags_0 ?? [];
+    this.promoTypesFlags1 = data.promo_types_flags_1 ?? [];
     this.setReleasedAt = data.set_lookup.map(e => e.released_at);
     this.knownSetCodes = new Set(data.set_lookup.map(e => e.code.toLowerCase()));
 

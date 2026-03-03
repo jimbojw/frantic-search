@@ -186,6 +186,12 @@ describe("non-destructive error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 
+  test("is:universesbeyond without printing index falls back to face domain (no error)", () => {
+    const { result } = getResult("is:universesbeyond");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(1); // Dismember has CardFlag.UniversesBeyond
+  });
+
   test("error nodes produce zero indices", () => {
     expect(getResult("foo:bar").indices.length).toBe(0);
     expect(getResult("o:/[/").indices.length).toBe(0);

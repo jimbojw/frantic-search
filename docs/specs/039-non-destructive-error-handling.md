@@ -103,11 +103,11 @@ case "restricted": {
 
 - **Supported** — keywords we implement in `evalIsKeyword`. These are the switch cases (`permanent`, `spell`, `historic`, `party`, `outlaw`, `split`, `flip`, `adventure`, `leveler`, `saga`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner`, `bear`, `reserved`, `funny`, `universesbeyond`, `ub`, `hybrid`, `phyrexian`) plus the keys of `LAND_CYCLES` (`dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland`, `bikeland`/`cycleland`/`bicycleland`, `bondland`/`crowdland`/`battlebondland`, `canopyland`/`canland`, `creatureland`/`manland`, `filterland`, `gainland`, `pathway`, `scryland`, `surveilland`, `shadowland`/`snarl`, `storageland`, `tangoland`/`battleland`, `tricycleland`/`trikeland`/`triome`, `triland`, `karoo`). See Spec 040 for the extended keywords. These evaluate normally.
 
-- **Unsupported** — keywords Scryfall recognizes but Frantic Search does not implement. Examples: `unique`, `glossy`, `spotlight`, `booster`, `masterpiece`, `colorshifted`, `newinpauper`, `meldpart`, `meldresult`. Note: `foil`, `nonfoil`, `promo`, `reprint`, `digital`, `hires`, `full`, `borderless`, `extended`, `etched`, `alchemy`, `rebalanced`, and all `promo_types` values (e.g. `rainbowfoil`, `poster`) are supported as printing-domain keywords per Spec 047. Unsupported keywords produce: `unsupported keyword "glossy"`.
+- **Unsupported** — keywords Scryfall recognizes but Frantic Search does not yet implement. Examples: `unique`, `spotlight`, `booster`, `masterpiece`, `colorshifted`, `newinpauper`, `meldpart`, `meldresult`. Note: `foil`, `nonfoil`, `promo`, `reprint`, `digital`, `hires`, `full`, `borderless`, `extended`, `etched`, `glossy`, `alchemy`, `rebalanced`, and all `promo_types` values (e.g. `rainbowfoil`, `poster`) are supported as printing-domain keywords per Spec 047. Unsupported keywords produce: `unsupported keyword "spotlight"`. (The examples listed here are illustrative, not prescriptive — a keyword's presence in this list does not preclude future implementation.)
 
 - **Unknown** — keywords nobody recognizes: `is:xyz`, `is:asdf`. These produce `unknown keyword "xyz"`.
 
-The distinction between "unsupported" and "unknown" matters for the user experience. A user searching `is:glossy` should understand that glossy is a real concept we don't support, not that they misspelled something. A user searching `is:xyz` should understand this isn't a valid keyword at all. (Note: `is:foil` and other printing-domain keywords produce "printing data not loaded" when printings are absent, not "unsupported".)
+The distinction between "unsupported" and "unknown" matters for the user experience. A user searching `is:spotlight` should understand that spotlight is a real Scryfall concept we don't yet support, not that they misspelled something. A user searching `is:xyz` should understand this isn't a valid keyword at all. (Note: `is:foil` and other printing-domain keywords produce "printing data not loaded" when printings are absent, not "unsupported".)
 
 Implementation: maintain a `Set<string>` of unsupported keywords (`UNSUPPORTED_IS_KEYWORDS`). Change `evalIsKeyword` to return a status: `'ok' | 'unsupported' | 'unknown'`:
 
@@ -374,7 +374,7 @@ Error nodes are **not** filtered out — they should remain visible so the user 
 | `f:comma` | Yes (closed-set) | Unknown format | **Error** | Skip in AND/OR, show `!` |
 | `f:commander` | Yes (closed-set) | Known format | **Valid** | Normal evaluation |
 | `is:xyz` | Yes (closed-set) | Unknown keyword | **Error** | Skip in AND/OR, show `!` |
-| `is:glossy` | Yes (closed-set) | Unsupported keyword | **Error** | Skip in AND/OR, show `!` |
+| `is:spotlight` | Yes (closed-set) | Unsupported keyword | **Error** | Skip in AND/OR, show `!` |
 | `is:foil` (printings null) | Yes (printing-domain) | Printing data not loaded | **Error** | Skip in AND/OR, show `!` |
 | `is:shockland` | Yes (closed-set) | Supported keyword | **Valid** | Normal evaluation |
 | `t:xyz` | Yes (open-ended) | No matches | **Valid (zero results)** | Normal evaluation, shows `0` |
@@ -408,7 +408,7 @@ Tests use a synthetic `CardIndex` (same fixture as existing evaluator tests). Ea
 | `f:comma` | `"unknown format \"comma\""` | `-1` |
 | `f:commander` | `undefined` | (positive number) |
 | `is:xyz` | `"unknown keyword \"xyz\""` | `-1` |
-| `is:glossy` | `"unsupported keyword \"glossy\""` | `-1` |
+| `is:spotlight` | `"unsupported keyword \"spotlight\""` | `-1` |
 | `is:foil` (no PrintingIndex) | `"printing data not loaded"` | `-1` |
 | `is:shockland` | `undefined` | (positive number) |
 | `ci:cb` | `"a card cannot be both colored and colorless"` | `-1` |
@@ -553,7 +553,7 @@ A query like `foo: OR` produces `OR(FIELD(foo, :, ""), NOP)`. The FIELD node err
 2. `o:/[/` evaluates with `error: "invalid regex"` and `matchCount: -1`.
 3. `f:comma` evaluates with `error: "unknown format \"comma\""` and `matchCount: -1`.
 4. `is:xyz` evaluates with `error: "unknown keyword \"xyz\""` and `matchCount: -1`.
-5. `is:glossy` evaluates with `error: "unsupported keyword \"glossy\""` and `matchCount: -1`. `is:foil` with no PrintingIndex evaluates with `error: "printing data not loaded"` and `matchCount: -1`.
+5. `is:spotlight` evaluates with `error: "unsupported keyword \"spotlight\""` and `matchCount: -1`. `is:foil` with no PrintingIndex evaluates with `error: "printing data not loaded"` and `matchCount: -1`.
 6. `t:creature foo:bar` returns the same result set as `t:creature` alone — the error child is skipped in AND reduction.
 7. `t:creature OR foo:bar` returns the same result set as `t:creature` alone — the error child is skipped in OR reduction.
 8. `f:comma t:creature` returns the same result set as `t:creature` alone — the unknown format is skipped.

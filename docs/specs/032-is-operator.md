@@ -285,7 +285,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 
 ## Out of Scope
 
-- **Printing-level attributes:** `is:foil`, `is:etched`, `is:glossy`, `is:nonfoil`, `is:fullart`, `is:textless`, `is:promo`, `is:digital`, `is:oversized`. (Many of these are implemented as printing-domain keywords per Spec 047; `is:alchemy`, `is:rebalanced` are supported via `promo_types` per Spec 047.)
+- **Printing-level attributes:** `is:foil`, `is:etched`, `is:nonfoil`, `is:fullart`, `is:textless`, `is:promo`, `is:digital`, `is:oversized`. (These are implemented as printing-domain keywords per Spec 047; `is:glossy`, `is:alchemy`, `is:rebalanced` are supported via `promo_types` per Spec 047.)
 - **Rarity:** `is:common`, `is:uncommon`, `is:rare`, `is:mythic`. Rarity is printing-level, not oracle-level.
 - **Reprint status:** `is:reprint`. Printing-level; implemented per Spec 047.
 

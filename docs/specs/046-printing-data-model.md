@@ -88,9 +88,9 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 - `frame: number[]` — uint8 bitmask. `1993=1, 1997=2, 2003=4, 2015=8, future=16`. One bit set per row.
 
 - `promo_types_flags_0: number[]` — uint32 bitmask. Bits 0–31 encode the first 32 promo types (alphabetically). Each printing row has a bit set for each value present in Scryfall's `promo_types` array. Optional; legacy data omits this column.
-- `promo_types_flags_1: number[]` — uint32 bitmask. Bits 0–18 encode the remaining 19 promo types. Optional; legacy data omits this column.
+- `promo_types_flags_1: number[]` — uint32 bitmask. Bits 0–19 encode the remaining 20 promo types. Optional; legacy data omits this column.
 
-Bit assignment (alphabetical by `promo_types` string). The mapping is defined in `shared/src/bits.ts` as `PROMO_TYPE_FLAGS`:
+Bit assignment (alphabetical by `promo_types` string, except late additions appended at the end). The mapping is defined in `shared/src/bits.ts` as `PROMO_TYPE_FLAGS`:
 
 | Column | Bit | `promo_types` value |
 |---|---|---|
@@ -145,8 +145,9 @@ Bit assignment (alphabetical by `promo_types` string). The mapping is defined in
 | 1 | 16 | `universesbeyond` |
 | 1 | 17 | `upsidedown` |
 | 1 | 18 | `wizardsplaynetwork` |
+| 1 | 19 | `glossy` |
 
-Total: 51 bits for 51 values (49 discovered in bulk data plus `universesbeyond` and `playtest`). JSON encoding uses plain decimal numbers; max value ~4.3e9 is below `Number.MAX_SAFE_INTEGER`.
+Total: 52 bits for 52 values (49 discovered in initial bulk data scan plus `universesbeyond`, `playtest`, and `glossy`). JSON encoding uses plain decimal numbers; max value ~4.3e9 is below `Number.MAX_SAFE_INTEGER`.
 
 ### Enum column
 
@@ -236,4 +237,4 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 
 ## Implementation Notes
 
-- 2026-03-03: Added `promo_types_flags_0` and `promo_types_flags_1` columns for Scryfall `promo_types` (51 values). Bit assignment is alphabetical. See issue #72.
+- 2026-03-03: Added `promo_types_flags_0` and `promo_types_flags_1` columns for Scryfall `promo_types` (52 values). Bit assignment is alphabetical, with late additions appended. See issue #72.

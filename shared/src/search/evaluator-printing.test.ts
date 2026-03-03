@@ -427,6 +427,64 @@ describe("spec 047 test cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Promo types (Spec 047, issue #72)
+// ---------------------------------------------------------------------------
+
+describe("promo types is: keywords", () => {
+  test("is:poster matches Lightning Bolt (printing #8 has poster)", () => {
+    expect(cardCount("is:poster")).toBe(1);
+    expect(cardCount("is:poster lightning")).toBe(1);
+  });
+
+  test("is:rainbowfoil matches Lightning Bolt (printing #1 has rainbowfoil)", () => {
+    expect(cardCount("is:rainbowfoil")).toBe(1);
+  });
+
+  test("is:glossy matches Sol Ring (printing #3 has glossy)", () => {
+    expect(cardCount("is:glossy")).toBe(1);
+    expect(cardCount("is:glossy sol")).toBe(1);
+  });
+
+  test("is:alchemy matches nothing (no alchemy in test data)", () => {
+    expect(cardCount("is:alchemy")).toBe(0);
+  });
+
+  test("is:universesbeyond with printings loaded matches Lightning Bolt", () => {
+    // Printing #8 (SLD) has universesbeyond promo type
+    expect(cardCount("is:universesbeyond")).toBe(1);
+    expect(cardCount("is:universesbeyond lightning")).toBe(1);
+  });
+
+  test("is:ub is alias for is:universesbeyond", () => {
+    expect(cardCount("is:ub")).toBe(cardCount("is:universesbeyond"));
+  });
+
+  test("-is:poster matches cards without poster printings", () => {
+    // Bolt has poster on #8, so -is:poster excludes Bolt. Sol Ring has no poster.
+    // -is:poster matches all printings that are NOT poster. Promoted to face:
+    // Bolt has printings 0,1,2,5,6 (non-poster) so Bolt still matches.
+    // Sol Ring has printings 3,4,7 (none have poster) so Sol Ring matches.
+    expect(cardCount("-is:poster")).toBe(2);
+  });
+
+  test("is:universesbeyond without printings falls back to face domain", () => {
+    const cache = new NodeCache(index);
+    const output = cache.evaluate(parse("is:universesbeyond"));
+    // Face-domain: Dismember (face 9) has CardFlag.UniversesBeyond
+    expect(output.indices.length).toBe(1);
+    expect(output.indices[0]).toBe(9);
+    expect(output.printingsUnavailable).toBe(false);
+  });
+
+  test("is:ub without printings falls back to face domain", () => {
+    const cache = new NodeCache(index);
+    const output = cache.evaluate(parse("is:ub"));
+    expect(output.indices.length).toBe(1);
+    expect(output.indices[0]).toBe(9);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Printing-level format legality (Spec 056)
 // ---------------------------------------------------------------------------
 

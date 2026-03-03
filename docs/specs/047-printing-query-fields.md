@@ -71,7 +71,7 @@ These move from `UNSUPPORTED_IS_KEYWORDS` in the evaluator to active printing-do
 |---|---|
 | `:` | Printing has this value in its `promo_types` array |
 
-All unique `promo_types` values discovered in Scryfall bulk data are queryable as printing-level `is:` keywords. Examples: `is:rainbowfoil`, `is:poster`, `is:boosterfun`, `is:surgefoil`, `is:setpromo`, `is:alchemy`, `is:rebalanced`, `is:stamped`, `is:prerelease`, `is:playtest`, etc. (51 total; see Spec 046 for the full list and bit layout).
+All unique `promo_types` values discovered in Scryfall bulk data are queryable as printing-level `is:` keywords. Examples: `is:rainbowfoil`, `is:poster`, `is:boosterfun`, `is:surgefoil`, `is:setpromo`, `is:alchemy`, `is:rebalanced`, `is:stamped`, `is:prerelease`, `is:playtest`, `is:glossy`, etc. (52 total; see Spec 046 for the full list and bit layout).
 
 Implementation: Each keyword maps to `{ column: 0 | 1, bit: number }` in `PROMO_TYPE_FLAGS`. For column 0, test `promo_types_flags_0[i] & (1 << bit)`; for column 1, test `promo_types_flags_1[i] & (1 << bit)`. Keywords not in the mapping return `"unknown"`.
 
@@ -280,9 +280,9 @@ if (isPrintingField(canonical)) {
 
 ### `is:` keyword changes (`shared/src/search/eval-is.ts`)
 
-Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, plus all 51 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
+Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
 
-`alchemy` and `rebalanced` are removed from `UNSUPPORTED_IS_KEYWORDS` when they become supported via `promo_types_flags_0`/`promo_types_flags_1`.
+`alchemy`, `rebalanced`, and `glossy` are removed from `UNSUPPORTED_IS_KEYWORDS` when they become supported via `promo_types_flags_0`/`promo_types_flags_1`.
 
 **Face-fallback for dual-domain keywords:** Add `FACE_FALLBACK_IS_KEYWORDS = new Set(["universesbeyond", "ub"])`. When `is:universesbeyond` or `is:ub` is evaluated and printing data is not yet loaded, the evaluator falls through to face-domain `evalIsKeyword()` instead of returning `"printing data not loaded"`. Same pattern as `FACE_FALLBACK_PRINTING_FIELDS` for `legal`/`banned`/`restricted` (Spec 056).
 
@@ -405,7 +405,7 @@ Add printing-field entries once the full dataset is available.
 | `shared/src/search/printing-index.ts` | New: `PrintingIndex` class; add `promoTypesFlags0`, `promoTypesFlags1` (default `[]` when missing) |
 | `shared/src/search/eval-leaves.ts` | `FIELD_ALIASES` extended with printing field aliases |
 | `shared/src/search/eval-printing.ts` | New: `PRINTING_FIELDS`, `isPrintingField()`, `evalPrintingField()`, `promotePrintingToFace()`, `promoteFaceToPrinting()` |
-| `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword()`, `FACE_FALLBACK_IS_KEYWORDS`; add promo_types default branch; remove `alchemy`, `rebalanced` from `UNSUPPORTED_IS_KEYWORDS` |
+| `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword()`, `FACE_FALLBACK_IS_KEYWORDS`; add promo_types default branch; remove `alchemy`, `rebalanced`, `glossy` from `UNSUPPORTED_IS_KEYWORDS` |
 | `shared/src/search/evaluator.ts` | Dual-domain composite node logic, domain tracking; face-fallback for `is:universesbeyond` when printings null |
 | `etl/src/process-printings.ts` | Add `promo_types` to `DefaultCard`; encode `promo_types_flags_0`, `promo_types_flags_1` per row |
 | `shared/src/search/evaluator.test-fixtures.ts` | Synthetic card pool and printing data shared across test files |
@@ -433,4 +433,4 @@ Add printing-field entries once the full dataset is available.
 
 ## Implementation Notes
 
-- 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (51 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.
+- 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (52 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced`, `glossy` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.

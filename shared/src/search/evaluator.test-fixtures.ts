@@ -3,7 +3,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { PrintingIndex } from "./printing-index";
-import { Color, Format, Rarity, Finish, Frame, Game, PrintingFlag } from "../bits";
+import { Color, Format, Rarity, Finish, Frame, Game, PrintingFlag, CardFlag } from "../bits";
 import type { ColumnarData, PrintingColumnarData } from "../data";
 
 // ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ export const TEST_DATA: ColumnarData = {
   art_crop_thumb_hashes:  ["", "", "", "", "", "", "", "", "", ""],
   card_thumb_hashes:      ["", "", "", "", "", "", "", "", "", ""],
   layouts:        ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "transform", "transform", "normal"],
-  flags:          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  flags:          [0, 0, 0, 0, 0, 0, 0, 0, 0, CardFlag.UniversesBeyond], // #9 Dismember has UB for face-fallback test
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
   loyalty_lookup:  [""],
@@ -143,6 +143,9 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     Game.Paper,                // 7 OC21
     Game.Paper | Game.Arena,   // 8 SLD
   ],
+  // poster=col1 bit1, rainbowfoil=col1 bit3, universesbeyond=col1 bit16, glossy=col1 bit19
+  promo_types_flags_0: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  promo_types_flags_1: [0, 1 << 3, 0, 1 << 19, 0, 0, 0, 0, (1 << 1) | (1 << 16)], // #1 rainbowfoil, #3 glossy, #8 poster+universesbeyond
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },

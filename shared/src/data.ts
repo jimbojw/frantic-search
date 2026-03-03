@@ -47,5 +47,7 @@ export interface PrintingColumnarData {
   price_usd: number[];
   released_at: number[];
   games?: number[];
+  promo_types_flags_0?: number[];
+  promo_types_flags_1?: number[];
   set_lookup: SetLookupEntry[];
 }

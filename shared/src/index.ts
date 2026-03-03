@@ -21,6 +21,7 @@ export {
   FRAME_NAMES,
   Game,
   GAME_NAMES,
+  PROMO_TYPE_FLAGS,
 } from "./bits";
 
 export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";

@@ -14,6 +14,7 @@ import {
   FRAME_FROM_STRING,
   GAME_NAMES,
   PrintingFlag,
+  PROMO_TYPE_FLAGS,
   type PrintingColumnarData,
   type SetLookupEntry,
   type ColumnarData,
@@ -45,6 +46,7 @@ interface DefaultCard {
   frame_effects?: string[];
   finishes?: string[];
   games?: string[];
+  promo_types?: string[];
   prices?: Record<string, string | null>;
 }
 
@@ -114,6 +116,21 @@ function encodeGames(games: string[] | undefined): number {
     bits |= GAME_NAMES[g.toLowerCase()] ?? 0;
   }
   return bits;
+}
+
+function encodePromoTypesFlags(card: DefaultCard): { flags0: number; flags1: number } {
+  let flags0 = 0;
+  let flags1 = 0;
+  const types = card.promo_types ?? [];
+  for (const t of types) {
+    const entry = PROMO_TYPE_FLAGS[t.toLowerCase()];
+    if (entry) {
+      const bit = 1 << entry.bit;
+      if (entry.column === 0) flags0 |= bit;
+      else flags1 |= bit;
+    }
+  }
+  return { flags0, flags1 };
 }
 
 /** Encode an ISO date string (YYYY-MM-DD) as a uint32 YYYYMMDD integer. */
@@ -231,6 +248,8 @@ export function processPrintings(verbose: boolean): void {
     price_usd: [],
     released_at: [],
     games: [],
+    promo_types_flags_0: [],
+    promo_types_flags_1: [],
     set_lookup: [],
   };
 
@@ -264,6 +283,7 @@ export function processPrintings(verbose: boolean): void {
     const flagBits = encodePrintingFlags(card);
     const frameBits = encodeFrame(card.frame);
     const gamesBits = encodeGames(card.games);
+    const promoFlags = encodePromoTypesFlags(card);
 
     for (const finishStr of finishes) {
       const finishVal = FINISH_FROM_STRING[finishStr];
@@ -283,6 +303,8 @@ export function processPrintings(verbose: boolean): void {
       data.price_usd.push(priceCents);
       data.released_at.push(releasedAtYmd);
       (data.games ??= []).push(gamesBits);
+      data.promo_types_flags_0!.push(promoFlags.flags0);
+      data.promo_types_flags_1!.push(promoFlags.flags1);
 
       totalEntries++;
     }
