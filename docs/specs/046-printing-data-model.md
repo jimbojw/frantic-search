@@ -87,6 +87,67 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 
 - `frame: number[]` — uint8 bitmask. `1993=1, 1997=2, 2003=4, 2015=8, future=16`. One bit set per row.
 
+- `promo_types_flags_0: number[]` — uint32 bitmask. Bits 0–31 encode the first 32 promo types (alphabetically). Each printing row has a bit set for each value present in Scryfall's `promo_types` array. Optional; legacy data omits this column.
+- `promo_types_flags_1: number[]` — uint32 bitmask. Bits 0–18 encode the remaining 19 promo types. Optional; legacy data omits this column.
+
+Bit assignment (alphabetical by `promo_types` string). The mapping is defined in `shared/src/bits.ts` as `PROMO_TYPE_FLAGS`:
+
+| Column | Bit | `promo_types` value |
+|---|---|---|
+| 0 | 0 | `alchemy` |
+| 0 | 1 | `beginnerbox` |
+| 0 | 2 | `boosterfun` |
+| 0 | 3 | `brawldeck` |
+| 0 | 4 | `buyabox` |
+| 0 | 5 | `chocobotrackfoil` |
+| 0 | 6 | `convention` |
+| 0 | 7 | `datestamped` |
+| 0 | 8 | `event` |
+| 0 | 9 | `ffi` |
+| 0 | 10 | `ffii` |
+| 0 | 11 | `ffiii` |
+| 0 | 12 | `ffiv` |
+| 0 | 13 | `ffix` |
+| 0 | 14 | `ffv` |
+| 0 | 15 | `ffvi` |
+| 0 | 16 | `ffvii` |
+| 0 | 17 | `ffviii` |
+| 0 | 18 | `ffx` |
+| 0 | 19 | `ffxi` |
+| 0 | 20 | `ffxii` |
+| 0 | 21 | `ffxiii` |
+| 0 | 22 | `ffxiv` |
+| 0 | 23 | `ffxv` |
+| 0 | 24 | `ffxvi` |
+| 0 | 25 | `fnm` |
+| 0 | 26 | `instore` |
+| 0 | 27 | `league` |
+| 0 | 28 | `planeswalkerdeck` |
+| 0 | 29 | `plastic` |
+| 0 | 30 | `playerrewards` |
+| 0 | 31 | `playpromo` |
+| 1 | 0 | `playtest` |
+| 1 | 1 | `poster` |
+| 1 | 2 | `prerelease` |
+| 1 | 3 | `rainbowfoil` |
+| 1 | 4 | `rebalanced` |
+| 1 | 5 | `release` |
+| 1 | 6 | `ripplefoil` |
+| 1 | 7 | `setpromo` |
+| 1 | 8 | `sldbonus` |
+| 1 | 9 | `sourcematerial` |
+| 1 | 10 | `stamped` |
+| 1 | 11 | `startercollection` |
+| 1 | 12 | `starterdeck` |
+| 1 | 13 | `surgefoil` |
+| 1 | 14 | `themepack` |
+| 1 | 15 | `tourney` |
+| 1 | 16 | `universesbeyond` |
+| 1 | 17 | `upsidedown` |
+| 1 | 18 | `wizardsplaynetwork` |
+
+Total: 51 bits for 51 values (49 discovered in bulk data plus `universesbeyond` and `playtest`). JSON encoding uses plain decimal numbers; max value ~4.3e9 is below `Number.MAX_SAFE_INTEGER`.
+
 ### Enum column
 
 - `finish: number[]` — uint8 enum. `0=nonfoil, 1=foil, 2=etched`. One value per row (not a bitmask — each row has exactly one finish).
@@ -134,9 +195,10 @@ New module. The `processPrintings()` function:
 3. Iterates each printing entry in `default-cards.json`:
    a. Looks up `canonical_face_ref` via `oracle_id`. Drops unmapped printings.
    b. Encodes `rarity`, `printing_flags`, `frame` as bitmasks.
-   c. Dictionary-encodes the set via a `SetEncoder` (analogous to `DictEncoder` but for uint16 indices).
-   d. For each finish in `entry.finishes`:
-      - Emits a row with `finish` set to the enum value.
+   c. Encodes `promo_types` (string array) into `promo_types_flags_0` and `promo_types_flags_1` via `PROMO_TYPE_FLAGS` bit mapping.
+   d. Dictionary-encodes the set via a `SetEncoder` (analogous to `DictEncoder` but for uint16 indices).
+   e. For each finish in `entry.finishes`:
+      - Emits a row with `finish` set to the enum value, `promo_types_flags_0` and `promo_types_flags_1` from step c.
       - Picks the price from `entry.prices.usd` (nonfoil), `entry.prices.usd_foil` (foil), or `entry.prices.usd_etched` (etched). Parses the string to cents; null/missing → 0.
 4. Writes `data/dist/printings.json`.
 
@@ -170,3 +232,8 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 6. Printings for filtered layouts (tokens, art series, etc.) are absent from the output.
 7. `set_lookup` contains an entry for every set referenced by `set_indices`.
 8. The `--verbose` flag prints processing statistics (total printings, total rows after finish explosion, dropped printings, set count).
+9. `promo_types_flags_0` and `promo_types_flags_1` are populated from each printing's `promo_types` array via `PROMO_TYPE_FLAGS` bit mapping. Legacy `printings.json` without these columns is supported (PrintingIndex defaults to empty arrays).
+
+## Implementation Notes
+
+- 2026-03-03: Added `promo_types_flags_0` and `promo_types_flags_1` columns for Scryfall `promo_types` (51 values). Bit assignment is alphabetical. See issue #72.

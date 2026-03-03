@@ -77,7 +77,7 @@ These require a new `flags` column in `ColumnarData`, populated by the ETL pipel
 |---|---|---|
 | `is:reserved` | `CardFlag.Reserved` | `reserved === true` |
 | `is:funny` | `CardFlag.Funny` | See § Funny Flag Logic below |
-| `is:universesbeyond` / `is:ub` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` OR `promo_types` includes `"universesbeyond"` |
+| `is:universesbeyond` / `is:ub` | `CardFlag.UniversesBeyond` (face) or `promo_types_flags_0`/`promo_types_flags_1` (printing) | Dual-domain: when printings are loaded, evaluates in printing domain via `promo_types_flags_0`/`promo_types_flags_1`. When printings are not loaded, falls back to face domain via `CardFlag.UniversesBeyond`. See Spec 047. |
 | `is:gamechanger` / `is:gc` | `CardFlag.GameChanger` | `game_changer === true` (Commander Game Changer list) |
 
 ### Curated land cycle lists (via name lookup)
@@ -285,13 +285,13 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 
 ## Out of Scope
 
-- **Printing-level attributes:** `is:foil`, `is:etched`, `is:glossy`, `is:nonfoil`, `is:fullart`, `is:textless`, `is:promo`, `is:digital`, `is:oversized`.
+- **Printing-level attributes:** `is:foil`, `is:etched`, `is:glossy`, `is:nonfoil`, `is:fullart`, `is:textless`, `is:promo`, `is:digital`, `is:oversized`. (Many of these are implemented as printing-domain keywords per Spec 047; `is:alchemy`, `is:rebalanced` are supported via `promo_types` per Spec 047.)
 - **Rarity:** `is:common`, `is:uncommon`, `is:rare`, `is:mythic`. Rarity is printing-level, not oracle-level.
-- **Reprint status:** `is:reprint`. Printing-level; misleading at the oracle level.
-- **Alchemy/digital:** `is:alchemy`, `is:rebalanced`. Frantic Search indexes paper oracle cards.
+- **Reprint status:** `is:reprint`. Printing-level; implemented per Spec 047.
 
 ## Implementation Notes
 
+- 2026-03-03: Spec 047 adds printing-domain `is:` keywords for Scryfall `promo_types` (51 values: `rainbowfoil`, `poster`, `alchemy`, `rebalanced`, etc.). `is:universesbeyond`/`is:ub` become dual-domain: printing domain when printings loaded, face-domain fallback when not.
 - 2026-02-25: Spec 040 extended coverage with 14 additional land cycle keywords
   (bikeland, bondland, canopyland, creatureland, filterland, gainland, pathway,
   scryland, surveilland, shadowland, storageland, tangoland, tricycleland, triland),

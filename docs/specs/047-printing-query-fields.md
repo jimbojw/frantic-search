@@ -65,6 +65,20 @@ Each keyword maps to a bit in the `printing_flags` bitmask column. Evaluation: `
 
 These move from `UNSUPPORTED_IS_KEYWORDS` in the evaluator to active printing-domain evaluation.
 
+### `is:rainbowfoil` / `is:poster` / `is:boosterfun` / … — Promo types (Scryfall `promo_types`)
+
+| Operator | Semantics |
+|---|---|
+| `:` | Printing has this value in its `promo_types` array |
+
+All unique `promo_types` values discovered in Scryfall bulk data are queryable as printing-level `is:` keywords. Examples: `is:rainbowfoil`, `is:poster`, `is:boosterfun`, `is:surgefoil`, `is:setpromo`, `is:alchemy`, `is:rebalanced`, `is:stamped`, `is:prerelease`, `is:playtest`, etc. (51 total; see Spec 046 for the full list and bit layout).
+
+Implementation: Each keyword maps to `{ column: 0 | 1, bit: number }` in `PROMO_TYPE_FLAGS`. For column 0, test `promo_types_flags_0[i] & (1 << bit)`; for column 1, test `promo_types_flags_1[i] & (1 << bit)`. Keywords not in the mapping return `"unknown"`.
+
+When promoted to face domain (e.g. `t:creature is:poster`), semantics are "card has at least one printing with this promo type." Negation (`-is:poster`) works as expected.
+
+**Dual-domain: `is:universesbeyond` / `is:ub`** — When printings are **loaded**, these evaluate in printing domain via `promo_types_flags_0`/`promo_types_flags_1`. When printings are **not** loaded, they fall back to face-domain evaluation (`CardFlag.UniversesBeyond`). This preserves behavior when printings fail to load (404, network error). The evaluator uses `FACE_FALLBACK_IS_KEYWORDS` to route these keywords to face-domain when `PrintingIndex` is null.
+
 ### `frame:` — Frame
 
 | Operator | Semantics |
@@ -215,6 +229,8 @@ class PrintingIndex {
   readonly frame: number[];
   readonly priceUsd: number[];
   readonly collectorNumbersLower: string[];
+  readonly promoTypesFlags0: number[];   // default [] when column missing (legacy)
+  readonly promoTypesFlags1: number[];   // default [] when column missing (legacy)
 
   // Reverse map: canonical face index → printing row indices
   readonly faceToPrintings: Map<number, number[]>;
@@ -264,9 +280,11 @@ if (isPrintingField(canonical)) {
 
 ### `is:` keyword changes (`shared/src/search/eval-is.ts`)
 
-Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`, which operates on the printing buffer and returns `"printing"` domain. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`, which returns `"ok"` as today. Both functions live in `eval-is.ts`.
+Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, plus all 51 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
 
-These keywords are removed from `UNSUPPORTED_IS_KEYWORDS`.
+`alchemy` and `rebalanced` are removed from `UNSUPPORTED_IS_KEYWORDS` when they become supported via `promo_types_flags_0`/`promo_types_flags_1`.
+
+**Face-fallback for dual-domain keywords:** Add `FACE_FALLBACK_IS_KEYWORDS = new Set(["universesbeyond", "ub"])`. When `is:universesbeyond` or `is:ub` is evaluated and printing data is not yet loaded, the evaluator falls through to face-domain `evalIsKeyword()` instead of returning `"printing data not loaded"`. Same pattern as `FACE_FALLBACK_PRINTING_FIELDS` for `legal`/`banned`/`restricted` (Spec 056).
 
 ### Dual-domain buffer management in `NodeCache` (`shared/src/search/evaluator.ts`)
 
@@ -327,8 +345,8 @@ This avoids maintaining printing-domain buffers at every internal node — only 
 
 If printing data has not yet loaded when a query containing printing-domain fields is evaluated:
 
-- Printing-domain leaf nodes produce all-zero buffers (match nothing).
-- The evaluator flags the result with `printingsUnavailable: true`.
+- Printing-domain leaf nodes produce all-zero buffers (match nothing), except for `FACE_FALLBACK_IS_KEYWORDS` (`universesbeyond`, `ub`), which fall through to face-domain evaluation.
+- The evaluator flags the result with `printingsUnavailable: true` when any non-fallback printing-domain field was present.
 - The UI displays a non-destructive notice (Spec 039 pattern): "Printing data loading — set, rarity, and price filters are not yet available."
 
 ## Test Strategy
@@ -368,6 +386,11 @@ Test cases:
 | `-set:mh2 lightning` | Lightning Bolt (A25 printing matches) | NOT stays in printing domain, combined with face-level bare word |
 | `is:foil` | Lightning Bolt, Sol Ring | Promoted to face: "has any foil printing" |
 | `-is:foil is:etched` | Cards with etched printings | NOT stays in printing domain; row-level AND with `is:etched` |
+| `is:rainbowfoil` | Cards with rainbowfoil printings | Promo type from promo_types_flags_0/1 |
+| `is:poster` | Cards with poster printings | Promo type from promo_types_flags_0/1 |
+| `is:alchemy` | Cards with alchemy printings | Previously unsupported; now via promo_types |
+| `is:universesbeyond` (printings loaded) | UB printings | Printing-domain evaluation |
+| `is:universesbeyond` (printings null) | UB cards via CardFlag | Face-domain fallback |
 
 ### Compliance suite (`cli/suites/`)
 
@@ -377,13 +400,14 @@ Add printing-field entries once the full dataset is available.
 
 | File | Change |
 |---|---|
-| `shared/src/bits.ts` | Add `Rarity`, `RARITY_NAMES`, `RARITY_ORDER`, `Finish`, `PrintingFlag`, `Frame`, `FRAME_NAMES` |
-| `shared/src/data.ts` | Add `PrintingColumnarData` interface |
-| `shared/src/search/printing-index.ts` | New: `PrintingIndex` class |
+| `shared/src/bits.ts` | Add `Rarity`, `RARITY_NAMES`, `RARITY_ORDER`, `Finish`, `PrintingFlag`, `Frame`, `FRAME_NAMES`, `PROMO_TYPE_FLAGS` |
+| `shared/src/data.ts` | Add `PrintingColumnarData` interface; add optional `promo_types_flags_0`, `promo_types_flags_1` |
+| `shared/src/search/printing-index.ts` | New: `PrintingIndex` class; add `promoTypesFlags0`, `promoTypesFlags1` (default `[]` when missing) |
 | `shared/src/search/eval-leaves.ts` | `FIELD_ALIASES` extended with printing field aliases |
 | `shared/src/search/eval-printing.ts` | New: `PRINTING_FIELDS`, `isPrintingField()`, `evalPrintingField()`, `promotePrintingToFace()`, `promoteFaceToPrinting()` |
-| `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword()` for printing-domain `is:` keywords; remove printing keywords from `UNSUPPORTED_IS_KEYWORDS` |
-| `shared/src/search/evaluator.ts` | Dual-domain composite node logic, domain tracking in `NodeCache`/`InternedNode` |
+| `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword()`, `FACE_FALLBACK_IS_KEYWORDS`; add promo_types default branch; remove `alchemy`, `rebalanced` from `UNSUPPORTED_IS_KEYWORDS` |
+| `shared/src/search/evaluator.ts` | Dual-domain composite node logic, domain tracking; face-fallback for `is:universesbeyond` when printings null |
+| `etl/src/process-printings.ts` | Add `promo_types` to `DefaultCard`; encode `promo_types_flags_0`, `promo_types_flags_1` per row |
 | `shared/src/search/evaluator.test-fixtures.ts` | Synthetic card pool and printing data shared across test files |
 | `shared/src/search/evaluator-printing.test.ts` | Printing-domain integration tests (cross-domain queries through `NodeCache.evaluate`) |
 | `shared/src/search/eval-printing.test.ts` | Unit tests for `evalPrintingField()`, promotion helpers |
@@ -403,3 +427,10 @@ Add printing-field entries once the full dataset is available.
 10. `cn:1` returns printings with collector number "1".
 11. Queries with no printing-domain fields are unaffected (no performance regression, no behavioral change).
 12. When printing data is not yet loaded, printing-domain fields match nothing and the evaluator flags `printingsUnavailable`.
+13. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
+14. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
+15. `-is:poster` correctly negates (matches printings without poster promo type).
+
+## Implementation Notes
+
+- 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (51 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.
