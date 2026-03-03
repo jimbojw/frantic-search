@@ -119,26 +119,9 @@ function App() {
   }
   const [inputFocused, setInputFocused] = createSignal(false)
   const [userEngaged, setUserEngaged] = createSignal(false)
-  const [textareaMode, setTextareaMode] = createSignal(false)
   let programmaticFocusInProgress = false
-  let inputRef: HTMLInputElement | undefined
   let textareaRef: HTMLTextAreaElement | undefined
-  let inputHlRef: HTMLDivElement | undefined
   let textareaHlRef: HTMLDivElement | undefined
-
-  function toggleTextareaMode() {
-    const current = textareaMode() ? textareaRef : inputRef
-    const selStart = current?.selectionStart ?? 0
-    const selEnd = current?.selectionEnd ?? 0
-    setTextareaMode(prev => !prev)
-    queueMicrotask(() => {
-      const next = textareaMode() ? textareaRef : inputRef
-      if (next) {
-        next.focus()
-        next.setSelectionRange(selStart, selEnd)
-      }
-    })
-  }
 
   const effectiveQuery = createMemo(() => {
     const p = pinnedQuery().trim()
@@ -465,10 +448,9 @@ function App() {
   }
 
   function focusSearchInput(programmatic = false) {
-    const el = textareaMode() ? textareaRef : inputRef
-    if (!el || workerStatus() === 'error') return
+    if (!textareaRef || workerStatus() === 'error') return
     if (programmatic) programmaticFocusInProgress = true
-    el.focus()
+    textareaRef.focus()
   }
 
   const prefersFinePointer = () => matchMedia('(pointer: fine)').matches
@@ -667,69 +649,36 @@ function App() {
             />
           </Show>
           <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
-            <Show when={textareaMode()} fallback={
-              <div class="grid overflow-hidden">
-                <div ref={inputHlRef} class="hl-layer overflow-hidden whitespace-pre px-4 py-3 pl-14 pr-10">
-                  <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre" />
-                </div>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder='Search cards… e.g. "t:creature c:green"'
-                  autocapitalize="none"
-                  autocomplete="off"
-                  autocorrect="off"
-                  spellcheck={false}
-                  value={query()}
-                  onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
-                  onScroll={(e) => { if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
-                  onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
-                  onBlur={() => setInputFocused(false)}
-                  disabled={workerStatus() === 'error'}
-                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
-                />
-              </div>
-            }>
-              <div class="grid overflow-hidden">
-                <div ref={textareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-14 pr-10">
-                  <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
-                </div>
-                <textarea
-                  ref={textareaRef}
-                  rows="3"
-                  placeholder='Search cards… e.g. "t:creature c:green"'
-                  autocapitalize="none"
-                  autocomplete="off"
-                  autocorrect="off"
-                  spellcheck={false}
-                  value={query()}
-                  onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                  onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                  onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
-                  onBlur={() => setInputFocused(false)}
-                  disabled={workerStatus() === 'error'}
-                  class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
-                />
-              </div>
-            </Show>
-            <button
-              type="button"
-              onClick={toggleTextareaMode}
-              class="absolute left-0 top-0 flex items-center gap-0.5 pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              aria-label="Toggle multi-line editor"
-              aria-expanded={textareaMode()}
-            >
-              <svg class={`size-2.5 fill-current transition-transform ${textareaMode() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
-                <path d="M8 5l8 7-8 7z" />
-              </svg>
+            <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
-            </button>
+            </div>
+            <div class="grid overflow-hidden">
+              <div ref={textareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-10">
+                <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+              </div>
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                placeholder='Search cards… e.g. "t:creature c:green"'
+                autocapitalize="none"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck={false}
+                value={query()}
+                onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
+                onBlur={() => setInputFocused(false)}
+                disabled={workerStatus() === 'error'}
+                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+              />
+            </div>
             <button
               type="button"
               onClick={toggleTerms}
-              class={`absolute right-0 top-0 ${textareaMode() ? 'py-3' : 'bottom-0'} px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+              class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
               aria-label="Toggle search filters"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">

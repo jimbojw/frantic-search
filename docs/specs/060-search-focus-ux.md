@@ -95,7 +95,7 @@ Use at focus time; no need to react to changes (e.g. plugging in a mouse on a ta
 ### Programmatic vs user-initiated focus
 
 - **Programmatic**: `focusSearchInput(true)` — sets `programmaticFocusInProgress` before `focus()`. Used for initial-load auto-focus on desktop.
-- **User-initiated**: `focusSearchInput()` or `focusSearchInput(false)` — no flag. Used for `/` key and `toggleTextareaMode`.
+- **User-initiated**: `focusSearchInput()` or `focusSearchInput(false)` — no flag. Used for `/` key.
 
 In `onFocus`: if `programmaticFocusInProgress`, clear it and do not set `userEngaged`. Otherwise, set `userEngaged(true)`.
 
@@ -130,7 +130,7 @@ Unchanged from before: global listener, skip when focus is in input/textarea/sel
 | Focus in BugReport textarea | Same |
 | View is card, help, or report | `/` navigates to search, focuses, sets engaged |
 | Input disabled (worker error) | Skip focus; `/` still navigates |
-| Textarea mode | Focus `textareaRef` |
+| Search bar | Focus `textareaRef` (always a textarea) |
 | Desktop with touchscreen | `(pointer: fine)` typically true; auto-focus |
 
 ## Acceptance Criteria

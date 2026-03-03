@@ -1,6 +1,8 @@
 # Spec 049: Expandable Search Input
 
-**Status:** Implemented
+**Status:** Superseded
+
+**Superseded by:** Decision to make textarea the only search input (Issue #63). The toggle was removed; the search bar is now permanently a textarea that auto-grows.
 
 **Depends on:** Spec 044 (Terms Drawer Redesign)
 
