@@ -14,7 +14,7 @@ export default function ViewModeToggle(props: {
           <button
             type="button"
             onClick={() => props.onChange(mode)}
-            class={`px-2.5 py-0.5 cursor-pointer transition-colors ${
+            class={`min-h-11 md:min-h-0 px-3 py-2 md:px-2.5 md:py-0.5 cursor-pointer transition-colors ${
               props.value === mode
                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'

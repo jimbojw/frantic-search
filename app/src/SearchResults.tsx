@@ -50,32 +50,44 @@ export default function SearchResults() {
           {(h) => (<>
             <div
               onClick={() => ctx.toggleHistograms()}
-              class="relative px-3 py-1 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              class="flex items-center gap-3 px-3 py-1 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
             >
-              <svg class={`absolute left-3 top-1/2 -translate-y-1/2 size-2.5 fill-current text-gray-500 dark:text-gray-400 transition-transform duration-150 ${ctx.histogramsExpanded() ? 'rotate-90' : ''}`} viewBox="0 0 24 24">
-                <path d="M8 5l8 7-8 7z" />
-              </svg>
               <Show when={ctx.histogramsExpanded()} fallback={
-                <div class="grid grid-cols-3 gap-4">
-                  <div class="flex items-center gap-1 min-w-0 pl-4">
-                    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
-                    <SparkBars counts={h().manaValue} colors={MV_BAR_COLOR} />
+                <>
+                  <svg class="size-2.5 shrink-0 fill-current text-gray-500 dark:text-gray-400 transition-transform duration-150" viewBox="0 0 24 24">
+                    <path d="M8 5l8 7-8 7z" />
+                  </svg>
+                  <div class="grid grid-cols-3 gap-4 flex-1 min-w-0 pr-3">
+                    <div class="flex items-center gap-1 min-w-0">
+                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
+                      <SparkBars counts={h().manaValue} colors={MV_BAR_COLOR} />
+                    </div>
+                    <div class="flex items-center gap-1 min-w-0">
+                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">ci:</span>
+                      <SparkBars counts={h().colorIdentity} colors={[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]} />
+                    </div>
+                    <div class="flex items-center gap-1 min-w-0">
+                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">t:</span>
+                      <SparkBars counts={h().cardType} colors={TYPE_BAR_COLOR} />
+                    </div>
                   </div>
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">ci:</span>
-                    <SparkBars counts={h().colorIdentity} colors={[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]} />
-                  </div>
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">t:</span>
-                    <SparkBars counts={h().cardType} colors={TYPE_BAR_COLOR} />
-                  </div>
-                </div>
+                </>
               }>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="hidden md:grid grid-cols-3 gap-4 flex-1">
                   <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Mana Value</p>
                   <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Color Identity</p>
                   <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Card Type</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); ctx.toggleHistograms() }}
+                  class="hidden md:flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                  aria-label="Collapse histograms"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </Show>
             </div>
             <div
@@ -87,6 +99,7 @@ export default function SearchResults() {
                   histograms={h()}
                   query={ctx.query()}
                   onSetQuery={(q) => { ctx.flushPendingCommit(); ctx.setQuery(q) }}
+                  onClose={() => ctx.toggleHistograms()}
                 />
               </div>
             </div>
@@ -134,7 +147,7 @@ export default function SearchResults() {
                     <button
                       type="button"
                       onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                      class="inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <HighlightedLabel label="include:extras" />
                     </button>

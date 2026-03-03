@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, Show, createMemo } from 'solid-js'
+import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { Histograms, BreakdownNode } from '@frantic-search/shared'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 import {
@@ -34,6 +34,14 @@ const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:ar
 const TYPE_VALUES = ['legendary', 'creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'land']
 
 const WUBRG_RE = /^[wubrg]+$/i
+
+type HistogramTab = 'mv' | 'ci' | 'type'
+
+const HISTOGRAM_TABS: { id: HistogramTab; label: string }[] = [
+  { id: 'mv', label: 'Mana' },
+  { id: 'ci', label: 'Color' },
+  { id: 'type', label: 'Type' },
+]
 
 type ColorBarDef = {
   label: () => any
@@ -84,11 +92,11 @@ function BarRow(props: {
   const pct = () => props.maxCount > 0 ? (props.count / props.maxCount) * 100 : 0
   const isGradient = () => props.background.startsWith('linear-gradient')
   return (
-    <div class="flex items-center gap-0 h-6">
+    <div class="flex items-center gap-0 h-11 md:h-6">
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); props.onExclude() }}
-        class={`size-6 shrink-0 flex items-center justify-center rounded-full transition-colors ${
+        class={`size-11 md:size-6 shrink-0 flex items-center justify-center rounded-full transition-colors ${
           props.excludeActive
             ? 'text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
             : 'text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
@@ -99,7 +107,7 @@ function BarRow(props: {
           <path d="M5 12h14" />
         </svg>
       </button>
-      <div class="w-6 shrink-0 flex items-center justify-center text-sm">
+      <div class="w-11 md:w-6 shrink-0 flex items-center justify-center text-sm">
         {props.label()}
       </div>
       <div class="border-l border-gray-300 dark:border-gray-600 h-full" />
@@ -113,7 +121,7 @@ function BarRow(props: {
         }`}
       >
         <div
-          class="h-3.5 rounded-sm transition-all"
+          class="h-full min-h-3.5 max-h-[75%] rounded-xl transition-all"
           style={{
             width: `${pct()}%`,
             "min-width": props.count > 0 ? '2px' : undefined,
@@ -135,10 +143,13 @@ export default function ResultsBreakdown(props: {
   histograms: Histograms
   query: string
   onSetQuery: (query: string) => void
+  onClose?: () => void
 }) {
   const colorMax = () => Math.max(...props.histograms.colorIdentity)
   const mvMax = () => Math.max(...props.histograms.manaValue)
   const typeMax = () => Math.max(...props.histograms.cardType)
+
+  const [selectedTab, setSelectedTab] = createSignal<HistogramTab>('ci')
 
   // Synchronous breakdown derived from the query string. Spans always match
   // the current query, unlike the async worker breakdown which can lag behind.
@@ -244,96 +255,229 @@ export default function ResultsBreakdown(props: {
   }
 
   return (
-    <div class="grid grid-cols-3 gap-4 px-3 pb-2">
-      <div>
-        <For each={MV_LABELS}>
-          {(label, i) => (
-            <BarRow
-              label={() => <span class="font-mono text-xs">{label}</span>}
-              count={props.histograms.manaValue[i()]}
-              maxCount={mvMax()}
-              background={MV_BAR_COLOR}
-              drillActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
-              excludeActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
-              onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
-                field: MV_FIELDS, operator: MV_OPS[i()], negated: false, value: MV_VALUES[i()], appendTerm: MV_TERMS[i()],
-              }))}
-              onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
-                field: MV_FIELDS, operator: MV_OPS[i()], negated: true, value: MV_VALUES[i()], appendTerm: '-' + MV_TERMS[i()],
-              }))}
-            />
-          )}
-        </For>
-        <Show when={mvTermLabels().length > 0}>
-          <div class="flex items-center h-6">
+    <>
+      {/* Mobile: segmented selector + single column */}
+      <div class="md:hidden px-3 pb-2">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="flex flex-1 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <For each={HISTOGRAM_TABS}>
+              {(tab) => (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTab(tab.id)}
+                  class={`flex-1 min-h-11 flex items-center justify-center px-3 text-xs font-medium transition-colors ${
+                    selectedTab() === tab.id
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              )}
+            </For>
+          </div>
+          <Show when={props.onClose}>
             <button
               type="button"
-              onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
-              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+              onClick={() => props.onClose!()}
+              class="min-h-11 min-w-11 shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+              aria-label="Collapse histograms"
             >
-              Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
+          </Show>
+        </div>
+        <Show when={selectedTab() === 'mv'}>
+          <div>
+            <For each={MV_LABELS}>
+              {(label, i) => (
+                <BarRow
+                  label={() => <span class="font-mono text-xs">{label}</span>}
+                  count={props.histograms.manaValue[i()]}
+                  maxCount={mvMax()}
+                  background={MV_BAR_COLOR}
+                  drillActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
+                  excludeActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
+                  onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                    field: MV_FIELDS, operator: MV_OPS[i()], negated: false, value: MV_VALUES[i()], appendTerm: MV_TERMS[i()],
+                  }))}
+                  onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                    field: MV_FIELDS, operator: MV_OPS[i()], negated: true, value: MV_VALUES[i()], appendTerm: '-' + MV_TERMS[i()],
+                  }))}
+                />
+              )}
+            </For>
+            <Show when={mvTermLabels().length > 0}>
+              <div class="flex items-center h-11 md:h-6">
+                <button
+                  type="button"
+                  onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
+                  class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+                >
+                  Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)
+                </button>
+              </div>
+            </Show>
+          </div>
+        </Show>
+        <Show when={selectedTab() === 'ci'}>
+          <div>
+            <For each={COLOR_BARS}>
+              {(bar, i) => (
+                <BarRow
+                  label={bar.label}
+                  count={props.histograms.colorIdentity[i()]}
+                  maxCount={colorMax()}
+                  background={bar.background}
+                  drillActive={colorDrillActive(bar)}
+                  excludeActive={colorExcludeActive(bar)}
+                  onDrill={() => handleColorDrill(bar)}
+                  onExclude={() => handleColorExclude(bar)}
+                />
+              )}
+            </For>
+            <Show when={ciTermLabels().length > 0}>
+              <div class="flex items-center h-11 md:h-6">
+                <button
+                  type="button"
+                  onClick={() => props.onSetQuery(clearColorIdentity(props.query, bd()))}
+                  class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+                >
+                  Clear (<code class="font-mono">{ciTermLabels().join(' ')}</code>)
+                </button>
+              </div>
+            </Show>
+          </div>
+        </Show>
+        <Show when={selectedTab() === 'type'}>
+          <div>
+            <For each={TYPE_LABELS}>
+              {(label, i) => (
+                <BarRow
+                  label={() => <span class="font-mono text-xs">{label}</span>}
+                  count={props.histograms.cardType[i()]}
+                  maxCount={typeMax()}
+                  background={TYPE_BAR_COLOR}
+                  drillActive={isSimpleActive(bd(), TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
+                  excludeActive={isSimpleActive(bd(), TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
+                  onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                    field: TYPE_FIELDS, operator: ':', negated: false, value: TYPE_VALUES[i()], appendTerm: TYPE_TERMS[i()],
+                  }))}
+                  onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                    field: TYPE_FIELDS, operator: ':', negated: true, value: TYPE_VALUES[i()], appendTerm: '-' + TYPE_TERMS[i()],
+                  }))}
+                />
+              )}
+            </For>
+            <Show when={typeTermLabels().length > 0}>
+              <div class="flex items-center h-11 md:h-6">
+                <button
+                  type="button"
+                  onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isTypeLabel))}
+                  class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+                >
+                  Clear (<code class="font-mono">{typeTermLabels().join(' ')}</code>)
+                </button>
+              </div>
+            </Show>
           </div>
         </Show>
       </div>
-      <div>
-        <For each={COLOR_BARS}>
-          {(bar, i) => (
-            <BarRow
-              label={bar.label}
-              count={props.histograms.colorIdentity[i()]}
-              maxCount={colorMax()}
-              background={bar.background}
-              drillActive={colorDrillActive(bar)}
-              excludeActive={colorExcludeActive(bar)}
-              onDrill={() => handleColorDrill(bar)}
-              onExclude={() => handleColorExclude(bar)}
-            />
-          )}
-        </For>
-        <Show when={ciTermLabels().length > 0}>
-          <div class="flex items-center h-6">
-            <button
-              type="button"
-              onClick={() => props.onSetQuery(clearColorIdentity(props.query, bd()))}
-              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
-            >
-              Clear (<code class="font-mono">{ciTermLabels().join(' ')}</code>)
-            </button>
-          </div>
-        </Show>
+
+      {/* Desktop: 3 columns */}
+      <div class="hidden md:grid grid-cols-3 gap-4 px-3 pb-2">
+        <div>
+          <For each={MV_LABELS}>
+            {(label, i) => (
+              <BarRow
+                label={() => <span class="font-mono text-xs">{label}</span>}
+                count={props.histograms.manaValue[i()]}
+                maxCount={mvMax()}
+                background={MV_BAR_COLOR}
+                drillActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], false, MV_VALUES[i()])}
+                excludeActive={isSimpleActive(bd(), MV_FIELDS, MV_OPS[i()], true, MV_VALUES[i()])}
+                onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                  field: MV_FIELDS, operator: MV_OPS[i()], negated: false, value: MV_VALUES[i()], appendTerm: MV_TERMS[i()],
+                }))}
+                onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                  field: MV_FIELDS, operator: MV_OPS[i()], negated: true, value: MV_VALUES[i()], appendTerm: '-' + MV_TERMS[i()],
+                }))}
+              />
+            )}
+          </For>
+          <Show when={mvTermLabels().length > 0}>
+            <div class="flex items-center h-11 md:h-6">
+              <button
+                type="button"
+                onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
+                class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+              >
+                Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)
+              </button>
+            </div>
+          </Show>
+        </div>
+        <div>
+          <For each={COLOR_BARS}>
+            {(bar, i) => (
+              <BarRow
+                label={bar.label}
+                count={props.histograms.colorIdentity[i()]}
+                maxCount={colorMax()}
+                background={bar.background}
+                drillActive={colorDrillActive(bar)}
+                excludeActive={colorExcludeActive(bar)}
+                onDrill={() => handleColorDrill(bar)}
+                onExclude={() => handleColorExclude(bar)}
+              />
+            )}
+          </For>
+          <Show when={ciTermLabels().length > 0}>
+            <div class="flex items-center h-11 md:h-6">
+              <button
+                type="button"
+                onClick={() => props.onSetQuery(clearColorIdentity(props.query, bd()))}
+                class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+              >
+                Clear (<code class="font-mono">{ciTermLabels().join(' ')}</code>)
+              </button>
+            </div>
+          </Show>
+        </div>
+        <div>
+          <For each={TYPE_LABELS}>
+            {(label, i) => (
+              <BarRow
+                label={() => <span class="font-mono text-xs">{label}</span>}
+                count={props.histograms.cardType[i()]}
+                maxCount={typeMax()}
+                background={TYPE_BAR_COLOR}
+                drillActive={isSimpleActive(bd(), TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
+                excludeActive={isSimpleActive(bd(), TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
+                onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                  field: TYPE_FIELDS, operator: ':', negated: false, value: TYPE_VALUES[i()], appendTerm: TYPE_TERMS[i()],
+                }))}
+                onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
+                  field: TYPE_FIELDS, operator: ':', negated: true, value: TYPE_VALUES[i()], appendTerm: '-' + TYPE_TERMS[i()],
+                }))}
+              />
+            )}
+          </For>
+          <Show when={typeTermLabels().length > 0}>
+            <div class="flex items-center h-11 md:h-6">
+              <button
+                type="button"
+                onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isTypeLabel))}
+                class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
+              >
+                Clear (<code class="font-mono">{typeTermLabels().join(' ')}</code>)
+              </button>
+            </div>
+          </Show>
+        </div>
       </div>
-      <div>
-        <For each={TYPE_LABELS}>
-          {(label, i) => (
-            <BarRow
-              label={() => <span class="font-mono text-xs">{label}</span>}
-              count={props.histograms.cardType[i()]}
-              maxCount={typeMax()}
-              background={TYPE_BAR_COLOR}
-              drillActive={isSimpleActive(bd(), TYPE_FIELDS, ':', false, TYPE_VALUES[i()])}
-              excludeActive={isSimpleActive(bd(), TYPE_FIELDS, ':', true, TYPE_VALUES[i()])}
-              onDrill={() => props.onSetQuery(toggleSimple(props.query, bd(), {
-                field: TYPE_FIELDS, operator: ':', negated: false, value: TYPE_VALUES[i()], appendTerm: TYPE_TERMS[i()],
-              }))}
-              onExclude={() => props.onSetQuery(toggleSimple(props.query, bd(), {
-                field: TYPE_FIELDS, operator: ':', negated: true, value: TYPE_VALUES[i()], appendTerm: '-' + TYPE_TERMS[i()],
-              }))}
-            />
-          )}
-        </For>
-        <Show when={typeTermLabels().length > 0}>
-          <div class="flex items-center h-6">
-            <button
-              type="button"
-              onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isTypeLabel))}
-              class="w-full h-full px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
-            >
-              Clear (<code class="font-mono">{typeTermLabels().join(' ')}</code>)
-            </button>
-          </div>
-        </Show>
-      </div>
-    </div>
+    </>
   )
 }

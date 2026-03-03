@@ -141,7 +141,7 @@ export function BreakdownChip(props: {
 
   return (
     <span
-      class={`inline-flex items-center gap-1.5 pl-2 rounded text-xs font-mono transition-colors ${chipClasses()} ${hoverClass()} ${props.onRemove ? 'pr-0.5' : 'pr-2'}`}
+      class={`inline-flex items-center gap-1.5 min-h-11 md:min-h-0 pl-2 py-2 md:py-0 rounded text-xs font-mono transition-colors ${chipClasses()} ${hoverClass()} ${props.onRemove ? 'pr-0.5' : 'pr-2'}`}
       style={{ "line-height": "1.75rem" }}
       onClick={props.onClick}
     >
@@ -169,7 +169,7 @@ export function BreakdownChip(props: {
       <Show when={props.onRemove}>
         <button
           onClick={(e) => { e.stopPropagation(); props.onRemove!() }}
-          class="size-5 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          class="size-11 md:size-5 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           aria-label={`Remove ${props.label}`}
         >
           <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -254,7 +254,7 @@ export function BreakdownLip(props: {
   return (
     <div
       onClick={() => props.onToggle()}
-      class={`flex items-center justify-between gap-4 px-3 py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
+      class={`flex items-center justify-between gap-4 min-h-11 md:min-h-0 px-3 py-2 md:py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
     >
       <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
         <svg class={`size-2.5 fill-current transition-transform ${props.expanded ? '-rotate-90' : ''}`} viewBox="0 0 24 24">

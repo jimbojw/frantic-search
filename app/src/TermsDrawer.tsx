@@ -148,7 +148,7 @@ function TermChip(props: {
     <button
       type="button"
       onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, props.chip))}
-      class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -182,7 +182,7 @@ function UniquePrintsChip(props: {
     <button
       type="button"
       onClick={() => props.onSetQuery(toggleUniquePrints(props.query, props.breakdown))}
-      class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
         props.active
           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -213,7 +213,7 @@ function IncludeExtrasChip(props: {
     <button
       type="button"
       onClick={() => props.onSetQuery(toggleIncludeExtras(props.query, props.breakdown))}
-      class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${
         props.active
           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -264,7 +264,7 @@ export default function TermsDrawer(props: {
         <button
           type="button"
           onClick={() => props.onHelpClick()}
-          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
+          class="min-h-11 min-w-11 md:min-h-0 md:min-w-0 flex items-center justify-center p-2 md:p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
           aria-label="Syntax help"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-3.5">
@@ -279,7 +279,7 @@ export default function TermsDrawer(props: {
         <button
           type="button"
           onClick={() => props.onClose()}
-          class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
+          class="min-h-11 min-w-11 md:min-h-0 md:min-w-0 flex items-center justify-center p-2 md:p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
           aria-label="Close filters"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
@@ -296,8 +296,8 @@ export default function TermsDrawer(props: {
               <button
                 type="button"
                 onClick={() => selectTab(tab)}
-                class={`px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
-                  activeTab() === tab
+                class={`min-h-11 md:min-h-0 px-2 py-2 md:py-0.5 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
+                    activeTab() === tab
                     ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
                     : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
