@@ -118,8 +118,9 @@ function App() {
     })
   }
   const [inputFocused, setInputFocused] = createSignal(false)
-  const [hasEverFocused, setHasEverFocused] = createSignal(false)
+  const [userEngaged, setUserEngaged] = createSignal(false)
   const [textareaMode, setTextareaMode] = createSignal(false)
+  let programmaticFocusInProgress = false
   let inputRef: HTMLInputElement | undefined
   let textareaRef: HTMLTextAreaElement | undefined
   let inputHlRef: HTMLDivElement | undefined
@@ -275,7 +276,10 @@ function App() {
 
   const totalCards = () => indices().length
 
-  const headerCollapsed = () => inputFocused() || query().trim() !== '' || hasEverFocused() || termsExpanded()
+  const headerCollapsed = () =>
+    query().trim() !== '' ||
+    termsExpanded() ||
+    (inputFocused() && userEngaged())
   const scryfallUrl = () => {
     const q = query().trim()
     if (!q) return ''
@@ -460,6 +464,39 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  function focusSearchInput(programmatic = false) {
+    const el = textareaMode() ? textareaRef : inputRef
+    if (!el || workerStatus() === 'error') return
+    if (programmatic) programmaticFocusInProgress = true
+    el.focus()
+  }
+
+  const prefersFinePointer = () => matchMedia('(pointer: fine)').matches
+
+  const slashKeyHandler = (e: KeyboardEvent) => {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+    const target = e.target as Node
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    )
+      return
+    e.preventDefault()
+    e.stopPropagation()
+    if (view() !== 'search') navigateToQuery(query())
+    queueMicrotask(focusSearchInput)
+  }
+  document.addEventListener('keydown', slashKeyHandler, true)
+  onCleanup(() => document.removeEventListener('keydown', slashKeyHandler, true))
+
+  createEffect(() => {
+    if (view() !== 'search') return
+    if (!prefersFinePointer()) return
+    queueMicrotask(() => focusSearchInput(true))
+  })
+
   function hardReload() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -484,7 +521,7 @@ function App() {
       view() === 'search' &&
       !query().trim() &&
       !cardId() &&
-      !hasEverFocused()
+      !userEngaged()
 
     if (isAtHome) {
       history.replaceState(null, '', location.pathname)
@@ -499,7 +536,7 @@ function App() {
     setQuery('')
     setView('search')
     setCardId('')
-    setHasEverFocused(false)
+    setUserEngaged(false)
     window.scrollTo(0, 0)
   }
 
@@ -644,9 +681,9 @@ function App() {
                   autocorrect="off"
                   spellcheck={false}
                   value={query()}
-                  onInput={(e) => { setQuery(e.currentTarget.value); if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
+                  onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
                   onScroll={(e) => { if (inputHlRef) inputHlRef.scrollLeft = e.currentTarget.scrollLeft }}
-                  onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                  onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                   onBlur={() => setInputFocused(false)}
                   disabled={workerStatus() === 'error'}
                   class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50"
@@ -666,9 +703,9 @@ function App() {
                   autocorrect="off"
                   spellcheck={false}
                   value={query()}
-                  onInput={(e) => { setQuery(e.currentTarget.value); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                  onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
                   onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                  onFocus={(e) => { setInputFocused(true); setHasEverFocused(true); e.preventDefault() }}
+                  onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                   onBlur={() => setInputFocused(false)}
                   disabled={workerStatus() === 'error'}
                   class="hl-input w-full bg-transparent px-4 py-3 pl-14 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
