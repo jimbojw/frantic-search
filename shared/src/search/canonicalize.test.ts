@@ -147,11 +147,27 @@ describe("toScryfallQuery", () => {
     expect(canon("date>=202")).toBe("date>=2020-01-01");
   });
 
-  it("pads a year-only date to YYYY-MM-DD", () => {
+  it("complete year date=2025 stays as-is (Spec 061)", () => {
+    expect(canon("date=2025")).toBe("date=2025");
+  });
+
+  it("complete year-month date=2025-02 stays as-is (Spec 061)", () => {
+    expect(canon("date=2025-02")).toBe("date=2025-02");
+  });
+
+  it("partial date=202 expands to range (Spec 061)", () => {
+    expect(canon("date=202")).toBe("date>=2020-01-01 date<2030-01-01");
+  });
+
+  it("partial date>202 expands to date>=2030-01-01 (Spec 061)", () => {
+    expect(canon("date>202")).toBe("date>=2030-01-01");
+  });
+
+  it("pads a year-only date to YYYY-MM-DD for >= operator", () => {
     expect(canon("date>=2021")).toBe("date>=2021-01-01");
   });
 
-  it("pads a year-month date to YYYY-MM-DD", () => {
+  it("pads a year-month date to YYYY-MM-DD for >= operator", () => {
     expect(canon("date>=2021-06")).toBe("date>=2021-06-01");
   });
 

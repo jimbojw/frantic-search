@@ -2,6 +2,7 @@
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, PrintingFlag } from "../bits";
+import { parseDateRange } from "./date-range";
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "price", "collectornumber", "frame", "year", "date",
@@ -34,55 +35,6 @@ function buildRarityMask(op: string, targetBit: number): number {
     }
   }
   return mask;
-}
-
-function parseDateLiteral(val: string): number {
-  const parts = val.split("-");
-  if (parts.length < 1 || parts.length > 3) return 0;
-
-  const yearStr = parts[0];
-  if (yearStr.length < 1 || yearStr.length > 4 || !/^\d+$/.test(yearStr)) return 0;
-  const year = parseInt(yearStr.padEnd(4, "0"), 10);
-
-  let month = 1;
-  if (parts.length >= 2 && parts[1].length > 0) {
-    const mStr = parts[1];
-    if (mStr.length > 2 || !/^\d+$/.test(mStr)) return 0;
-    month = parseInt(mStr.padEnd(2, "0"), 10);
-    if (month < 1) month = 1;
-    if (month > 12) month = 12;
-  }
-
-  let day = 1;
-  if (parts.length >= 3 && parts[2].length > 0) {
-    const dStr = parts[2];
-    if (dStr.length > 2 || !/^\d+$/.test(dStr)) return 0;
-    day = parseInt(dStr.padEnd(2, "0"), 10);
-    if (day < 1) day = 1;
-    if (day > 31) day = 31;
-  }
-
-  return year * 10000 + month * 100 + day;
-}
-
-function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number {
-  for (let i = 0; i < pIdx.printingCount; i++) {
-    if (pIdx.setCodesLower[i] === codeLower) {
-      return pIdx.setReleasedAt[pIdx.setIndices[i]];
-    }
-  }
-  return 0;
-}
-
-function resolveDateValue(val: string, pIdx: PrintingIndex): number {
-  const lower = val.toLowerCase();
-  if (lower === "now" || lower === "today") {
-    const d = new Date();
-    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  }
-  const literal = parseDateLiteral(val);
-  if (literal > 0) return literal;
-  return resolveSetDate(lower, pIdx);
 }
 
 export function evalPrintingField(
@@ -148,38 +100,43 @@ export function evalPrintingField(
       break;
     }
     case "year": {
-      const queryYear = parseInt(val, 10);
-      if (isNaN(queryYear)) return `invalid year "${val}"`;
+      if (val.includes("-") || /^\d{5,}/.test(val)) {
+        return `invalid year "${val}" (year: accepts only YYYY or partial year, e.g. 2025 or 202)`;
+      }
+      const range = parseDateRange(val, pIdx);
+      if (range === null) return `invalid year "${val}"`;
+      const { lo, hi } = range;
       for (let i = 0; i < n; i++) {
-        const cardYear = Math.floor(pIdx.releasedAt[i] / 10000);
-        if (pIdx.releasedAt[i] === 0) continue;
+        const d = pIdx.releasedAt[i];
+        if (d === 0) continue;
         let match = false;
         switch (op) {
-          case ":": case "=": match = cardYear === queryYear; break;
-          case "!=": match = cardYear !== queryYear; break;
-          case ">":  match = cardYear > queryYear; break;
-          case "<":  match = cardYear < queryYear; break;
-          case ">=": match = cardYear >= queryYear; break;
-          case "<=": match = cardYear <= queryYear; break;
+          case ":": case "=": match = d >= lo && d < hi; break;
+          case "!=": match = !(d >= lo && d < hi); break;
+          case ">":  match = d >= hi; break;
+          case ">=": match = d >= lo; break;
+          case "<":  match = d < lo; break;
+          case "<=": match = d < hi; break;
         }
         if (match) buf[i] = 1;
       }
       break;
     }
     case "date": {
-      const queryDate = resolveDateValue(val, pIdx);
-      if (queryDate === 0) return `invalid date "${val}" (expected a date like YYYY-MM-DD, "now", or a set code)`;
+      const range = parseDateRange(val, pIdx);
+      if (range === null) return `invalid date "${val}" (expected a date like YYYY-MM-DD, "now", or a set code)`;
+      const { lo, hi } = range;
       for (let i = 0; i < n; i++) {
         const d = pIdx.releasedAt[i];
         if (d === 0) continue;
         let match = false;
         switch (op) {
-          case ":": case "=": match = d === queryDate; break;
-          case "!=": match = d !== queryDate; break;
-          case ">":  match = d > queryDate; break;
-          case "<":  match = d < queryDate; break;
-          case ">=": match = d >= queryDate; break;
-          case "<=": match = d <= queryDate; break;
+          case ":": case "=": match = d >= lo && d < hi; break;
+          case "!=": match = !(d >= lo && d < hi); break;
+          case ">":  match = d >= hi; break;
+          case ">=": match = d >= lo; break;
+          case "<":  match = d < lo; break;
+          case "<=": match = d < hi; break;
         }
         if (match) buf[i] = 1;
       }

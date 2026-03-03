@@ -92,6 +92,19 @@ describe("printing-domain leaves", () => {
     expect(cardCount('date:"2018-03-16"')).toBe(1);
   });
 
+  test("date=2021 matches both cards (year range, Spec 061)", () => {
+    expect(cardCount("date=2021")).toBe(2);
+  });
+
+  test("date>2025 matches nothing (no 2026+ printings in test data)", () => {
+    expect(cardCount("date>2025")).toBe(0);
+  });
+
+  test("year=2025-02 produces error (Spec 061)", () => {
+    const { result } = evaluate("year=2025-02");
+    expect(result.error).toMatch(/invalid year/);
+  });
+
   test("cn:113 matches Lightning Bolt (A25 printing)", () => {
     expect(cardCount("cn:113")).toBe(1);
   });

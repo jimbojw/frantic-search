@@ -1,43 +1,58 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode } from "./ast";
 import { FIELD_ALIASES } from "./eval-leaves";
+import { parseDateRange } from "./date-range";
 
-const DATE_FIELDS = new Set(["date"]);
-const SPECIAL_DATE_VALUES = new Set(["now", "today"]);
+const DATE_FIELDS = new Set(["date", "year"]);
+
+function formatYMD(n: number): string {
+  const y = Math.floor(n / 10000);
+  const m = Math.floor((n % 10000) / 100);
+  const d = n % 100;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function isCompleteDate(val: string): boolean {
+  return /^\d{4}$/.test(val) || /^\d{4}-\d{2}$/.test(val) || /^\d{4}-\d{2}-\d{2}$/.test(val);
+}
 
 /**
- * Pad a partial date string to full YYYY-MM-DD format.
- * Mirrors the zero-fill logic in eval-printing.ts parseDateLiteral().
- * Returns the original value if it's not a numeric partial date.
+ * Serialize a date/year field value for Scryfall. Uses parseDateRange (Spec 061).
+ * Complete values emit as-is; partial values expand to explicit range.
  */
-function padDate(val: string): string {
-  if (SPECIAL_DATE_VALUES.has(val.toLowerCase())) return val;
+function serializeDateField(field: string, op: string, val: string): string {
+  const lower = val.toLowerCase();
+  if (lower === "now" || lower === "today") return `${field}${op}${val}`;
+  if (/^[a-z0-9]{3,}$/.test(lower) && /[a-z]/.test(lower)) return `${field}${op}${val}`;
 
-  const parts = val.split("-");
-  if (parts.length < 1 || parts.length > 3) return val;
+  const range = parseDateRange(val, null);
+  if (range === null) return `${field}${op}${val}`;
 
-  const yearStr = parts[0];
-  if (yearStr.length < 1 || yearStr.length > 4 || !/^\d+$/.test(yearStr))
-    return val;
-  const year = yearStr.padEnd(4, "0");
+  const { lo, hi } = range;
+  const loStr = formatYMD(lo);
+  const hiStr = formatYMD(hi);
 
-  let month = "01";
-  if (parts.length >= 2 && parts[1].length > 0) {
-    const mStr = parts[1];
-    if (mStr.length > 2 || !/^\d+$/.test(mStr)) return val;
-    const m = parseInt(mStr.padEnd(2, "0"), 10);
-    month = String(Math.max(1, Math.min(12, m))).padStart(2, "0");
+  if (isCompleteDate(val.trim())) {
+    switch (op) {
+      case ":": case "=": return `${field}${op}${val.trim()}`;
+      case "!=": return `${field}!=${val.trim()}`;
+      case ">": return `${field}>=${hiStr}`;
+      case ">=": return `${field}>=${loStr}`;
+      case "<": return `${field}<${loStr}`;
+      case "<=": return `${field}<${hiStr}`;
+      default: return `${field}${op}${val.trim()}`;
+    }
   }
 
-  let day = "01";
-  if (parts.length >= 3 && parts[2].length > 0) {
-    const dStr = parts[2];
-    if (dStr.length > 2 || !/^\d+$/.test(dStr)) return val;
-    const d = parseInt(dStr.padEnd(2, "0"), 10);
-    day = String(Math.max(1, Math.min(31, d))).padStart(2, "0");
+  switch (op) {
+    case ":": case "=": return `${field}>=${loStr} ${field}<${hiStr}`;
+    case "!=": return `-(${field}>=${loStr} ${field}<${hiStr})`;
+    case ">": return `${field}>=${hiStr}`;
+    case ">=": return `${field}>=${loStr}`;
+    case "<": return `${field}<${loStr}`;
+    case "<=": return `${field}<${hiStr}`;
+    default: return `${field}${op}${val}`;
   }
-
-  return `${year}-${month}-${day}`;
 }
 
 function isDateField(field: string): boolean {
@@ -61,8 +76,8 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       if (node.value === "") return "";
       // Frantic Search–specific display modifier — strip for Scryfall (Spec 058)
       if (node.field.toLowerCase() === "view") return "";
-      const val = isDateField(node.field) ? padDate(node.value) : node.value;
-      const quoted = needsQuoting(val) ? `"${val}"` : val;
+      if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
+      const quoted = needsQuoting(node.value) ? `"${node.value}"` : node.value;
       return `${node.field}${node.operator}${quoted}`;
     }
 

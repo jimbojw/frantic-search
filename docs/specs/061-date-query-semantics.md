@@ -1,6 +1,6 @@
 # Spec 061: Date Query Semantics — Scryfall Parity + Narrow-as-You-Type
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 047 (Printing Query Fields), Spec 052 (Scryfall Outlink Canonicalization)
 

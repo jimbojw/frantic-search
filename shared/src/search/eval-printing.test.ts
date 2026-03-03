@@ -304,6 +304,14 @@ describe("year field", () => {
   test("invalid year returns error", () => {
     expect(evalField("year", ":", "abc").error).toBe('invalid year "abc"');
   });
+
+  test("year=2025-02 produces error (year accepts only YYYY)", () => {
+    expect(evalField("year", ":", "2025-02").error).toMatch(/invalid year/);
+  });
+
+  test("year=202 uses range semantics (2020s)", () => {
+    expect(marked(evalField("year", ":", "202").buf)).toEqual([0, 1, 3, 4, 5]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -328,7 +336,7 @@ describe("date field", () => {
     expect(marked(evalField("date", ">=", "2018-03-16").buf)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  test("<= comparison", () => {
+  test("<= comparison (date < hi for single-day range)", () => {
     expect(marked(evalField("date", "<=", "2018-03-16").buf)).toEqual([2]);
   });
 
@@ -355,61 +363,90 @@ describe("date field", () => {
     expect(evalField("date", ":", "2020-01-01-05").error).toMatch(/invalid date/);
   });
 
-  // -- Partial date completion (lowest-possible-value padding) ---------------
+  // -- Range semantics (Spec 061) --------------------------------------------
 
-  test("year-only resolves to YYYY-01-01", () => {
-    // 2021 → 20210101 — exact match against rows with 20210618 should miss
+  test("year-only date=2021 uses full year range", () => {
     const exact = evalField("date", ":", "2021");
     expect(exact.error).toBeNull();
-    expect(marked(exact.buf)).toEqual([]);
+    expect(marked(exact.buf)).toEqual([0, 1, 3, 4]);
+  });
 
-    // 2021 → 20210101; rows at 20210618 are >=, row 2 (20180316) is not
+  test("year-month date=2021-06 uses full month range", () => {
+    const exact = evalField("date", ":", "2021-06");
+    expect(exact.error).toBeNull();
+    expect(marked(exact.buf)).toEqual([0, 1, 3, 4]);
+  });
+
+  test("date>=2021 matches rows in 2021", () => {
     const gte = evalField("date", ">=", "2021");
     expect(gte.error).toBeNull();
     expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
   });
 
-  test("year-month resolves to YYYY-MM-01", () => {
-    // 2021-06 → 20210601; date >= 20210601 matches rows at 20210618
-    const gte = evalField("date", ">=", "2021-06");
-    expect(gte.error).toBeNull();
-    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
-
-    // 2018-04 → 20180401; date < 20180401 matches row 2 (20180316)
+  test("year-month date<2018-04", () => {
     const lt = evalField("date", "<", "2018-04");
     expect(lt.error).toBeNull();
     expect(marked(lt.buf)).toEqual([2]);
   });
 
-  test("partial year pads right with 0s", () => {
-    // "202" → 2020 → 20200101; date > 20200101 matches 2020 and 2021 rows
+  test("partial year date>202 means date >= 2030", () => {
     const gt = evalField("date", ">", "202");
     expect(gt.error).toBeNull();
-    expect(marked(gt.buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(gt.buf)).toEqual([]);
+  });
 
-    // "2" → 2000 → 20000101; date >= 20000101 matches everything
+  test("partial year date>=202 means date >= 2020", () => {
+    const gte = evalField("date", ">=", "202");
+    expect(gte.error).toBeNull();
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4, 5]);
+  });
+
+  test("partial year date=202 means 2020s range", () => {
+    const eq = evalField("date", ":", "202");
+    expect(eq.error).toBeNull();
+    expect(marked(eq.buf)).toEqual([0, 1, 3, 4, 5]);
+  });
+
+  test("partial year date<202 means before 2020", () => {
+    const lt = evalField("date", "<", "202");
+    expect(lt.error).toBeNull();
+    expect(marked(lt.buf)).toEqual([2]);
+  });
+
+  test("partial year date<=202 means before 2030", () => {
+    const lte = evalField("date", "<=", "202");
+    expect(lte.error).toBeNull();
+    expect(marked(lte.buf)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  test("date>=2 matches all (2 -> 2000s)", () => {
     const gte = evalField("date", ">=", "2");
     expect(gte.error).toBeNull();
     expect(marked(gte.buf)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  test("partial month pads right with 0 and clamps to [1,12]", () => {
-    // "2021-0" → month 00 clamped to 01 → 20210101; date > that matches all 2021 rows
-    const gte = evalField("date", ">", "2021-0");
-    expect(gte.error).toBeNull();
-    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
+  test("partial month range semantics", () => {
+    // "2021-0" → [2021-01-01, 2021-10-01); date > that means date >= 2021-10-01 → none in test data
+    const gt = evalField("date", ">", "2021-0");
+    expect(gt.error).toBeNull();
+    expect(marked(gt.buf)).toEqual([]);
 
-    // "2018-1" → month 10 → 20181001; date < that matches row 2 (20180316)
+    // "2018-1" → [2018-10-01, 2019-01-01); date < that matches row 2 (20180316)
     const lt = evalField("date", "<", "2018-1");
     expect(lt.error).toBeNull();
     expect(marked(lt.buf)).toEqual([2]);
   });
 
-  test("partial day pads right with 0 and clamps to [1,31]", () => {
-    // "2021-06-1" → day 10 → 20210610; date > that matches rows at 20210618
+  test("partial day range semantics", () => {
+    // "2021-06-1" → [2021-06-10, 2021-06-20); date > that means date >= 2021-06-20 → none (rows at 2021-06-18)
     const gt = evalField("date", ">", "2021-06-1");
     expect(gt.error).toBeNull();
-    expect(marked(gt.buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(gt.buf)).toEqual([]);
+
+    // date=2021-06-1 matches rows in that decade-day range
+    const eq = evalField("date", ":", "2021-06-1");
+    expect(eq.error).toBeNull();
+    expect(marked(eq.buf)).toEqual([0, 1, 3, 4]);
   });
 
   test("trailing dashes are tolerated", () => {
