@@ -6,7 +6,7 @@
 
 ## Goal
 
-Adapt the result display to show printing-specific information when the query contains printing-level conditions. Define how each view mode handles printing results and introduce the `unique:prints` modifier for showing all matching printings.
+Adapt the result display to show printing-specific information when the query contains printing-level conditions. Define how each view mode handles printing results and introduce the `unique:` modifier for controlling deduplication (Scryfall-aligned: `unique:cards` default vs `unique:prints`).
 
 ## Background
 
@@ -22,22 +22,26 @@ Behavior is unchanged. Results are canonical face indices rendered as oracle car
 
 ### Printing conditions present
 
-When the evaluator returns `printingIndices` (non-empty), the display adapts per view mode:
+When the evaluator returns `printingIndices` (non-empty), the display adapts per view mode and unique mode. Scryfall defines three `unique` display keywords ([Display Keywords](https://scryfall.com/docs/syntax#display)): `unique:cards` (default), `unique:prints`, and `unique:art`. Frantic Search supports `unique:cards` (unnamed default) and `unique:prints`; `unique:art` is planned.
 
-| View mode | Behavior |
-|---|---|
-| **Slim** | One row per card. Art crop uses the **first matching printing's** `scryfall_id` instead of the oracle card's. A small set code badge appears next to the name. |
-| **Detail** | Same as Slim: one row per card, first matching printing's art and set badge. |
-| **Images** | One image per **matching printing**. Each card may appear multiple times if multiple printings matched. Images use the printing's `scryfall_id`. A rarity/set overlay appears on each image. |
-| **Full** | Same as Images: one row per matching printing. Card image and detail text, with set/rarity/price metadata displayed alongside. |
+| View mode | `unique:cards` (default, unnamed) | `unique:prints` |
+|---|---|---|
+| **Slim** | One row per card, first matching printing's art and set badge | (unchanged — always one per card) |
+| **Detail** | Same as Slim: one row per card, first matching printing's art and set badge | (unchanged — always one per card) |
+| **Images** | One image per **card** (first matching printing) | One image per matching printing |
+| **Full** | One row per card (first matching printing) | One row per matching printing |
 
 "First matching printing" means the first entry in `printingIndices` whose `canonical_face_ref` matches the card's canonical face index.
 
-### `unique:prints` modifier
+### `unique:` modifier
 
-`unique:prints` is a special directive (not a filter) that forces Images and Full modes to show **all printings that survived the AST**, even for pure card-level queries. It has no effect on Slim and Detail modes (they always show one row per card).
+The `unique:` modifier controls deduplication in Images and Full modes. It has no effect on Slim and Detail modes (they always show one row per card).
 
-When `unique:prints` is present and the query has no printing conditions, every printing of every matching card is shown in Images/Full. This is equivalent to Scryfall's `unique:prints` behavior.
+- **`unique:cards` (default):** One row per oracle card. When no `unique:` modifier is present, this is the effective mode.
+- **`unique:prints`:** Forces Images and Full to show **all printings that survived the AST**, even for pure card-level queries. When present and the query has no printing conditions, every printing of every matching card is shown. This matches Scryfall's `unique:prints` behavior.
+- **`unique:art`:** Planned; not yet supported.
+
+**Resolution rule (like `view:` in Spec 058):** The **last legal `unique:` term wins** across the combined pinned/live query. Invalid values (e.g., `unique:bogus`) are ignored; if no legal term remains, default to `unique:cards`.
 
 `unique:prints` is parsed as a `FieldNode` with `field: "unique"` and `value: "prints"`. The evaluator does not process it as a filter — it is extracted before evaluation and passed as a flag to the display layer.
 
@@ -142,7 +146,7 @@ In Full mode with printing results, each row shows the card image (from the prin
 
 The results header shows card count (from `indices.length`) as today. When printing results are present, it additionally shows printing count: "42 cards (87 printings)".
 
-## `unique:prints` Handling
+## `unique:` Handling
 
 ### Parsing
 
@@ -152,13 +156,14 @@ The results header shows card count (from `indices.length`) as today. When print
 2. Sets a `uniquePrints: true` flag on the result.
 3. The node is displayed in the breakdown as a modifier, not a filter term.
 
-### Display behavior
+### Display behavior (unique mode)
 
-When `uniquePrints` is true:
+The display layer derives the effective unique mode from the combined pinned/live query (last legal `unique:` term wins; default `cards`). Deduplication rules:
 
-- Images and Full **without printing conditions**: show all printings of matching cards (expand `indices` to all printing rows via `faceToPrintings`).
-- Images and Full **with printing conditions** (e.g., `is:foil unique:prints`, `r:mythic unique:prints`): show only the printings that match the printing conditions, but bypass `scryfall_id` deduplication so each finish variant appears as a separate tile. This matches Scryfall's behavior where `unique:prints` controls deduplication, not filtering.
-- Slim and Detail: unchanged (one row per card).
+- **`unique:cards` (default):** Deduplicate `printingIndices` by `canonical_face_ref` (one printing per oracle card). First occurrence in `printingIndices` wins. Applies when no `unique:` modifier is present.
+- **`unique:prints`:** No deduplication; show all matching printings. Finish variants (foil/nonfoil) appear as separate tiles. When printing conditions are absent, expand `indices` to all printing rows via `faceToPrintings`. When printing conditions are present (e.g., `is:foil unique:prints`, `r:mythic unique:prints`), show only the printings that match, with each finish variant as a separate tile (no `scryfall_id` deduplication).
+- **`unique:art` (planned):** Out of scope; implementation should use a mode enum so adding `unique:art` is a straightforward extension.
+- Slim and Detail: unchanged (always one row per card).
 
 ## Scope of Changes
 
@@ -176,8 +181,8 @@ When `uniquePrints` is true:
 
 1. A query with no printing conditions renders identically to today.
 2. `set:mh2` in Slim/Detail shows one row per card with the MH2 printing's art crop and a `[MH2]` set badge.
-3. `set:mh2` in Images shows one image per matching MH2 printing (including separate foil/nonfoil if both match).
-4. `is:foil price<1` in Images shows one image per matching foil printing under $1.
+3. `set:mh2` in Images shows one image per **card** with an MH2 printing (first matching printing's art). `set:mh2 unique:prints` in Images shows all MH2 printings.
+4. `is:foil price<1` in Images shows one image per card (first matching foil under $1). With `unique:prints`, shows all matching foil printings under $1.
 5. `unique:prints` in Images shows all printings of matching cards.
 6. `r:mythic unique:prints` in Images shows only mythic printings, with each finish variant as a separate tile (no `scryfall_id` deduplication).
 7. Full mode with printing conditions shows set, rarity, finish, collector number, and price.
@@ -191,3 +196,4 @@ When `uniquePrints` is true:
 - 2026-02-27: Images and Full modes now deduplicate `printingIndices` by `scryfall_id` before rendering. Foil and nonfoil variants of the same physical printing share a Scryfall image, so displaying both produced visually identical adjacent tiles. The display layer groups finish variants by `scryfall_id`, renders one tile per unique ID, and shows aggregated finish/price metadata (e.g., "Foil · Nonfoil") on the collapsed tile. `unique:prints` bypasses the dedup and shows every finish row individually. The raw printing count in the results header remains the evaluator's matched count, not the deduped count. Acceptance criterion 3 is narrowed: `set:mh2` in Images shows one image per unique `scryfall_id` among matching printings, not one per finish variant.
 - 2026-02-28: When `unique:prints` bypasses dedup, each tile/row now shows its individual finish label ("Foil", "Nonfoil", or "Etched") and price rather than the aggregated group. Foil tiles receive a holographic shimmer overlay (animated linear-gradient sweep via CSS `::after`, class `.foil-overlay`) and a rainbow-gradient metadata bar (`.foil-meta`). Etched tiles receive a distinct sparkle overlay (two layers of drifting radial-gradient dots via `::before` and `::after`, class `.etched-overlay`) and a silver-blue metadata bar (`.etched-meta`). The two-layer sparkle uses mismatched tile sizes and drift directions so individual dots appear to twinkle independently. Both animations respect `prefers-reduced-motion`. This addresses the problem of visually identical adjacent tiles when the same `scryfall_id` appears for multiple finishes.
 - 2026-03-02: With Spec 054 (Pinned Search Criteria), "the query" means the effective query (pinned AND live). `unique:prints` and printing conditions in either part apply to the whole. The worker combines `printingIndices` from both evaluations per the rules in Spec 054 § "Printing-level result combination." The display layer is unchanged — it sees a single `printingIndices` and `uniquePrints` flag regardless of which query contributed them.
+- 2026-03-03 (Issue #67): When unique mode is `cards` (default), the display layer deduplicates by `canonical_face_ref`, not `scryfall_id`. The existing `scryfall_id` dedup (2026-02-27) applies only when unique mode is `prints` — it collapses foil/nonfoil of the same physical printing when we intentionally show all printings. Structure the dedup logic as a mode-based switch (e.g., `uniqueMode: 'cards' | 'prints'`) so `unique:art` can be added without refactoring. Resolution: last legal `unique:` term wins across pinned/live query.

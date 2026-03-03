@@ -36,9 +36,11 @@ When navigating from search results to the card detail page, the scryfall_id pas
 |---|---|---|
 | Slim / Detail | No printing conditions | Oracle card's `scryfall_id` |
 | Slim / Detail | Printing conditions present | First matching printing's `scryfall_id` |
-| Full | Printing-expanded rows | Specific printing's `scryfall_id` |
+| Full | Printing conditions, `unique:cards` (default) | First matching printing's `scryfall_id` (one per card) |
+| Full | Printing conditions, `unique:prints` | Specific printing's `scryfall_id` for each row |
 | Images | No printing conditions | Oracle card's `scryfall_id` |
-| Images | Printing-expanded grid | Specific printing's `scryfall_id` |
+| Images | Printing conditions, `unique:cards` (default) | First matching printing's `scryfall_id` (one per card) |
+| Images | Printing conditions, `unique:prints` | Specific printing's `scryfall_id` for each row |
 
 ## CardDetail Changes
 

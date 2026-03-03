@@ -112,7 +112,7 @@ Add `GoldBorder: 1 << 8` and `Oversized: 1 << 9` to `PrintingFlag`.
 4. `-is:oversized` excludes oversized printings.
 5. When printing data is not loaded, `f:commander` falls back to face-domain evaluation (existing behavior, no regression).
 6. When printing data loads after initial evaluation, legality results update to include printing-level filtering.
-7. `f:commander` without `unique:prints` still returns the correct set of cards (face-level result unchanged for card-level dedup).
+7. `f:commander` without `unique:prints` still returns the correct set of cards (face-level result unchanged for card-level dedup). The display layer shows one row per card in Images and Full (first matching printing), not multiple printings.
 
 ## Not in Scope
 

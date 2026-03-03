@@ -20,6 +20,7 @@ import ViewModeToggle from './ViewModeToggle'
 import CardFaceRow from './CardFaceRow'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
+import { dedupePrintingItems } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex,
@@ -211,17 +212,12 @@ function App() {
     const pi = printingIndices()
     const pd = printingDisplay()
     if (!pi || !pd) return null
-    if (uniquePrints()) return Array.from(pi)
-    const seen = new Set<string>()
-    const result: number[] = []
-    for (const idx of pi) {
-      const sid = pd.scryfall_ids[idx]
-      if (!seen.has(sid)) {
-        seen.add(sid)
-        result.push(idx)
-      }
-    }
-    return result
+    const uniqueMode = uniquePrints() ? 'prints' : 'cards'
+    return dedupePrintingItems(
+      Array.from(pi),
+      (idx) => pd.canonical_face_ref[idx],
+      uniqueMode,
+    )
   })
 
   const finishGroupMap = createMemo(() => {
