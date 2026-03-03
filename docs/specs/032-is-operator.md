@@ -77,7 +77,7 @@ These require a new `flags` column in `ColumnarData`, populated by the ETL pipel
 |---|---|---|
 | `is:reserved` | `CardFlag.Reserved` | `reserved === true` |
 | `is:funny` | `CardFlag.Funny` | See § Funny Flag Logic below |
-| `is:universesbeyond` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` |
+| `is:universesbeyond` / `is:ub` | `CardFlag.UniversesBeyond` | `security_stamp === "triangle"` OR `promo_types` includes `"universesbeyond"` |
 | `is:gamechanger` / `is:gc` | `CardFlag.GameChanger` | `game_changer === true` (Commander Game Changer list) |
 
 ### Curated land cycle lists (via name lookup)
@@ -99,7 +99,7 @@ These are hardcoded sets of oracle card names. The evaluator checks `namesLower[
 
 **Tier 1 (existing data):** `permanent`, `spell`, `historic`, `party`, `outlaw`, `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner`, `bear`.
 
-**Tier 2 (flags column):** `reserved`, `funny`, `universesbeyond`, `gamechanger` (alias: `gc`).
+**Tier 2 (flags column):** `reserved`, `funny`, `universesbeyond` (alias: `ub`), `gamechanger` (alias: `gc`).
 
 **Tier 3 (curated name lists):** `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland`.
 
@@ -173,6 +173,15 @@ A card is funny (`CardFlag.Funny`) if ANY of these conditions holds:
 5. `promo_types` includes `"playtest"` — catches playtest cards from non-funny set types (e.g., Mystery Booster 2 playtest cards in `set_type: "masters"`).
 
 Conditions 1–2 were the original implementation. Conditions 3–5 were added to close a ~860-card gap versus Scryfall's `is:funny` (1,419 results vs. the original 560). Empirically, `is:funny` and format legality are mutually exclusive on Scryfall: `is:funny f:commander` returns zero results.
+
+#### Universes Beyond Flag Logic
+
+A card is Universes Beyond (`CardFlag.UniversesBeyond`) if ANY of these holds:
+
+1. **Oracle card fields** (from `oracle-cards.json`): `security_stamp === "triangle"` or `promo_types` includes `"universesbeyond"`.
+2. **Any printing** (from `default-cards.json`): The card's `oracle_id` appears in a printing that has `promo_types` including `"universesbeyond"` or `security_stamp === "triangle"`.
+
+Oracle-cards has one entry per unique card and may use a default printing's fields; cards like Abrade (printed in UB Secret Lair) have no UB markers on their oracle entry. The ETL therefore pre-scans default-cards to build a set of `oracle_id`s with any UB printing, and uses that set when encoding flags. This closes the gap to ~3,531 vs. Scryfall's ~3,534.
 
 ### CardIndex changes
 

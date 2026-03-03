@@ -350,6 +350,7 @@ export function evalIsKeyword(
       }
       break;
     case "universesbeyond":
+    case "ub":
       for (let i = 0; i < n; i++) {
         if ((index.flags[i] & CardFlag.UniversesBeyond) !== 0) buf[cf[i]] = 1;
       }

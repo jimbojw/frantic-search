@@ -581,6 +581,10 @@ describe("is: operator", () => {
     expect(indices).toEqual([28]); // Steamflogger Boss
   });
 
+  test("is:ub is alias for is:universesbeyond", () => {
+    expect(isMatchIndices("is:ub")).toEqual(isMatchIndices("is:universesbeyond"));
+  });
+
   test("is:universesbeyond matches cards with UniversesBeyond flag", () => {
     const indices = isMatchIndices("is:universesbeyond");
     expect(indices).toEqual([29]); // Gandalf the Grey

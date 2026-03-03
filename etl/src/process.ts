@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import { ORACLE_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
+import { ORACLE_CARDS_PATH, DEFAULT_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
 import { loadArtCropManifest, loadCardManifest } from "./thumbhash";
 import {
@@ -29,6 +29,7 @@ interface CardFace {
 
 interface Card {
   id?: string;
+  oracle_id?: string;
   layout?: string;
   name?: string;
   mana_cost?: string;
@@ -99,11 +100,19 @@ function isFunny(card: Card): boolean {
   return false;
 }
 
-function encodeFlags(card: Card): number {
+function isUniversesBeyond(card: Card, oracleIdsWithUB: Set<string>): boolean {
+  if (card.security_stamp === "triangle" || card.promo_types?.includes("universesbeyond")) {
+    return true;
+  }
+  const oid = card.oracle_id ?? card.id;
+  return oid != null && oracleIdsWithUB.has(oid);
+}
+
+function encodeFlags(card: Card, oracleIdsWithUB: Set<string>): number {
   let flags = 0;
   if (card.reserved) flags |= CardFlag.Reserved;
   if (isFunny(card)) flags |= CardFlag.Funny;
-  if (card.security_stamp === "triangle") flags |= CardFlag.UniversesBeyond;
+  if (isUniversesBeyond(card, oracleIdsWithUB)) flags |= CardFlag.UniversesBeyond;
   if (card.game_changer) flags |= CardFlag.GameChanger;
   return flags;
 }
@@ -165,6 +174,7 @@ function pushFaceRow(
   cardIdx: number,
   canonicalFace: number,
   leg: { legal: number; banned: number; restricted: number },
+  oracleIdsWithUB: Set<string>,
   artCropManifest: Record<string, string>,
   cardManifest: Record<string, string>,
   powerDict: DictEncoder,
@@ -200,10 +210,25 @@ function pushFaceRow(
   thumbs.art_crop.push(artCropManifest[id] ?? "");
   thumbs.card.push(cardManifest[id] ?? "");
   data.layouts.push(card.layout ?? "normal");
-  data.flags.push(encodeFlags(card));
+  data.flags.push(encodeFlags(card, oracleIdsWithUB));
 }
 
 export function processCards(verbose: boolean): void {
+  // Build oracle_ids that have any UB printing (from default-cards, which has all printings)
+  let oracleIdsWithUB = new Set<string>();
+  try {
+    const defaultRaw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
+    const defaultCards: Array<{ oracle_id?: string; promo_types?: string[]; security_stamp?: string }> = JSON.parse(defaultRaw);
+    for (const c of defaultCards) {
+      if ((c.promo_types?.includes("universesbeyond") || c.security_stamp === "triangle") && c.oracle_id) {
+        oracleIdsWithUB.add(c.oracle_id);
+      }
+    }
+    log(`Universes Beyond: ${oracleIdsWithUB.size} oracle_ids from default-cards`, verbose);
+  } catch {
+    log("default-cards.json not found; Universes Beyond from oracle-cards only", verbose);
+  }
+
   log(`Reading ${ORACLE_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(ORACLE_CARDS_PATH, "utf-8");
   const cards: Card[] = JSON.parse(raw);
@@ -265,11 +290,11 @@ export function processCards(verbose: boolean): void {
 
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
-        pushFaceRow(data, thumbs, face, card, cardIdx, faceRowStart, leg, artCropManifest,
+        pushFaceRow(data, thumbs, face, card, cardIdx, faceRowStart, leg, oracleIdsWithUB, artCropManifest,
           cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
       }
     } else {
-      pushFaceRow(data, thumbs, card, card, cardIdx, faceRowStart, leg, artCropManifest,
+      pushFaceRow(data, thumbs, card, card, cardIdx, faceRowStart, leg, oracleIdsWithUB, artCropManifest,
         cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
     }
   }
