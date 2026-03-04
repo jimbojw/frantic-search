@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras } from './query-edit'
+import { SORT_FIELDS } from '@frantic-search/shared'
+import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 
 // ---------------------------------------------------------------------------
@@ -31,7 +32,13 @@ function priceChip(value: string): ChipDef {
   return { label: `price<${value}`, field: PRICE_FIELDS, operator: '<', value, term: `price<${value}` }
 }
 
-const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices'] as const
+const SORT_CHIP_FIELDS = ['sort']
+
+function sortChip(value: string): ChipDef {
+  return { label: `sort:${value}`, field: SORT_CHIP_FIELDS, operator: ':', value, term: `sort:${value}` }
+}
+
+const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
 type TabId = (typeof TABS)[number]
 
 const TAB_CHIPS: Record<TabId, ChipDef[]> = {
@@ -101,6 +108,16 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     priceChip('20'),
     priceChip('50'),
     priceChip('100'),
+  ],
+  sort: [
+    sortChip('name'),
+    sortChip('mv'),
+    sortChip('color'),
+    sortChip('power'),
+    sortChip('toughness'),
+    sortChip('price'),
+    sortChip('date'),
+    sortChip('rarity'),
   ],
 }
 
@@ -235,6 +252,55 @@ function IncludeExtrasChip(props: {
 }
 
 // ---------------------------------------------------------------------------
+// Sort chip: tri-state with directional arrows (Spec 059)
+// ---------------------------------------------------------------------------
+
+function sortArrow(chipValue: string, state: ChipState): string {
+  if (state === 'neutral') return ''
+  const entry = SORT_FIELDS[chipValue.toLowerCase()]
+  if (!entry) return ''
+  const isDefaultAsc = entry.defaultDir === 'asc'
+  if (state === 'positive') return isDefaultAsc ? ' ↑' : ' ↓'
+  return isDefaultAsc ? ' ↓' : ' ↑'
+}
+
+function SortTermChip(props: {
+  chip: ChipDef
+  state: ChipState
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const arrow = () => sortArrow(props.chip.value, props.state)
+  // For the negative state, don't use line-through (it's a reversed sort, not exclusion)
+  const classes = () => {
+    if (props.state === 'neutral') return CHIP_CLASSES.neutral
+    if (props.state === 'positive') return CHIP_CLASSES.positive
+    return 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60'
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(cycleSortChip(props.query, props.breakdown, props.chip))}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors ${classes()}`}
+    >
+      {props.state === 'neutral' ? (
+        <For each={buildSpans(props.chip.label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      ) : (
+        <>{props.chip.label}{arrow()}</>
+      )}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // TermsDrawer
 // ---------------------------------------------------------------------------
 
@@ -312,13 +378,23 @@ export default function TermsDrawer(props: {
           <div class="flex flex-wrap gap-1.5 content-start">
             <For each={chips()}>
               {(chip) => (
-                <TermChip
-                  chip={chip}
-                  state={getChipState(bd(), chip)}
-                  query={props.query}
-                  breakdown={bd()}
-                  onSetQuery={props.onSetQuery}
-                />
+                <Show when={activeTab() === 'sort'} fallback={
+                  <TermChip
+                    chip={chip}
+                    state={getChipState(bd(), chip)}
+                    query={props.query}
+                    breakdown={bd()}
+                    onSetQuery={props.onSetQuery}
+                  />
+                }>
+                  <SortTermChip
+                    chip={chip}
+                    state={getChipState(bd(), chip)}
+                    query={props.query}
+                    breakdown={bd()}
+                    onSetQuery={props.onSetQuery}
+                  />
+                </Show>
               )}
             </For>
           </div>

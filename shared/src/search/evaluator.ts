@@ -3,6 +3,7 @@ import {
   type ASTNode,
   type QueryNodeResult,
   type EvalOutput,
+  type SortDirective,
   type UniqueMode,
 } from "./ast";
 import type { CardIndex } from "./card-index";
@@ -10,6 +11,7 @@ import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
+import { SORT_FIELDS } from "./sort-fields";
 import { parse } from "./parser";
 
 export { FIELD_ALIASES } from "./eval-leaves";
@@ -149,11 +151,12 @@ export class NodeCache {
 
     const uniqueMode = this._getUniqueMode(ast);
     const includeExtras = this._hasIncludeExtras(ast);
+    const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
 
-    if (ast.type === "NOP" || root.computed!.error) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras };
+    if (ast.type === "NOP" || root.computed!.matchCount === -1) {
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -215,7 +218,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras, sortBy };
   }
 
   private _getUniqueMode(ast: ASTNode): UniqueMode {
@@ -399,6 +402,20 @@ export class NodeCache {
           break;
         }
 
+        if (ast.field.toLowerCase() === "sort") {
+          const buf = new Uint8Array(n);
+          fillCanonical(buf, this.index.canonicalFace, n);
+          const mc = popcount(buf, n);
+          const val = ast.value.toLowerCase();
+          if (val !== "" && !SORT_FIELDS[val]) {
+            interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0, error: `unknown sort field "${ast.value}"` };
+          } else {
+            interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0 };
+          }
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
         // Check if this is a printing-domain field or is: keyword
@@ -512,6 +529,16 @@ export class NodeCache {
       case "NOT": {
         const childInterned = this.intern(ast.child);
         this.computeTree(childInterned, timings);
+
+        // Sort modifiers under NOT: preserve match-all (direction extracted separately).
+        // Don't copy error — it belongs on the child node for breakdown display.
+        if (ast.child.type === "FIELD" && ast.child.field.toLowerCase() === "sort") {
+          const cc = childInterned.computed!;
+          interned.computed = { buf: cc.buf, domain: cc.domain, matchCount: cc.matchCount, productionMs: cc.productionMs };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
         if (childInterned.computed!.error) {
           interned.computed = {
             buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
@@ -648,6 +675,32 @@ export class NodeCache {
         }
         break;
       }
+    }
+  }
+
+  private _findSortDirective(ast: ASTNode, negated = false): SortDirective | null {
+    switch (ast.type) {
+      case "FIELD": {
+        if (ast.field.toLowerCase() !== "sort") return null;
+        const entry = SORT_FIELDS[ast.value.toLowerCase()];
+        if (!entry) return null;
+        const direction = negated
+          ? (entry.defaultDir === "asc" ? "desc" : "asc")
+          : entry.defaultDir;
+        return { field: entry.canonical, direction, isPrintingDomain: entry.isPrintingDomain };
+      }
+      case "NOT":
+        return this._findSortDirective(ast.child, !negated);
+      case "AND":
+      case "OR": {
+        for (let i = ast.children.length - 1; i >= 0; i--) {
+          const found = this._findSortDirective(ast.children[i], negated);
+          if (found) return found;
+        }
+        return null;
+      }
+      default:
+        return null;
     }
   }
 

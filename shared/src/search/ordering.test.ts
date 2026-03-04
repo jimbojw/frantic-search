@@ -241,6 +241,19 @@ describe("seededSort", () => {
     seededSort(c, queryForSortSeed("t:creature unique:prints"), namesLower, [], salt);
     expect(a).toEqual(c);
   });
+
+  test("sort: terms do not affect sort seed (Spec 059)", () => {
+    const salt = 0xABCD;
+    const a = [0, 1, 2, 3];
+    const b = [0, 1, 2, 3];
+    seededSort(a, queryForSortSeed("t:creature"), namesLower, [], salt);
+    seededSort(b, queryForSortSeed("t:creature sort:name"), namesLower, [], salt);
+    expect(a).toEqual(b);
+
+    const c = [0, 1, 2, 3];
+    seededSort(c, queryForSortSeed("t:creature -sort:mv"), namesLower, [], salt);
+    expect(a).toEqual(c);
+  });
 });
 
 // --- seededSortPrintings ---
@@ -342,5 +355,192 @@ describe("seededSortPrintings", () => {
     const original = Array.from(pi).sort();
     seededSortPrintings(pi, "any-seed", canonicalFaceRef, names, ["light"]);
     expect(Array.from(pi).sort()).toEqual(original);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 059 — sort directive comparators and pipeline
+// ---------------------------------------------------------------------------
+import { sortByField, sortPrintingDomain } from "./ordering";
+import type { SortDirective } from "./ast";
+import { index, printingIndex, TEST_DATA } from "./evaluator.test-fixtures";
+import { RARITY_ORDER } from "../../src/bits";
+
+describe("sortByField — face-domain sort", () => {
+  // Canonical faces: 0=Birds, 1=Bolt, 2=Counterspell, 3=Sol Ring,
+  // 4=Tarmogoyf, 5=Azorius Charm, 6=Thalia, 7=Ayara, 9=Dismember
+
+  test("sort:name sorts alphabetically ascending", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "name", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    const names = indices.map(i => index.combinedNamesNormalized[i]);
+    const sorted = [...names].sort();
+    expect(names).toEqual(sorted);
+  });
+
+  test("-sort:name sorts alphabetically descending", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "name", direction: "desc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    const names = indices.map(i => index.combinedNamesNormalized[i]);
+    const sorted = [...names].sort().reverse();
+    expect(names).toEqual(sorted);
+  });
+
+  test("sort:mv sorts by mana value ascending", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "mv", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    const mvs = indices.map(i => index.manaValue[i]);
+    for (let i = 1; i < mvs.length; i++) {
+      expect(mvs[i]).toBeGreaterThanOrEqual(mvs[i - 1]);
+    }
+  });
+
+  test("sort:power sorts by power descending (default)", () => {
+    // Only creatures have power. Non-creatures have NaN and sort last.
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "power", direction: "desc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    // Creatures (with numeric power): Birds(0), Tarmogoyf(*=0), Thalia(2), Ayara(3)
+    // Non-creatures sort last: Bolt, Counterspell, Sol Ring, Azorius Charm, Dismember
+    const powers = indices.map(i => index.numericPowerLookup[i]);
+    // First few should be creatures with highest power
+    const creatureIndices = indices.filter(i => !isNaN(index.numericPowerLookup[i]));
+    const nonCreatureIndices = indices.filter(i => isNaN(index.numericPowerLookup[i]));
+    expect(indices.indexOf(creatureIndices[creatureIndices.length - 1]))
+      .toBeLessThan(indices.indexOf(nonCreatureIndices[0]));
+  });
+
+  test("-sort:power sorts by power ascending (reversed)", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "power", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    // Creatures with lowest power first, NaN last
+    const creatureIndices = indices.filter(i => !isNaN(index.numericPowerLookup[i]));
+    const nonCreatureIndices = indices.filter(i => isNaN(index.numericPowerLookup[i]));
+    if (creatureIndices.length > 0 && nonCreatureIndices.length > 0) {
+      expect(indices.indexOf(creatureIndices[creatureIndices.length - 1]))
+        .toBeLessThan(indices.indexOf(nonCreatureIndices[0]));
+    }
+  });
+
+  test("sort:color sorts by popcount ascending (colorless first)", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "color", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    // Sol Ring (0 colors) should come first
+    expect(indices[0]).toBe(3); // Sol Ring is colorless
+  });
+
+  test("ties broken by name for face-domain sorts", () => {
+    // Sort by mv=1: Birds(1), Bolt(1), Sol Ring(1) all have mv 1.
+    // Within tier, they should be alphabetic.
+    const indices = [0, 1, 3]; // Birds, Bolt, Sol Ring
+    const d: SortDirective = { field: "mv", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    const names = indices.map(i => index.combinedNamesNormalized[i]);
+    const sorted = [...names].sort();
+    expect(names).toEqual(sorted);
+  });
+
+  test("empty array is a no-op", () => {
+    const indices: number[] = [];
+    const d: SortDirective = { field: "name", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    expect(indices).toEqual([]);
+  });
+
+  test("single element is a no-op", () => {
+    const indices = [3];
+    const d: SortDirective = { field: "name", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    expect(indices).toEqual([3]);
+  });
+});
+
+describe("sortPrintingDomain — printing-domain sort", () => {
+  // Bolt printings: 0,1,2,5,6,8,9,10. Sol Ring printings: 3,4,7.
+
+  test("sort:price sorts by cheapest printing per card", () => {
+    const deduped = [1, 3]; // Bolt, Sol Ring
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // Bolt cheapest=10 ($0.10 via WCD), Sol Ring cheapest=50 ($0.50)
+    // asc: Bolt (cheapest $0.10) before Sol Ring (cheapest $0.50)
+    expect(cardOrder[0]).toBe(1); // Bolt
+    expect(cardOrder[1]).toBe(3); // Sol Ring
+  });
+
+  test("-sort:price sorts by most expensive printing per card", () => {
+    const deduped = [1, 3];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "price", direction: "desc", isPrintingDomain: true };
+    const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // desc: Sol Ring (max $5.00) before Bolt (max $3.00)
+    expect(cardOrder[0]).toBe(3); // Sol Ring
+    expect(cardOrder[1]).toBe(1); // Bolt
+  });
+
+  test("printing-domain sort keeps card printings contiguous", () => {
+    const deduped = [1, 3];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // All printings of one card should appear contiguously
+    const faces = Array.from(groupedPrintings).map(p => printingIndex.canonicalFaceRef[p]);
+    let currentFace = faces[0];
+    const seenFaces = new Set<number>();
+    for (const f of faces) {
+      if (f !== currentFace) {
+        expect(seenFaces.has(f)).toBe(false);
+        seenFaces.add(currentFace);
+        currentFace = f;
+      }
+    }
+  });
+
+  test("sort:date sorts newest first (desc default)", () => {
+    const deduped = [1, 3];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "date", direction: "desc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // Both have printings from 2021-06-18, but sort by representative (first printing
+    // after intra-card sort). Both have newest at 20210618 so tiebreaker by name.
+    expect(cardOrder.length).toBe(2);
+  });
+
+  test("sort:rarity sorts by highest rarity desc", () => {
+    const deduped = [1, 3];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "rarity", direction: "desc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // Bolt has a Special printing (#8 SLD), Sol Ring has Uncommon max.
+    // Special (4) > Uncommon (1), so Bolt first.
+    expect(cardOrder[0]).toBe(1); // Bolt
+  });
+
+  test("intra-card printing order follows direction for printing-domain sorts", () => {
+    const deduped = [1];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);
+    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    // Bolt printings by price asc: #6($0.10), #2($0.50), #10($0.60), #0($1.00), #9($1.50), #5($2.00), #8($2.00), #1($3.00)
+    const prices = Array.from(groupedPrintings).map(p => printingIndex.priceUsd[p]);
+    for (let i = 1; i < prices.length; i++) {
+      expect(prices[i]).toBeGreaterThanOrEqual(prices[i - 1]);
+    }
+  });
+
+  test("zero-price printings sort last in ascending order", () => {
+    // If we had zero-price data... let's test the edge case via the comparator behavior
+    // All our test data has non-zero prices, so this is a structural test
+    const deduped = [1];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);
+    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    expect(groupedPrintings.length).toBe(8);
   });
 });

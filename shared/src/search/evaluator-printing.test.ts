@@ -1004,3 +1004,143 @@ describe("view:", () => {
     expect(output.indices.length).toBe(4); // t:creature count
   });
 });
+
+// ---------------------------------------------------------------------------
+// sort: (Spec 059 — sort directive, does not filter)
+// ---------------------------------------------------------------------------
+
+describe("sort:", () => {
+  test("sort:name produces match-all buffer", () => {
+    const output = evaluate("sort:name");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("-sort:name produces match-all (NOT does not invert)", () => {
+    const output = evaluate("-sort:name");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("sort:foo produces match-all + error", () => {
+    const output = evaluate("sort:foo");
+    expect(output.indices.length).toBe(9);
+    expect(output.result.error).toBe('unknown sort field "foo"');
+  });
+
+  test("-sort:foo produces match-all + error", () => {
+    const output = evaluate("-sort:foo");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("sort:name combined with filter does not reduce results", () => {
+    const without = evaluate("t:creature");
+    const with_ = evaluate("t:creature sort:name");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
+
+  test("-sort:name combined with filter does not reduce results", () => {
+    const without = evaluate("t:creature");
+    const with_ = evaluate("t:creature -sort:name");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
+
+  test("sort: is not treated as printing condition", () => {
+    const output = evaluate("sort:price");
+    expect(output.hasPrintingConditions).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sort: — sortBy extraction (Spec 059)
+// ---------------------------------------------------------------------------
+
+describe("sort: sortBy extraction", () => {
+  test("sort:mv → asc face-domain", () => {
+    const { sortBy } = evaluate("t:creature sort:mv");
+    expect(sortBy).toEqual({ field: "mv", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("-sort:mv → desc (reversed)", () => {
+    const { sortBy } = evaluate("t:creature -sort:mv");
+    expect(sortBy).toEqual({ field: "mv", direction: "desc", isPrintingDomain: false });
+  });
+
+  test("sort:date → desc (default) printing-domain", () => {
+    const { sortBy } = evaluate("sort:date");
+    expect(sortBy).toEqual({ field: "date", direction: "desc", isPrintingDomain: true });
+  });
+
+  test("-sort:date → asc (reversed)", () => {
+    const { sortBy } = evaluate("-sort:date");
+    expect(sortBy).toEqual({ field: "date", direction: "asc", isPrintingDomain: true });
+  });
+
+  test("sort:name → asc", () => {
+    const { sortBy } = evaluate("sort:name");
+    expect(sortBy).toEqual({ field: "name", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("-sort:name → desc (reversed)", () => {
+    const { sortBy } = evaluate("-sort:name");
+    expect(sortBy).toEqual({ field: "name", direction: "desc", isPrintingDomain: false });
+  });
+
+  test("sort:power → desc (default)", () => {
+    const { sortBy } = evaluate("sort:power");
+    expect(sortBy).toEqual({ field: "power", direction: "desc", isPrintingDomain: false });
+  });
+
+  test("-sort:power → asc (reversed)", () => {
+    const { sortBy } = evaluate("-sort:power");
+    expect(sortBy).toEqual({ field: "power", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("aliases: sort:cmc → field mv", () => {
+    const { sortBy } = evaluate("sort:cmc");
+    expect(sortBy!.field).toBe("mv");
+  });
+
+  test("aliases: sort:pow → field power", () => {
+    const { sortBy } = evaluate("sort:pow");
+    expect(sortBy!.field).toBe("power");
+  });
+
+  test("aliases: sort:usd → field price", () => {
+    const { sortBy } = evaluate("sort:usd");
+    expect(sortBy!.field).toBe("price");
+  });
+
+  test("aliases: sort:released → field date", () => {
+    const { sortBy } = evaluate("sort:released");
+    expect(sortBy!.field).toBe("date");
+  });
+
+  test("last valid wins: sort:name sort:price → price", () => {
+    const { sortBy } = evaluate("sort:name sort:price");
+    expect(sortBy).toEqual({ field: "price", direction: "asc", isPrintingDomain: true });
+  });
+
+  test("invalid trailing does not override: sort:name sort:bogus → name", () => {
+    const { sortBy } = evaluate("sort:name sort:bogus");
+    expect(sortBy).toEqual({ field: "name", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("no sort term → sortBy is null", () => {
+    const { sortBy } = evaluate("t:creature");
+    expect(sortBy).toBeNull();
+  });
+
+  test("only invalid sort → sortBy is null", () => {
+    const { sortBy } = evaluate("sort:bogus");
+    expect(sortBy).toBeNull();
+  });
+
+  test("sort: is case-insensitive", () => {
+    const { sortBy } = evaluate("Sort:Name");
+    expect(sortBy).toEqual({ field: "name", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("sort inside OR: last valid wins", () => {
+    const { sortBy } = evaluate("(sort:name OR t:creature) sort:mv");
+    expect(sortBy).toEqual({ field: "mv", direction: "asc", isPrintingDomain: false });
+  });
+});

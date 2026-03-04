@@ -25,6 +25,8 @@ import {
   prependTerm,
   setViewTerm,
   clearViewTerms,
+  clearSortTerms,
+  cycleSortChip,
 } from './query-edit'
 import { reconstructQuery } from './InlineBreakdown'
 
@@ -1524,5 +1526,57 @@ describe('clearViewTerms', () => {
   })
   it('returns query unchanged when no view: terms', () => {
     expect(clearViewTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Spec 059 — sort directive chip operations
+// ---------------------------------------------------------------------------
+
+describe('clearSortTerms', () => {
+  it('removes sort: term', () => {
+    expect(clearSortTerms('sort:name', buildBreakdown('sort:name'))).toBe('')
+  })
+  it('removes -sort: term', () => {
+    expect(clearSortTerms('-sort:name', buildBreakdown('-sort:name'))).toBe('')
+  })
+  it('removes sort: but preserves other terms', () => {
+    expect(clearSortTerms('t:creature sort:mv', buildBreakdown('t:creature sort:mv')))
+      .toBe('t:creature')
+  })
+  it('returns query unchanged when no sort: terms', () => {
+    expect(clearSortTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
+  })
+})
+
+describe('cycleSortChip', () => {
+  const nameChip = { field: ['sort'], operator: ':', value: 'name', term: 'sort:name' }
+  const priceChip = { field: ['sort'], operator: ':', value: 'price', term: 'sort:price' }
+
+  it('neutral → adds sort:name', () => {
+    expect(cycleSortChip('t:creature', buildBreakdown('t:creature'), nameChip))
+      .toBe('t:creature sort:name')
+  })
+
+  it('positive → replaces with -sort:name', () => {
+    expect(cycleSortChip('t:creature sort:name', buildBreakdown('t:creature sort:name'), nameChip))
+      .toBe('t:creature -sort:name')
+  })
+
+  it('negative → removes', () => {
+    expect(cycleSortChip('t:creature -sort:name', buildBreakdown('t:creature -sort:name'), nameChip))
+      .toBe('t:creature')
+  })
+
+  it('exclusive selection: activating sort:price removes existing sort:name', () => {
+    const result = cycleSortChip('t:creature sort:name', buildBreakdown('t:creature sort:name'), priceChip)
+    expect(result).toContain('sort:price')
+    expect(result).not.toContain('sort:name')
+  })
+
+  it('exclusive selection: activating sort:price removes existing -sort:name', () => {
+    const result = cycleSortChip('t:creature -sort:name', buildBreakdown('t:creature -sort:name'), priceChip)
+    expect(result).toContain('sort:price')
+    expect(result).not.toContain('sort:name')
   })
 })

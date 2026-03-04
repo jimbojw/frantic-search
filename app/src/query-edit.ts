@@ -784,3 +784,51 @@ export function clearColorIdentity(
 ): string {
   return clearFieldTerms(query, breakdown, isCILabel)
 }
+
+// ---------------------------------------------------------------------------
+// Sort directive term (Spec 059)
+// ---------------------------------------------------------------------------
+
+const SORT_FIELDS_QE = ['sort']
+
+function isSortLabel(label: string): boolean {
+  return isFieldLabel(label, SORT_FIELDS_QE, [':'])
+}
+
+export function clearSortTerms(query: string, breakdown: BreakdownNode | null): string {
+  return clearFieldTerms(query, breakdown, isSortLabel)
+}
+
+/**
+ * Cycle a sort chip with exclusive selection: remove any existing sort: term
+ * for a different field before cycling the tapped field.
+ */
+export function cycleSortChip(
+  query: string,
+  breakdown: BreakdownNode | null,
+  chip: { field: string[]; operator: string; value: string; term: string },
+): string {
+  // Check if there's an existing sort: for a DIFFERENT field
+  const positive = breakdown
+    ? findFieldNode(breakdown, chip.field, chip.operator, false)
+    : null
+  const negative = breakdown
+    ? findFieldNode(breakdown, chip.field, chip.operator, true)
+    : null
+
+  const existingNode = positive || negative
+  if (existingNode) {
+    const existingValue = extractValue(
+      existingNode.label.startsWith('-') ? existingNode.label.slice(1) : existingNode.label,
+      chip.operator,
+    )
+    if (existingValue.toLowerCase() !== chip.value.toLowerCase()) {
+      // Different sort field active — clear it first
+      const cleared = clearSortTerms(query, breakdown)
+      const freshBd = parseBreakdown(cleared)
+      return cycleChip(cleared, freshBd, chip)
+    }
+  }
+
+  return cycleChip(query, breakdown, chip)
+}

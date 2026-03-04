@@ -4,7 +4,8 @@ import { parse } from "./parser";
 
 const DISPLAY_FIELDS: Array<{ field: string; value?: string }> = [
   { field: "view" },
-  { field: "unique" }, // strips unique:cards, unique:prints, unique:art (value ignored)
+  { field: "unique" },
+  { field: "sort" },
 ];
 
 function isDisplayField(node: ASTNode): boolean {

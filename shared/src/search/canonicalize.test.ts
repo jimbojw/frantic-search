@@ -57,6 +57,18 @@ describe("toScryfallQuery", () => {
     expect(canon("c:r view:full t:instant")).toBe("c:r t:instant");
   });
 
+  it("strips sort: terms for Scryfall (Spec 059)", () => {
+    expect(canon("lightning sort:name")).toBe("lightning");
+    expect(canon("sort:mv t:creature")).toBe("t:creature");
+    expect(canon("sort:price")).toBe("");
+    expect(canon("c:r sort:date t:instant")).toBe("c:r t:instant");
+  });
+
+  it("strips -sort: terms for Scryfall (Spec 059)", () => {
+    expect(canon("-sort:name t:creature")).toBe("t:creature");
+    expect(canon("-sort:price")).toBe("");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {

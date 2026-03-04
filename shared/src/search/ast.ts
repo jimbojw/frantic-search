@@ -116,6 +116,12 @@ export interface QueryNodeResult {
 
 export type UniqueMode = "cards" | "prints" | "art";
 
+export interface SortDirective {
+  field: string;
+  direction: "asc" | "desc";
+  isPrintingDomain: boolean;
+}
+
 export interface EvalOutput {
   result: QueryNodeResult;
   indices: Uint32Array;
@@ -124,4 +130,5 @@ export interface EvalOutput {
   printingsUnavailable: boolean;
   uniqueMode: UniqueMode;
   includeExtras: boolean;
+  sortBy: SortDirective | null;
 }

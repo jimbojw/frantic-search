@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, fnv1a } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
 
@@ -140,6 +140,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let hasPrintingConditions = liveEval.hasPrintingConditions
   let uniqueMode = liveEval.uniqueMode
   let includeExtras = liveEval.includeExtras
+  let liveSortBy = liveEval.sortBy
   let pinnedBreakdown: BreakdownNode | undefined
   let pinnedIndicesCount: number | undefined
   let pinnedPrintingCount: number | undefined
@@ -166,6 +167,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
     uniqueMode = getUniqueModeFromQuery(`${msg.pinnedQuery} ${msg.query}`)
     includeExtras = includeExtras || pinnedEval.includeExtras
+    if (!liveSortBy) liveSortBy = pinnedEval.sortBy
   } else {
     deduped = Array.from(liveEval.indices)
   }
@@ -247,21 +249,62 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   const combinedQuery = hasPinned ? `${msg.pinnedQuery} ${msg.query}` : msg.query
   const sortSeed = queryForSortSeed(combinedQuery)
-  const bareWords = collectBareWords(ast)
-    .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
-    .filter(w => w.length > 0)
-  seededSort(deduped, sortSeed, index.combinedNamesNormalized, bareWords, sessionSalt)
+  const seedHash = fnv1a(sortSeed) ^ sessionSalt
+  const effectiveSortBy: SortDirective | null = liveSortBy ?? null
+
+  let printingIndices = rawPrintingIndices
+
+  if (effectiveSortBy && effectiveSortBy.isPrintingDomain && printingIndex) {
+    // Printing-domain sort: ensure printing stream, sort within card groups,
+    // then derive card order from sorted printings.
+    if (!printingIndices) {
+      // Expand all printings of matching cards for sorting
+      let total = 0
+      for (const fi of deduped) total += printingIndex.printingsOf(fi).length
+      const expanded = new Uint32Array(total)
+      let k = 0
+      for (const fi of deduped) {
+        for (const p of printingIndex.printingsOf(fi)) expanded[k++] = p
+      }
+      printingIndices = expanded
+    }
+    const { cardOrder, groupedPrintings } = sortPrintingDomain(
+      deduped, printingIndices, effectiveSortBy, index, printingIndex, seedHash,
+    )
+    deduped.length = 0
+    for (const cf of cardOrder) deduped.push(cf)
+    printingIndices = groupedPrintings
+  } else if (effectiveSortBy && !effectiveSortBy.isPrintingDomain) {
+    // Face-domain sort
+    sortByField(deduped, effectiveSortBy, index, seedHash)
+    if (printingIndices && printingIndex) {
+      // Reorder printings to match sorted card order (stable intra-card order).
+      const bareWords = collectBareWords(ast)
+        .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        .filter(w => w.length > 0)
+      seededSortPrintings(
+        printingIndices, sortSeed,
+        printingIndex.canonicalFaceRef,
+        index.combinedNamesNormalized, bareWords, sessionSalt,
+      )
+    }
+  } else {
+    // No sort directive: fall back to Spec 019 seeded ordering
+    const bareWords = collectBareWords(ast)
+      .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
+      .filter(w => w.length > 0)
+    seededSort(deduped, sortSeed, index.combinedNamesNormalized, bareWords, sessionSalt)
+    if (printingIndices && printingIndex) {
+      seededSortPrintings(
+        printingIndices, sortSeed,
+        printingIndex.canonicalFaceRef,
+        index.combinedNamesNormalized, bareWords, sessionSalt,
+      )
+    }
+  }
 
   const histograms = computeHistograms(deduped, index)
   const indices = new Uint32Array(deduped)
-  const printingIndices = rawPrintingIndices
-  if (printingIndices && printingIndex) {
-    seededSortPrintings(
-      printingIndices, sortSeed,
-      printingIndex.canonicalFaceRef,
-      index.combinedNamesNormalized, bareWords, sessionSalt,
-    )
-  }
 
   // Effective breakdown for bug report: when both pinned and live, evaluate
   // the combined query; otherwise use the single-query breakdown.
