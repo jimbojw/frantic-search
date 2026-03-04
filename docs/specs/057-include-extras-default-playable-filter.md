@@ -70,6 +70,17 @@ When printing counts are relevant (`uniqueMode` is `prints` or `art`, or `hasPri
 
 > No cards found. Try again with `include:extras` (N cards, M printings)?
 
+### Non-empty results rider
+
+When the playable-filtered result set is **non-empty** but the filter removed at least one result, show a rider at the bottom of the search results:
+
+> N cards (M printings) not shown. Try again with `include:extras`?
+
+- N = `indicesIncludingExtras - totalCards` (hidden card count).
+- M = `printingIndicesIncludingExtras - totalPrintingItems` when printing counts are relevant (`uniqueMode` is `prints` or `art`, or `hasPrintingConditions`). Omit the printing count otherwise.
+- Only show when N > 0 (i.e., at least one card was hidden).
+- The rider appears below the results list, styled consistently with the existing "…and N more" pagination sentinel. The `include:extras` term is clickable and appends it to the query.
+
 ## Changes by Layer
 
 ### `shared/src/search/ast.ts`
@@ -101,6 +112,10 @@ Re-export `NON_TOURNAMENT_MASK` from `eval-printing.ts` so the app workspace can
 - Store `indicesIncludingExtras` and `printingIndicesIncludingExtras` from the result message.
 - Replace "No cards found" with a conditional hint when the filter hid results.
 
+### `app/src/SearchResults.tsx`
+
+- When results exist and `indicesIncludingExtras` indicates hidden cards, render a rider at the bottom of the results list with the hidden count and a clickable `include:extras` hint.
+
 ### Terms Drawer chip (implementation follow-up)
 
 The Terms Drawer (`app/src/TermsDrawer.tsx`) exposes an `include:extras` chip on the FORMATS, ROLES, RARITIES, and PRINTINGS tabs. On RARITIES and PRINTINGS it appears alongside `unique:prints` in the modifier section; on FORMATS and ROLES it appears alone. Uses `toggleIncludeExtras` and `hasIncludeExtras` from `query-edit.ts`.
@@ -112,7 +127,8 @@ The Terms Drawer (`app/src/TermsDrawer.tsx`) exposes an `include:extras` chip on
 3. `include:extras` in the live query bypasses the playable filter — all matches shown.
 4. `include:extras` in the pinned query bypasses the playable filter for all results.
 5. When the playable filter produces zero results but unfiltered results exist, the empty-results hint appears with correct counts.
-6. `include:foo` produces an error in the query breakdown.
-7. `include:extras` is `false` by default for all queries without it.
-8. Histograms reflect the filtered (post-playable-filter) results.
-9. When a query has printing conditions (e.g. `set:30a`) and the playable filter removes all matching printings, the result is zero cards (Issue #58).
+6. When the playable filter produces non-zero results but hid at least one card, a rider at the bottom shows the hidden count and a clickable `include:extras` hint.
+7. `include:foo` produces an error in the query breakdown.
+8. `include:extras` is `false` by default for all queries without it.
+9. Histograms reflect the filtered (post-playable-filter) results.
+10. When a query has printing conditions (e.g. `set:30a`) and the playable filter removes all matching printings, the result is zero cards (Issue #58).

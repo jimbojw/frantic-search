@@ -443,6 +443,39 @@ export default function SearchResults() {
               </Show>
             </div>
           </Show>
+          <Show when={(() => {
+            const extras = ctx.indicesIncludingExtras()
+            if (extras === undefined) return false
+            const hidden = extras - ctx.totalCards()
+            return hidden > 0
+          })()}>
+            {(() => {
+              const extras = ctx.indicesIncludingExtras()!
+              const hiddenCards = extras - ctx.totalCards()
+              const pExtras = ctx.printingIndicesIncludingExtras()
+              const showPrintings = () => pExtras !== undefined && (ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions())
+              const hiddenPrintings = showPrintings() && pExtras !== undefined
+                ? pExtras - ctx.totalPrintingItems()
+                : 0
+              return (
+                <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
+                  {hiddenCards} {hiddenCards === 1 ? 'card' : 'cards'}
+                  <Show when={showPrintings() && hiddenPrintings > 0}>
+                    {' '}({hiddenPrintings} {hiddenPrintings === 1 ? 'printing' : 'printings'})
+                  </Show>
+                  {' not shown. Try again with '}
+                  <button
+                    type="button"
+                    onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
+                    class="inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  >
+                    <HighlightedLabel label="include:extras" />
+                  </button>
+                  ?
+                </div>
+              )
+            })()}
+          </Show>
         </Show>
       </div>
     </Show>
