@@ -44,7 +44,7 @@ Cards with layouts that are not meaningful to search are dropped entirely:
 | `augment`            | Unstable augment cards (half-cards)       |
 | `host`               | Unstable host cards (half-cards)          |
 
-Cards that pass the layout filter are included regardless of legality status, digital-only status, or set type. See ADR-013 for the rationale.
+Cards that pass the layout filter are included regardless of legality status, digital-only status, or set type. The ETL pipeline remains inclusive; default result filtering is applied at query time (Spec 057). See ADR-019 for the project's parity stance.
 
 ## Face Expansion
 

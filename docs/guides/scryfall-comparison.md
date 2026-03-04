@@ -1,6 +1,6 @@
 # Comparing Results with Scryfall
 
-When our search results differ from Scryfall's, it's important to distinguish bugs from intentional divergences. This guide covers how to use Scryfall's REST API to investigate discrepancies. See ADR-013 for the project's position on search parity.
+When our search results differ from Scryfall's, it's important to distinguish bugs from intentional divergences. This guide covers how to use Scryfall's REST API to investigate discrepancies. See ADR-019 for the project's position on search parity.
 
 ## When to Compare
 
@@ -64,11 +64,19 @@ comm -13 /tmp/local.txt /tmp/scryfall.txt   # only in Scryfall
 
 ## Known Divergences
 
-These are expected differences documented in ADR-013, not bugs:
+These are principled divergences documented in ADR-019, not bugs:
 
 - **DFC name format**: We display the front face name (e.g., `Ayara, Widow of the Realm`). Scryfall displays the joined name (`Ayara, Widow of the Realm // Ayara, Furnace Queen`).
-- **Specialize variants**: Alchemy's Specialize mechanic creates 5 color-specific forms per base card. Scryfall's bulk data includes them as separate oracle entries, but Scryfall's search hides them. We show them. They are identifiable by `games: ["arena"]`, `digital: true`, and all legalities being `not_legal`.
-- **Playtest/event cards**: Cards from `set_type: "funny"` (Mystery Booster playtest cards, Unknown Event cards, etc.) appear in the bulk data but Scryfall's search excludes them.
+- **Partial date ranges**: `date=202` expands to `[2020-01-01, 2030-01-01)` for narrow-as-you-type UX. Scryfall ignores partial dates as erroneous. See Spec 061.
+- **`!` as operator synonym**: Scryfall inconsistently treats `!` as `=` for some fields but not others. We do not replicate this. See § Scryfall's Undocumented Behavior below.
+
+### Filtered by default (matching Scryfall)
+
+The following categories are excluded by default (Spec 057) and only appear with `include:extras`:
+
+- **Specialize variants**: Alchemy's Specialize mechanic creates 5 color-specific forms per base card. Scryfall's bulk data includes them as separate oracle entries, but both Scryfall and Frantic Search hide them by default.
+- **Playtest/event cards**: Cards from `set_type: "funny"` (Mystery Booster playtest cards, Unknown Event cards, etc.) are excluded by default.
+- **Non-tournament printings**: Gold-bordered, oversized, and 30th Anniversary Edition printings are excluded from printing-level results by default (Spec 056).
 
 ## Scryfall's Undocumented Behavior (Not Supported)
 

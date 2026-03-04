@@ -2,7 +2,7 @@
 
 **Status:** Implemented 
 
-**Depends on:** ADR-013 (Scryfall Search Parity), Spec 002 (Query Engine)
+**Depends on:** ADR-019 (Scryfall Parity by Default), Spec 002 (Query Engine)
 
 ## Goal
 
@@ -16,7 +16,7 @@ Synthetic tests prove the evaluator implements the *spec* correctly. They do not
 
 ## Non-Goals
 
-- **Bug-for-bug parity with Scryfall.** ADR-013 establishes that we intentionally diverge in areas like result aggregation (Specialize variants, playtest cards). The suite accommodates these via divergence annotations.
+- **Bug-for-bug parity with Scryfall.** ADR-019 establishes that we target Scryfall parity by default but intentionally diverge in specific documented areas. The suite accommodates these via divergence annotations.
 - **Exhaustive query coverage.** The suite is curated, not generated. Each test case exists to exercise a specific semantic edge case or protect a past bug fix.
 - **Performance benchmarking.** This is a correctness tool, not a speed tool.
 
@@ -59,7 +59,7 @@ Each suite file is a YAML document containing an array of test cases.
 
   # Optional: use a different query string for Scryfall verification.
   # Common when Scryfall requires extra qualifiers like include:extras
-  # to match our broader result set (see ADR-013), or when our syntax
+  # to match our result set (see ADR-019), or when our syntax
   # diverges from Scryfall's. Any test with count assertions that cover
   # funny/digital/Specialize cards will likely need this.
   scryfall_query: "pow<2 pow>2 include:extras"
@@ -105,7 +105,7 @@ All assertions in a test case must pass for the test to pass.
 `contains` and `excludes` match each result card against both the **front face name** (`names[canonicalFace[i]]`) and the **combined name** (`combined_names[canonicalFace[i]]`). A card satisfies a `contains` entry if either name matches (case-insensitive). This means:
 
 - Single-face cards match on their name (front face and combined name are identical).
-- DFCs and Transform cards can be referenced by front face name alone (e.g., `"Delver of Secrets"`), avoiding the name-format divergence documented in ADR-013.
+- DFCs and Transform cards can be referenced by front face name alone (e.g., `"Delver of Secrets"`), avoiding the name-format divergence documented in ADR-019.
 - Split cards and other multi-face cards can be referenced by their combined name (e.g., `"Claim // Fame"`) when the test needs to identify a specific card whose front-face name is ambiguous or when the combined form is more recognizable.
 
 Test authors should prefer front face names for clarity and only use the combined `"A // B"` form when necessary to disambiguate.
@@ -180,7 +180,7 @@ When you discover a new edge case (via bug report, spec work, or manual comparis
 
 | Document | Contains |
 |---|---|
-| **ADRs** | *Why* we made a cross-cutting decision (e.g., ADR-013: we don't aim for strict parity). |
+| **ADRs** | *Why* we made a cross-cutting decision (e.g., ADR-019: parity by default, diverge with rationale). |
 | **Specs** | *How* a feature works and what we decided for edge cases (e.g., Spec 034: `*` → 0). |
 | **Compliance suite** | *What* the real world does — executable assertions against real card data, verifiable against Scryfall. |
 | **Comparison guide** | *How to investigate* a discrepancy manually (ad-hoc workflow, still useful for one-off debugging). |
