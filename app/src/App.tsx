@@ -70,6 +70,7 @@ function App() {
   const [indicesIncludingExtras, setIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [printingIndicesIncludingExtras, setPrintingIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
+  const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
   const [pinnedExpanded, setPinnedExpanded] = createSignal(
@@ -254,7 +255,7 @@ function App() {
     termsExpanded() ||
     (inputFocused() && userEngaged())
   const scryfallUrl = () => {
-    const q = query().trim()
+    const q = effectiveQuery().trim()
     if (!q) return ''
     const canonical = toScryfallQuery(parse(q))
     return canonical ? `https://scryfall.com/search?q=${encodeURIComponent(canonical)}` : ''
@@ -305,6 +306,7 @@ function App() {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
           setPinnedBreakdown(msg.pinnedBreakdown ?? null)
+          setEffectiveBreakdown(msg.effectiveBreakdown ?? msg.breakdown)
           setPinnedIndicesCount(msg.pinnedIndicesCount)
           setPinnedPrintingCount(msg.pinnedPrintingCount)
           setHistograms(msg.histograms)
@@ -338,6 +340,7 @@ function App() {
       setIndices(new Uint32Array(0))
       setBreakdown(null)
       setPinnedBreakdown(null)
+      setEffectiveBreakdown(null)
       setPinnedIndicesCount(undefined)
       setPinnedPrintingCount(undefined)
       setHistograms(null)
@@ -631,8 +634,8 @@ function App() {
       </Show>
       <Show when={view() === 'report'}>
         <BugReport
-          query={query()}
-          breakdown={breakdown()}
+          query={effectiveQuery()}
+          breakdown={effectiveBreakdown()}
           resultCount={totalCards()}
           printingCount={
             hasPrintingConditions() || uniqueMode() !== 'cards'

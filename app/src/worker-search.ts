@@ -2,6 +2,7 @@
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
+import { sealQuery } from './query-edit'
 
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -119,7 +120,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     const result: SearchResult = {
       type: 'result', queryId: msg.queryId, indices,
       breakdown: { type: 'NOP', label: '', matchCount: 0 },
-      pinnedBreakdown, histograms: emptyHistograms,
+      pinnedBreakdown, effectiveBreakdown: pinnedBreakdown, histograms: emptyHistograms,
       pinnedIndicesCount: pinnedEval.indices.length,
       pinnedPrintingCount: (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards")
         ? (pinnedEval.printingIndices?.length ?? 0)
@@ -262,9 +263,22 @@ export function runSearch(params: RunSearchParams): SearchResult {
     )
   }
 
+  // Effective breakdown for bug report: when both pinned and live, evaluate
+  // the combined query; otherwise use the single-query breakdown.
+  let effectiveBreakdown: BreakdownNode
+  if (hasPinned) {
+    const effectiveQuery = sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(msg.query.trim())
+    const effectiveAst = parse(effectiveQuery)
+    const effectiveEval = cache.evaluate(effectiveAst)
+    effectiveBreakdown = toBreakdown(effectiveEval.result)
+  } else {
+    effectiveBreakdown = breakdown
+  }
+
   const result: SearchResult = {
     type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
     printingIndices, hasPrintingConditions, uniqueMode,
+    effectiveBreakdown,
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
