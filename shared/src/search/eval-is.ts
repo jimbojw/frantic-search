@@ -280,10 +280,20 @@ export function evalIsKeyword(
     case "saga":
     case "host":
     case "augment":
+    case "token":
+    case "double_faced_token":
+    case "dfctoken":
+    case "art_series":
+    case "emblem":
+    case "planar":
+    case "scheme":
+    case "vanguard": {
+      const layoutMatch = keyword === "dfctoken" ? "double_faced_token" : keyword;
       for (let i = 0; i < n; i++) {
-        if (index.layouts[i] === keyword) buf[cf[i]] = 1;
+        if (index.layouts[i] === layoutMatch) buf[cf[i]] = 1;
       }
       break;
+    }
     case "transform":
       for (let i = 0; i < n; i++) {
         if (index.layouts[i] === "transform") buf[cf[i]] = 1;

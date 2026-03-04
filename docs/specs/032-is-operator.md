@@ -53,6 +53,14 @@ These compare the face's layout string directly.
 | `is:leveler` | `leveler` |
 | `is:host` | `host` |
 | `is:augment` | `augment` |
+| `is:token` | `token` |
+| `is:double_faced_token` | `double_faced_token` |
+| `is:dfctoken` | `double_faced_token` (alias) |
+| `is:art_series` | `art_series` |
+| `is:emblem` | `emblem` |
+| `is:planar` | `planar` |
+| `is:scheme` | `scheme` |
+| `is:vanguard` | `vanguard` |
 
 ### Oracle text checks
 
@@ -143,7 +151,7 @@ Empty oracle text does NOT qualify as French vanilla — that's regular `is:vani
 |---|---|
 | `type_lines` | `permanent`, `spell`, `historic`, `party`, `outlaw`, `commander`, `brawler`, `bear`, `frenchvanilla` |
 | `oracle_texts` | `vanilla`, `frenchvanilla`, `commander`, `brawler`, `companion`, `partner` |
-| `layouts` | `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `spell` |
+| `layouts` | `split`, `flip`, `transform`, `modal`, `mdfc`, `dfc`, `meld`, `adventure`, `leveler`, `token`, `double_faced_token`, `dfctoken`, `art_series`, `emblem`, `planar`, `scheme`, `vanguard`, `host`, `augment`, `spell` |
 | `names` | `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland` |
 | `powers` + `power_lookup` | `bear` |
 | `toughnesses` + `toughness_lookup` | `bear` |
@@ -294,6 +302,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 ## Implementation Notes
 
 - 2026-03-03: Spec 047 adds printing-domain `is:` keywords for Scryfall `promo_types` (51 values: `rainbowfoil`, `poster`, `alchemy`, `rebalanced`, etc.). `is:universesbeyond`/`is:ub` become dual-domain: printing domain when printings loaded, face-domain fallback when not.
+- 2026-03-04: Added layout keywords for Issue #80: `is:token`, `is:double_faced_token`, `is:dfctoken`, `is:art_series`, `is:emblem`, `is:planar`, `is:scheme`, `is:vanguard`. These match cards indexed after ETL-level layout filtering was removed.
 - 2026-02-25: Spec 040 extended coverage with 14 additional land cycle keywords
   (bikeland, bondland, canopyland, creatureland, filterland, gainland, pathway,
   scryland, surveilland, shadowland, storageland, tangoland, tricycleland, triland),

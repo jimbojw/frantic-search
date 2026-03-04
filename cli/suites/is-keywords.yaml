@@ -91,6 +91,23 @@
   assertions:
     count: 0
 
+# --- Layout keywords (Issue #80) ---
+
+- name: "is:token finds token cards with include:extras"
+  query: "is:token include:extras"
+  scryfall_query: "is:token include:extras"
+  assertions:
+    contains:
+      - "Goblin"
+      - "Soldier"
+    count_min: 500
+
+- name: "is:emblem finds emblem cards with include:extras"
+  query: "is:emblem include:extras"
+  scryfall_query: "is:emblem include:extras"
+  assertions:
+    count_min: 50
+
 # --- Extended land cycles (Spec 040) ---
 
 - name: "is:scryland returns exactly 10 cards (Spec 040)"
