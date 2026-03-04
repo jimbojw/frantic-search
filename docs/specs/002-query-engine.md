@@ -51,6 +51,8 @@ The evaluator takes an AST and a `CardIndex` (evaluation-ready card data) and pr
 
 After evaluation, a deduplication step collapses face-level matching indices into card-level results using the `canonical_face` column: if any face of a card matches, the card's primary face index is included in the result set exactly once.
 
+**Dual-domain evaluation:** When printing data is loaded (Spec 046), the evaluator also supports printing-domain fields (`set:`, `r:`, `is:foil`, `price:`, etc.). Queries can combine face-level and printing-level conditions. See Spec 047 and ADR-017 for the dual-domain architecture.
+
 ## Grammar
 
 ```

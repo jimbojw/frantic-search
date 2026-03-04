@@ -6,7 +6,7 @@
 
 ## Goal
 
-Split the monolithic `columns.json` into a core data file (searchable fields) and a supplemental thumb-hashes file (display-only placeholders). The app becomes searchable before thumb-hash data arrives, and the architecture supports future supplemental files (printings, prices).
+Split the monolithic `columns.json` into a core data file (searchable fields) and supplemental files (thumb-hashes, printings). The app becomes searchable before thumb-hash data arrives. The architecture supports multiple supplemental files: `thumb-hashes.json` (display placeholders), `printings.json` (printing-level data, Spec 046), with room for future additions (e.g. prices in a separate file if needed).
 
 ## Background
 
@@ -282,3 +282,7 @@ Users with the pre-split `columns.<hash>.json` cached will receive a new service
 7. The restore command reconstructs manifests from the deployed `thumb-hashes.json` + `columns.json`, with backward-compatible fallback to the pre-split format.
 8. The CLI continues to work with `columns.json` that lacks thumb hash columns.
 9. `ColumnarData.art_crop_thumb_hashes` and `ColumnarData.card_thumb_hashes` are optional (`?`) on the type.
+
+## Implementation Notes
+
+- 2026-03-04: The supplemental-file pattern established here was extended to `printings.json` (Spec 046). The worker fetches printings after columns; the main thread receives `printings-ready` with `PrintingDisplayColumns`. The Vite plugin (Spec 005) serves and copies all three data files.

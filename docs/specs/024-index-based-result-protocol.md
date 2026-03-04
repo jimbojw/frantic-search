@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 005 (App Data Loading), Spec 007 (Worker Protocol)
+**Depends on:** Spec 002 (Query Engine), Spec 005 (App Data Loading), Spec 007 (Worker Protocol), Spec 048 (Printing-Aware Display)
 
 ## Goal
 
@@ -25,23 +25,24 @@ The fix is an **index-based columnar** protocol. The worker sends only a sorted 
 ### Data flow overview
 
 ```
-Worker                                  Main Thread
-──────                                  ───────────
-1. Fetch columns.json
-2. Build CardIndex + NodeCache
-3. Post { type: 'ready', display }  ──►  Store display columns
-                                         Build facesOf map
-                                         Build scryfallId → index map
-4. Receive search message
-5. Evaluate → Uint8Array
-6. Extract matching indices
+Worker                                          Main Thread
+──────                                          ───────────
+1. Fetch columns.json (and printings.json in parallel)
+2. Build CardIndex + NodeCache (+ PrintingIndex when printings load)
+3. Post { type: 'ready', display }          ──►  Store display columns
+4. Post { type: 'printings-ready',              Build facesOf map
+   printingDisplay } (when printings load)  ──►  Build scryfallId → index map
+                                                 Store printingDisplay
+5. Receive search message
+6. Evaluate → { indices, printingIndices?, ... }
 7. Deduplicate (face → canonical)
-8. seededSort the canonical indices
-9. Post { type: 'result',          ──►  For each visible index:
-     indices (Uint32Array,                 look up columns locally
-       transferred),
-     totalMatches, breakdown }
+8. seededSort / seededSortPrintings
+9. Post { type: 'result',                  ──►  For each visible index:
+     indices, printingIndices?,                  look up columns locally
+     hasPrintingConditions, ... }                 adapt by view/unique mode
 ```
+
+When the query contains printing-domain conditions (e.g. `set:mh2`, `is:foil`) or `unique:prints`/`unique:art`, the evaluator also produces `printingIndices` — a sorted array of printing-row indices. The main thread uses `PrintingDisplayColumns` (set codes, collector numbers, rarity, finish, price) to render printing-specific UI. See Spec 048 for display behavior.
 
 ### Display columns
 
@@ -112,25 +113,40 @@ export type DisplayColumns = {
 }
 ```
 
-The `result` message replaces `cards: CardResult[]` with `indices: Uint32Array`:
+The `result` message replaces `cards: CardResult[]` with `indices: Uint32Array` and optional `printingIndices`:
 
 ```typescript
+export type PrintingDisplayColumns = {
+  scryfall_ids: string[]
+  collector_numbers: string[]
+  set_codes: string[]
+  set_names: string[]
+  rarity: number[]
+  finish: number[]
+  price_usd: number[]
+  canonical_face_ref: number[]
+  illustration_id_index?: number[]
+}
+
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
+  | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string }
   | {
       type: 'result'
       queryId: number
       indices: Uint32Array
-      totalMatches: number
+      printingIndices?: Uint32Array
+      hasPrintingConditions: boolean
+      uniqueMode: UniqueMode
       breakdown: BreakdownNode
+      histograms: Histograms
+      // ... pinnedBreakdown, pinnedIndicesCount, indicesIncludingExtras, etc.
     }
 ```
 
-The `indices` array contains **all** deduplicated canonical card indices, sorted by `seededSort`. Using a `Uint32Array` (backed by an `ArrayBuffer`) enables zero-copy transfer via the `Transferable` argument to `postMessage` — the worker detaches the buffer and the main thread receives it instantly regardless of size. Sending all ~33K indices as a `Uint32Array` costs ~132 KB of buffer but zero serialization time.
-
-`totalMatches` continues to report the total face-level match count (root node `matchCount`). The total deduplicated card count is `indices.length`.
+The `indices` array contains **all** deduplicated canonical card indices, sorted by `seededSort`. When printing conditions are present, `printingIndices` contains printing-row indices sorted by `seededSortPrintings` (Spec 019). Both arrays use `Uint32Array` and are transferred zero-copy via `Transferable`. The main thread uses `hasPrintingConditions` and `uniqueMode` to decide whether to render from `indices` (card-level) or `printingIndices` (printing-level). See Spec 048 for the display logic.
 
 #### Removed types
 
@@ -144,12 +160,16 @@ On receiving the `ready` message, the main thread:
 2. Builds a `facesOf` map from `canonical_face` — the same logic as `CardIndex._facesOf`, mapping each canonical index to its ordered list of face indices.
 3. Builds a reverse map from `scryfall_ids` → canonical index, for `CardDetail` navigation (see below).
 
+On receiving the `printings-ready` message (when `printings.json` loads), the main thread stores `PrintingDisplayColumns` for rendering set badges, collector numbers, rarity, finish, and price when `printingIndices` is present.
+
 When rendering a card at canonical index `ci`:
 
 - Card-level fields: `display.scryfall_ids[ci]`, `display.color_identity[ci]`, etc.
 - Face indices: `facesOf.get(ci)` → `[fi0, fi1, ...]`
 - Face-level fields: `display.names[fi]`, `display.mana_costs[fi]`, etc.
 - Stat decoding: `display.power_lookup[display.powers[fi]]` (empty string → no stat)
+
+When rendering a printing at printing index `pi` (when `printingIndices` is present): use `printingDisplay.set_codes[pi]`, `printingDisplay.scryfall_ids[pi]`, etc. Map back to card via `printingDisplay.canonical_face_ref[pi]`.
 
 ### Worker changes
 
@@ -219,7 +239,7 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 ## Acceptance Criteria
 
 1. The worker posts `{ type: 'status', status: 'ready', display: DisplayColumns }` after initialization, containing only the columns needed for rendering.
-2. Search result messages carry `indices: Uint32Array` (all sorted, deduplicated canonical card indices) and `totalMatches` (face count) — no `CardResult` objects.
+2. Search result messages carry `indices: Uint32Array` (all sorted, deduplicated canonical card indices) — no `CardResult` objects.
 3. The `indices` buffer is transferred via `Transferable` (zero-copy), not cloned.
 4. The main thread builds a `facesOf` map and a `scryfallId → canonical index` reverse map from display columns at init time.
 5. Card rendering performs column lookups (`display.names[fi]`, etc.) rather than reading pre-built objects. The UI renders the first 200 entries from the index array.
@@ -227,6 +247,7 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 7. The "…and N more" indicator uses `indices.length` as the total card count.
 8. `CardResult` and `CardFace` are removed from the wire protocol types.
 9. Existing features (breakdown, bug report, oracle text toggle, copy button) continue to work unchanged.
+10. When printing conditions are present, result messages include `printingIndices` and `hasPrintingConditions`; the main thread uses `PrintingDisplayColumns` (from `printings-ready`) for printing-level rendering (Spec 048).
 
 ## Implementation Notes
 
@@ -234,3 +255,8 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
   `card_thumb_hashes` to `DisplayColumns` for card image ThumbHash
   placeholders (Spec 017). The new column supports future grid-view /
   Images results.
+- 2026-03-04: Dual-domain protocol (Spec 046, 048). Worker fetches
+  `printings.json`, builds `PrintingIndex`, posts `printings-ready` with
+  `PrintingDisplayColumns`. Result messages gain `printingIndices`,
+  `hasPrintingConditions`, `uniqueMode`. Main thread adapts rendering
+  by view mode and unique mode per Spec 048.

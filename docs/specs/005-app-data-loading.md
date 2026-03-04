@@ -4,11 +4,11 @@
 
 ## Goal
 
-Make the ETL output (`data/dist/columns.json`) available to the app's WebWorker at runtime, in both local development and production (GitHub Pages), without manual copy steps or environment-specific logic.
+Make the ETL output (`data/dist/columns.json`, `thumb-hashes.json`, `printings.json`) available to the app at runtime, in both local development and production (GitHub Pages), without manual copy steps or environment-specific logic.
 
 ## Background
 
-The ETL pipeline (Spec 003) produces `data/dist/columns.json` at the project root. The app (ADR-003) runs search in a WebWorker that needs this data. The app is deployed as a static SPA to GitHub Pages (ADR-004) at a subpath (`/<repo>/`). The data format is JSON, compressed transparently by the hosting layer (ADR-005).
+The ETL pipeline (Spec 003, Spec 046) produces data files at the project root: `columns.json` (face-level searchable data), `thumb-hashes.json` (display placeholders), and `printings.json` (printing-level data). The app (ADR-003) runs search in a WebWorker that needs the core data. The main thread loads supplemental files after the worker posts `ready`. The app is deployed as a static SPA to GitHub Pages (ADR-004) at a subpath (`/<repo>/`). The data format is JSON, compressed transparently by the hosting layer (ADR-005).
 
 The challenge: `data/dist/` lives outside the `app/` workspace, but Vite's build only emits files from within the app directory (source code, public assets). The solution must bridge this gap for both `vite dev` and `vite build` without requiring the developer (or CI) to run a manual copy step.
 
@@ -20,42 +20,17 @@ The Vite config sets `base: './'` so all asset URLs in HTML, CSS, and JS are emi
 
 ### Vite plugin: `serveData`
 
-A small inline Vite plugin in `vite.config.ts` handles both dev and build:
+A small inline Vite plugin in `vite.config.ts` handles dev and build for three data files:
 
-```typescript
-function serveData(): Plugin {
-  const dataFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
+| File               | Loaded by      | Purpose                                      |
+|---------------------|----------------|----------------------------------------------|
+| `columns.json`      | WebWorker      | Core searchable face-level data              |
+| `thumb-hashes.json` | Main thread    | Art crop and card image placeholders (Spec 017) |
+| `printings.json`    | Main thread    | Printing-level data for set, rarity, price, etc. (Spec 046) |
 
-  return {
-    name: 'serve-data',
+**Dev behavior:** The dev server intercepts requests to `/columns.json`, `/thumb-hashes.json`, and `/printings.json` and streams each from `data/dist/`. No files are copied; the ETL output is the single source of truth.
 
-    configureServer(server) {
-      // Dev: serve columns.json from data/dist/ at the app root
-      server.middlewares.use('/columns.json', (_req, res) => {
-        if (!fs.existsSync(dataFile)) {
-          res.writeHead(404)
-          res.end('columns.json not found — run ETL first')
-          return
-        }
-        res.setHeader('Content-Type', 'application/json')
-        fs.createReadStream(dataFile).pipe(res)
-      })
-    },
-
-    closeBundle() {
-      // Build: copy columns.json into the output directory
-      const outDir = path.resolve(__dirname, 'dist')
-      if (fs.existsSync(dataFile)) {
-        fs.copyFileSync(dataFile, path.join(outDir, 'columns.json'))
-      }
-    },
-  }
-}
-```
-
-**Dev behavior:** Vite's dev server intercepts requests to `/columns.json` and streams the file from `data/dist/`. No file is copied; the ETL output is the single source of truth.
-
-**Build behavior:** After Vite finishes writing the output bundle, the `closeBundle` hook copies `columns.json` into `app/dist/`. The file is deployed alongside the SPA assets.
+**Build behavior:** The `closeBundle` hook copies all three files into `app/dist/` with content-hashed filenames (for cache busting) and stable names (for restore and PWA fallback). The PWA runtime cache includes rules for all three.
 
 ### WebWorker data fetch
 
@@ -90,8 +65,8 @@ The ETL pipeline must have been run (`npm run etl -- download && npm run etl -- 
 
 ## Acceptance Criteria
 
-1. `npm run dev` serves `columns.json` and `thumb-hashes.json` at the app root without any manual copy step (assuming ETL has been run).
-2. `npm run build -w app` produces both files (hashed and stable names) in `app/dist/` alongside the SPA assets.
+1. `npm run dev` serves `columns.json`, `thumb-hashes.json`, and `printings.json` at the app root without any manual copy step (assuming ETL has been run).
+2. `npm run build -w app` produces all three files (hashed and stable names) in `app/dist/` alongside the SPA assets.
 3. The WebWorker successfully fetches and parses `columns.json` using a relative URL in both dev and production.
 4. If a data file is missing during dev, the server returns a 404 with a message suggesting the ETL be run.
 5. The Vite config uses `base: './'` — no absolute paths or environment-specific base configuration.
@@ -105,3 +80,7 @@ The ETL pipeline must have been run (`npm run etl -- download && npm run etl -- 
   content-hashed filenames for cache busting and stable names for the
   restore command. The `__THUMBS_FILENAME__` define is injected alongside
   `__COLUMNS_FILENAME__`.
+- 2026-03-04: Added `printings.json` (Spec 046). The plugin serves and copies
+  it alongside columns and thumb-hashes. The main thread fetches it after
+  `ready` per Spec 048. `__PRINTINGS_FILENAME__` define added. PWA runtime
+  cache includes printings.

@@ -11,10 +11,10 @@ Automate the full build-and-deploy pipeline so that pushes to `main` produce a l
 The project has five build stages that must run in sequence:
 
 1. **ETL restore** — recover the ThumbHash manifest from the previous deployment's `columns.json`.
-2. **ETL download** — fetch Oracle Cards from Scryfall (~160 MB).
+2. **ETL download** — fetch Oracle Cards and Default Cards from Scryfall (~161 MB + ~350 MB; Spec 001).
 3. **ETL thumbhash** — progressively generate ThumbHash placeholders for card art (Spec 017).
-4. **ETL process** — transform raw data into `data/dist/columns.json` (~8 MB).
-5. **App build** — Vite compiles the SPA and includes `columns.json` in the output (Spec 005).
+4. **ETL process** — transform raw data into `data/dist/columns.json`, `printings.json`, and `thumb-hashes.json` (Spec 003, Spec 046).
+5. **App build** — Vite compiles the SPA and includes all data files in the output (Spec 005).
 
 The result is a static directory (`app/dist/`) ready to deploy. GitHub Pages is the hosting target (ADR-004).
 
@@ -74,7 +74,7 @@ jobs:
           restore-keys: |
             scryfall-oracle-cards-
 
-      - name: Download Oracle Cards
+      - name: Download Oracle Cards and Default Cards
         run: npm run etl -- download
 
       - name: Restore ThumbHash cache
@@ -120,14 +120,14 @@ The `restore` step runs first with `continue-on-error: true` so that a fetch fai
 
 #### Scryfall data caching
 
-The Scryfall download (`data/raw/`) is cached using `actions/cache@v4`.
+The Scryfall download (`data/raw/`) is cached using `actions/cache@v4`. The download command fetches both `oracle-cards.json` and `default-cards.json` (Spec 001); the cache stores the entire `data/raw` directory, including both files and their metadata (`meta.json`, `default-cards-meta.json`).
 
 Each cache step uses a **run-unique key** (`*-${{ github.run_id }}`) with a **`restore-keys` prefix fallback**. This is necessary because `actions/cache` entries are immutable — once saved under a given key, they are never overwritten. The pattern works as follows:
 
 1. **Restore**: The exact key (containing the current run ID) misses. The `restore-keys` prefix matches the most recent prior cache entry.
 2. **Save (post-job)**: Since the exact key was a miss, the updated directory is saved under the new run-specific key.
 
-On cache hit, the `download` command's freshness check (Spec 001) compares the cached `meta.json` timestamp against the Scryfall API and skips the download if the data is current.
+On cache hit, the `download` command's freshness check (Spec 001) compares each file's metadata timestamp against the Scryfall API and skips the download for files that are current.
 
 #### Concurrency
 
@@ -143,7 +143,7 @@ The workflow runs on three triggers:
 
 ## App build script
 
-The `app/package.json` `"build"` script should invoke `tsc` followed by `vite build`. The Vite plugin from Spec 005 copies `columns.json` into the output during the `closeBundle` hook, so no extra CI step is needed between ETL and build.
+The `app/package.json` `"build"` script should invoke `tsc` followed by `vite build`. The Vite plugin from Spec 005 copies `columns.json`, `thumb-hashes.json`, and `printings.json` into the output during the `closeBundle` hook, so no extra CI step is needed between ETL and build.
 
 ## SPA routing
 
@@ -158,6 +158,6 @@ GitHub Pages does not support server-side routing. Since this is a single-page a
 5. Both ThumbHash manifests are also cached via `actions/cache` as a complementary fast path.
 6. A stable-named `columns.json` (no content hash) is deployed alongside the hashed copy for use by the restore step.
 7. The restore step tolerates a missing or unreachable site (first deploy, outage) without failing the build.
-8. `columns.json` is present in the deployed site and loadable by the WebWorker.
+8. `columns.json`, `thumb-hashes.json`, and `printings.json` are present in the deployed site and loadable by the app (Spec 005).
 9. The deployed site is accessible at `https://<username>.github.io/frantic-search/`.
 10. The workflow uses the GitHub Pages deployment API (`upload-pages-artifact` + `deploy-pages`), not the legacy `gh-pages` branch approach.

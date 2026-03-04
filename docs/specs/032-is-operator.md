@@ -12,7 +12,7 @@ Support the `is:` operator — Scryfall's catch-all for common query shorthands 
 
 Scryfall's [search reference](https://scryfall.com/docs/syntax) uses `is:` over 100 times. The operator covers a grab bag of concepts: game mechanics (`is:spell`, `is:historic`), layout structure (`is:dfc`, `is:split`), creature categorization (`is:vanilla`, `is:bear`), and format eligibility (`is:commander`).
 
-Many `is:` keywords are printing-level attributes (finishes, promo status, frame style, rarity) that don't apply to Frantic Search. Frantic Search indexes oracle cards — abstract card identities — not individual printings. The scope of this spec is limited to keywords that describe **gameplay-relevant properties derivable from existing data**.
+Frantic Search indexes both oracle cards (abstract card identities) and individual printings (Spec 046). Many `is:` keywords are printing-level attributes (finishes, promo status, frame style, rarity) and are implemented in the printing domain (Spec 047). The scope of this spec is limited to **oracle-level** keywords — gameplay-relevant properties derivable from face-level data. Printing-level `is:` keywords (e.g. `is:foil`, `is:promo`, `is:rainbowfoil`) are defined in Spec 047.
 
 ### How it parses
 

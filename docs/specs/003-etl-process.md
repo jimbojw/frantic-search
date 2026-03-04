@@ -126,9 +126,9 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 |-------------------------------------|---------------------------------|
 | `data/dist/columns.json`            | Columnar JSON (`ColumnarData`)  |
 
-The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`.
+The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` from `default-cards.json`.
 
-With the current Scryfall dataset (~37,000 raw cards), the process filters ~3,500 non-searchable cards, expands ~800 multi-face cards into ~1,600 face rows, and emits ~34,000 total face rows.
+With the current Scryfall dataset (~37k raw oracle cards), the process filters ~3,500 non-searchable cards, expands ~800 multi-face cards into ~1,600 face rows, and emits ~34,000 total face rows.
 
 ## Error Handling
 
