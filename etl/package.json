@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "run": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "keywords": [],

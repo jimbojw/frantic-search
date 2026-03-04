@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "run": "tsx src/index.ts"
+    "run": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
