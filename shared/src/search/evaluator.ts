@@ -84,8 +84,10 @@ export interface ComputedResult {
 
 export function nodeKey(ast: ASTNode): string {
   switch (ast.type) {
-    case "FIELD":
-      return `FIELD${SEP}${ast.field}${SEP}${ast.operator}${SEP}${ast.value}`;
+    case "FIELD": {
+      const sourceText = (ast as { sourceText?: string }).sourceText ?? "";
+      return `FIELD${SEP}${ast.field}${SEP}${ast.operator}${SEP}${ast.value}${SEP}${sourceText}`;
+    }
     case "BARE":
       return `BARE${SEP}${ast.quoted ? "Q" : "U"}${SEP}${ast.value}`;
     case "EXACT":

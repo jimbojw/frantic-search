@@ -78,6 +78,14 @@ describe("nodeKey", () => {
     const key = nodeKey({ type: "NOP" });
     expect(key).toBe("NOP");
   });
+
+  test("alias and canonical form produce different keys (breakdown label fix)", () => {
+    // ** vs include:extras, ++ vs unique:prints, @@ vs unique:art — each pair
+    // must have distinct keys so the breakdown shows the original term.
+    expect(nodeKey(parse("**"))).not.toBe(nodeKey(parse("include:extras")));
+    expect(nodeKey(parse("++"))).not.toBe(nodeKey(parse("unique:prints")));
+    expect(nodeKey(parse("@@"))).not.toBe(nodeKey(parse("unique:art")));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -106,6 +114,15 @@ describe("NodeCache.intern", () => {
     const ast1 = parse("(c:wu OR c:bg) t:creature");
     const ast2 = parse("(c:wu OR c:bg) t:creature");
     expect(cache.intern(ast1)).toBe(cache.intern(ast2));
+  });
+
+  test("** and include:extras get distinct nodes when shared cache (breakdown label)", () => {
+    const cache = new NodeCache(index);
+    cache.evaluate(parse("**")); // populate cache with ** AST
+    const { result } = cache.evaluate(parse("include:extras"));
+    const node = result.node;
+    expect(node.type).toBe("FIELD");
+    expect((node as { sourceText?: string }).sourceText).toBeUndefined();
   });
 });
 

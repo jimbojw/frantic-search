@@ -1332,6 +1332,13 @@ describe('parseBreakdown preserves alias display (Spec 048)', () => {
     expect(includeChild).toBeDefined()
     expect(includeChild!.label).toBe('**')
   })
+
+  it('include:extras breakdown label is include:extras not ** (Spec 057)', () => {
+    const bd = buildBreakdown('t:creature include:extras')
+    const includeChild = bd.children?.find(c => c.label === '**' || c.label === 'include:extras')
+    expect(includeChild).toBeDefined()
+    expect(includeChild!.label).toBe('include:extras')
+  })
 })
 
 // ---------------------------------------------------------------------------
