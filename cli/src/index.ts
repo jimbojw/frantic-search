@@ -102,12 +102,14 @@ cli
   .command("diff <query>", "Compare local search results against Scryfall API")
   .option("--data <path>", "Path to columns.json", { default: COLUMNS_PATH })
   .option("--printings <path>", "Path to printings.json", { default: PRINTINGS_PATH })
-  .option("-q, --quiet", "Show only Scryfall IDs for discrepancies (default: include name, set, collector #)")
-  .action(async (query: string, options: { data: string; printings: string; quiet?: boolean }) => {
+  .option("--raw <path>", "Path to oracle-cards.json (improves cards/art diff keys)", { default: ORACLE_CARDS_PATH })
+  .option("-q, --quiet", "Show only comparison keys for discrepancies (default: include card details)")
+  .action(async (query: string, options: { data: string; printings: string; raw: string; quiet?: boolean }) => {
     const { runDiff } = await import("./diff/run");
     await runDiff(query, {
       dataPath: options.data,
       printingsPath: options.printings,
+      rawPath: options.raw,
       verbose: !options.quiet,
     });
   });

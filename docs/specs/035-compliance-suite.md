@@ -199,3 +199,4 @@ Findings migrate from specs into the compliance suite as test cases. Specs retai
 ## Implementation Notes
 
 - 2026-03-02: Root `npm test` now runs the compliance suite after workspace tests. The spec previously stated compliance should be a separate step; it is now integrated so `npm test` provides full coverage. Requires `data/dist/columns.json` (ETL output).
+- 2026-03-04: Verify mode now canonicalizes local test queries with `toScryfallQuery(parse(query))` when `scryfall_query` is not provided. Scryfall 404 responses are treated as zero-result queries (not transport errors), matching the diff command and comparison guide.

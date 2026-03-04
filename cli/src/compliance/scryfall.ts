@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { parse, toScryfallQuery } from "@frantic-search/shared";
 import type { TestCase, Assertions } from "./loader";
 import type { AssertionFailure } from "./local";
 
@@ -56,6 +57,12 @@ interface ScryfallSearchResponse {
 async function scryfallSearch(query: string): Promise<{ names: string[]; totalCards: number }> {
   const url = `${SCRYFALL_SEARCH_URL}?q=${encodeURIComponent(query)}`;
   const response = await fetchWithRetry(url);
+
+  // Keep parity with diff command and comparison guide:
+  // Scryfall 404 means "no matches", not a transport error.
+  if (response.status === 404) {
+    return { names: [], totalCards: 0 };
+  }
 
   if (!response.ok) {
     const body = await response.text();
@@ -140,9 +147,20 @@ function checkAssertionsScryfall(
 }
 
 export async function runScryfallTest(tc: TestCase): Promise<VerifyResult> {
-  const query = tc.scryfall_query ?? tc.query;
+  const query = tc.scryfall_query
+    ?? toScryfallQuery(parse(tc.query));
 
   try {
+    if (!query.trim()) {
+      return {
+        name: tc.name,
+        query,
+        passed: false,
+        failures: [],
+        error: "query could not be converted to a Scryfall-compatible syntax",
+        count: 0,
+      };
+    }
     const { names, totalCards } = await scryfallSearch(query);
     const failures = checkAssertionsScryfall(tc.assertions, names, totalCards);
 

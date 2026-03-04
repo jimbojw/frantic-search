@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import { parse, toScryfallQuery } from "@frantic-search/shared";
+import { parse, toScryfallQuery, NON_TOURNAMENT_MASK } from "@frantic-search/shared";
+import type { UniqueMode } from "@frantic-search/shared";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
@@ -41,10 +42,14 @@ export interface CardEntry {
   name: string;
   set: string;
   collectorNumber: string;
+  oracleId?: string;
+  key?: string;
 }
 
 interface ScryfallCardData {
   id: string;
+  oracle_id?: string;
+  illustration_id?: string | null;
   name: string;
   set: string;
   collector_number: string;
@@ -78,6 +83,7 @@ async function fetchScryfallCards(query: string): Promise<CardEntry[]> {
     name: c.name,
     set: c.set,
     collectorNumber: c.collector_number,
+    oracleId: c.oracle_id,
   }));
 
   let nextPage = result.has_more ? result.next_page : undefined;
@@ -95,6 +101,7 @@ async function fetchScryfallCards(query: string): Promise<CardEntry[]> {
         name: c.name,
         set: c.set,
         collectorNumber: c.collector_number,
+        oracleId: c.oracle_id,
       });
     }
     nextPage = pageResult.has_more ? pageResult.next_page : undefined;
@@ -109,6 +116,7 @@ function collectLocalCards(
   printingIndex: PrintingIndex | null,
   indices: Uint32Array,
   printingIndices: Uint32Array | undefined,
+  rawOracleCards?: RawOracleCard[],
 ): CardEntry[] {
   const entries: CardEntry[] = [];
   const seen = new Set<string>();
@@ -124,8 +132,10 @@ function collectLocalCards(
       const setIdx = printingData.set_indices[pi];
       const set = printingData.set_lookup[setIdx]?.code ?? "—";
       const collectorNumber = printingData.collector_numbers[pi] ?? "—";
+      const cardIdx = data.card_index[cf];
+      const oracleId = rawOracleCards?.[cardIdx]?.oracle_id;
 
-      entries.push({ id, name, set, collectorNumber });
+      entries.push({ id, name, set, collectorNumber, oracleId });
     }
   } else {
     for (const fi of indices) {
@@ -135,6 +145,7 @@ function collectLocalCards(
 
       const ci = data.card_index[fi];
       const name = data.combined_names[ci] ?? data.names[fi] ?? "";
+      const oracleId = rawOracleCards?.[ci]?.oracle_id;
       let set = "—";
       let collectorNumber = "—";
 
@@ -148,21 +159,254 @@ function collectLocalCards(
         }
       }
 
-      entries.push({ id, name, set, collectorNumber });
+      entries.push({ id, name, set, collectorNumber, oracleId });
     }
   }
 
   return entries;
 }
 
+interface RawOracleCard {
+  id?: string;
+  oracle_id?: string;
+}
+
+interface NormalizedLocalResult {
+  uniqueMode: UniqueMode;
+  indices: number[];
+  printingIndices?: number[];
+  hasPrintingConditions: boolean;
+  includeExtras: boolean;
+}
+
+function firstPrintingByFace(printingIndices: number[], pData: PrintingColumnarData): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const pi of printingIndices) {
+    const cf = pData.canonical_face_ref[pi];
+    if (!out.has(cf)) out.set(cf, pi);
+  }
+  return out;
+}
+
+function dedupeArtPrintingIndices(printingIndices: number[], pData: PrintingColumnarData): number[] {
+  const ill = pData.illustration_id_index;
+  if (!ill) return [...printingIndices];
+  const sentinel = 0xffffffff;
+  const byFace = new Map<number, number[]>();
+  for (const idx of printingIndices) {
+    const cf = pData.canonical_face_ref[idx];
+    let arr = byFace.get(cf);
+    if (!arr) {
+      arr = [];
+      byFace.set(cf, arr);
+    }
+    arr.push(idx);
+  }
+  const out: number[] = [];
+  for (const [, group] of byFace) {
+    let maxIdx = 0;
+    for (const idx of group) {
+      if (ill[idx] > maxIdx) maxIdx = ill[idx];
+    }
+    const slots = new Uint32Array(maxIdx + 1);
+    slots.fill(sentinel);
+    for (const idx of group) {
+      const art = ill[idx];
+      if (slots[art] === sentinel) slots[art] = idx;
+    }
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i] !== sentinel) out.push(slots[i]);
+    }
+  }
+  return out;
+}
+
+function normalizeLocalParity(
+  data: ColumnarData,
+  printingData: PrintingColumnarData | null,
+  printingIndex: PrintingIndex | null,
+  evalOut: {
+    indices: Uint32Array;
+    printingIndices?: Uint32Array;
+    uniqueMode: UniqueMode;
+    hasPrintingConditions: boolean;
+    includeExtras: boolean;
+  },
+): NormalizedLocalResult {
+  let deduped = Array.from(evalOut.indices);
+  let rawPrintingIndices = evalOut.printingIndices
+    ? Array.from(evalOut.printingIndices)
+    : undefined;
+
+  if (!evalOut.includeExtras) {
+    if (evalOut.hasPrintingConditions && rawPrintingIndices && printingIndex && printingData) {
+      const filtered: number[] = [];
+      for (const p of rawPrintingIndices) {
+        if (
+          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+          (data.legalities_legal[printingIndex.canonicalFaceRef[p]] |
+            data.legalities_restricted[printingIndex.canonicalFaceRef[p]]) !== 0
+        ) {
+          filtered.push(p);
+        }
+      }
+      rawPrintingIndices = filtered;
+      const seen = new Set<number>();
+      const derived: number[] = [];
+      for (const p of filtered) {
+        const cf = printingIndex.canonicalFaceRef[p];
+        if (!seen.has(cf)) {
+          seen.add(cf);
+          derived.push(cf);
+        }
+      }
+      deduped = derived;
+    } else {
+      deduped = deduped.filter((fi) =>
+        (data.legalities_legal[fi] | data.legalities_restricted[fi]) !== 0
+      );
+      if (rawPrintingIndices && printingIndex) {
+        rawPrintingIndices = rawPrintingIndices.filter((p) =>
+          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+          (data.legalities_legal[printingIndex.canonicalFaceRef[p]] |
+            data.legalities_restricted[printingIndex.canonicalFaceRef[p]]) !== 0
+        );
+      }
+    }
+  }
+
+  let normalizedPrinting = rawPrintingIndices;
+  if (normalizedPrinting && printingData) {
+    if (evalOut.uniqueMode === "cards") {
+      // For cards mode, printing rows are display metadata only; keep first match per card.
+      normalizedPrinting = Array.from(firstPrintingByFace(normalizedPrinting, printingData).values());
+    } else if (evalOut.uniqueMode === "art") {
+      normalizedPrinting = dedupeArtPrintingIndices(normalizedPrinting, printingData);
+    }
+  }
+
+  return {
+    uniqueMode: evalOut.uniqueMode,
+    indices: deduped,
+    printingIndices: normalizedPrinting,
+    hasPrintingConditions: evalOut.hasPrintingConditions,
+    includeExtras: evalOut.includeExtras,
+  };
+}
+
+type ComparisonMode = "cards" | "prints" | "art";
+
+interface DiffComparison {
+  mode: ComparisonMode;
+  inBoth: number;
+  onlyLocal: number;
+  onlyScryfall: number;
+  localOnlyEntries: CardEntry[];
+  scryfallOnlyEntries: CardEntry[];
+  note?: string;
+}
+
+function groupCountBy<T>(entries: T[], keyFn: (e: T) => string | undefined): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const e of entries) {
+    const key = keyFn(e);
+    if (!key) continue;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return map;
+}
+
+function compareBySetKeys(local: CardEntry[], scryfall: CardEntry[], keyFn: (e: CardEntry) => string | undefined, mode: ComparisonMode): DiffComparison {
+  const localByKey = new Map<string, CardEntry>();
+  for (const e of local) {
+    const k = keyFn(e);
+    if (!k || localByKey.has(k)) continue;
+    localByKey.set(k, { ...e, key: k });
+  }
+  const scryByKey = new Map<string, CardEntry>();
+  for (const e of scryfall) {
+    const k = keyFn(e);
+    if (!k || scryByKey.has(k)) continue;
+    scryByKey.set(k, { ...e, key: k });
+  }
+  const localKeys = new Set(localByKey.keys());
+  const scryKeys = new Set(scryByKey.keys());
+
+  const inBothKeys = [...localKeys].filter((k) => scryKeys.has(k));
+  const onlyLocalKeys = [...localKeys].filter((k) => !scryKeys.has(k));
+  const onlyScryKeys = [...scryKeys].filter((k) => !localKeys.has(k));
+
+  return {
+    mode,
+    inBoth: inBothKeys.length,
+    onlyLocal: onlyLocalKeys.length,
+    onlyScryfall: onlyScryKeys.length,
+    localOnlyEntries: onlyLocalKeys.sort().map((k) => localByKey.get(k)!),
+    scryfallOnlyEntries: onlyScryKeys.sort().map((k) => scryByKey.get(k)!),
+  };
+}
+
+function compareArtByOracleCounts(local: CardEntry[], scryfall: CardEntry[]): DiffComparison {
+  const localCounts = groupCountBy(local, (e) => e.oracleId);
+  const scryCounts = groupCountBy(scryfall, (e) => e.oracleId);
+  const allOracleIds = new Set<string>([
+    ...localCounts.keys(),
+    ...scryCounts.keys(),
+  ]);
+
+  let inBoth = 0;
+  let onlyLocal = 0;
+  let onlyScryfall = 0;
+  const localOnlyEntries: CardEntry[] = [];
+  const scryfallOnlyEntries: CardEntry[] = [];
+
+  for (const oid of allOracleIds) {
+    const l = localCounts.get(oid) ?? 0;
+    const s = scryCounts.get(oid) ?? 0;
+    inBoth += Math.min(l, s);
+    if (l > s) {
+      onlyLocal += l - s;
+      const sample = local.find((e) => e.oracleId === oid);
+      if (sample) {
+        localOnlyEntries.push({
+          ...sample,
+          key: `${oid} (+${l - s} art variants local)`,
+        });
+      }
+    } else if (s > l) {
+      onlyScryfall += s - l;
+      const sample = scryfall.find((e) => e.oracleId === oid);
+      if (sample) {
+        scryfallOnlyEntries.push({
+          ...sample,
+          key: `${oid} (+${s - l} art variants scryfall)`,
+        });
+      }
+    }
+  }
+
+  return {
+    mode: "art",
+    inBoth,
+    onlyLocal,
+    onlyScryfall,
+    localOnlyEntries: localOnlyEntries.sort((a, b) => (a.key ?? "").localeCompare(b.key ?? "")),
+    scryfallOnlyEntries: scryfallOnlyEntries.sort((a, b) => (a.key ?? "").localeCompare(b.key ?? "")),
+    note: "Compared by oracle-level artwork counts (avoids false diffs from representative printing choice).",
+  };
+}
+
 function formatEntry(e: CardEntry, verbose: boolean): string {
-  if (!verbose) return `  ${e.id}`;
-  return `  ${e.name} (${e.set}/${e.collectorNumber}) — ${e.id}`;
+  if (!verbose) return `  ${e.key ?? e.id}`;
+  const extra = e.oracleId ? ` [oracle:${e.oracleId}]` : "";
+  const keyInfo = e.key ? ` {key:${e.key}}` : "";
+  return `  ${e.name} (${e.set}/${e.collectorNumber}) — ${e.id}${extra}${keyInfo}`;
 }
 
 export interface DiffOptions {
   dataPath: string;
   printingsPath: string;
+  rawPath?: string;
   verbose: boolean;
 }
 
@@ -170,7 +414,7 @@ export async function runDiff(
   query: string,
   options: DiffOptions,
 ): Promise<void> {
-  const { dataPath, printingsPath, verbose } = options;
+  const { dataPath, printingsPath, rawPath, verbose } = options;
 
   if (!fs.existsSync(dataPath)) {
     process.stderr.write(
@@ -188,17 +432,29 @@ export async function runDiff(
     printingData = JSON.parse(fs.readFileSync(printingsPath, "utf-8"));
     printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
   }
+  let rawOracleCards: RawOracleCard[] | undefined;
+  if (rawPath && fs.existsSync(rawPath)) {
+    rawOracleCards = JSON.parse(fs.readFileSync(rawPath, "utf-8")) as RawOracleCard[];
+  }
 
   const cache = new NodeCache(index, printingIndex);
   const ast = parse(query);
-  const { indices, printingIndices } = cache.evaluate(ast);
+  const evalOut = cache.evaluate(ast);
+  const normalized = normalizeLocalParity(data, printingData, printingIndex, {
+    indices: evalOut.indices,
+    printingIndices: evalOut.printingIndices,
+    uniqueMode: evalOut.uniqueMode,
+    hasPrintingConditions: evalOut.hasPrintingConditions,
+    includeExtras: evalOut.includeExtras,
+  });
 
   const localCards = collectLocalCards(
     data,
     printingData,
     printingIndex,
-    indices,
-    printingIndices,
+    new Uint32Array(normalized.indices),
+    normalized.printingIndices ? new Uint32Array(normalized.printingIndices) : undefined,
+    rawOracleCards,
   );
 
   const scryfallQuery = toScryfallQuery(ast);
@@ -210,39 +466,45 @@ export async function runDiff(
   process.stderr.write(`Fetching Scryfall results for: ${scryfallQuery}\n`);
   const scryfallCards = await fetchScryfallCards(scryfallQuery);
 
-  const localById = new Map(localCards.map((c) => [c.id, c]));
-  const scryfallById = new Map(scryfallCards.map((c) => [c.id, c]));
-
-  const localIds = new Set(localById.keys());
-  const scryfallIds = new Set(scryfallById.keys());
-
-  const inBoth = [...localIds].filter((id) => scryfallIds.has(id));
-  const onlyLocal = [...localIds].filter((id) => !scryfallIds.has(id));
-  const onlyScryfall = [...scryfallIds].filter((id) => !localIds.has(id));
+  let comparison: DiffComparison;
+  if (normalized.uniqueMode === "prints") {
+    comparison = compareBySetKeys(localCards, scryfallCards, (e) => e.id, "prints");
+  } else if (normalized.uniqueMode === "cards") {
+    comparison = compareBySetKeys(
+      localCards,
+      scryfallCards,
+      (e) => e.oracleId ?? e.id,
+      "cards",
+    );
+  } else {
+    comparison = compareArtByOracleCounts(localCards, scryfallCards);
+  }
 
   const sep = "--------------------------------------------------";
   process.stdout.write(`\nDiff Summary: "${query}"\n`);
   process.stdout.write(`${sep}\n`);
-  process.stdout.write(`In Both: ${inBoth.length}\n`);
-  process.stdout.write(`Only in Frantic Search: ${onlyLocal.length}\n`);
-  process.stdout.write(`Only in Scryfall: ${onlyScryfall.length}\n`);
+  process.stdout.write(`Comparison mode: ${comparison.mode}\n`);
+  process.stdout.write(`Local unique mode: ${normalized.uniqueMode}\n`);
+  process.stdout.write(`Local include:extras: ${normalized.includeExtras ? "yes" : "no"}\n`);
+  process.stdout.write(`In Both: ${comparison.inBoth}\n`);
+  process.stdout.write(`Only in Frantic Search: ${comparison.onlyLocal}\n`);
+  process.stdout.write(`Only in Scryfall: ${comparison.onlyScryfall}\n`);
+  if (comparison.note) process.stdout.write(`Note: ${comparison.note}\n`);
 
-  if (onlyLocal.length > 0 || onlyScryfall.length > 0) {
+  if (comparison.onlyLocal > 0 || comparison.onlyScryfall > 0) {
     process.stdout.write(`\nDiscrepancies:\n`);
     process.stdout.write(`${sep}\n`);
 
-    if (onlyLocal.length > 0) {
+    if (comparison.onlyLocal > 0) {
       process.stdout.write(`\n[Frantic Search Only]\n`);
-      for (const id of onlyLocal.sort()) {
-        const e = localById.get(id)!;
+      for (const e of comparison.localOnlyEntries) {
         process.stdout.write(formatEntry(e, verbose) + "\n");
       }
     }
 
-    if (onlyScryfall.length > 0) {
+    if (comparison.onlyScryfall > 0) {
       process.stdout.write(`\n[Scryfall Only]\n`);
-      for (const id of onlyScryfall.sort()) {
-        const e = scryfallById.get(id)!;
+      for (const e of comparison.scryfallOnlyEntries) {
         process.stdout.write(formatEntry(e, verbose) + "\n");
       }
     }
