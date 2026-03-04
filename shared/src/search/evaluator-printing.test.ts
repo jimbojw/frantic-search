@@ -281,8 +281,8 @@ describe("NOT with printing domain", () => {
   test("-set:mh2 lightning printingIndices excludes MH2 rows", () => {
     const { printingIndices } = evaluate("-set:mh2 lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt's non-MH2 printings: A25 (row 2), CMR etched (row 5), WCD (row 6), SLD (row 8)
-    expect(Array.from(printingIndices!)).toEqual([2, 5, 6, 8]);
+    // Bolt's non-MH2 printings: A25 (rows 2,10), CMR etched (row 5), WCD (row 6), SLD (row 8)
+    expect(Array.from(printingIndices!)).toEqual([2, 5, 6, 8, 10]);
   });
 });
 
@@ -316,8 +316,8 @@ describe("OR printing intersection (printingIndices)", () => {
   test("(set:sld OR set:mh2) lightning — only SLD + MH2 printings", () => {
     const { printingIndices } = evaluate("(set:sld OR set:mh2) lightning");
     expect(printingIndices).toBeDefined();
-    // MH2 rows 0,1 + SLD row 8 — not A25(2), CMR(5), WCD(6)
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 8]);
+    // MH2 rows 0,1,9 + SLD row 8 — not A25(2,10), CMR(5), WCD(6)
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 8, 9]);
   });
 
   test("(set:sld OR set:c21) t:instant — only SLD Bolt printings, not C21 Sol Ring", () => {
@@ -338,8 +338,8 @@ describe("OR printing intersection (printingIndices)", () => {
   test("(set:sld OR set:mh2) — pure printing OR, no face constraint", () => {
     const { printingIndices } = evaluate("set:sld OR set:mh2");
     expect(printingIndices).toBeDefined();
-    // MH2 rows 0,1 + SLD row 8
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 8]);
+    // MH2 rows 0,1,9 + SLD row 8
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 8, 9]);
   });
 });
 
@@ -369,16 +369,16 @@ describe("face indices output", () => {
 // ---------------------------------------------------------------------------
 
 describe("printingIndices output", () => {
-  test("set:mh2 returns printing rows 0,1 (both MH2 printings)", () => {
+  test("set:mh2 returns printing rows 0,1,9 (all MH2 printings)", () => {
     const { printingIndices } = evaluate("set:mh2");
     expect(printingIndices).toBeDefined();
-    expect(Array.from(printingIndices!)).toEqual([0, 1]);
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
   });
 
-  test("set:a25 returns printing row 2 only", () => {
+  test("set:a25 returns printing rows 2,10", () => {
     const { printingIndices } = evaluate("set:a25");
     expect(printingIndices).toBeDefined();
-    expect(Array.from(printingIndices!)).toEqual([2]);
+    expect(Array.from(printingIndices!)).toEqual([2, 10]);
   });
 
   test("set:c21 returns printing rows 3,4", () => {
@@ -393,16 +393,16 @@ describe("printingIndices output", () => {
     expect(Array.from(printingIndices!)).toEqual([1]);
   });
 
-  test("set:mh2 rarity:rare returns rows 0,1", () => {
+  test("set:mh2 rarity:rare returns rows 0,1,9", () => {
     const { printingIndices } = evaluate("set:mh2 rarity:rare");
     expect(printingIndices).toBeDefined();
-    expect(Array.from(printingIndices!)).toEqual([0, 1]);
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
   });
 
   test("cross-domain AND: t:instant set:mh2 refines printing indices", () => {
     const { printingIndices } = evaluate("t:instant set:mh2");
     expect(printingIndices).toBeDefined();
-    expect(Array.from(printingIndices!)).toEqual([0, 1]);
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
   });
 
   test("face-only query has no printingIndices", () => {
@@ -418,17 +418,17 @@ describe("printingIndices output", () => {
 describe("matchCount domain semantics", () => {
   test("printing-only leaf: matchCount is printing-row count", () => {
     const { result } = evaluate("set:mh2");
-    expect(result.matchCount).toBe(2);
+    expect(result.matchCount).toBe(3);
   });
 
   test("printing-only AND: matchCount is printing-row count of intersection", () => {
     const { result } = evaluate("set:mh2 rarity:rare");
-    expect(result.matchCount).toBe(2);
+    expect(result.matchCount).toBe(3);
   });
 
   test("printing-only OR: matchCount is printing-row count of union", () => {
     const { result } = evaluate("set:mh2 OR set:c21");
-    expect(result.matchCount).toBe(4);
+    expect(result.matchCount).toBe(5);
   });
 
   test("cross-domain AND: matchCount is face count (promoted)", () => {
@@ -437,9 +437,9 @@ describe("matchCount domain semantics", () => {
   });
 
   test("NOT of printing: matchCount is printing-row count", () => {
-    // -set:mh2 stays in printing domain: 7 non-MH2 rows (2,3,4,5,6,7,8).
+    // -set:mh2 stays in printing domain: 8 non-MH2 rows (2,3,4,5,6,7,8,10).
     const { result } = evaluate("-set:mh2");
-    expect(result.matchCount).toBe(7);
+    expect(result.matchCount).toBe(8);
   });
 });
 
@@ -553,17 +553,17 @@ describe("printing-level format legality", () => {
   test("f:commander with printing data produces printing-domain result", () => {
     const { result } = evaluate("f:commander");
     // All 9 cards are commander-legal, but matchCount is printing-row count
-    // for printing-domain results. Tournament-usable rows: 0,1,2,3,4,5,8 (7 rows).
+    // for printing-domain results. Tournament-usable rows: 0,1,2,3,4,5,8,9,10 (9 rows).
     // Rows 6 (GoldBorder) and 7 (Oversized) are excluded.
-    expect(result.matchCount).toBe(7);
+    expect(result.matchCount).toBe(9);
   });
 
   test("f:commander excludes gold-bordered printings", () => {
     const { printingIndices } = evaluate("f:commander unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt has 6 printings: rows 0,1,2,5,8 (normal) + row 6 (GoldBorder).
+    // Bolt has 8 printings: rows 0,1,2,5,8,9,10 (normal) + row 6 (GoldBorder).
     // f:commander should exclude row 6.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8]);
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8, 9, 10]);
   });
 
   test("f:commander excludes oversized printings", () => {
@@ -588,8 +588,8 @@ describe("printing-level format legality", () => {
   test("f:modern with printing data — Bolt has modern-legal non-gold printings", () => {
     const { printingIndices } = evaluate("f:modern unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt is modern-legal. Normal printings: rows 0,1,2,5,8. Row 6 (gold) excluded.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8]);
+    // Bolt is modern-legal. Normal printings: rows 0,1,2,5,8,9,10. Row 6 (gold) excluded.
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8, 9, 10]);
   });
 
   test("f:pioneer filters at card level — Bolt is not pioneer-legal", () => {
@@ -704,6 +704,39 @@ describe("is:oversized", () => {
 });
 
 // ---------------------------------------------------------------------------
+// is:spotlight, is:booster, is:masterpiece (Spec 073)
+// ---------------------------------------------------------------------------
+
+describe("is:spotlight is:booster is:masterpiece", () => {
+  test("is:spotlight matches spotlight printings", () => {
+    const output = evaluate("is:spotlight");
+    expect(output.indices.length).toBe(1);
+    expect(Array.from(output.indices)).toEqual([1]); // Lightning Bolt
+    const { printingIndices } = evaluate("is:spotlight");
+    expect(Array.from(printingIndices!)).toEqual([9]);
+  });
+
+  test("is:booster matches booster printings", () => {
+    const { printingIndices } = evaluate("is:booster");
+    expect(printingIndices).toBeDefined();
+    // Row 10 has Booster flag
+    expect(Array.from(printingIndices!)).toContain(10);
+  });
+
+  test("is:masterpiece matches masterpiece printings", () => {
+    const { printingIndices } = evaluate("is:masterpiece");
+    expect(printingIndices).toBeDefined();
+    // Row 10 has Masterpiece flag
+    expect(Array.from(printingIndices!)).toEqual([10]);
+  });
+
+  test("is:showcase matches nothing in test data", () => {
+    const output = evaluate("is:showcase");
+    expect(output.indices.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Error handling with printing index present
 // ---------------------------------------------------------------------------
 
@@ -771,25 +804,25 @@ describe("unique:prints", () => {
     expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(4);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 9, 10]);
   });
 
   test("unique:prints alone expands all printings of all cards", () => {
     const output = evaluate("unique:prints");
-    // All 9 cards match. Printings: Bolt (0,1,2,5,6,8) + Sol Ring (3,4,7).
+    // All 9 cards match. Printings: Bolt (0,1,2,5,6,8,9,10) + Sol Ring (3,4,7).
     expect(output.indices.length).toBe(9);
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 3, 4, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
   });
 
   test("unique:prints with printing conditions returns only matching printings", () => {
-    // r:rare matches Bolt (rows 0,1,6 are rare). unique:prints should return
+    // r:rare matches Bolt (rows 0,1,6,9 are rare). unique:prints should return
     // only the rare printing rows, not all Bolt printings.
     const output = evaluate("r:rare unique:prints");
     expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(1); // Bolt only
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 6]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 1, 6, 9]);
   });
 
   test("is:foil unique:prints returns only foil printings", () => {
@@ -802,22 +835,22 @@ describe("unique:prints", () => {
   });
 
   test("is:nonfoil unique:prints returns only nonfoil printings", () => {
-    // Nonfoil rows (finish !== Foil): #0, #2, #3, #5, #6, #7, #8.
+    // Nonfoil rows (finish !== Foil): #0, #2, #3, #5, #6, #7, #8, #9, #10.
     // Order: by face (indices), then printingsOf(face) — Bolt first, then Sol Ring.
     const output = evaluate("is:nonfoil unique:prints");
     expect(output.uniqueMode).toBe("prints");
     expect(output.indices.length).toBe(2); // Bolt + Sol Ring
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 9, 10, 3, 7]);
   });
 
   test("-is:foil unique:prints returns non-foil printings", () => {
-    // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7,8}.
+    // NOT preserves printing domain: non-foil rows = {0,2,3,5,6,7,8,9,10}.
     // Order: by face, then printingsOf(face).
     const output = evaluate("-is:foil unique:prints");
     expect(output.uniqueMode).toBe("prints");
     expect(output.printingIndices).toBeDefined();
-    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 3, 7]);
+    expect(Array.from(output.printingIndices!)).toEqual([0, 2, 5, 6, 8, 9, 10, 3, 7]);
   });
 
   test("unique:prints is not treated as a filter (does not affect card count)", () => {

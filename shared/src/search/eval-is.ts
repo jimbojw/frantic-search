@@ -230,12 +230,12 @@ export const PRINTING_IS_KEYWORDS = new Set([
   "foil", "nonfoil", "etched",
   "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
   "borderless", "extended", "oversized",
+  "spotlight", "booster", "masterpiece", "colorshifted", "showcase", "inverted", "nyxtouched",
   ...Object.keys(PROMO_TYPE_FLAGS),
 ]);
 
 export const UNSUPPORTED_IS_KEYWORDS = new Set([
-  "spotlight",
-  "booster", "masterpiece", "colorshifted",
+  "spotlight", "booster", "masterpiece", "colorshifted",
   "newinpauper", "meldpart", "meldresult",
 ]);
 
@@ -445,6 +445,27 @@ export function evalPrintingIsKeyword(
       break;
     case "oversized":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Oversized) buf[i] = 1;
+      break;
+    case "spotlight":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Spotlight) buf[i] = 1;
+      break;
+    case "booster":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Booster) buf[i] = 1;
+      break;
+    case "masterpiece":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Masterpiece) buf[i] = 1;
+      break;
+    case "colorshifted":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Colorshifted) buf[i] = 1;
+      break;
+    case "showcase":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Showcase) buf[i] = 1;
+      break;
+    case "inverted":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Inverted) buf[i] = 1;
+      break;
+    case "nyxtouched":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Nyxtouched) buf[i] = 1;
       break;
     default: {
       const entry = PROMO_TYPE_FLAGS[keyword];

@@ -72,7 +72,7 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 ### Bitmask columns
 
 - `rarity: number[]` — uint8 bitmask. `common=1, uncommon=2, rare=4, mythic=8, special=16`. One bit set per row. Bitmask encoding (rather than enum) enables fast bitwise evaluation for comparisons like `r>=rare` (test against `rare | special | mythic = 0b11100`).
-- `printing_flags: number[]` — uint8 bitmask for boolean printing attributes:
+- `printing_flags: number[]` — uint32 bitmask for boolean printing attributes (up to 32 bits):
 
 | Bit | Flag |
 |---|---|
@@ -84,6 +84,15 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 | 5 | `highres_image` |
 | 6 | `borderless` (from `border_color === "borderless"`) |
 | 7 | `extended_art` (from `frame_effects` containing `"extendedart"`) |
+| 8 | `gold_border` (Spec 056) |
+| 9 | `oversized` (Spec 056) |
+| 10 | `spotlight` (Spec 073; from `story_spotlight`) |
+| 11 | `booster` (Spec 073; from `booster`) |
+| 12 | `masterpiece` (Spec 073; from `frame_effects`) |
+| 13 | `colorshifted` (Spec 073; from `frame_effects`) |
+| 14 | `showcase` (Spec 073; from `frame_effects`) |
+| 15 | `inverted` (Spec 073; from `frame_effects`) |
+| 16 | `nyxtouched` (Spec 073; from `frame_effects`) |
 
 - `frame: number[]` — uint8 bitmask. `1993=1, 1997=2, 2003=4, 2015=8, future=16`. One bit set per row.
 

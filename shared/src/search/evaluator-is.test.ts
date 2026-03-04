@@ -587,10 +587,17 @@ describe("is: operator", () => {
     expect(foil.matchCount).toBe(-1);
   });
 
-  test("is:spotlight returns unsupported (per Spec 039)", () => {
+  test("is:meldpart returns unsupported (per Spec 039)", () => {
     const cache = new NodeCache(isIndex);
+    const result = cache.evaluate(parse("is:meldpart")).result;
+    expect(result.error).toBe('unsupported keyword "meldpart"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("is:spotlight without printings returns printing data not loaded", () => {
+    const cache = new NodeCache(index);
     const result = cache.evaluate(parse("is:spotlight")).result;
-    expect(result.error).toBe('unsupported keyword "spotlight"');
+    expect(result.error).toBe("printing data not loaded");
     expect(result.matchCount).toBe(-1);
   });
 

@@ -21,7 +21,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     // f:commander is now a printing-domain field: only cards with tournament-usable
     // printings match. Only Bolt and Sol Ring have printings in the fixture.
     expect(result.pinnedIndicesCount).toBe(2)
-    expect(result.pinnedPrintingCount).toBe(7) // 7 tournament-usable printing rows
+    expect(result.pinnedPrintingCount).toBe(9) // 9 tournament-usable printing rows (Bolt: 7, Sol: 2)
     expect(result.hasPrintingConditions).toBe(true)
     expect(result.uniqueMode).toBe('cards')
   })
@@ -36,7 +36,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     })
     expect(result.pinnedBreakdown).toBeDefined()
     expect(result.pinnedIndicesCount).toBe(1) // Lightning Bolt
-    expect(result.pinnedPrintingCount).toBe(2) // MH2 has 2 printings (rare nonfoil, rare foil)
+    expect(result.pinnedPrintingCount).toBe(3) // MH2 has 3 printings (rows 0,1,9)
     expect(result.hasPrintingConditions).toBe(true)
     expect(result.uniqueMode).toBe('cards')
   })
@@ -51,7 +51,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     })
     expect(result.pinnedBreakdown).toBeDefined()
     expect(result.pinnedIndicesCount).toBe(4) // Bolt, Counterspell, Azorius Charm, Dismember
-    expect(result.pinnedPrintingCount).toBe(6) // Bolt has 6 printings in fixture (0,1,2,5,6,8), others have none
+    expect(result.pinnedPrintingCount).toBe(8) // Bolt has 8 printings in fixture (0,1,2,5,6,8,9,10), others have none
     expect(result.uniqueMode).toBe('prints')
   })
 
@@ -65,9 +65,9 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     })
     expect(result.pinnedBreakdown).toBeDefined()
     expect(result.pinnedIndicesCount).toBe(1) // pinned: Lightning Bolt only
-    expect(result.pinnedPrintingCount).toBe(2) // MH2 printings of Bolt
+    expect(result.pinnedPrintingCount).toBe(3) // MH2 printings of Bolt (rows 0,1,9)
     expect(result.indices.length).toBe(1) // intersection: red + Bolt = 1
-    expect(result.printingIndices?.length).toBe(2) // intersection of printings
+    expect(result.printingIndices?.length).toBe(3) // intersection of printings
   })
 
   it('both non-empty pinned format query filters by printing legality', () => {
@@ -81,7 +81,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.pinnedBreakdown).toBeDefined()
     // f:commander is printing-domain: only Bolt and Sol Ring have tournament-usable printings.
     expect(result.pinnedIndicesCount).toBe(2)
-    expect(result.pinnedPrintingCount).toBe(7) // 7 tournament-usable printing rows
+    expect(result.pinnedPrintingCount).toBe(9) // 9 tournament-usable printing rows (Bolt: 7, Sol: 2)
     // Intersection: creatures ∩ cards-with-commander-printings = 0 (Bolt/Sol Ring aren't creatures)
     expect(result.indices.length).toBe(0)
   })
@@ -198,7 +198,7 @@ describe('default playable filter (Spec 057)', () => {
   })
 
   it('excludes non-tournament printings by default with unique:prints', () => {
-    // Bolt has printings 0,1,2,5,6,8 (row 6 GoldBorder). Sol Ring has 3-7 (row 7 Oversized).
+    // Bolt has printings 0,1,2,5,6,8,9,10 (row 6 GoldBorder). Sol Ring has 3-7 (row 7 Oversized).
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
       cache: funnyCache,
@@ -206,10 +206,10 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    // Bolt has 6 printings (0,1,2,5,6,8). Filter removes #6 (GoldBorder) → 5 remain.
+    // Bolt has 8 printings (0,1,2,5,6,8,9,10). Filter removes #6 (GoldBorder) → 7 remain.
     expect(result.printingIndices).toBeDefined()
     expect(Array.from(result.printingIndices!)).not.toContain(6)
-    expect(result.printingIndices!.length).toBe(5)
+    expect(result.printingIndices!.length).toBe(7)
   })
 
   it('populates printingIndicesIncludingExtras when filter removes printings', () => {
@@ -220,7 +220,7 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    expect(result.printingIndicesIncludingExtras).toBe(6)
+    expect(result.printingIndicesIncludingExtras).toBe(8)
   })
 
   it('include:extras shows non-tournament printings', () => {
@@ -231,8 +231,8 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    // All 6 Bolt printings including #6 (GoldBorder)
-    expect(result.printingIndices!.length).toBe(6)
+    // All 8 Bolt printings including #6 (GoldBorder)
+    expect(result.printingIndices!.length).toBe(8)
     expect(result.printingIndicesIncludingExtras).toBeUndefined()
   })
 

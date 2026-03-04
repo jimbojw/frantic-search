@@ -186,7 +186,7 @@ export const FINISH_FROM_STRING: Record<string, number> = {
   etched: Finish.Etched,
 };
 
-// --- Printing Flags (bitmask, 10 bits) ---
+// --- Printing Flags (bitmask, 17 bits) ---
 export const PrintingFlag = {
   FullArt: 1 << 0,
   Textless: 1 << 1,
@@ -198,6 +198,13 @@ export const PrintingFlag = {
   ExtendedArt: 1 << 7,
   GoldBorder: 1 << 8,
   Oversized: 1 << 9,
+  Spotlight: 1 << 10,
+  Booster: 1 << 11,
+  Masterpiece: 1 << 12,
+  Colorshifted: 1 << 13,
+  Showcase: 1 << 14,
+  Inverted: 1 << 15,
+  Nyxtouched: 1 << 16,
 } as const;
 
 // --- Frame (bitmask, 5 bits) ---

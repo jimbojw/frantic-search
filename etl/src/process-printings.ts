@@ -47,6 +47,8 @@ interface DefaultCard {
   digital?: boolean;
   highres_image?: boolean;
   oversized?: boolean;
+  story_spotlight?: boolean;
+  booster?: boolean;
   border_color?: string;
   frame?: string;
   frame_effects?: string[];
@@ -86,6 +88,13 @@ function encodePrintingFlags(card: DefaultCard): number {
     flags |= PrintingFlag.GoldBorder;
   }
   if (card.oversized) flags |= PrintingFlag.Oversized;
+  if (card.story_spotlight) flags |= PrintingFlag.Spotlight;
+  if (card.booster) flags |= PrintingFlag.Booster;
+  if (card.frame_effects?.includes("masterpiece")) flags |= PrintingFlag.Masterpiece;
+  if (card.frame_effects?.includes("colorshifted")) flags |= PrintingFlag.Colorshifted;
+  if (card.frame_effects?.includes("showcase")) flags |= PrintingFlag.Showcase;
+  if (card.frame_effects?.includes("inverted")) flags |= PrintingFlag.Inverted;
+  if (card.frame_effects?.includes("nyxtouched")) flags |= PrintingFlag.Nyxtouched;
   return flags;
 }
 

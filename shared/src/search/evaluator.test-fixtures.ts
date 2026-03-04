@@ -120,18 +120,27 @@ export const index = new CardIndex(TEST_DATA);
 // Printing #6  Lightning Bolt (face 1) | WCD  | rare     | nonfoil | $0.10 | 2015 | 1998-08-12 | GoldBorder
 // Printing #7  Sol Ring       (face 3) | OC21 | uncommon | nonfoil | $0.50 | 2015 | 2021-06-18 | Oversized
 // Printing #8  Lightning Bolt (face 1) | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06
+// Printing #9  Lightning Bolt (face 1) | MH2  | rare     | nonfoil | $1.50 | 2015 | 2021-06-18 | Spotlight
+// Printing #10 Lightning Bolt (face 1) | A25  | uncommon | nonfoil | $0.60 | 2015 | 2018-03-16 | Booster, Masterpiece
 
 export const TEST_PRINTING_DATA: PrintingColumnarData = {
-  canonical_face_ref: [1, 1, 1, 3, 3, 1, 1, 3, 1],
-  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f", "p-g", "p-h", "p-i"],
-  collector_numbers: ["261", "261", "113", "280", "280", "187", "64", "280", "1"],
-  set_indices: [0, 0, 1, 2, 2, 3, 4, 5, 6],
-  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Rare, Rarity.Uncommon, Rarity.Special],
-  printing_flags: [0, 0, 0, 0, 0, 0, PrintingFlag.GoldBorder, PrintingFlag.Oversized, 0],
-  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil],
-  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
-  price_usd: [100, 300, 50, 75, 500, 200, 10, 50, 200],
-  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106],
+  canonical_face_ref: [1, 1, 1, 3, 3, 1, 1, 3, 1, 1, 1],
+  scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f", "p-g", "p-h", "p-i", "p-j", "p-k"],
+  collector_numbers: ["261", "261", "113", "280", "280", "187", "64", "280", "1", "262", "114"],
+  set_indices: [0, 0, 1, 2, 2, 3, 4, 5, 6, 0, 1],
+  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Rare, Rarity.Uncommon, Rarity.Special, Rarity.Rare, Rarity.Uncommon],
+  printing_flags: [
+    0, 0, 0, 0, 0, 0,
+    PrintingFlag.GoldBorder,
+    PrintingFlag.Oversized,
+    0,
+    PrintingFlag.Spotlight,
+    PrintingFlag.Booster | PrintingFlag.Masterpiece,
+  ],
+  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil],
+  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
+  price_usd: [100, 300, 50, 75, 500, 200, 10, 50, 200, 150, 60],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106, 20210618, 20180316],
   games: [
     Game.Paper | Game.Arena,   // 0,1 MH2
     Game.Paper | Game.Arena,
@@ -142,12 +151,14 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     Game.Paper,                // 6 WCD
     Game.Paper,                // 7 OC21
     Game.Paper | Game.Arena,   // 8 SLD
+    Game.Paper | Game.Arena,   // 9 Spotlight
+    Game.Paper | Game.Arena,   // 10 Booster+Masterpiece
   ],
   // poster=col1 bit1, rainbowfoil=col1 bit3, universesbeyond=col1 bit16, glossy=col1 bit19
-  promo_types_flags_0: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-  promo_types_flags_1: [0, 1 << 3, 0, 1 << 19, 0, 0, 0, 0, (1 << 1) | (1 << 16)], // #1 rainbowfoil, #3 glossy, #8 poster+universesbeyond
-  // Face 1 (Bolt): p-a,p-b same art(0), p-c(1), p-f(2), p-g(3), p-i(4). Face 3 (Sol): p-d,p-e same(0), p-h(1)
-  illustration_id_index: [0, 0, 1, 0, 0, 2, 3, 1, 4],
+  promo_types_flags_0: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  promo_types_flags_1: [0, 1 << 3, 0, 1 << 19, 0, 0, 0, 0, (1 << 1) | (1 << 16), 0, 0], // #1 rainbowfoil, #3 glossy, #8 poster+universesbeyond
+  // Face 1 (Bolt): p-a,p-b same art(0), p-c(1), p-f(2), p-g(3), p-i(4), p-j(5), p-k(6). Face 3 (Sol): p-d,p-e same(0), p-h(1)
+  illustration_id_index: [0, 0, 1, 0, 0, 2, 3, 1, 4, 5, 6],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },
