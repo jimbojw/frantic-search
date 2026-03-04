@@ -283,6 +283,41 @@ describe("OR with printing domain", () => {
 });
 
 // ---------------------------------------------------------------------------
+// OR printing intersection — printingIndices refinement (Issue #76, Spec 070)
+// ---------------------------------------------------------------------------
+
+describe("OR printing intersection (printingIndices)", () => {
+  test("(set:sld OR set:mh2) lightning — only SLD + MH2 printings", () => {
+    const { printingIndices } = evaluate("(set:sld OR set:mh2) lightning");
+    expect(printingIndices).toBeDefined();
+    // MH2 rows 0,1 + SLD row 8 — not A25(2), CMR(5), WCD(6)
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 8]);
+  });
+
+  test("(set:sld OR set:c21) t:instant — only SLD Bolt printings, not C21 Sol Ring", () => {
+    const { printingIndices } = evaluate("(set:sld OR set:c21) t:instant");
+    expect(printingIndices).toBeDefined();
+    // SLD row 8 is Bolt (instant). C21 rows 3,4 are Sol Ring (artifact).
+    expect(Array.from(printingIndices!)).toEqual([8]);
+  });
+
+  test("(set:sld OR is:ub) lightning — only printing #8 (SLD+UB)", () => {
+    // is:ub matches printing #8 (universesbeyond promo type). set:sld also matches #8.
+    // Union is just #8. AND with "lightning" (Bolt) → #8 only.
+    const { printingIndices } = evaluate("(set:sld OR is:ub) lightning");
+    expect(printingIndices).toBeDefined();
+    expect(Array.from(printingIndices!)).toEqual([8]);
+  });
+
+  test("(set:sld OR set:mh2) — pure printing OR, no face constraint", () => {
+    const { printingIndices } = evaluate("set:sld OR set:mh2");
+    expect(printingIndices).toBeDefined();
+    // MH2 rows 0,1 + SLD row 8
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 8]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Face indices output
 // ---------------------------------------------------------------------------
 

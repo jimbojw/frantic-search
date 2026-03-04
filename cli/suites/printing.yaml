@@ -204,6 +204,18 @@
     count_min: 30
 
 # ---------------------------------------------------------------------------
+# OR with printing conditions (Issue #76, Spec 070)
+# ---------------------------------------------------------------------------
+
+- name: "(set:sld OR is:ub) ci:boros t:equipment only returns SLD/UB printings"
+  query: "(set:sld OR is:ub) ci:boros t:equipment"
+  scryfall_query: "(set:sld OR is:ub) ci:boros t:equipment include:extras"
+  assertions:
+    contains:
+      - "Colossus Hammer"
+    count_min: 10
+
+# ---------------------------------------------------------------------------
 # NOT with printing conditions
 # ---------------------------------------------------------------------------
 

@@ -288,9 +288,14 @@ export class NodeCache {
         }
         break;
       }
-      case "OR":
-        // OR children are alternatives — skip refinement for correctness.
+      case "OR": {
+        const orInterned = this.intern(ast);
+        if (orInterned.computed && orInterned.computed.domain === "printing") {
+          const lb = orInterned.computed.buf;
+          for (let i = 0; i < printBuf.length; i++) printBuf[i] &= lb[i];
+        }
         break;
+      }
     }
   }
 
