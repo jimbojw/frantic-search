@@ -12,19 +12,8 @@ import {
 } from "./paths";
 import { log } from "./log";
 
-const FILTERED_LAYOUTS = new Set([
-  "art_series",
-  "token",
-  "double_faced_token",
-  "emblem",
-  "planar",
-  "scheme",
-  "vanguard",
-]);
-
 interface OracleCard {
   id?: string;
-  layout?: string;
 }
 
 export type Manifest = Record<string, string>;
@@ -74,7 +63,6 @@ export function loadOracleIds(): string[] {
   const ids: string[] = [];
   for (const card of cards) {
     if (!card.id) continue;
-    if (FILTERED_LAYOUTS.has(card.layout ?? "normal")) continue;
     ids.push(card.id);
   }
   return ids;

@@ -56,17 +56,6 @@ interface DefaultCard {
   prices?: Record<string, string | null>;
 }
 
-// Same set of layouts filtered in the card-level ETL
-const FILTERED_LAYOUTS = new Set([
-  "art_series",
-  "token",
-  "double_faced_token",
-  "emblem",
-  "planar",
-  "scheme",
-  "vanguard",
-]);
-
 // ---------------------------------------------------------------------------
 // Encoding helpers
 // ---------------------------------------------------------------------------
@@ -260,8 +249,6 @@ export function processPrintings(verbose: boolean): void {
   const faceIllustrationSeen = new Map<number, Set<string>>();
   const canonicalKey = new Map<number, string>();
   for (const card of defaultCards) {
-    const layout = card.layout ?? "normal";
-    if (FILTERED_LAYOUTS.has(layout)) continue;
     const cf = oracleIdMap.get(card.oracle_id ?? "");
     if (cf === undefined) continue;
     const illId = getFrontIllustrationId(card);
@@ -323,12 +310,6 @@ export function processPrintings(verbose: boolean): void {
   let totalEntries = 0;
 
   for (const card of defaultCards) {
-    const layout = card.layout ?? "normal";
-    if (FILTERED_LAYOUTS.has(layout)) {
-      dropped++;
-      continue;
-    }
-
     if (!card.oracle_id) {
       dropped++;
       continue;
@@ -384,7 +365,7 @@ export function processPrintings(verbose: boolean): void {
 
   data.set_lookup = setEncoder.lookup();
 
-  log(`Dropped ${dropped} unmappable/filtered entries`, verbose);
+  log(`Dropped ${dropped} unmappable entries`, verbose);
   log(`Emitted ${totalEntries} printing rows (${data.set_lookup.length} unique sets)`, verbose);
 
   ensureDistDir();

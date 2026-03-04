@@ -10,7 +10,7 @@ Transform the raw Scryfall `oracle-cards.json` into a compact columnar JSON file
 
 The `download` command (Spec 001) fetches `oracle-cards.json` — a JSON array of ~37,000 card objects. Each object uses Scryfall's card schema, where some fields live at the top level and others live on `card_faces` depending on the card's `layout`.
 
-The `process` command reads this raw data and produces `columns.json`, the columnar format consumed by the query engine (Spec 002). The transformation involves three concerns: filtering non-searchable cards, expanding multi-face cards into separate rows, and encoding fields into compact columnar arrays.
+The `process` command reads this raw data and produces `columns.json`, the columnar format consumed by the query engine (Spec 002). The transformation involves expanding multi-face cards into separate rows and encoding fields into compact columnar arrays. All layouts from Scryfall are indexed; default result filtering (playable cards only) is applied at query time (Spec 057).
 
 ## CLI Interface
 
@@ -28,35 +28,20 @@ npm run etl -- process [options]
 |------------------------------|-----------------------------------|
 | `data/raw/oracle-cards.json` | Scryfall Oracle Cards JSON array  |
 
-## Layout Filtering
-
-Cards with layouts that are not meaningful to search are dropped entirely:
-
-| Filtered layout      | Reason                                    |
-|----------------------|-------------------------------------------|
-| `art_series`         | Art cards, type line is `"Card"`, no oracle text |
-| `token`              | Token cards, not part of a deck           |
-| `double_faced_token` | Double-faced tokens                       |
-| `emblem`             | Emblem cards                              |
-| `planar`             | Planechase plane cards                    |
-| `scheme`             | Archenemy scheme cards                    |
-| `vanguard`           | Vanguard avatar cards                     |
-
-Cards that pass the layout filter are included regardless of legality status, digital-only status, or set type. The ETL pipeline remains inclusive; default result filtering is applied at query time (Spec 057). See ADR-019 for the project's parity stance.
-
 ## Face Expansion
 
 Cards with multi-face layouts emit one row per face. The face data comes from the card's `card_faces` array:
 
-| Multi-face layout | Faces | Example                                   |
-|-------------------|-------|-------------------------------------------|
-| `transform`       | 2     | Ayara, Widow of the Realm (front + back)  |
-| `modal_dfc`       | 2     | Valki, God of Lies (front + back)         |
-| `adventure`       | 2     | Bonecrusher Giant (creature + adventure)  |
-| `split`           | 2–5   | Fire // Ice (left + right)                |
-| `flip`            | 2     | Akki Lavarunner (top + bottom)            |
+| Multi-face layout     | Faces | Example                                   |
+|----------------------|-------|-------------------------------------------|
+| `transform`           | 2     | Ayara, Widow of the Realm (front + back)  |
+| `modal_dfc`           | 2     | Valki, God of Lies (front + back)         |
+| `adventure`           | 2     | Bonecrusher Giant (creature + adventure)  |
+| `split`               | 2–5   | Fire // Ice (left + right)                |
+| `flip`                | 2     | Akki Lavarunner (top + bottom)            |
+| `double_faced_token`  | 2     | Double-faced tokens                       |
 
-All other layouts (`normal`, `saga`, `class`, `mutate`, `leveler`, `meld`, `prototype`, `case`) emit a single row using top-level card fields.
+All other layouts (`normal`, `saga`, `class`, `mutate`, `leveler`, `meld`, `prototype`, `case`, `token`, `art_series`, `emblem`, `planar`, `scheme`, `vanguard`) emit a single row using top-level card fields.
 
 ### Field sourcing for multi-face rows
 
@@ -128,7 +113,7 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 
 The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` from `default-cards.json`.
 
-With the current Scryfall dataset (~37k raw oracle cards), the process filters ~3,500 non-searchable cards, expands ~800 multi-face cards into ~1,600 face rows, and emits ~34,000 total face rows.
+With the current Scryfall dataset (~37k raw oracle cards), the process expands ~800 multi-face cards into ~1,600 face rows and emits ~37,500 total face rows (all layouts indexed).
 
 ## Error Handling
 
@@ -138,8 +123,8 @@ With the current Scryfall dataset (~37k raw oracle cards), the process filters ~
 ## Acceptance Criteria
 
 1. Running `npm run etl -- process` after `download` produces `data/dist/columns.json`.
-2. Non-searchable layouts (art_series, tokens, etc.) are absent from the output.
-3. Multi-face cards (transform, modal_dfc, adventure, split, flip) produce one row per face with face-level field values.
+2. All layouts from oracle-cards.json are present in the output.
+3. Multi-face cards (transform, modal_dfc, adventure, split, flip, double_faced_token) produce one row per face with face-level field values.
 4. Card-level fields (color_identity, legalities) are duplicated identically across all faces of the same card.
 5. `canonical_face` for all faces of a multi-face card points to the same row (the first-emitted face).
 6. `card_index` correctly maps back to the card's position in the original `oracle-cards.json`.
@@ -160,3 +145,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process filters ~
   The `ColumnarData` type's thumb hash fields are now optional.
 - 2026-03-04: Removed host and augment from filtered layouts for Scryfall parity.
   Scryfall supports is:host and is:augment; these Unstable half-cards are searchable.
+- 2026-03-04: Removed ETL-level layout filtering (Issue #80). All layouts (tokens, emblems,
+  art_series, planar, scheme, vanguard) are now indexed. Default "playable only" behavior
+  remains via query-time filter (Spec 057); `include:extras` reveals non-playable objects.
+  Added double_faced_token to MULTI_FACE_LAYOUTS for proper per-face indexing.

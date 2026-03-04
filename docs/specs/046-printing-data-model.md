@@ -49,7 +49,7 @@ Each Scryfall printing entry has an `oracle_id` field that identifies the oracle
 
 1. Build a `Map<string, number>` from `oracle_id` → canonical face index by iterating the existing `columns.json` (or the oracle cards used to build it).
 2. For each printing in `default-cards.json`, look up its `oracle_id` to get the `canonical_face_ref`.
-3. Printings whose `oracle_id` doesn't appear in the map (tokens, art series, etc. that were filtered during face-level processing) are dropped.
+3. Printings whose `oracle_id` doesn't appear in the map (e.g. missing `oracle_id` in Scryfall data) are dropped.
 
 ## Columnar Schema: `PrintingColumnarData`
 
@@ -237,7 +237,7 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 3. Every printing row's `canonical_face_ref` points to a valid canonical face index in `columns.json`.
 4. Each Scryfall printing with N finishes produces exactly N rows in the output.
 5. `price_usd` correctly maps to `prices.usd` for nonfoil rows, `prices.usd_foil` for foil rows, and `prices.usd_etched` for etched rows.
-6. Printings for filtered layouts (tokens, art series, etc.) are absent from the output.
+6. Printings for all layouts are present when the corresponding oracle card is in `columns.json`.
 7. `set_lookup` contains an entry for every set referenced by `set_indices`.
 8. The `--verbose` flag prints processing statistics (total printings, total rows after finish explosion, dropped printings, set count).
 9. `promo_types_flags_0` and `promo_types_flags_1` are populated from each printing's `promo_types` array via `PROMO_TYPE_FLAGS` bit mapping. Legacy `printings.json` without these columns is supported (PrintingIndex defaults to empty arrays).
@@ -246,3 +246,6 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 
 - 2026-03-03: Added `promo_types_flags_0` and `promo_types_flags_1` columns for Scryfall `promo_types` (52 values). Bit assignment is alphabetical, with late additions appended. See issue #72.
 - 2026-03-03: Added `illustration_id_index` column for `unique:art` display modifier (Issue #75). Two-pass ETL: build illustration sets per canonical face, then assign indices (canonical = 0, others by first appearance; null illustration_id gets synthetic index).
+- 2026-03-04: Removed ETL-level layout filtering (Issue #80). Printings for tokens, emblems,
+  art_series, planar, scheme, and vanguard are now included when their oracle cards are
+  in columns.json.

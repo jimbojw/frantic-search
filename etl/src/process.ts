@@ -51,22 +51,13 @@ interface Card {
   card_faces?: CardFace[];
 }
 
-const FILTERED_LAYOUTS = new Set([
-  "art_series",
-  "token",
-  "double_faced_token",
-  "emblem",
-  "planar",
-  "scheme",
-  "vanguard",
-]);
-
 const MULTI_FACE_LAYOUTS = new Set([
   "transform",
   "modal_dfc",
   "adventure",
   "split",
   "flip",
+  "double_faced_token",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -272,16 +263,9 @@ export function processCards(verbose: boolean): void {
 
   const thumbs: ThumbHashData = { art_crop: [], card: [] };
 
-  let filtered = 0;
-
   for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
     const card = cards[cardIdx];
     const layout = card.layout ?? "normal";
-
-    if (FILTERED_LAYOUTS.has(layout)) {
-      filtered++;
-      continue;
-    }
 
     const leg = encodeLegalities(card.legalities);
     const faceRowStart = data.names.length;
@@ -302,7 +286,7 @@ export function processCards(verbose: boolean): void {
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
 
-  log(`Filtered ${filtered} non-searchable cards, emitted ${data.names.length} face rows`, verbose);
+  log(`Emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);
 
   ensureDistDir();
