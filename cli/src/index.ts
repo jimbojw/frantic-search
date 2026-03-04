@@ -98,5 +98,19 @@ cli
     await runCompliance({ verify: !!options.verify, data: options.data });
   });
 
+cli
+  .command("diff <query>", "Compare local search results against Scryfall API")
+  .option("--data <path>", "Path to columns.json", { default: COLUMNS_PATH })
+  .option("--printings <path>", "Path to printings.json", { default: PRINTINGS_PATH })
+  .option("-q, --quiet", "Show only Scryfall IDs for discrepancies (default: include name, set, collector #)")
+  .action(async (query: string, options: { data: string; printings: string; quiet?: boolean }) => {
+    const { runDiff } = await import("./diff/run");
+    await runDiff(query, {
+      dataPath: options.data,
+      printingsPath: options.printings,
+      verbose: !options.quiet,
+    });
+  });
+
 cli.help();
 cli.parse();

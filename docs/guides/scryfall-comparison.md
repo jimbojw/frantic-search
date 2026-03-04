@@ -20,7 +20,15 @@ Key behaviors:
 
 ## Comparison Workflow
 
-Run the query locally and against Scryfall, sort both, and diff:
+**Recommended:** Use the `diff` subcommand to compare automatically:
+
+```bash
+npm run cli -- diff "YOUR QUERY"
+```
+
+This fetches Scryfall results, compares by Scryfall ID (handling `unique:prints` and printing-level queries), and reports In Both / Only in Frantic Search / Only in Scryfall with card names, sets, and collector numbers. Use `--quiet` for IDs only.
+
+**Manual workflow** (for scripting or custom comparison):
 
 ```bash
 # Local results

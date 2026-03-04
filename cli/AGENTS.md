@@ -9,6 +9,8 @@ npm run cli -- parse <query>                     # print AST as JSON
 npm run cli -- search <query>                    # evaluate against card dataset
 npm run cli -- search <query> --output names     # print matching card names
 npm run cli -- search <query> --output cards     # print full card JSON
+npm run cli -- diff "<query>"                    # compare local vs Scryfall results
+npm run cli -- diff "<query>" --quiet            # compact output (IDs only)
 npm run cli -- --help
 ```
 
