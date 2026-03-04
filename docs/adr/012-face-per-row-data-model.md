@@ -28,7 +28,7 @@ Each face of a multi-face card becomes its own row in the columnar data. Two met
 
 Card-level properties (legalities, color identity) are duplicated across all faces of the same card.
 
-Non-searchable layouts (`art_series`, `token`, `double_faced_token`, `emblem`, `planar`, `scheme`, `vanguard`, `augment`, `host`) are filtered out during ETL processing.
+Non-searchable layouts (`art_series`, `token`, `double_faced_token`, `emblem`, `planar`, `scheme`, `vanguard`) are filtered out during ETL processing.
 
 Multi-face layouts that produce multiple rows: `transform`, `modal_dfc`, `adventure`, `split`, `flip`.
 

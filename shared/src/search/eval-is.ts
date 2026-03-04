@@ -278,6 +278,8 @@ export function evalIsKeyword(
     case "adventure":
     case "leveler":
     case "saga":
+    case "host":
+    case "augment":
       for (let i = 0; i < n; i++) {
         if (index.layouts[i] === keyword) buf[cf[i]] = 1;
       }

@@ -20,8 +20,6 @@ const FILTERED_LAYOUTS = new Set([
   "planar",
   "scheme",
   "vanguard",
-  "augment",
-  "host",
 ]);
 
 interface OracleCard {

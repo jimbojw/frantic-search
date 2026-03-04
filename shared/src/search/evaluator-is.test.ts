@@ -76,6 +76,8 @@ const IS_TEST_DATA: ColumnarData = {
     "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
     "Blinding Souleater", "Oracle Hybrid Test",
     "Demonic Tutor",
+    "Bumbling Pangolin",
+    "Augment Card",
   ],
   combined_names: [
     "Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf",
@@ -97,6 +99,8 @@ const IS_TEST_DATA: ColumnarData = {
     "Temple of Triumph", "Irrigated Farmland", "Indatha Triome", "Hybrid-Phyrexian Test",
     "Blinding Souleater", "Oracle Hybrid Test",
     "Demonic Tutor",
+    "Bumbling Pangolin",
+    "Augment Card",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -116,6 +120,8 @@ const IS_TEST_DATA: ColumnarData = {
     "", "", "", "{1}{G/W/P}",
     "{3}", "{G}",
     "{1}{B}",
+    "{3}{R}",
+    "{2}",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -157,6 +163,8 @@ const IS_TEST_DATA: ColumnarData = {
     "{W/P}, {T}: Tap target creature.",
     "{G/U}: This creature gets +1/+1 until end of turn.",
     "Search your library for a card, put that card into your hand, then shuffle.",
+    "When this creature enters, you may destroy target artifact.",
+    "Augment {1}{R}",
   ],
   oracle_texts_tilde: [
     "Flying (~ can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -183,6 +191,8 @@ const IS_TEST_DATA: ColumnarData = {
     "",
     "", "",
     "Search your library for a card, put that card into your hand, then shuffle.",
+    "When ~ enters, you may destroy target artifact.",
+    "Augment {1}{R}",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -202,6 +212,8 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0, 0, Color.Green | Color.White,
     0, Color.Green,
     Color.Black,
+    Color.Red,
+    0,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -221,6 +233,8 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0, 0, Color.Green | Color.White,
     0, Color.Green,
     Color.Black,
+    Color.Red,
+    0,
   ],
   type_lines: [
     "Creature — Elf",
@@ -262,20 +276,22 @@ const IS_TEST_DATA: ColumnarData = {
     "Artifact Creature — Cleric",
     "Creature — Elf",
     "Sorcery",
+    "Host Creature — Pangolin Beast",
+    "Creature — Augment",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38],
-  scryfall_ids:          Array(39).fill(""),
-  art_crop_thumb_hashes: Array(39).fill(""),
-  card_thumb_hashes:     Array(39).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+  scryfall_ids:          Array(41).fill(""),
+  art_crop_thumb_hashes: Array(41).fill(""),
+  card_thumb_hashes:     Array(41).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -294,6 +310,8 @@ const IS_TEST_DATA: ColumnarData = {
     "normal", "normal", "normal", "normal",
     "normal", "normal",
     "normal",
+    "host",
+    "augment",
   ],
   flags: [
     0, 0, 0, 0, 0,
@@ -313,6 +331,7 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0, 0, 0,
     0, 0,
     CardFlag.GameChanger,
+    0, 0,
   ],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
@@ -352,7 +371,7 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    expect(isMatchCount("is:spell")).toBe(29);
+    expect(isMatchCount("is:spell")).toBe(31);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -428,6 +447,16 @@ describe("is: operator", () => {
 
   test("is:flip matches flip layout (none in pool)", () => {
     expect(isMatchCount("is:flip")).toBe(0);
+  });
+
+  test("is:host matches host layout", () => {
+    const indices = isMatchIndices("is:host");
+    expect(indices).toEqual([39]); // Bumbling Pangolin
+  });
+
+  test("is:augment matches augment layout", () => {
+    const indices = isMatchIndices("is:augment");
+    expect(indices).toEqual([40]); // Augment Card
   });
 
   // --- Oracle text checks ---
@@ -611,7 +640,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(34); // 35 unique cards - 1 funny
+    expect(indices.length).toBe(36); // 37 unique cards - 1 funny
   });
 
   // --- Land cycle checks ---

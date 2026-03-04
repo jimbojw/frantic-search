@@ -262,6 +262,33 @@
       - "Gitaxian Probe"
     count_min: 60
 
+# --- is:host and is:augment (Issue #79) ---
+
+- name: "is:host finds Unstable host cards (Scryfall parity)"
+  query: "is:host"
+  scryfall_query: "is:host include:extras"
+  assertions:
+    contains:
+      - "Bumbling Pangolin"
+    count_min: 20
+
+- name: "is:augment finds Unstable augment cards (Scryfall parity)"
+  query: "is:augment"
+  scryfall_query: "is:augment include:extras"
+  assertions:
+    contains:
+      - "Ninja"
+    count_min: 14
+
+- name: "Issue #79: (is:glossy OR is:funny) go include:extras finds Bumbling Pangolin"
+  query: "(is:glossy OR is:funny) go include:extras"
+  scryfall_query: "(is:glossy OR is:funny) go include:extras"
+  assertions:
+    contains:
+      - "Bumbling Pangolin"
+      - "Feisty Stegosaurus"
+    count_min: 64
+
 # --- is:gamechanger (Issue #40) ---
 
 - name: "is:gamechanger matches Commander Game Changer list"

@@ -51,6 +51,8 @@ These compare the face's layout string directly.
 | `is:meld` | `meld` |
 | `is:adventure` | `adventure` |
 | `is:leveler` | `leveler` |
+| `is:host` | `host` |
+| `is:augment` | `augment` |
 
 ### Oracle text checks
 

@@ -41,8 +41,6 @@ Cards with layouts that are not meaningful to search are dropped entirely:
 | `planar`             | Planechase plane cards                    |
 | `scheme`             | Archenemy scheme cards                    |
 | `vanguard`           | Vanguard avatar cards                     |
-| `augment`            | Unstable augment cards (half-cards)       |
-| `host`               | Unstable host cards (half-cards)          |
 
 Cards that pass the layout filter are included regardless of legality status, digital-only status, or set type. The ETL pipeline remains inclusive; default result filtering is applied at query time (Spec 057). See ADR-019 for the project's parity stance.
 
@@ -160,3 +158,5 @@ With the current Scryfall dataset (~37,000 raw cards), the process filters ~3,50
   process command now writes `data/dist/columns.json` (without thumb hashes)
   and `data/dist/thumb-hashes.json` (two arrays: `art_crop` and `card`).
   The `ColumnarData` type's thumb hash fields are now optional.
+- 2026-03-04: Removed host and augment from filtered layouts for Scryfall parity.
+  Scryfall supports is:host and is:augment; these Unstable half-cards are searchable.
