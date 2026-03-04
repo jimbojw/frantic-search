@@ -9,7 +9,6 @@ import {
   CardFlag,
   type ColumnarData,
 } from "@frantic-search/shared";
-import { normalizeOracleText } from "./tilde";
 
 // ---------------------------------------------------------------------------
 // Scryfall card shape (fields we care about)
@@ -172,13 +171,8 @@ function pushFaceRow(
   defenseDict: DictEncoder,
 ): void {
   data.names.push(face.name ?? "");
-  data.combined_names.push(card.name ?? "");
   data.mana_costs.push(face.mana_cost ?? "");
-  const oracleText = face.oracle_text ?? "";
-  data.oracle_texts.push(oracleText);
-  data.oracle_texts_tilde.push(
-    normalizeOracleText(face.name ?? "", oracleText),
-  );
+  data.oracle_texts.push(face.oracle_text ?? "");
   data.colors.push(encodeColors(face.colors ?? card.colors));
   data.color_identity.push(encodeColors(card.color_identity));
   data.type_lines.push(face.type_line ?? "");
@@ -236,10 +230,8 @@ export function processCards(verbose: boolean): void {
 
   const data: ColumnarData = {
     names: [],
-    combined_names: [],
     mana_costs: [],
     oracle_texts: [],
-    oracle_texts_tilde: [],
     colors: [],
     color_identity: [],
     type_lines: [],

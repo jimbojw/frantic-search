@@ -2,6 +2,8 @@
 import type { ColumnarData } from "../data";
 import { parseManaSymbols, computeCmc } from "./mana";
 import { parseStatValue } from "./stats";
+import { computeCombinedNames } from "./combined-names";
+import { normalizeOracleText } from "./tilde";
 
 const REMINDER_TEXT_RE = /\([^)]*\)/g;
 
@@ -12,6 +14,7 @@ function stripReminderText(text: string): string {
 export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
+  readonly combinedNames: string[];
   readonly combinedNamesLower: string[];
   readonly combinedNamesNormalized: string[];
   readonly oracleTextsLower: string[];
@@ -45,15 +48,27 @@ export class CardIndex {
 
   constructor(data: ColumnarData) {
     this.faceCount = data.names.length;
+
+    const combinedNames =
+      data.combined_names ??
+      computeCombinedNames(data.names, data.canonical_face);
+    this.combinedNames = combinedNames;
+
+    const oracleTextsTilde =
+      data.oracle_texts_tilde ??
+      data.names.map((name, i) =>
+        normalizeOracleText(name, data.oracle_texts[i] ?? ""),
+      );
+
     this.namesLower = data.names.map((n) => n.toLowerCase());
-    this.combinedNamesLower = data.combined_names.map((n) => n.toLowerCase());
-    this.combinedNamesNormalized = data.combined_names.map((n) =>
+    this.combinedNamesLower = combinedNames.map((n) => n.toLowerCase());
+    this.combinedNamesNormalized = combinedNames.map((n) =>
       n.toLowerCase().replace(/[^a-z0-9]/g, ""),
     );
     this.oracleTextsLower = data.oracle_texts.map((t) =>
       stripReminderText(t).toLowerCase(),
     );
-    this.oracleTextsTildeLower = data.oracle_texts_tilde.map((t) =>
+    this.oracleTextsTildeLower = oracleTextsTilde.map((t) =>
       stripReminderText(t).toLowerCase(),
     );
     this.manaCostsLower = data.mana_costs.map((m) => m.toLowerCase());

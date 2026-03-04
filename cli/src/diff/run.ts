@@ -111,6 +111,7 @@ async function fetchScryfallCards(query: string): Promise<CardEntry[]> {
 }
 
 function collectLocalCards(
+  index: CardIndex,
   data: ColumnarData,
   printingData: PrintingColumnarData | null,
   printingIndex: PrintingIndex | null,
@@ -128,7 +129,7 @@ function collectLocalCards(
       seen.add(id);
 
       const cf: number = printingData.canonical_face_ref[pi];
-      const name = data.combined_names[data.card_index[cf]] ?? data.names[cf] ?? "";
+      const name = index.combinedNames[cf] ?? data.names[cf] ?? "";
       const setIdx = printingData.set_indices[pi];
       const set = printingData.set_lookup[setIdx]?.code ?? "—";
       const collectorNumber = printingData.collector_numbers[pi] ?? "—";
@@ -144,7 +145,7 @@ function collectLocalCards(
       seen.add(id);
 
       const ci = data.card_index[fi];
-      const name = data.combined_names[ci] ?? data.names[fi] ?? "";
+      const name = index.combinedNames[fi] ?? data.names[fi] ?? "";
       const oracleId = rawOracleCards?.[ci]?.oracle_id;
       let set = "—";
       let collectorNumber = "—";
@@ -450,6 +451,7 @@ export async function runDiff(
   });
 
   const localCards = collectLocalCards(
+    index,
     data,
     printingData,
     printingIndex,

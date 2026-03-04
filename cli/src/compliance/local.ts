@@ -3,7 +3,6 @@ import { parse } from "@frantic-search/shared/src/search/parser";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import type { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import type { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
-import type { ColumnarData } from "@frantic-search/shared/src/data";
 import type { TestCase, Assertions } from "./loader";
 
 export interface AssertionFailure {
@@ -23,20 +22,20 @@ export interface TestResult {
 
 function matchCardName(
   name: string,
-  data: ColumnarData,
+  index: CardIndex,
   matchingIndices: Set<number>,
 ): boolean {
   const lower = name.toLowerCase();
   for (const i of matchingIndices) {
-    if (data.names[i].toLowerCase() === lower) return true;
-    if (data.combined_names[i].toLowerCase() === lower) return true;
+    if (index.namesLower[i] === lower) return true;
+    if (index.combinedNamesLower[i] === lower) return true;
   }
   return false;
 }
 
 function checkAssertions(
   assertions: Assertions,
-  data: ColumnarData,
+  index: CardIndex,
   matchingIndices: Set<number>,
   count: number,
 ): AssertionFailure[] {
@@ -44,7 +43,7 @@ function checkAssertions(
 
   if (assertions.contains) {
     for (const name of assertions.contains) {
-      if (!matchCardName(name, data, matchingIndices)) {
+      if (!matchCardName(name, index, matchingIndices)) {
         failures.push({
           assertion: "contains",
           expected: `"${name}" in results`,
@@ -56,7 +55,7 @@ function checkAssertions(
 
   if (assertions.excludes) {
     for (const name of assertions.excludes) {
-      if (matchCardName(name, data, matchingIndices)) {
+      if (matchCardName(name, index, matchingIndices)) {
         failures.push({
           assertion: "excludes",
           expected: `"${name}" not in results`,
@@ -95,7 +94,6 @@ function checkAssertions(
 
 export function runLocalTest(
   tc: TestCase,
-  data: ColumnarData,
   index: CardIndex,
   printingIndex?: PrintingIndex | null,
 ): TestResult {
@@ -109,7 +107,7 @@ export function runLocalTest(
   }
 
   const count = matchingIndices.size;
-  const failures = checkAssertions(tc.assertions, data, matchingIndices, count);
+  const failures = checkAssertions(tc.assertions, index, matchingIndices, count);
 
   return {
     name: tc.name,

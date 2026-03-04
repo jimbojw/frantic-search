@@ -27,7 +27,6 @@ const toughnessDict = ["", "1", "1+*", "3", "4"];
 
 export const TEST_DATA: ColumnarData = {
   names:          ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm", "Ayara, Furnace Queen", "Dismember"],
-  combined_names: ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Tarmogoyf", "Azorius Charm", "Thalia, Guardian of Thraben", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Ayara, Widow of the Realm // Ayara, Furnace Queen", "Dismember"],
   mana_costs:     ["{G}", "{R}", "{U}{U}", "{1}", "{1}{G}", "{W}{U}", "{1}{W}", "{1}{B}{B}", "", "{1}{B/P}{B/P}"],
   oracle_texts:   [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -40,18 +39,6 @@ export const TEST_DATA: ColumnarData = {
     "{T}, Sacrifice another creature or artifact: Ayara deals X damage to target opponent.",
     "At the beginning of combat on your turn, return up to one target artifact or creature card from your graveyard to the battlefield.",
     "Target creature gets -5/-5 until end of turn.",
-  ],
-  oracle_texts_tilde: [
-    "Flying (~ can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
-    "~ deals 3 damage to any target.",
-    "",
-    "",
-    "~'s power is equal to the number of card types among cards in all graveyards and its toughness is that number plus 1.",
-    "",
-    "",
-    "{T}, Sacrifice another creature or artifact: ~ deals X damage to target opponent.",
-    "",
-    "",
   ],
   colors:         [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black, Color.Black | Color.Red, Color.Black],
   color_identity: [Color.Green, Color.Red, Color.Blue, 0, Color.Green, Color.White | Color.Blue, Color.White, Color.Black | Color.Red, Color.Black | Color.Red, Color.Black],

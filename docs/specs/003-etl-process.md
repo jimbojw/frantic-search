@@ -143,6 +143,9 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   process command now writes `data/dist/columns.json` (without thumb hashes)
   and `data/dist/thumb-hashes.json` (two arrays: `art_crop` and `card`).
   The `ColumnarData` type's thumb hash fields are now optional.
+- 2026-03-04: Removed `combined_names` and `oracle_texts_tilde` from ETL output (Issue #83).
+  These columns are now computed client-side on load by `CardIndex` from `names`, `oracle_texts`,
+  and `canonical_face`. Reduces raw payload ~4.5 MB and gzipped ~1.2 MB.
 - 2026-03-04: Removed host and augment from filtered layouts for Scryfall parity.
   Scryfall supports is:host and is:augment; these Unstable half-cards are searchable.
 - 2026-03-04: Removed ETL-level layout filtering (Issue #80). All layouts (tokens, emblems,

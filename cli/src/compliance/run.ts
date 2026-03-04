@@ -57,7 +57,7 @@ function runLocalMode(suites: ReturnType<typeof loadAllSuites>, dataPath: string
 
   const summaries: SuiteSummary[] = [];
   for (const suite of suites) {
-    const results = suite.cases.map(tc => runLocalTest(tc, data, index, printingIndex));
+    const results = suite.cases.map(tc => runLocalTest(tc, index, printingIndex));
     summaries.push({ file: suite.file, results });
   }
 
