@@ -1,6 +1,6 @@
 # ADR-013: Scryfall Search Parity
 
-**Status:** Accepted
+**Status:** Superseded by ADR-019
 
 ## Context
 
