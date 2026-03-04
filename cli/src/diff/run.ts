@@ -127,7 +127,7 @@ function collectLocalCards(
       if (!id || seen.has(id)) continue;
       seen.add(id);
 
-      const cf = printingData.canonical_face_ref[pi];
+      const cf: number = printingData.canonical_face_ref[pi];
       const name = data.combined_names[data.card_index[cf]] ?? data.names[cf] ?? "";
       const setIdx = printingData.set_indices[pi];
       const set = printingData.set_lookup[setIdx]?.code ?? "—";
@@ -429,8 +429,9 @@ export async function runDiff(
   let printingData: PrintingColumnarData | null = null;
   let printingIndex: PrintingIndex | null = null;
   if (fs.existsSync(printingsPath)) {
-    printingData = JSON.parse(fs.readFileSync(printingsPath, "utf-8"));
-    printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
+    const pData = JSON.parse(fs.readFileSync(printingsPath, "utf-8")) as PrintingColumnarData;
+    printingData = pData;
+    printingIndex = new PrintingIndex(pData, data.scryfall_ids);
   }
   let rawOracleCards: RawOracleCard[] | undefined;
   if (rawPath && fs.existsSync(rawPath)) {
