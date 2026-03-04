@@ -2,7 +2,7 @@
 
 **Status:** Draft
 
-**Depends on:** Spec 002 (Query Engine), Spec 011 (Deterministic Random Order), Spec 044 (Terms Drawer Redesign), Spec 048 (Printing-Aware Display), Spec 054 (Pinned Search Criteria), Spec 058 (View Mode as Query Term), ADR-009 (Bitmask-per-Node AST)
+**Depends on:** Spec 002 (Query Engine), Spec 019 (Relevance-Boosted Default Ordering), Spec 039 (Non-Destructive Error Handling), Spec 044 (Terms Drawer Redesign), Spec 048 (Printing-Aware Display), Spec 052 (Scryfall Outlink Canonicalization), Spec 054 (Pinned Search Criteria), Spec 058 (View Mode as Query Term), ADR-009 (Bitmask-per-Node AST), ADR-019 (Scryfall Parity by Default)
 
 **Supersedes:** Spec 010 (Sort Directives)
 
@@ -12,9 +12,11 @@ Allow users to control result ordering through `sort:field` query terms and sort
 
 Sort direction is controlled by the NOT operator: `sort:name` sorts ascending (the default for name), `-sort:name` sorts descending. This reuses the existing NOT/negation infrastructure throughout the parser, evaluator, breakdown UI, chip cycling, and pin/unpin system.
 
+Unknown sort values (e.g. `sort:foo`, `-sort:foo`) are visible errors in breakdown views and have no effect on filtering or ordering.
+
 ## Background
 
-Frantic Search currently orders results using `seededSort` (Spec 011/019): a bare-word prefix boost for relevance, followed by a keyed hash for deterministic pseudorandom order within each tier. There is no way for the user to sort results by name, mana value, price, release date, or any other field.
+Frantic Search currently orders results using `seededSort` (Spec 019): a bare-word prefix boost for relevance, followed by a keyed hash for deterministic pseudorandom order within each tier. There is no way for the user to sort results by name, mana value, price, release date, or any other field.
 
 Scryfall separates sort from query via URL parameters (`order=`, `dir=`). Since Frantic Search uses a single search box as its primary input and supports pinned query criteria (Spec 054), embedding sort directives in the query string keeps the search box and pinned layer as the single source of truth. Sort preferences can be pinned just like format filters.
 
@@ -57,6 +59,8 @@ Direction is controlled entirely by the NOT operator:
 
 No `-asc` or `-desc` suffixes. The value is always a bare field name.
 
+`sort:frantic` is not introduced by this spec. "Frantic" refers to the existing default ordering path when no valid `sort:` directive is active.
+
 ### Position independence
 
 Sort directives may appear anywhere in the query. Position relative to filter terms does not affect semantics.
@@ -68,7 +72,7 @@ c:green t:creature sort:mv      # same filter, same sort
 
 ### Multiple sort keys (future)
 
-This spec defines single-sort-key behavior. If multiple `sort:` tokens are present, **last one wins** (consistent with `view:` in Spec 058), ignoring erroreous unknown sort fields (`sort:bogus`). Compound sort (left-to-right tie-breaking) may be added in a future spec.
+This spec defines single-sort-key behavior. If multiple `sort:` tokens are present, **last valid one wins** (consistent with `view:` in Spec 058). Unknown sort fields remain visible as errors but are ignored for effective sort selection. Compound sort (left-to-right tie-breaking) may be added in a future spec.
 
 ## Sortable Fields
 
@@ -86,7 +90,7 @@ These fields sort over deduplicated cards (face indices). They work with or with
 
 ### Printing-domain fields
 
-These fields sort over individual printings. When a printing-domain sort is active and `unique:prints` is not already in the query, the sort implicitly enables `unique:prints` behavior — individual printings are shown rather than deduplicated cards. This matches Scryfall, where `order=released` shows individual printings.
+These fields sort over individual printings, then project that ordering onto card results when deduplicated display is active (`unique:cards`).
 
 | Sort field | Aliases | Column | Default dir | Behavior |
 |---|---|---|---|---|
@@ -111,7 +115,7 @@ Sort directives follow the established modifier pattern used by `unique:prints` 
 
 1. **Parser:** No changes. `sort:name` is parsed as a normal `FIELD` node with `field: "sort"`, `operator: ":"`, `value: "name"`. `-sort:name` is parsed as `NOT(FIELD("sort", ":", "name"))`.
 
-2. **Evaluator:** In `computeTree()`, before the `FIELD_ALIASES` lookup, recognize `field === "sort"`. Produce a match-all buffer (same as `unique:prints`). Validate the value against `SORT_FIELDS`; unknown fields produce an error (`unknown sort field "foo"`). For the NOT case: when the child is a `sort:` FIELD, produce match-all instead of inverting (the direction is extracted separately by the walk function).
+2. **Evaluator:** In `computeTree()`, before the `FIELD_ALIASES` lookup, recognize `field === "sort"`. Produce a match-all buffer (same as `unique:prints`). Validate the value against `SORT_FIELDS`; unknown fields produce a visible error (`unknown sort field "foo"`) while preserving match-all semantics (no filtering effect). For the NOT case: when the child is a `sort:` FIELD, produce match-all instead of inverting (the direction is extracted separately by the walk function).
 
 3. **EvalOutput:** Add `sortBy: SortDirective | null` to `EvalOutput`. The evaluator extracts this from the AST via a `_findSortDirective(ast)` walk (analogous to `_hasUniquePrints`).
 
@@ -151,7 +155,7 @@ private _findSortDirective(ast: ASTNode, negated = false): SortDirective | null 
 }
 ```
 
-When multiple `sort:` nodes exist, last-one-wins (rightmost in the AST). When none exist, `sortBy` is `null`.
+When multiple `sort:` nodes exist, last-valid-one-wins (rightmost valid directive in the AST). When none exist, `sortBy` is `null`.
 
 4. **Scryfall outlinks:** `canonicalize.ts` strips `sort:` terms from Scryfall outlinks (same as `view:`), since Scryfall uses `order=` / `dir=` URL parameters instead.
 
@@ -175,11 +179,15 @@ Spec 010 proposed extracting sort directives during parsing into a `ParseResult 
 2. **Breakdown UI.** Sort terms appear in the query breakdown as chips. They are pinnable, unpinnable, and removable via ×. This requires them to be AST nodes with spans.
 3. **Query editing.** `removeNode`, `appendTerm`, `cycleChip`, and the entire `query-edit.ts` infrastructure operates on AST nodes. Extracting sort during parsing would bypass all of this.
 
-### Printing-domain sort implies printing expansion
+### Printing-domain sort and unique mode
 
-When `sortBy.isPrintingDomain` is `true`, the worker treats `uniqueMode` as `prints` for expansion purposes even if `unique:prints` is not in the query. This is because sorting by a printing-level field (price, date, rarity) is meaningless over deduplicated cards — the user must see individual printings to observe the sort order.
+Printing-domain sort does **not** change `uniqueMode`. The query's effective unique mode is still resolved by `unique:` terms (last legal term wins, default `cards`).
 
-The evaluator does **not** set `uniqueMode = 'prints'` for printing-domain sorts. The implication is handled in the worker, which is where `uniqueMode` is consumed. This keeps the evaluator honest (it reports what the query literally says) and lets the worker apply the implication.
+Behavior by unique mode:
+
+- `unique:cards` (default): use printing-domain comparator to order printings, then project to card order by first-seen canonical face in that sorted printing list. The chosen representative printing for each card is therefore the best-ranked printing under the active sort.
+- `unique:prints`: render all printings in printing-comparator order (subject to existing view-mode rules in Spec 048).
+- `unique:art`: deduplicate rendering by art per Spec 048; ordering source remains the sorted printing stream.
 
 ### Evaluation pipeline (updated)
 
@@ -190,7 +198,7 @@ input → lexer → tokens → parser → ASTNode
                             evaluator (modifier detection)
                                      │
                                      ▼
-                            EvalOutput { indices, sortBy, uniqueMode, ... }
+                            EvalOutput { indices, printingIndices?, sortBy, uniqueMode, ... }
                                      │
                                      ▼
                             worker: combine pinned + live
@@ -199,7 +207,7 @@ input → lexer → tokens → parser → ASTNode
                             playable filter (Spec 057)
                                      │
                                      ▼
-                            sort (sort: directive or seededSort fallback)
+                            sort in printing domain + regroup by card
                                      │
                                      ▼
                             histograms → result
@@ -207,11 +215,31 @@ input → lexer → tokens → parser → ASTNode
 
 ### Sort implementation
 
-When a `sort:` directive is present, it provides the primary comparator. Meaningful secondary tiebreakers follow, with `seededSort` as the ultimate fallback for truly identical values.
+Sorting is defined as a printings-first pipeline followed by card regrouping:
+
+1. Build/derive the filtered printing stream for the effective query.
+2. Apply sort semantics.
+3. Regroup to card order by first-seen canonical face in the sorted stream.
+4. Emit:
+   - card results (`indices`) from regrouped face order,
+   - printing results (`printingIndices`) as grouped runs per card in that same card order.
+
+#### Allocation discipline (performance)
+
+Sorting and regrouping run on every keystroke and must avoid GC-heavy allocation patterns in the hot path.
+
+- Prefer pre-allocated typed-array workflows (`Uint8Array`, `Uint32Array`) with count-then-fill passes.
+- Avoid dynamic growth APIs (`array.push`) and hash containers (`Set`, `Map`) in core result processing paths when a typed-array/indexed approach is practical.
+- "Lists" and "emit" in this spec are conceptual terms; implementation should materialize final outputs as fixed-size typed arrays.
+- Keep compatibility with existing worker transfer behavior (`postMessage` + transferable `ArrayBuffer`) so large result buffers are moved, not cloned.
+
+When no `sort:` directive is present, default ordering remains Frantic Search's relevance-boosted seeded order (Spec 019). This is an intentional divergence from Scryfall and is documented per ADR-019.
 
 #### Face-domain sort
 
-When `sortBy` specifies a face-domain field, sort the `deduped` array in-place:
+When `sortBy` specifies a face-domain field, sort at card level. If printing results are present (`unique:prints`/`unique:art` display paths), printings of each card remain in their existing relative order (stable pass-through), and cards are not interleaved by printing rows.
+
+Card comparator:
 
 ```typescript
 function sortByField(
@@ -231,49 +259,67 @@ function sortByField(
       const nameCmp = compareName(a, b, index);
       if (nameCmp !== 0) return nameCmp;
     }
-    // Ultimate fallback: seeded hash for deterministic order
+    // Ultimate fallback: seeded hash for deterministic card order
     return seededRank(seedHash, a) - seededRank(seedHash, b);
   });
 }
 ```
 
-When `unique:prints` is also active, printing indices are sorted by the same face-level field (keyed through `canonicalFaceRef`). Printings of the same card are ordered by release date then collector number (see § "Intra-card printing order").
+When the active mode renders printings, emit printings as grouped runs in sorted card order. For face-domain sorts (including default frantic mode), intra-card printing order is stable from input order (no per-card reshuffle).
 
 #### Printing-domain sort
 
-When `sortBy` specifies a printing-domain field, sort `printingIndices` directly. Tiebreakers use other printing-level columns:
+When `sortBy` specifies a printing-domain field, sort **within each card first**, then sort cards by each card's top-ranked printing (the first printing in that card's sorted run). This guarantees:
+
+- cards are ordered by printing-level criterion,
+- printings of different cards are never interleaved,
+- printings within a card appear in the requested direction.
+
+Per-card printing comparator:
 
 ```typescript
 function sortPrintingsByField(
-  printingIndices: Uint32Array,
+  printingsOfCard: number[],
   directive: SortDirective,
   printingIndex: PrintingIndex,
   seedHash: number,
-): void {
+): number[] {
   const { field, direction } = directive;
   const dir = direction === 'desc' ? -1 : 1;
 
-  const arr = Array.from(printingIndices);
+  const arr = [...printingsOfCard];
   arr.sort((a, b) => {
     const cmp = comparePrintingField(a, b, field, printingIndex);
     if (cmp !== 0) return dir * cmp;
-    // Tiebreaker: release date (newest first), then collector number
+    // Deterministic printing-level tie-breakers
     const dateCmp = printingIndex.releasedAt[b] - printingIndex.releasedAt[a];
     if (dateCmp !== 0) return dateCmp;
     const cnCmp = printingIndex.collectorNumbersLower[a]
       .localeCompare(printingIndex.collectorNumbersLower[b]);
     if (cnCmp !== 0) return cnCmp;
-    return seededRank(seedHash, a) - seededRank(seedHash, b);
+    return seededRank(seedHash, a) - seededRank(seedHash, b); // printing-row fallback
   });
-  for (let i = 0; i < arr.length; i++) printingIndices[i] = arr[i];
+  return arr;
 }
 ```
 
-The `deduped` face array is then reordered to match: iterate sorted printing indices, collect first-seen canonical faces in order. This ensures the face-level result grid respects the printing sort.
+Card regroup step for printing-domain sorts:
+
+1. Partition filtered printings by canonical face.
+2. Sort each card's printing list with `sortPrintingsByField(...)`.
+3. Let each card's representative printing be that list's first element.
+4. Sort cards by representative-printing comparator (same field+direction, same tie-breakers, then card-level seeded fallback).
+5. Emit grouped `printingIndices` by concatenating each card's sorted run in sorted card order.
+6. Derive `indices` by taking first-seen canonical face from that grouped stream.
 
 #### Intra-card printing order
 
-When multiple printings of the same card appear in the result (via `unique:prints`), their relative order within a card should be chronological by release date, with collector number as tiebreaker. This applies whether the sort is face-domain or printing-domain. The release-date-then-collector-number tiebreaker in the printing comparator handles this naturally for printing-domain sorts. For face-domain sorts with `unique:prints`, the printing-level sort groups by the face-level comparator and falls back to release date within each card.
+When multiple printings of the same card appear in result output:
+
+- Face-domain sorts (and default frantic mode): preserve existing printing order within card (stable input order).
+- Printing-domain sorts: order printings within card by the active printing comparator and direction; use deterministic tie-breakers (release date, collector number, seeded row fallback).
+
+In both cases, printings for a given card remain contiguous.
 
 A future spec may formalize intra-card printing order as a standalone feature (independent of user-specified sort).
 
@@ -281,8 +327,8 @@ A future spec may formalize intra-card printing order as a standalone feature (i
 
 Sort directives compose across pinned and live queries. The effective sort is determined by a simple priority:
 
-1. If the **live** query has a `sort:` term, use it.
-2. Else if the **pinned** query has a `sort:` term, use it.
+1. If the **live** query has a **valid** `sort:` term, use it.
+2. Else if the **pinned** query has a **valid** `sort:` term, use it.
 3. Else fall back to `seededSort`.
 
 Live takes priority because it represents the user's current intent. A pinned `sort:name` provides a stable default that the user can temporarily override by typing `sort:price` in the live query.
@@ -293,7 +339,7 @@ This means a pinned `sort:name` acts as "my default sort preference" — always 
 
 Sort directives appear in the query breakdown as regular chips. They show match counts (which equal total card count, since they are match-all). They are pinnable, unpinnable, and removable via ×.
 
-The match count on a `sort:` chip is not semantically meaningful (it's always "all cards"). Future enhancement: the breakdown could display sort direction instead of a count. This spec does not prescribe breakdown changes beyond ensuring `sort:` nodes are visible and interactive.
+The match count on a `sort:` chip is not semantically meaningful (it is always match-all). Future enhancement: the breakdown could display sort direction instead of a count. This spec does not prescribe breakdown changes beyond ensuring `sort:` nodes are visible and interactive.
 
 ### Interaction with the evaluation cache
 
@@ -320,6 +366,12 @@ case "NOT": {
 ```
 
 This mirrors the existing behavior where `_hasUniquePrints` walks through NOT nodes — the modifier is detected regardless of negation. The difference is that `-sort:name` is an intentional, common input path (unlike `-unique:prints`), so the evaluator must handle the buffer correctly.
+
+For invalid values (`sort:foo`, `-sort:foo`), evaluator behavior is:
+
+- preserve match-all buffer (never destructive),
+- annotate the node with `error: unknown sort field "foo"`,
+- do not emit a `sortBy` directive from `_findSortDirective`.
 
 ## Terms Drawer: Sort Tab
 
@@ -373,13 +425,11 @@ Only one sort chip can be active at a time. The chip handler must remove any exi
 
 ### Interaction with `unique:prints`
 
-When the user taps a printing-domain sort chip (PRICE, DATE, RARITY) and `unique:prints` is not in the query, the chip handler appends `unique:prints` automatically (same as the worker's implicit behavior, but made explicit in the query so the user sees it).
-
-When the user removes a printing-domain sort chip, the handler does **not** auto-remove `unique:prints`. The user explicitly sees `unique:prints` in their query and can remove it themselves. This avoids surprising side effects.
+Sort chips do not auto-add or auto-remove `unique:prints`. Sort selection and unique-mode selection are independent controls.
 
 ## Scryfall Outlink
 
-`canonicalize.ts` strips `sort:` terms from Scryfall outlinks (Scryfall uses URL parameters for sort, not query terms). The Scryfall outlink URL adds `&order={field}&dir={direction}` parameters when a `sort:` directive is present.
+`canonicalize.ts` strips `sort:` terms from Scryfall outlinks (Scryfall uses URL parameters for sort, not query terms). The app constructs outlinks from the **effective query** (`pinned AND live`) and adds `&order={field}&dir={direction}` parameters when an active valid `sort:` directive is present (see issue [#82](https://github.com/jimbojw/frantic-search/issues/82)).
 
 The field name mapping from Frantic Search to Scryfall:
 
@@ -396,7 +446,7 @@ The field name mapping from Frantic Search to Scryfall:
 
 ## Error Handling
 
-- **Unknown sort field** (`sort:foo`): Error on the breakdown node: `unknown sort field "foo"`. The match-all buffer is still produced (the node does not reduce results), but the error is visible in the breakdown. No sort is applied.
+- **Unknown sort field** (`sort:foo`, `-sort:foo`): Error on the breakdown node: `unknown sort field "foo"`. The match-all buffer is still produced (the node does not reduce results), but the error is visible in the breakdown. No sort is applied.
 - **Trailing `sort:`** (no value): Parsed as `FIELD` with empty value. Evaluator produces a NOP-like match-all with no sort effect, consistent with other trailing-field error recovery.
 
 ## Changes by Layer
@@ -407,14 +457,14 @@ Add `sortBy: SortDirective | null` to `EvalOutput`. Add `SortDirective` interfac
 
 ### `shared/src/search/evaluator.ts`
 
-- In `computeTree()` FIELD case: recognize `field === "sort"` before `FIELD_ALIASES` lookup. Validate the value against `SORT_FIELDS` map. Produce match-all buffer. Store error for unknown fields.
+- In `computeTree()` FIELD case: recognize `field === "sort"` before `FIELD_ALIASES` lookup. Validate the value against `SORT_FIELDS` map. Produce match-all buffer. Store error for unknown fields without using destructive error semantics.
 - In `computeTree()` NOT case: when the child is a `sort:` FIELD, produce match-all instead of inverting.
-- Add `_findSortDirective(ast, negated?): SortDirective | null` private method. Walks the AST right-to-left (last-wins), tracks NOT depth to determine direction.
+- Add `_findSortDirective(ast, negated?): SortDirective | null` private method. Walks the AST right-to-left (last-valid-wins), tracks NOT depth to determine direction.
 - Return `sortBy` from `evaluate()`.
 
 ### `shared/src/search/ordering.ts`
 
-Add `sortByField()` and `sortPrintingsByField()` alongside existing `seededSort` / `seededSortPrintings`. Add field comparators:
+Add `sortByField()` and printing-group helpers (including per-card `sortPrintingsByField()`) alongside existing `seededSort` / `seededSortPrintings`. Add field comparators:
 - `compareName(a, b, index)` — string comparison on `combinedNamesNormalized`.
 - `compareMv(a, b, index)` — numeric comparison on `manaValue`.
 - `compareColor(a, b, index)` — popcount then bitmask.
@@ -430,9 +480,9 @@ Strip `sort:` FIELD nodes in `serializeNode` (same as `view:`). When a sort dire
 ### `app/src/worker-search.ts`
 
 - Import `SortDirective`, `sortByField`, `sortPrintingsByField` from `@frantic-search/shared`.
-- After combining pinned + live `EvalOutput`, resolve the effective `sortBy` (live wins over pinned).
-- When `sortBy.isPrintingDomain` and `uniqueMode === 'cards'`, treat as `prints` for expansion (expand printing indices; same as the existing expansion path).
-- Replace `seededSort` / `seededSortPrintings` calls with `sortByField` / `sortPrintingsByField` when `sortBy` is present. Fall back to `seededSort` when absent.
+- After combining pinned + live `EvalOutput`, resolve the effective `sortBy` (live valid sort wins over pinned valid sort).
+- For printing-domain sort, ensure a printing stream is available as the ordering source, partition/sort by card group, then emit grouped runs in card order; do not force `uniqueMode = 'prints'`.
+- Replace `seededSort` / `seededSortPrintings` calls with `sortByField` / `sortPrintingsByField` when `sortBy` is present. Fall back to Spec 019 ordering when absent.
 
 ### `app/src/TermsDrawer.tsx`
 
@@ -468,6 +518,7 @@ test("-sort:name produces match-all buffer (NOT does not invert)", () => {
 test("sort:foo produces error", () => {
   const { result } = evaluate("sort:foo");
   expect(result.error).toBe('unknown sort field "foo"');
+  expect(result.matchCount).toBe(TOTAL_CANONICAL_FACES);
 });
 
 test("sort:name does not affect filter", () => {
@@ -502,9 +553,14 @@ test("sortBy extracted: -sort:date (reversed to asc)", () => {
   expect(sortBy).toEqual({ field: "date", direction: "asc", isPrintingDomain: true });
 });
 
-test("last sort: wins", () => {
+test("last valid sort: wins", () => {
   const { sortBy } = evaluate("sort:name sort:price");
   expect(sortBy).toEqual({ field: "price", direction: "asc", isPrintingDomain: true });
+});
+
+test("invalid trailing sort: does not override earlier valid sort:", () => {
+  const { sortBy } = evaluate("sort:name sort:bogus");
+  expect(sortBy).toEqual({ field: "name", direction: "asc", isPrintingDomain: false });
 });
 ```
 
@@ -522,16 +578,23 @@ test("non-numeric power sorts last regardless of direction", ...);
 test("sort:price sorts printings by price ascending", ...);
 test("zero-price printings sort last", ...);
 test("sort:date sorts printings by release date descending (default)", ...);
+test("printing-domain sort keeps card printings contiguous (no interleaving)", ...);
+test("sort:price asc groups cards by cheapest printing, then printings asc within card", ...);
+test("sort:price desc groups cards by priciest printing, then printings desc within card", ...);
 test("ties broken by name for face-domain sorts", ...);
 test("ties broken by release date + collector number for printing-domain sorts", ...);
-test("no sort directive preserves seededSort behavior", ...);
+test("no sort directive preserves Spec 019 ordering", ...);
+test("face-domain sort with printing output preserves intra-card printing input order", ...);
 ```
 
 ### Worker integration tests
 
 ```typescript
 test("sort:name applied after playable filter", ...);
-test("printing-domain sort implies expansion", ...);
+test("printing-domain sort does not force unique mode", ...);
+test("printing-domain sort projects card order from sorted printings under unique:cards", ...);
+test("printing-domain sort emits grouped printing runs in card order", ...);
+test("default frantic mode keeps printings stable within each card", ...);
 test("pinned sort: is overridden by live sort:", ...);
 test("pinned sort: applies when live has no sort:", ...);
 ```
@@ -543,27 +606,38 @@ test("cycleChip: neutral → adds sort:name", ...);
 test("cycleChip: sort:name (positive) → replaces with -sort:name (negative)", ...);
 test("cycleChip: -sort:name (negative) → removes (neutral)", ...);
 test("exclusive selection: activating sort:price removes existing sort:name", ...);
-test("printing-domain sort chip adds unique:prints if missing", ...);
 ```
 
 ## Acceptance Criteria
 
 1. `sort:name` in the query sorts results alphabetically A–Z. `-sort:name` sorts Z–A.
 2. `sort:mv` sorts by mana value ascending. `-sort:mv` sorts descending. `sort:cmc` and `sort:manavalue` are accepted aliases.
-3. `sort:price` sorts printings by price low-to-high and implicitly enables `unique:prints`.
+3. `sort:price` sorts by printing price low-to-high. With default `unique:cards`, card order is projected from grouped sorted printings (first-seen printing per card). With `unique:prints`, printings are shown as grouped card runs ordered by price semantics (per Spec 048 view rules).
 4. `sort:date` sorts printings by release date newest-first (default desc). `-sort:date` sorts oldest-first.
 5. `sort:rarity` sorts printings by rarity mythic-first (default desc).
 6. `sort:power` sorts by power highest-first (default desc). Non-numeric power sorts last.
 7. `sort:` and `-sort:` terms appear in the query breakdown and are pinnable/unpinnable.
 8. `sort:` and `-sort:` terms do not affect which cards match (match-all buffer preserved through NOT).
 9. `sort:foo` produces an error in the breakdown: `unknown sort field "foo"`.
-10. When no `sort:` term is present, `seededSort` behavior is preserved (no regression).
-11. The evaluation cache is unaffected by sort directives.
-12. The SORT tab in the Terms Drawer shows sort chips with the standard tri-state cycle.
-13. Sort chips display directional arrows (`↑` / `↓`) reflecting the actual sort direction.
-14. Only one sort chip can be active at a time (exclusive selection).
-15. Tapping a printing-domain sort chip auto-appends `unique:prints` if not present.
-16. Scryfall outlinks strip `sort:` from the query and add `&order=` / `&dir=` URL parameters.
-17. Live `sort:` takes priority over pinned `sort:`.
-18. Pinned `sort:` applies as default sort when the live query has no `sort:` term.
-19. Ties in the primary sort field are broken by meaningful secondary comparisons (name for face-domain, release date + collector number for printing-domain), then by seeded hash.
+10. `sort:foo` and `-sort:foo` have no filtering or ordering effect (including when they are the only query term).
+11. When no `sort:` term is present, Spec 019 ordering is preserved (no regression).
+12. The evaluation cache is unaffected by sort directives.
+13. The SORT tab in the Terms Drawer shows sort chips with the standard tri-state cycle.
+14. Sort chips display directional arrows (`↑` / `↓`) reflecting the actual sort direction.
+15. Only one sort chip can be active at a time (exclusive selection).
+16. Sort chip interactions do not auto-add or auto-remove `unique:prints`.
+17. Scryfall outlinks are built from the effective query (`pinned AND live`), strip `sort:` from `q=`, and add `&order=` / `&dir=` URL parameters for active valid sort.
+18. Live valid `sort:` takes priority over pinned valid `sort:`.
+19. Pinned valid `sort:` applies as default sort when the live query has no valid `sort:` term.
+20. Ties in the primary sort field are broken by meaningful secondary comparisons (name for face-domain, release date + collector number for printing-domain), then by seeded hash.
+21. For printing-domain sorts, printings are grouped by card in output order; printings from different cards are not interleaved.
+22. For face-domain sorts (including default frantic mode), intra-card printing order is stable from input order when printing results are rendered.
+23. For printing-domain sorts, intra-card printing order follows the requested direction with deterministic tie-breakers.
+
+## ADR-019 Alignment
+
+This spec follows ADR-019 (Scryfall parity by default) with one explicit, principled divergence:
+
+- Frantic Search keeps Spec 019's seeded/frantic ordering as the default when no explicit sort directive is present.
+- When a user specifies `sort:`, that explicit ordering is respected.
+- This avoids introducing a hidden always-on deterministic ranking (such as alphabetic default) that can bias discovery behavior.

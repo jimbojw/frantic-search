@@ -6,13 +6,15 @@
 
 ## Goal
 
-Canonicalize Frantic Search queries before embedding them in Scryfall outlinks so that the linked search has the best chance of succeeding.
+Canonicalize Frantic Search queries before embedding them in Scryfall outlinks so that the linked search has the best chance of succeeding, and ensure outlinks reflect the user's full effective query (pinned + live).
 
 ## Background
 
 Frantic Search is intentionally liberal with incomplete input — unclosed quotes, unclosed regexes, bare regexes, partial dates, and other malformed constructs all produce useful instant results during typing. These are deliberate divergences from Scryfall's stricter parser.
 
-The app exposes two Scryfall search outlinks (results toolbar, bug report) that currently pass the raw query string verbatim via `encodeURIComponent(query().trim())`. When the query contains any of these liberal constructs, Scryfall rejects the search.
+The app exposes two Scryfall search outlinks (results toolbar, bug report). When outlinks are built from only live query text, pinned criteria are lost and linked results can be confusing. See issue [#82](https://github.com/jimbojw/frantic-search/issues/82).
+
+Additionally, when the query contains liberal Frantic Search constructs, Scryfall may reject the search unless the query is canonicalized.
 
 ## Divergences Requiring Canonicalization
 
@@ -36,6 +38,14 @@ Parse the raw query into the existing AST via `parse()`, then serialize the AST 
 ```
 raw query → parse() → ASTNode → toScryfallQuery() → canonical string → URL
 ```
+
+Outlink query source:
+
+```
+effectiveQuery = pinnedQuery ? sealQuery(pinnedQuery) + " " + sealQuery(liveQuery) : liveQuery
+```
+
+Canonicalization runs on `effectiveQuery`, not live query alone.
 
 ### Serialization rules
 
@@ -90,5 +100,9 @@ Tests drive the implementation (TDD). Each test parses a raw query string, feeds
 4. `toScryfallQuery(parse("'bolt'"))` returns `"bolt"`.
 5. `toScryfallQuery(parse('c: t:creature'))` returns `t:creature` (empty field value dropped).
 6. NOP-only ASTs produce an empty string.
-7. The Scryfall outlink in `App.tsx` uses the canonicalized query.
-8. The Scryfall URL in `BugReport.tsx` uses the canonicalized query.
+7. The Scryfall outlink in `App.tsx` uses the canonicalized **effective query** (pinned + live).
+8. The Scryfall URL in `BugReport.tsx` uses the canonicalized **effective query** (pinned + live).
+
+## Implementation Notes
+
+- 2026-03-04: Clarified that outlinks canonicalize the effective query (pinned + live), not live query alone (issue [#82](https://github.com/jimbojw/frantic-search/issues/82)).
