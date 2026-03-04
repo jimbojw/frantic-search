@@ -250,6 +250,14 @@ describe('removeNode', () => {
     expect(child).toBeDefined()
     expect(removeNode(q, child!, bd)).toBe('f:commander')
   })
+
+  it('removing OR from a (b or c) d yields a d (no empty parens, issue 81)', () => {
+    const q = 'a (b or c) d'
+    const bd = parseBreakdown(q)!
+    const orChild = bd.children!.find(c => reconstructQuery(c) === 'b OR c')
+    expect(orChild).toBeDefined()
+    expect(removeNode(q, orChild!, bd)).toBe('a d')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -257,7 +265,7 @@ describe('removeNode', () => {
 // ---------------------------------------------------------------------------
 
 function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
-  if (bd.label === nodeLabel && (!bd.children || bd.children.length === 0)) {
+  if (reconstructQuery(bd) === nodeLabel) {
     return removeNode(q, bd, bd)
   }
   if (bd.children) {
@@ -328,6 +336,18 @@ describe('pin/unpin sequence (issue 48)', () => {
     const r5 = simUnpin(live, pinned, 'f:modern')
     expect(r5.pinned).toBe('f:commander')
     expect(r5.live).toBe('f:modern')
+  })
+
+  it('pin OR from a (b or c) d yields a d (issue 81)', () => {
+    const r = simPin('a (b or c) d', '', 'b OR c')
+    expect(r.live).toBe('a d')
+    expect(r.pinned).toBe('b OR c')
+  })
+
+  it('unpin OR from pinned into leaf live yields (a OR b) c (issue 81)', () => {
+    const r = simUnpin('c', 'a OR b', 'a OR b')
+    expect(r.live).toBe('(a OR b) c')
+    expect(r.pinned).toBe('')
   })
 })
 
@@ -1450,6 +1470,10 @@ describe('prependTerm', () => {
 
   it('handles whitespace-only query as empty', () => {
     expect(prependTerm('   ', 'f:commander', null)).toBe('f:commander')
+  })
+
+  it('wraps OR term in parens when prepending to leaf (issue 81)', () => {
+    expect(prependTerm('c', 'a OR b', parseBreakdown('c'))).toBe('(a OR b) c')
   })
 })
 

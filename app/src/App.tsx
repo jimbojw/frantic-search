@@ -547,7 +547,7 @@ function App() {
   }
 
   function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
-    if (bd.label === nodeLabel && (!bd.children || bd.children.length === 0)) {
+    if (reconstructQuery(bd) === nodeLabel) {
       return removeNode(q, bd, bd)
     }
     if (bd.children) {

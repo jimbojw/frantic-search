@@ -212,7 +212,17 @@ export function removeNode(
   }
 
   if (root.children.includes(target) && target.span) {
-    const result = spliceQuery(query, target.span, '')
+    let span = target.span
+    // Spec 071: extend span to include surrounding parens when target was parsed from (expr)
+    if (
+      span.start > 0 &&
+      span.end < query.length &&
+      query[span.start - 1] === '(' &&
+      query[span.end] === ')'
+    ) {
+      span = { start: span.start - 1, end: span.end + 1 }
+    }
+    const result = spliceQuery(query, span, '')
     return result.replace(/  +/g, ' ').trim()
   }
 
@@ -243,8 +253,12 @@ export function prependTerm(
   const trimmed = query.trim()
   if (!trimmed) return term
   const sealed = sealQuery(trimmed)
-  const needsParens = breakdown?.type === 'OR'
-  return needsParens ? `${term} (${sealed})` : `${term} ${sealed}`
+  const termBd = parseBreakdown(term.trim())
+  const termNeedsParens = termBd?.type === 'OR'
+  const liveNeedsParens = breakdown?.type === 'OR'
+  const termPart = termNeedsParens ? `(${term})` : term
+  const livePart = liveNeedsParens ? `(${sealed})` : sealed
+  return `${termPart} ${livePart}`
 }
 
 // ---------------------------------------------------------------------------
