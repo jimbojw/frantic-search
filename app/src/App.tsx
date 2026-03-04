@@ -651,7 +651,7 @@ function App() {
           type="button"
           onClick={() => navigateHome()}
           aria-label="Go to home"
-          class={`w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-6 bg-[center_23%] rounded-xl mb-2' : 'h-14 bg-[center_20%] rounded-xl mb-4'}`}
+          class={`relative w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-6 bg-[center_23%] rounded-xl mb-2' : 'h-14 bg-[center_20%] rounded-xl mb-4'}`}
           style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
         >
           <img
@@ -659,7 +659,19 @@ function App() {
             alt="Frantic Search card art by Mitchell Malloy"
             onLoad={() => setHeaderArtLoaded(true)}
             class={`h-full w-full object-cover pointer-events-none ${headerCollapsed() ? 'object-[center_23%]' : 'object-[center_20%]'}`}
-            style={{ opacity: headerArtLoaded() ? dataProgress() : 0, transition: 'opacity 100ms linear' }}
+            style={{
+              opacity: headerArtLoaded() ? dataProgress() : 0,
+              'clip-path': headerArtLoaded() ? `inset(0 ${(1 - dataProgress()) * 100}% 0 0)` : 'inset(0 100% 0 0)',
+              transition: 'clip-path 100ms linear, opacity 100ms linear',
+            }}
+          />
+          <div
+            class="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 rounded-b-xl"
+            style={{
+              width: `${dataProgress() * 100}%`,
+              opacity: 1 - (dataProgress() ** 20),
+              transition: 'width 100ms linear, opacity 200ms ease-out',
+            }}
           />
         </button>
         <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
