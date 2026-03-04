@@ -149,13 +149,16 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
+/** ColumnarData with oracle_ids guaranteed (used when building, not when reading legacy JSON). */
+type ColumnarDataBuilder = ColumnarData & { oracle_ids: string[] };
+
 interface ThumbHashData {
   art_crop: string[];
   card: string[];
 }
 
 function pushFaceRow(
-  data: ColumnarData,
+  data: ColumnarDataBuilder,
   thumbs: ThumbHashData,
   face: CardFace,
   card: Card,
@@ -189,6 +192,7 @@ function pushFaceRow(
   data.card_index.push(cardIdx);
   data.canonical_face.push(canonicalFace);
   data.scryfall_ids.push(card.id ?? "");
+  data.oracle_ids.push(card.oracle_id ?? "");
   const id = card.id ?? "";
   thumbs.art_crop.push(artCropManifest[id] ?? "");
   thumbs.card.push(cardManifest[id] ?? "");
@@ -228,7 +232,7 @@ export function processCards(verbose: boolean): void {
   const loyaltyDict = new DictEncoder();
   const defenseDict = new DictEncoder();
 
-  const data: ColumnarData = {
+  const data: ColumnarDataBuilder = {
     names: [],
     mana_costs: [],
     oracle_texts: [],
@@ -245,6 +249,7 @@ export function processCards(verbose: boolean): void {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
+    oracle_ids: [],
     layouts: [],
     flags: [],
     power_lookup: [],

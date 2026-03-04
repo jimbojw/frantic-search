@@ -83,6 +83,7 @@ export const TEST_DATA: ColumnarData = {
   card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8],
   canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9],
   scryfall_ids:           ["", "", "", "", "", "", "", "", "", ""],
+  oracle_ids:             ["oid0", "oid1", "oid2", "oid3", "oid4", "oid5", "oid6", "oid7", "oid7", "oid8"], // Ayara rows 7+8 share
   art_crop_thumb_hashes:  ["", "", "", "", "", "", "", "", "", ""],
   card_thumb_hashes:      ["", "", "", "", "", "", "", "", "", ""],
   layouts:        ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "transform", "transform", "normal"],

@@ -251,6 +251,7 @@ const IS_TEST_DATA: ColumnarData = {
   card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42],
   canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42],
   scryfall_ids:          Array(43).fill(""),
+  oracle_ids:            Array(43).fill(""),
   art_crop_thumb_hashes: Array(43).fill(""),
   card_thumb_hashes:     Array(43).fill(""),
   layouts: [

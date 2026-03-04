@@ -23,6 +23,7 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     card_index: [],
     canonical_face: [],
     scryfall_ids: [],
+    oracle_ids: [],
     layouts: [],
     flags: [],
     power_lookup: [],

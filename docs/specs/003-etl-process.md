@@ -96,6 +96,13 @@ Three `number[]` columns — `legalities_legal`, `legalities_banned`, `legalitie
 
 Both columns are aligned with `scryfall_ids`. Values are populated from the ThumbHash manifests produced by the `thumbhash` command (Spec 017). Cards not yet in a manifest get an empty string.
 
+### ID columns
+
+| Column        | Type       | Description                                                                 |
+|---------------|------------|-----------------------------------------------------------------------------|
+| `scryfall_ids`| `string[]` | Scryfall UUID per face (from the card's default/first printing). One per face row. |
+| `oracle_ids`  | `string[]` | Scryfall oracle UUID. One per face row; all faces of a multi-face card share the same value. Cards without `oracle_id` in the source use `""`. Enables client-side card lists to map stored `oracle_id` to canonical face index (Issue #84). |
+
 ### Metadata columns
 
 | Column           | Type       | Description                                         |
@@ -152,3 +159,6 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   art_series, planar, scheme, vanguard) are now indexed. Default "playable only" behavior
   remains via query-time filter (Spec 057); `include:extras` reveals non-playable objects.
   Added double_faced_token to MULTI_FACE_LAYOUTS for proper per-face indexing.
+- 2026-03-04: Added `oracle_ids` column (Issue #84). One entry per face row; all faces
+  of a multi-face card share the same Scryfall oracle_id. Prerequisite for client-side
+  card list support (Data Model, Worker Protocol, Query My List specs).
