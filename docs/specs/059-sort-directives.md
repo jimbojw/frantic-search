@@ -1,6 +1,6 @@
 # Spec 059: Sort Directives
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 019 (Relevance-Boosted Default Ordering), Spec 039 (Non-Destructive Error Handling), Spec 044 (Terms Drawer Redesign), Spec 048 (Printing-Aware Display), Spec 052 (Scryfall Outlink Canonicalization), Spec 054 (Pinned Search Criteria), Spec 058 (View Mode as Query Term), ADR-009 (Bitmask-per-Node AST), ADR-019 (Scryfall Parity by Default)
 
