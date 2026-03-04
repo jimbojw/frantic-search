@@ -24,23 +24,56 @@ When a query returns no results, a "Report a problem" link appears alongside the
 
 A "Report a problem" link at the bottom of the breakdown panel. Users who are already inspecting per-node match counts and spot something wrong can report directly from that context.
 
-Both entry points navigate to the report page via `pushState` (Spec 013).
+### Tertiary: init page
+
+When there is no query (the "Type a query to search" state), a "Report a problem" link appears next to "Source on GitHub". This lets users report general bugs — e.g., data won't load, UI glitches, accessibility issues — without needing to run a search first.
+
+All entry points navigate to the report page via `pushState` (Spec 013).
 
 ## URL Format
 
 ```
-?report&q=<encoded_query>
+?report&q=<encoded_query>   # when reporting a query bug
+?report                     # when reporting a general bug (no query)
 ```
 
-The `q` parameter preserves the query that triggered the report. The report page reads it to display the query and auto-populate the issue body.
+The `q` parameter preserves the query that triggered the report. When absent, the report page treats it as a general bug report (see below).
 
 ## Navigation Flow
 
 ```
 search (?q=bad-query) → tap "Report a problem" → report (?report&q=bad-query) → back → search (?q=bad-query)
+search (no query)     → tap "Report a problem" → report (?report)              → back → search
 ```
 
-## Layout
+## Report Page When There Is No Query
+
+When the user navigates to the report page without a query (e.g., from the init page), the form adapts for general bug reports:
+
+- **Header:** Same — "Report a Problem" with back arrow.
+- **Query section:** Hidden. No query to display.
+- **Breakdown section:** Hidden. No breakdown exists.
+- **Result count section:** Hidden. "0 results" is not meaningful.
+- **User input:** Label "Describe the problem" with placeholder "What went wrong? (e.g., 'Data failed to load', 'Button doesn't respond')".
+- **Scryfall comparison:** Hidden. Not applicable without a query.
+
+**GitHub issue title:** `Bug report` (instead of `Query bug: <query>`).
+
+**GitHub issue body:** Only the user's description and environment:
+
+```markdown
+## Description
+
+<user's description from the textarea>
+
+## Environment
+
+- App version: <version or git hash>
+- User agent: <navigator.userAgent>
+- Date: <ISO date>
+```
+
+## Layout (Query Bug)
 
 A single-column form within the same `max-w-2xl` container.
 
@@ -121,11 +154,12 @@ The `labels=bug` parameter auto-applies a label if the repo has one configured. 
 
 ### Title
 
-Auto-generated: `Query bug: <query>`
+- **Query bug:** `Query bug: <query>` — the query is truncated to ~80 characters if long.
+- **General bug:** `Bug report`
 
-The query is truncated to ~80 characters if long. The user can edit the title on GitHub before submitting.
+The user can edit the title on GitHub before submitting.
 
-### Body Template
+### Body Template (Query Bug)
 
 ```markdown
 ## Query
@@ -160,6 +194,8 @@ The query is truncated to ~80 characters if long. The user can edit the title on
 ```
 
 The breakdown is rendered as plain text (not the tree widget) for readability in the GitHub issue. Indentation reflects nesting.
+
+For the general bug body template (Description + Environment only), see "Report Page When There Is No Query" above.
 
 ### App Version
 
@@ -202,13 +238,14 @@ This is acceptable because the entire report flow up to the final submission is 
 
 ## Acceptance Criteria
 
-1. A "Report a problem" link appears in the zero-results state and in the query breakdown panel.
-2. Tapping the link navigates to the report page (`?report&q=...`). Browser back returns to the search view.
-3. The report page displays the query, breakdown tree, and result count as read-only context.
-4. A textarea allows the user to describe their expectation.
-5. A "Check Scryfall" button fetches the Scryfall API and displays the result count. The comparison is included in the report body when checked.
-6. The "Review on GitHub" button opens a pre-filled GitHub issue in a new tab.
-7. The issue body contains the query, expected behavior, breakdown, Scryfall comparison status, and environment info.
-8. The form is fully functional offline (except the final GitHub submission).
-9. A "Copy Report" button copies the full Markdown report to the clipboard.
-10. After copying, the button shows brief visual confirmation ("Copied!" for ~2 seconds).
+1. A "Report a problem" link appears in the zero-results state, in the query breakdown panel, and on the init page (next to Source on GitHub).
+2. Tapping the link navigates to the report page (`?report&q=...` when there is a query, `?report` when there is not). Browser back returns to the search view.
+3. When there is a query, the report page displays the query, breakdown tree, and result count as read-only context.
+4. When there is no query, the report page shows only the description textarea and environment info (no query, breakdown, result count, or Scryfall comparison).
+5. A textarea allows the user to describe their expectation (query bugs) or the problem (general bugs).
+6. When there is a query, a "Check Scryfall" button fetches the Scryfall API and displays the result count. The comparison is included in the report body when checked.
+7. The "Review on GitHub" button opens a pre-filled GitHub issue in a new tab.
+8. The issue body contains the appropriate sections: query/expected/actual/breakdown/Scryfall for query bugs; description/environment for general bugs.
+9. The form is fully functional offline (except the final GitHub submission).
+10. A "Copy Report" button copies the full Markdown report to the clipboard.
+11. After copying, the button shows brief visual confirmation ("Copied!" for ~2 seconds).

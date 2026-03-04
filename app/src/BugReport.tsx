@@ -64,6 +64,16 @@ function buildReportBody(
   scryfall: ScryfallStatus,
   printingCount?: number,
 ): string {
+  const hasQuery = query.trim().length > 0
+
+  if (!hasQuery) {
+    const sections = [
+      `## Description\n\n${expected || '(not provided)'}`,
+      `## Environment\n\n- App version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'}\n- User agent: ${navigator.userAgent}\n- Date: ${new Date().toISOString()}`,
+    ]
+    return sections.join('\n\n')
+  }
+
   const actualText =
     printingCount !== undefined
       ? `${resultCount.toLocaleString()} cards (${printingCount.toLocaleString()} printings)`
@@ -88,7 +98,10 @@ function buildReportBody(
 }
 
 function buildGitHubUrl(query: string, body: string): string {
-  const title = `Query bug: ${query.length > 80 ? query.slice(0, 77) + '…' : query}`
+  const title =
+    query.trim().length > 0
+      ? `Query bug: ${query.length > 80 ? query.slice(0, 77) + '…' : query}`
+      : 'Bug report'
   const params = new URLSearchParams({ title, body, labels: 'bug' })
   const base = __BUGS_URL__.replace(/\/$/, '')
   return `${base}/new?${params}`
@@ -124,6 +137,7 @@ export default function BugReport(props: {
   resultCount: number
   printingCount?: number
 }) {
+  const hasQuery = () => props.query.trim().length > 0
   const [expected, setExpected] = createSignal('')
   const [scryfall, setScryfall] = createSignal<ScryfallStatus>({ state: 'idle' })
   const [copied, setCopied] = createSignal(false)
@@ -178,12 +192,14 @@ export default function BugReport(props: {
       </div>
 
       {/* Auto-captured context */}
-      <section class="mb-6">
-        <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Query</h2>
-        <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2">
-          <code class="font-mono text-sm text-gray-900 dark:text-gray-100 break-all">{props.query}</code>
-        </div>
-      </section>
+      <Show when={hasQuery()}>
+        <section class="mb-6">
+          <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Query</h2>
+          <div class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2">
+            <code class="font-mono text-sm text-gray-900 dark:text-gray-100 break-all">{props.query}</code>
+          </div>
+        </section>
+      </Show>
 
       <Show when={props.breakdown}>
         {(bd) => (
@@ -196,32 +212,37 @@ export default function BugReport(props: {
         )}
       </Show>
 
-      <section class="mb-6">
-        <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Result count</h2>
-        <p class="text-sm text-gray-700 dark:text-gray-300">
-          {props.printingCount !== undefined
-            ? `${props.resultCount.toLocaleString()} cards (${props.printingCount.toLocaleString()} printings)`
-            : `${props.resultCount.toLocaleString()} results`}
-        </p>
-      </section>
+      <Show when={hasQuery()}>
+        <section class="mb-6">
+          <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Result count</h2>
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            {props.printingCount !== undefined
+              ? `${props.resultCount.toLocaleString()} cards (${props.printingCount.toLocaleString()} printings)`
+              : `${props.resultCount.toLocaleString()} results`}
+          </p>
+        </section>
+      </Show>
 
       {/* User input */}
       <section class="mb-6">
         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2" for="bug-expected">
-          What did you expect?
+          {hasQuery() ? 'What did you expect?' : 'Describe the problem'}
         </label>
         <textarea
           id="bug-expected"
           value={expected()}
           onInput={(e) => setExpected(e.currentTarget.value)}
-          placeholder="Which cards should this query find? (e.g., 'Lightning Bolt should match')"
+          placeholder={hasQuery()
+            ? "Which cards should this query find? (e.g., 'Lightning Bolt should match')"
+            : "What went wrong? (e.g., 'Data failed to load', 'Button doesn't respond')"}
           rows={3}
           class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none transition-all resize-y"
         />
       </section>
 
-      <section class="mb-8">
-        <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Scryfall comparison</h2>
+      <Show when={hasQuery()}>
+        <section class="mb-8">
+          <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Scryfall comparison</h2>
         <Show when={scryfall().state !== 'idle'} fallback={
           <button
             type="button"
@@ -250,7 +271,8 @@ export default function BugReport(props: {
             </Show>
           </p>
         </Show>
-      </section>
+        </section>
+      </Show>
 
       {/* Submit buttons */}
       <div class="flex gap-3">
