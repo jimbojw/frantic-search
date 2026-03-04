@@ -70,7 +70,7 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "price", "collectornumber", "frame", "year", "date", "game"]) {
+    for (const f of ["set", "rarity", "price", "collectornumber", "frame", "year", "date", "game", "in"]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -296,6 +296,64 @@ describe("game field", () => {
 
   test("unsupported operator returns error", () => {
     const { error } = evalField("game", ">", "arena");
+    expect(error).toContain('does not support operator');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// in (Spec 072)
+// ---------------------------------------------------------------------------
+
+describe("in field", () => {
+  test("in:arena matches rows with Arena availability (game disambiguation)", () => {
+    expect(marked(evalField("in", ":", "arena").buf)).toEqual([0, 1, 2, 5]);
+  });
+
+  test("in:mtgo matches rows with MTGO availability", () => {
+    expect(marked(evalField("in", ":", "mtgo").buf)).toEqual([3, 4]);
+  });
+
+  test("in:mh2 matches rows in MH2 set (set disambiguation)", () => {
+    expect(marked(evalField("in", ":", "mh2").buf)).toEqual([0, 1]);
+  });
+
+  test("in:a25 matches row 2 only", () => {
+    expect(marked(evalField("in", ":", "a25").buf)).toEqual([2]);
+  });
+
+  test("in:rare matches rows with rare rarity (rarity disambiguation)", () => {
+    expect(marked(evalField("in", ":", "rare").buf)).toEqual([0, 1]);
+  });
+
+  test("in:special matches row 5", () => {
+    expect(marked(evalField("in", ":", "special").buf)).toEqual([5]);
+  });
+
+  test("in:bonus maps to special", () => {
+    expect(marked(evalField("in", ":", "bonus").buf)).toEqual([5]);
+  });
+
+  test("in!=mh2 matches rows not in MH2", () => {
+    expect(marked(evalField("in", "!=", "mh2").buf)).toEqual([2, 3, 4, 5]);
+  });
+
+  test("in:ru returns unsupported (language out of scope)", () => {
+    const { error } = evalField("in", ":", "ru");
+    expect(error).toBe('unsupported in value "ru"');
+  });
+
+  test("in:japanese returns unsupported", () => {
+    const { error } = evalField("in", ":", "japanese");
+    expect(error).toBe('unsupported in value "japanese"');
+  });
+
+  test("in:foo returns unknown", () => {
+    const { error } = evalField("in", ":", "foo");
+    expect(error).toBe('unknown in value "foo"');
+  });
+
+  test("in: does not support comparison operators", () => {
+    const { error } = evalField("in", ">", "rare");
     expect(error).toContain('does not support operator');
   });
 });

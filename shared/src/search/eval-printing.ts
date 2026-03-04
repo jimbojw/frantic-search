@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
-import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag } from "../bits";
+import { RARITY_NAMES, RARITY_ORDER, Rarity, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag } from "../bits";
 import { parseDateRange } from "./date-range";
+
+/** Scryfall language codes we recognize but do not support (in: language is out of scope). */
+const KNOWN_LANGUAGES = new Set([
+  "en", "es", "fr", "de", "it", "pt", "ja", "ko", "zhs", "zht", "ru", "pl",
+  "japanese", "russian", "chinese", "spanish", "french", "german", "italian",
+  "portuguese", "korean", "english",
+]);
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "price", "collectornumber", "frame", "year", "date",
-  "game", "legal", "banned", "restricted",
+  "game", "legal", "banned", "restricted", "in",
 ]);
 
 export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
@@ -157,6 +164,43 @@ export function evalPrintingField(
         if (match) buf[i] = 1;
       }
       break;
+    }
+    case "in": {
+      if (op !== ":" && op !== "=" && op !== "!=") {
+        return `in: does not support operator "${op}"`;
+      }
+      // Disambiguate by value: game → set → rarity → language (unsupported) → unknown
+      const targetGame = GAME_NAMES[valLower];
+      if (targetGame !== undefined) {
+        const games = pIdx.games;
+        for (let i = 0; i < n; i++) {
+          const g = games[i] ?? 0;
+          const match = (op === ":" || op === "=") ? (g & targetGame) !== 0 : (g & targetGame) === 0;
+          if (match) buf[i] = 1;
+        }
+        break;
+      }
+      if (pIdx.knownSetCodes.has(valLower)) {
+        for (let i = 0; i < n; i++) {
+          const match = (op === ":" || op === "=")
+            ? pIdx.setCodesLower[i] === valLower
+            : pIdx.setCodesLower[i] !== valLower;
+          if (match) buf[i] = 1;
+        }
+        break;
+      }
+      const rarityBit = RARITY_NAMES[valLower] ?? (valLower === "bonus" ? Rarity.Special : undefined);
+      if (rarityBit !== undefined) {
+        for (let i = 0; i < n; i++) {
+          const match = (op === ":" || op === "=")
+            ? (pIdx.rarity[i] & rarityBit) !== 0
+            : (pIdx.rarity[i] & rarityBit) === 0;
+          if (match) buf[i] = 1;
+        }
+        break;
+      }
+      if (KNOWN_LANGUAGES.has(valLower)) return `unsupported in value "${val}"`;
+      return `unknown in value "${val}"`;
     }
     case "legal":
     case "banned":

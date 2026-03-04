@@ -108,6 +108,32 @@ describe("printing-domain leaves", () => {
     expect(cardCount("game:mtgo")).toBe(1);
   });
 
+  test("in:arena matches Lightning Bolt (Spec 072)", () => {
+    expect(cardCount("in:arena")).toBe(1);
+  });
+
+  test("in:mh2 matches Lightning Bolt (set disambiguation)", () => {
+    expect(cardCount("in:mh2")).toBe(1);
+  });
+
+  test("in:rare matches Lightning Bolt (rarity disambiguation)", () => {
+    expect(cardCount("in:rare")).toBe(1);
+  });
+
+  test("in:mh2 in:a25 matches Lightning Bolt (in both sets)", () => {
+    expect(cardCount("in:mh2 in:a25")).toBe(1);
+  });
+
+  test("in:ru produces unsupported error", () => {
+    const { result } = evaluate("in:ru");
+    expect(result.error).toBe('unsupported in value "ru"');
+  });
+
+  test("in:foo produces unknown error", () => {
+    const { result } = evaluate("in:foo");
+    expect(result.error).toBe('unknown in value "foo"');
+  });
+
   test("date>2025 matches nothing (no 2026+ printings in test data)", () => {
     expect(cardCount("date>2025")).toBe(0);
   });

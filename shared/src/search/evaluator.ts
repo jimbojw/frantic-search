@@ -428,6 +428,12 @@ export class NodeCache {
           const ms = performance.now() - t0;
           if (error) {
             interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
+          } else if (canonical === "in") {
+            // in: is card-level: "has ≥1 printing matching X". Promote to face so
+            // in:mh2 in:a25 combines at card level (cards in both sets), not printing level.
+            const faceBuf = new Uint8Array(n);
+            promotePrintingToFace(buf, faceBuf, pIdx.canonicalFaceRef, pn);
+            interned.computed = { buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms };
           } else {
             interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
           }

@@ -181,6 +181,44 @@
     count_max: 5
 
 # ---------------------------------------------------------------------------
+# in: (Spec 072, Issue #69)
+# ---------------------------------------------------------------------------
+
+- name: "in:arena returns cards with Arena printings"
+  query: "in:arena"
+  scryfall_query: "in:arena include:extras"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+    count_min: 10000
+
+- name: "in:lea returns cards printed in Alpha"
+  query: "in:lea"
+  scryfall_query: "in:lea include:extras"
+  assertions:
+    contains:
+      - "Black Lotus"
+      - "Lightning Bolt"
+    count_min: 250
+
+- name: "in:rare returns cards ever printed at rare"
+  query: "in:rare t:instant"
+  scryfall_query: "in:rare t:instant include:extras"
+  assertions:
+    contains:
+      - "Lightning Bolt"
+    count_min: 500
+
+- name: "in:mh2 in:a25 returns cards in both sets"
+  query: "in:mh2 in:a25"
+  scryfall_query: "in:mh2 in:a25 include:extras"
+  assertions:
+    contains:
+      - "Counterspell"
+      - "Vindicate"
+    count_min: 4
+
+# ---------------------------------------------------------------------------
 # Cross-domain queries (face + printing)
 # ---------------------------------------------------------------------------
 
