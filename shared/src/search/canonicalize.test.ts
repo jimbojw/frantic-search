@@ -224,4 +224,9 @@ describe("toScryfallQuery", () => {
   it("preserves field aliases (does not canonicalize field names)", () => {
     expect(canon("pow>=3")).toBe("pow>=3");
   });
+
+  it("canonicalizes $ to price for Scryfall (Spec 074)", () => {
+    expect(canon("$<1")).toBe("price<1");
+    expect(canon("$>=5 t:creature")).toBe("price>=5 t:creature");
+  });
 });

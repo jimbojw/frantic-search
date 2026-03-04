@@ -80,6 +80,14 @@ describe("printing-domain leaves", () => {
     expect(cardCount("price<1")).toBe(2);
   });
 
+  test("$<1 matches same as price<1 (Spec 074)", () => {
+    expect(cardCount("$<1")).toBe(2);
+  });
+
+  test("$>=5 matches Sol Ring foil (Spec 074)", () => {
+    expect(cardCount("$>=5")).toBe(1);
+  });
+
   test("year:2018 matches Lightning Bolt (A25 printing)", () => {
     expect(cardCount("year:2018")).toBe(1);
   });
@@ -1106,6 +1114,11 @@ describe("sort: sortBy extraction", () => {
 
   test("aliases: sort:usd → field price", () => {
     const { sortBy } = evaluate("sort:usd");
+    expect(sortBy!.field).toBe("price");
+  });
+
+  test("aliases: sort:$ → field price (Spec 074)", () => {
+    const { sortBy } = evaluate("sort:$");
     expect(sortBy!.field).toBe("price");
   });
 
