@@ -181,6 +181,10 @@ function matchesLabel(
     if (label === '++' && (!valuePredicate || valuePredicate('prints'))) return true
     if (label === '@@' && (!valuePredicate || valuePredicate('art'))) return true
   }
+  // Frantic Search–exclusive alias (Spec 057): ** → include:extras
+  if (field.some(f => f.toLowerCase() === 'include') && operator === ':') {
+    if (label === '**' && (!valuePredicate || valuePredicate('extras'))) return true
+  }
 
   const opIdx = label.indexOf(operator)
   if (opIdx < 0) return false

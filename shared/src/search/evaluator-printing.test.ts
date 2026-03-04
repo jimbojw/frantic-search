@@ -902,6 +902,26 @@ describe("include:extras", () => {
     const output = evaluate("t:creature OR include:extras");
     expect(output.includeExtras).toBe(true);
   });
+
+  test("** alias sets includeExtras (Spec 057)", () => {
+    const output = evaluate("**");
+    expect(output.includeExtras).toBe(true);
+  });
+
+  test("** alias matches all cards", () => {
+    const output = evaluate("**");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("** and include:extras produce same includeExtras", () => {
+    expect(evaluate("t:creature **").includeExtras).toBe(evaluate("t:creature include:extras").includeExtras);
+  });
+
+  test("** combined with filter does not affect card count", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant **");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
 });
 
 // ---------------------------------------------------------------------------

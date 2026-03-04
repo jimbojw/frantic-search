@@ -1305,6 +1305,13 @@ describe('parseBreakdown preserves alias display (Spec 048)', () => {
     expect(uniqueChild).toBeDefined()
     expect(uniqueChild!.label).toBe('@@')
   })
+
+  it('** breakdown label is ** not include:extras (Spec 057)', () => {
+    const bd = buildBreakdown('t:creature **')
+    const includeChild = bd.children?.find(c => c.label === '**' || c.label === 'include:extras')
+    expect(includeChild).toBeDefined()
+    expect(includeChild!.label).toBe('**')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1348,6 +1355,11 @@ describe('toggleIncludeExtras', () => {
     const q = 'r:mythic OR r:rare'
     expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('(r:mythic OR r:rare) include:extras')
   })
+
+  it('removes ** alias when present (Spec 057)', () => {
+    const q = 't:creature **'
+    expect(toggleIncludeExtras(q, buildBreakdown(q))).toBe('t:creature')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1369,6 +1381,11 @@ describe('hasIncludeExtras', () => {
 
   it('returns true when include:extras is among other terms', () => {
     expect(hasIncludeExtras(buildBreakdown('is:gamechanger include:extras'))).toBe(true)
+  })
+
+  it('returns true when ** alias is present (Spec 057)', () => {
+    expect(hasIncludeExtras(buildBreakdown('**'))).toBe(true)
+    expect(hasIncludeExtras(buildBreakdown('t:creature **'))).toBe(true)
   })
 })
 

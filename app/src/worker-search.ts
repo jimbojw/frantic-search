@@ -8,6 +8,7 @@ function leafLabel(qnr: QueryNodeResult): string {
   switch (n.type) {
     case 'FIELD':
       if (n.field.toLowerCase() === 'unique' && n.sourceText) return n.sourceText
+      if (n.field.toLowerCase() === 'include' && n.sourceText) return n.sourceText
       return `${n.field}${n.operator}${n.value}`
     case 'BARE': return n.value
     case 'EXACT': return `!"${n.value}"`

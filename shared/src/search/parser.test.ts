@@ -252,6 +252,24 @@ describe("parse", () => {
     });
   });
 
+  describe("include:extras alias (Spec 057)", () => {
+    test("** desugars to include:extras with sourceText", () => {
+      const ast = parse("**") as import("./ast").FieldNode;
+      expect(ast).toMatchObject(field("include", ":", "extras"));
+      expect(ast.sourceText).toBe("**");
+    });
+
+    test("** in combined query", () => {
+      expect(parse("t:creature **")).toMatchObject(
+        and(field("t", ":", "creature"), field("include", ":", "extras")),
+      );
+    });
+
+    test("negated ** produces NOT over include:extras", () => {
+      expect(parse("-**")).toMatchObject(not(field("include", ":", "extras")));
+    });
+  });
+
   describe("NOP nodes", () => {
     test("trailing OR produces NOP right operand", () => {
       const ast = parse("a OR");

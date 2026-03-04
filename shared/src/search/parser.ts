@@ -158,6 +158,15 @@ class Parser {
           sourceText: "@@",
         };
       }
+      // Frantic Search–exclusive alias (Spec 057): ** → include:extras
+      if (word.value === "**") {
+        return {
+          type: "FIELD", field: "include", operator: ":", value: "extras",
+          span: { start: word.start, end: word.end },
+          valueSpan: { start: word.start, end: word.end },
+          sourceText: "**",
+        };
+      }
       return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
     }
 

@@ -35,6 +35,8 @@ A card/printing is _playable_ iff:
 - The evaluator exposes `includeExtras: boolean` on `EvalOutput`.
 - Unknown values (e.g., `include:foo`) produce an error: `unknown include value "foo"`.
 
+**Frantic Search–exclusive alias:** The bare word `**` desugars to `include:extras`. It behaves identically to the canonical form. Desugared nodes carry `sourceText` (`"**"`) so the breakdown displays the original token rather than `include:extras`. This shorthand is not from Scryfall.
+
 ### Default playable filter in the worker
 
 Applied as a post-evaluation step in `runSearch()`, after pinned+live combination and before sorting:
