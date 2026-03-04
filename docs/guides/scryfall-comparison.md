@@ -69,6 +69,7 @@ These are principled divergences documented in ADR-019, not bugs:
 - **DFC name format**: We display the front face name (e.g., `Ayara, Widow of the Realm`). Scryfall displays the joined name (`Ayara, Widow of the Realm // Ayara, Furnace Queen`).
 - **Partial date ranges**: `date=202` expands to `[2020-01-01, 2030-01-01)` for narrow-as-you-type UX. Scryfall ignores partial dates as erroneous. See Spec 061.
 - **`!` as operator synonym**: Scryfall inconsistently treats `!` as `=` for some fields but not others. We do not replicate this. See § Scryfall's Undocumented Behavior below.
+- **Tokens matching printing filters**: Under the "only playable cards" doctrine (without `include:extras`), tokens such as "Icingdeath, Frost Tongue" are not playable in any format and should be excluded. However, when a query combines printing-level conditions (e.g. `s:sld`, `is:ub`) with a name search, Scryfall may include tokens that match those filters. Example: `(is:ub OR s:sld) icingdeath` returns both the creature "Icingdeath, Frost Tyrant" and the token "Icingdeath, Frost Tongue" on Scryfall, even though the token is not playable. Frantic Search excludes tokens from the index entirely (they are filtered in the ETL), so we do not replicate this behavior. See [issue #76](https://github.com/jimbojw/frantic-search/issues/76).
 
 ### Filtered by default (matching Scryfall)
 
