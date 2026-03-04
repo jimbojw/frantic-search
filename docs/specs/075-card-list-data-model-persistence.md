@@ -10,7 +10,7 @@ Define the data model and persistence layer for client-side card lists. Each lis
 
 ## Background
 
-The app (ADR-003) runs search in a WebWorker. Users want to maintain lists of cards (e.g., a cart, wishlist, or deck list) that persist across sessions and can be queried (e.g., `my:list`). The main thread must store list data and map stored identifiers to canonical face indices for mask building (card-list-02 worker protocol).
+The app (ADR-003) runs search in a WebWorker. Users want to maintain lists of cards (e.g., a cart, wishlist, or deck list) that persist across sessions and can be queried (e.g., `my:list`). The main thread must store list data and map stored identifiers to canonical face indices for mask building (Spec 076).
 
 Spec 003 adds `oracle_ids: string[]` to `ColumnarData` — one entry per face row; all faces of a card share the same Scryfall oracle UUID. This column is available in the ETL output and enables the main thread to map a stored `oracle_id` to a canonical face index for mask building.
 
@@ -31,7 +31,7 @@ Spec 003 adds `oracle_ids: string[]` to `ColumnarData` — one entry per face ro
 
 ### Schema
 
-Types live in `shared/src/card-list.ts` so the worker protocol (card-list-02) and query engine (card-list-03) can import them.
+Types live in `shared/src/card-list.ts` so the worker protocol (Spec 076) and query engine can import them.
 
 ```typescript
 type CardListEntry =
