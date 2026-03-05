@@ -43,6 +43,11 @@ export class CardListStore {
   }
   private channel: BroadcastChannel | null = null
   private initPromise: Promise<void> | null = null
+  private onChange?: (affectedListIds: string[]) => void
+
+  constructor(onChange?: (affectedListIds: string[]) => void) {
+    this.onChange = onChange
+  }
 
   /**
    * Initialize the store: open IndexedDB, replay logs, bootstrap default list, subscribe to BroadcastChannel.
@@ -105,6 +110,8 @@ export class CardListStore {
       }
       set.add(instance.uuid)
       this.view.instances.set(instance.uuid, instance)
+      const affected = [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
+      this.onChange?.([...new Set(affected)])
     } else if (msg.type === 'list-metadata-updated' && msg.metadata) {
       this.view.lists.set(msg.metadata.list_id, msg.metadata)
     }
@@ -133,6 +140,8 @@ export class CardListStore {
     }
     set.add(instance.uuid)
     this.view.instances.set(instance.uuid, instance)
+    const affected = [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
+    this.onChange?.([...new Set(affected)])
   }
 
   getView(): MaterializedView {

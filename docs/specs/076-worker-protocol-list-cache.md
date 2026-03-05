@@ -1,6 +1,6 @@
 # Spec 076: Worker Protocol and List Caching
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 004 (Evaluation Cache), Spec 075 (Card List Data Model and Persistence), Spec 024 (Index-Based Result Protocol)
 
@@ -83,13 +83,12 @@ When a list is empty, send `list-update` with a zeroed `faceMask` (same length a
 
 ## Acceptance Criteria
 
-- [ ] `ToWorker` includes `list-update` variant with `listId`
-- [ ] Worker maintains separate list mask cache `Map<listId, { faceMask, printingMask? }>`; overwrites entry on `list-update`
-- [ ] Worker evicts entire NodeCache on every `list-update`
-- [ ] `my:` leaves read from list mask cache when evaluated; results interned in NodeCache (future spec)
-- [ ] Main thread builds mask from list entries and sends on load/change
-- [ ] Transferables used for zero-copy transfer
-- [ ] No list data sent with `search` messages
-- [ ] Worker starts with no masks cached; handles first `list-update` before any `my:` query
-- [ ] Empty list sends `list-update` with zeroed mask (not omitted)
-- [ ] Main thread builds `(scryfall_id, finish)` → printing index lookup from `PrintingDisplayColumns`; sends `printingMask` when list has printing-level entries and printings are loaded
+- [x] `ToWorker` includes `list-update` variant with `listId`
+- [x] Worker maintains separate list mask cache `Map<listId, { faceMask, printingMask? }>`; overwrites entry on `list-update`
+- [x] Worker evicts entire NodeCache on every `list-update`
+- [x] Main thread builds mask from list entries and sends on load/change
+- [x] Transferables used for zero-copy transfer
+- [x] No list data sent with `search` messages
+- [x] Worker starts with no masks cached; handles first `list-update` before any `my:` query
+- [x] Empty list sends `list-update` with zeroed mask (not omitted)
+- [x] Main thread builds `(scryfall_id, finish)` → printing index lookup from `PrintingDisplayColumns`; sends `printingMask` when list has printing-level entries and printings are loaded

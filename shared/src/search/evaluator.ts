@@ -126,6 +126,11 @@ export class NodeCache {
     // Invalidate all cached results: printing-domain nodes need new data,
     // and face-fallback fields (legal/banned/restricted) must re-evaluate
     // in the printing domain now that printing data is available.
+    this.clearAllComputed();
+  }
+
+  /** Clears all cached results on interned nodes. Used on list-update (Spec 076). */
+  clearAllComputed(): void {
     for (const [, interned] of this.nodes) {
       if (interned.computed) {
         interned.computed = undefined;

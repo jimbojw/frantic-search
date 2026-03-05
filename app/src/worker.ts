@@ -146,6 +146,7 @@ async function init(): Promise<void> {
     : null
   const cache = new NodeCache(index, printingIndex)
   const display = extractDisplayColumns(data)
+  const listMaskCache = new Map<string, { faceMask: Uint8Array; printingMask?: Uint8Array }>()
 
   post({ type: 'status', status: 'ready', display })
 
@@ -155,6 +156,14 @@ async function init(): Promise<void> {
 
   self.onmessage = (e: MessageEvent<ToWorker>) => {
     const msg = e.data
+    if (msg.type === 'list-update') {
+      listMaskCache.set(msg.listId, {
+        faceMask: msg.faceMask,
+        printingMask: msg.printingMask,
+      })
+      cache.clearAllComputed()
+      return
+    }
     if (msg.type !== 'search') return
 
     const hasPinned = !!msg.pinnedQuery?.trim()

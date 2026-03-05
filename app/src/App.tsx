@@ -29,6 +29,12 @@ import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearVi
 import { extractViewMode } from './view-query'
 import { reconstructQuery } from './InlineBreakdown'
 import { CardListStore } from './card-list-store'
+import {
+  buildOracleToCanonicalFaceMap,
+  buildPrintingLookup,
+  buildMasksForList,
+  hasPrintingLevelEntries,
+} from './list-mask-builder'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -278,13 +284,45 @@ function App() {
     }
   }
 
-  const cardListStore = new CardListStore()
+  const worker = new SearchWorker()
+  let latestQueryId = 0
+
+  function sendListUpdatesFor(
+    workerRef: Worker,
+    affectedListIds: string[],
+    d: DisplayColumns,
+    pd: PrintingDisplayColumns | null,
+    store: CardListStore
+  ): void {
+    const oracleMap = buildOracleToCanonicalFaceMap(d)
+    const view = store.getView()
+    const faceCount = d.oracle_ids.length
+    const printingCount = pd?.scryfall_ids.length ?? 0
+    const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+    for (const listId of affectedListIds) {
+      const { faceMask, printingMask } = buildMasksForList({
+        view,
+        listId,
+        faceCount,
+        printingCount,
+        oracleToCanonicalFace: oracleMap,
+        printingLookup,
+      })
+      const transfer: Transferable[] = [faceMask.buffer]
+      if (printingMask) transfer.push(printingMask.buffer)
+      workerRef.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+    }
+  }
+
+  let cardListStore: CardListStore
+  cardListStore = new CardListStore((affectedListIds) => {
+    const d = display()
+    if (!d) return
+    sendListUpdatesFor(worker, affectedListIds, d, printingDisplay(), cardListStore)
+  })
   createEffect(() => {
     cardListStore.init()
   })
-
-  const worker = new SearchWorker()
-  let latestQueryId = 0
 
   worker.onmessage = (e: MessageEvent<FromWorker>) => {
     const msg = e.data
@@ -294,12 +332,53 @@ function App() {
           setDataProgress(msg.fraction)
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
+          const view = cardListStore.getView()
+          const listsWithPrintings = [...view.lists.keys()].filter((lid) =>
+            hasPrintingLevelEntries(view, lid)
+          )
+          if (listsWithPrintings.length > 0) {
+            const d = display()
+            if (d) {
+              sendListUpdatesFor(
+                worker,
+                listsWithPrintings,
+                d,
+                msg.printingDisplay,
+                cardListStore
+              )
+            }
+          }
         } else {
-          setWorkerStatus(msg.status)
           if (msg.status === 'ready') {
             setDataProgress(1)
             setDisplay(msg.display)
             fetchThumbHashes()
+            cardListStore.init().then(() => {
+              const d = msg.display
+              const pd = printingDisplay()
+              const oracleMap = buildOracleToCanonicalFaceMap(d)
+              const view = cardListStore.getView()
+              const faceCount = d.oracle_ids.length
+              const printingCount = pd?.scryfall_ids.length ?? 0
+              const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+              const listIds = [...view.lists.keys()]
+              for (const listId of listIds) {
+                const { faceMask, printingMask } = buildMasksForList({
+                  view,
+                  listId,
+                  faceCount,
+                  printingCount,
+                  oracleToCanonicalFace: oracleMap,
+                  printingLookup,
+                })
+                const transfer: Transferable[] = [faceMask.buffer]
+                if (printingMask) transfer.push(printingMask.buffer)
+                worker.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+              }
+              setWorkerStatus('ready')
+            })
+          } else {
+            setWorkerStatus(msg.status)
           }
           if (msg.status === 'error') {
             setWorkerError(msg.error)
