@@ -602,7 +602,7 @@ function App() {
   }
 
   return (
-    <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+    <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'help'}>
         <SyntaxHelp onSelectExample={navigateToQuery} />
       </Show>

@@ -2,8 +2,15 @@
 @import "tailwindcss";
 @import "mana-font/css/mana.min.css";
 
-html {
-  background-color: #030712;
+html, body {
+  overscroll-behavior-y: none;
+  background-color: #f9fafb; /* gray-50, default for light / no-preference */
+}
+
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background-color: #030712; /* gray-950 */
+  }
 }
 
 button, [role="button"] {
