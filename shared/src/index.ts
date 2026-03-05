@@ -28,6 +28,23 @@ export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data"
 
 export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";
 
+export type {
+  InstanceState,
+  InstanceStateEntry,
+  ListMetadata,
+  ListMetadataEntry,
+  MaterializedView,
+  InstanceUpdatedMessage,
+  ListMetadataUpdatedMessage,
+  CardListBroadcastMessage,
+} from "./card-list";
+export {
+  EXTERNAL_LIST_ID,
+  TRASH_LIST_ID,
+  DEFAULT_LIST_ID,
+  BROADCAST_CHANNEL_NAME,
+} from "./card-list";
+
 export { TokenType } from "./search/ast";
 export type { ASTNode, Token, QueryNodeResult, Span, SortDirective } from "./search/ast";
 export { lex } from "./search/lexer";

@@ -28,6 +28,7 @@ import {
 import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms } from './query-edit'
 import { extractViewMode } from './view-query'
 import { reconstructQuery } from './InlineBreakdown'
+import { CardListStore } from './card-list-store'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -276,6 +277,11 @@ function App() {
       // Thumb hashes are optional; gracefully degrade to gradients.
     }
   }
+
+  const cardListStore = new CardListStore()
+  createEffect(() => {
+    cardListStore.init()
+  })
 
   const worker = new SearchWorker()
   let latestQueryId = 0

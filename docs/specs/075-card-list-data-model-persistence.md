@@ -1,6 +1,6 @@
 # Spec 075: Card List Data Model and Persistence
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 003 (ETL Process), Spec 046 (Printing Data Model)
 
@@ -181,16 +181,16 @@ Schema evolution: Add new fields to the entry type as needed. Old rows omit them
 
 ## Acceptance Criteria
 
-- [ ] `InstanceStateEntry`, `InstanceState`, `ListMetadata`, and `ListMetadataEntry` types defined in `shared/src/card-list.ts`
-- [ ] `MaterializedView` type defined; view derived by replaying logs
-- [ ] Instance identity (uuid, oracle_id, scryfall_id, finish) immutable at creation; only `list_id` mutates
-- [ ] Every instance log entry carries full state (uuid, oracle_id, scryfall_id, finish, list_id, timestamp)
-- [ ] IndexedDB stores `instance_log` and `list_metadata_log`; both persist append-only entries
-- [ ] Instance UUIDs (UUID v4 via `crypto.randomUUID()`) assigned at creation
-- [ ] Trash is a reserved list ID; restore appends full entry with previous `list_id`
-- [ ] BroadcastChannel messages include `previous` state; receivers update view without IndexedDB lookup
-- [ ] Main-thread materialized view; replay on startup, incremental apply on write
-- [ ] Data persists across page reload
-- [ ] Cross-tab: Tab B sees changes made in Tab A after broadcast
-- [ ] Materialized view supports aggregation by `oracle_id` and by `(scryfall_id, finish)` when both are set
-- [ ] Swap (change printing or card) = remove instance + add new instance from external
+- [x] `InstanceStateEntry`, `InstanceState`, `ListMetadata`, and `ListMetadataEntry` types defined in `shared/src/card-list.ts`
+- [x] `MaterializedView` type defined; view derived by replaying logs
+- [x] Instance identity (uuid, oracle_id, scryfall_id, finish) immutable at creation; only `list_id` mutates
+- [x] Every instance log entry carries full state (uuid, oracle_id, scryfall_id, finish, list_id, timestamp)
+- [x] IndexedDB stores `instance_log` and `list_metadata_log`; both persist append-only entries
+- [x] Instance UUIDs (UUID v4 via `crypto.randomUUID()`) assigned at creation
+- [x] Trash is a reserved list ID; restore appends full entry with previous `list_id`
+- [x] BroadcastChannel messages include `previous` state; receivers update view without IndexedDB lookup
+- [x] Main-thread materialized view; replay on startup, incremental apply on write
+- [x] Data persists across page reload
+- [x] Cross-tab: Tab B sees changes made in Tab A after broadcast
+- [x] Materialized view supports aggregation by `oracle_id` and by `(scryfall_id, finish)` when both are set
+- [x] Swap (change printing or card) = remove instance + add new instance from external
