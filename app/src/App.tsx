@@ -121,7 +121,13 @@ function App() {
     })
   }
   const [inputFocused, setInputFocused] = createSignal(false)
-  const [userEngaged, setUserEngaged] = createSignal(false)
+  const urlEngaged = () => {
+    const p = new URLSearchParams(location.search)
+    return p.has('q') && p.get('q') === ''
+  }
+  const [userEngaged, setUserEngaged] = createSignal(
+    initialParams.has('q') && initialParams.get('q') === ''
+  )
   let programmaticFocusInProgress = false
   let textareaRef: HTMLTextAreaElement | undefined
   let textareaHlRef: HTMLDivElement | undefined
@@ -258,6 +264,7 @@ function App() {
   const totalCards = () => indices().length
 
   const headerCollapsed = () =>
+    urlEngaged() ||
     query().trim() !== '' ||
     termsExpanded() ||
     (inputFocused() && userEngaged())
@@ -456,10 +463,13 @@ function App() {
 
   createEffect(() => {
     const q = query().trim()
+    const engaged = userEngaged() || termsExpanded()
     if (view() !== 'search') return
     const params = new URLSearchParams(location.search)
     if (q) {
       params.set('q', query())
+    } else if (engaged) {
+      params.set('q', '')
     } else {
       params.delete('q')
     }
@@ -476,6 +486,7 @@ function App() {
     setView(parseView(params))
     setQuery(params.get('q') ?? '')
     setCardId(params.get('card') ?? '')
+    setUserEngaged(params.has('q') && params.get('q') === '')
 
     const scrollY = history.state?.scrollY ?? 0
     requestAnimationFrame(() => window.scrollTo(0, scrollY))
@@ -741,44 +752,90 @@ function App() {
       <Show when={view() === 'search'}>
         <SearchProvider value={searchContextValue}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
-        <button
-          type="button"
-          onClick={() => navigateHome()}
-          aria-label="Go to home"
-          class={`relative w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 ${headerCollapsed() ? 'h-6 bg-[center_23%] rounded-xl mb-2' : 'h-14 bg-[center_20%] rounded-xl mb-4'}`}
-          style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
-        >
-          <img
-            src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
-            alt="Frantic Search card art by Mitchell Malloy"
-            onLoad={() => setHeaderArtLoaded(true)}
-            class={`h-full w-full object-cover pointer-events-none ${headerCollapsed() ? 'object-[center_23%]' : 'object-[center_20%]'}`}
-            style={{
-              opacity: headerArtLoaded() ? dataProgress() : 0,
-              'clip-path': headerArtLoaded() ? `inset(0 ${(1 - dataProgress()) * 100}% 0 0)` : 'inset(0 100% 0 0)',
-              transition: 'clip-path 100ms linear, opacity 100ms linear',
-            }}
-          />
+        <Show when={headerCollapsed()} fallback={
+          <>
+            <button
+              type="button"
+              onClick={() => navigateHome()}
+              aria-label="Go to home"
+              class="relative w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 h-14 bg-[center_20%] rounded-xl mb-4"
+              style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
+            >
+              <img
+                src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
+                alt="Frantic Search card art by Mitchell Malloy"
+                onLoad={() => setHeaderArtLoaded(true)}
+                class="h-full w-full object-cover pointer-events-none object-[center_20%]"
+                style={{
+                  opacity: headerArtLoaded() ? dataProgress() : 0,
+                  'clip-path': headerArtLoaded() ? `inset(0 ${(1 - dataProgress()) * 100}% 0 0)` : 'inset(0 100% 0 0)',
+                  transition: 'clip-path 100ms linear, opacity 100ms linear',
+                }}
+              />
+              <div
+                class="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 rounded-b-xl"
+                style={{
+                  width: `${dataProgress() * 100}%`,
+                  opacity: 1 - (dataProgress() ** 20),
+                  transition: 'width 100ms linear, opacity 200ms ease-out',
+                }}
+              />
+            </button>
+            <div class="overflow-hidden transition-all duration-200 ease-out max-h-80 opacity-100">
+              <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
+                Frantic Search
+              </h1>
+              <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
+                Instant MTG card search
+              </p>
+            </div>
+          </>
+        }>
+          <div class="flex h-11 items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={() => navigateHome()}
+              aria-label="Go to home"
+              class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleTerms}
+              aria-label="Menu"
+              class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
+          </div>
+        </Show>
+
+        <Show when={termsExpanded() && headerCollapsed()}>
           <div
-            class="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 rounded-b-xl"
-            style={{
-              width: `${dataProgress() * 100}%`,
-              opacity: 1 - (dataProgress() ** 20),
-              transition: 'width 100ms linear, opacity 200ms ease-out',
-            }}
+            role="presentation"
+            class="fixed inset-0 z-40 bg-black/30 transition-opacity"
+            onClick={toggleTerms}
           />
-        </button>
-        <div class={`overflow-hidden transition-all duration-200 ease-out ${headerCollapsed() ? 'max-h-0 opacity-0' : 'max-h-80 opacity-100'}`}>
-          <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
-            Frantic Search
-          </h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
-            Instant MTG card search
-          </p>
-        </div>
+          <aside
+            class="fixed top-0 right-0 bottom-0 z-50 w-[min(100%,20rem)] overflow-y-auto bg-white dark:bg-gray-900 shadow-xl transition-transform duration-200 ease-out translate-x-0"
+            aria-label="Filters menu"
+          >
+            <div class="flex flex-col min-h-full pt-[env(safe-area-inset-top)]">
+              <TermsDrawer
+                query={query()}
+                onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
+                onHelpClick={navigateToHelp}
+                onClose={toggleTerms}
+              />
+            </div>
+          </aside>
+        </Show>
 
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
-          <Show when={termsExpanded()}>
+          <Show when={termsExpanded() && !headerCollapsed()}>
             <TermsDrawer
               query={query()}
               onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
@@ -786,14 +843,14 @@ function App() {
               onClose={toggleTerms}
             />
           </Show>
-          <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
+          <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() && !headerCollapsed() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
             </div>
             <div class="grid overflow-hidden">
-              <div ref={textareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-10">
+              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
                 <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
               </div>
               <textarea
@@ -810,19 +867,21 @@ function App() {
                 onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => setInputFocused(false)}
                 disabled={workerStatus() === 'error'}
-                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-10 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+                class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
               />
             </div>
-            <button
-              type="button"
-              onClick={toggleTerms}
-              class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-              aria-label="Toggle search filters"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
-              </svg>
-            </button>
+            <Show when={!headerCollapsed()}>
+              <button
+                type="button"
+                onClick={toggleTerms}
+                class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                aria-label="Toggle search filters"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
+                </svg>
+              </button>
+            </Show>
           </div>
           <Show when={pinnedBreakdown()}>
             {(pbd) => (

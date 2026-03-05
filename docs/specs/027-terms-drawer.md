@@ -58,6 +58,18 @@ The TERMS drawer is **always rendered** — on the landing page, while a query i
 
 The drawer is **not** rendered on non-search views (help, card detail, bug report).
 
+### Mobile engagement (two presentation modes)
+
+When the user has not yet interacted (home/landing state), the header shows full branding and the TERMS drawer appears **inline** above the search input, toggled by a filter icon on the right of the input.
+
+Once the user interacts (types a query, focuses the input, or opens the drawer), the header collapses to a slim bar with a home button (left) and burger menu button (right). In this engaged state:
+
+- The TERMS drawer content moves into a **slide-out panel** opened by the burger button. The panel slides in from the right, with a semi-transparent backdrop; tapping the backdrop or the close button dismisses it.
+- The filter icon is removed from the search input; the burger is the sole entry point for filters.
+- The search input gains full width (no right padding reserved for the terms button).
+
+This keeps the home state welcoming while giving engaged users a compact, Scryfall-style header with clear affordances.
+
 ### Default state
 
 The drawer **begins collapsed** for new users. The toggle row is visible, but the chip content is hidden until the user clicks to expand. This keeps the landing page clean while signaling that more options exist.
