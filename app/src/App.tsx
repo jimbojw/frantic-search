@@ -321,7 +321,9 @@ function App() {
     sendListUpdatesFor(worker, affectedListIds, d, printingDisplay(), cardListStore)
   })
   createEffect(() => {
-    cardListStore.init()
+    cardListStore.init().catch((err) => {
+      console.error('CardListStore init failed:', err)
+    })
   })
 
   worker.onmessage = (e: MessageEvent<FromWorker>) => {
@@ -353,30 +355,36 @@ function App() {
             setDataProgress(1)
             setDisplay(msg.display)
             fetchThumbHashes()
-            cardListStore.init().then(() => {
-              const d = msg.display
-              const pd = printingDisplay()
-              const oracleMap = buildOracleToCanonicalFaceMap(d)
-              const view = cardListStore.getView()
-              const faceCount = d.oracle_ids.length
-              const printingCount = pd?.scryfall_ids.length ?? 0
-              const printingLookup = pd ? buildPrintingLookup(pd) : undefined
-              const listIds = [...view.lists.keys()]
-              for (const listId of listIds) {
-                const { faceMask, printingMask } = buildMasksForList({
-                  view,
-                  listId,
-                  faceCount,
-                  printingCount,
-                  oracleToCanonicalFace: oracleMap,
-                  printingLookup,
-                })
-                const transfer: Transferable[] = [faceMask.buffer]
-                if (printingMask) transfer.push(printingMask.buffer)
-                worker.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
-              }
-              setWorkerStatus('ready')
-            })
+            cardListStore
+              .init()
+              .then(() => {
+                const d = msg.display
+                const pd = printingDisplay()
+                const oracleMap = buildOracleToCanonicalFaceMap(d)
+                const view = cardListStore.getView()
+                const faceCount = d.oracle_ids.length
+                const printingCount = pd?.scryfall_ids.length ?? 0
+                const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+                const listIds = [...view.lists.keys()]
+                for (const listId of listIds) {
+                  const { faceMask, printingMask } = buildMasksForList({
+                    view,
+                    listId,
+                    faceCount,
+                    printingCount,
+                    oracleToCanonicalFace: oracleMap,
+                    printingLookup,
+                  })
+                  const transfer: Transferable[] = [faceMask.buffer]
+                  if (printingMask) transfer.push(printingMask.buffer)
+                  worker.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+                }
+                setWorkerStatus('ready')
+              })
+              .catch((err) => {
+                console.error('CardListStore init failed:', err)
+                setWorkerStatus('ready')
+              })
           } else {
             setWorkerStatus(msg.status)
           }

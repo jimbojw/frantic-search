@@ -167,4 +167,27 @@ describe('card-list-db', () => {
       expect(history).toHaveLength(0)
     })
   })
+
+  describe('schema recovery', () => {
+    it('recreates database when object stores are missing', async () => {
+      const dbName = uniqueDbName()
+      await new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open(dbName, 1)
+        req.onupgradeneeded = () => {
+          const db = req.result
+          db.createObjectStore('other', { keyPath: 'id' })
+        }
+        req.onsuccess = () => {
+          req.result.close()
+          resolve()
+        }
+        req.onerror = () => reject(req.error)
+      })
+
+      const recovered = await openCardListDb(dbName)
+      expect(recovered.objectStoreNames.contains('instance_log')).toBe(true)
+      expect(recovered.objectStoreNames.contains('list_metadata_log')).toBe(true)
+      recovered.close()
+    })
+  })
 })

@@ -6,6 +6,27 @@ const DB_VERSION = 1
 const INSTANCE_LOG_STORE = 'instance_log'
 const LIST_METADATA_LOG_STORE = 'list_metadata_log'
 
+/**
+ * Schema validation and recovery.
+ *
+ * IndexedDB can end up with the expected version but missing object stores (e.g. dev tools
+ * deletion, browser quirks, or unknown user actions). Without our stores, transactions throw
+ * DOMException: "'instance_log' is not a known object store name".
+ *
+ * We cannot repair in place: object stores can only be created inside onupgradeneeded, which
+ * does not run when the DB version already matches. The standard recovery is to delete the
+ * database and reopen, which triggers onupgradeneeded and recreates the schema.
+ *
+ * We only validate the two original stores. Do not add new stores here — future migrations
+ * create stores in onupgradeneeded; validating them would risk deleting user data on upgrade.
+ */
+function hasExpectedSchema(db: IDBDatabase): boolean {
+  return (
+    db.objectStoreNames.contains(INSTANCE_LOG_STORE) &&
+    db.objectStoreNames.contains(LIST_METADATA_LOG_STORE)
+  )
+}
+
 function openDb(dbName: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(dbName, DB_VERSION)
@@ -29,12 +50,31 @@ function openDb(dbName: string): Promise<IDBDatabase> {
   })
 }
 
+function deleteDatabase(dbName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(dbName)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+async function openDbWithRecovery(dbName: string): Promise<IDBDatabase> {
+  const db = await openDb(dbName)
+  if (hasExpectedSchema(db)) return db
+
+  db.close()
+  await deleteDatabase(dbName)
+  return openDb(dbName)
+}
+
 /**
  * Open the card list IndexedDB. Creates the database and object stores if they do not exist.
+ * Validates schema after open; if required stores are missing, deletes and recreates the DB.
+ *
  * @param dbName - Optional database name for testing. Defaults to 'frantic-search'.
  */
 export async function openCardListDb(dbName?: string): Promise<IDBDatabase> {
-  return openDb(dbName ?? DEFAULT_DB_NAME)
+  return openDbWithRecovery(dbName ?? DEFAULT_DB_NAME)
 }
 
 /**
