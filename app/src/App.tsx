@@ -721,6 +721,7 @@ function App() {
               printingIndices={printingPIs()}
               printingDisplay={printingDisplay()}
               onNavigateToQuery={navigateToQuery}
+              cardListStore={cardListStore}
             />
           )
         })()}

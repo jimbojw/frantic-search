@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
-import { Format } from '@frantic-search/shared'
+import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
+import type { CardListStore } from './card-list-store'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
@@ -52,6 +53,9 @@ const STATUS_LABELS: Record<LegalityStatus, string> = {
   restricted: 'Restricted',
   not_legal: 'Not Legal',
 }
+
+/** Maps numeric finish (0=nonfoil, 1=foil, 2=etched) to InstanceState.finish string. */
+const FINISH_TO_STRING = ['nonfoil', 'foil', 'etched'] as const
 
 const DOUBLE_SIDED_LAYOUTS = new Set(['transform', 'modal_dfc'])
 
@@ -179,6 +183,7 @@ export default function CardDetail(props: {
   printingIndices?: number[]
   printingDisplay?: PrintingDisplayColumns | null
   onNavigateToQuery?: (q: string) => void
+  cardListStore?: CardListStore
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
@@ -222,17 +227,35 @@ export default function CardDetail(props: {
           </svg>
         </button>
         <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
-        <a
-          href={scryfallUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 shrink-0"
-          aria-label="View on Scryfall"
-        >
-          <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-        </a>
+        <div class="flex items-center gap-1 shrink-0">
+          <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
+            <button
+              type="button"
+              onClick={() => {
+                const store = props.cardListStore!
+                const oracleId = d()!.oracle_ids[faces()[0]]
+                if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID).catch(() => {})
+              }}
+              class="text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-1"
+              aria-label="Add card to list"
+            >
+              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </Show>
+          <a
+            href={scryfallUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
+            aria-label="View on Scryfall"
+          >
+            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+          </a>
+        </div>
       </div>
       <Show when={allPrintsQuery() && props.onNavigateToQuery}>
         <div class="flex justify-center mb-6">
@@ -308,18 +331,60 @@ export default function CardDetail(props: {
                         <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
-                            {(pi) => (<>
-                              <dt class="font-medium text-gray-600 dark:text-gray-300">
-                                {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
-                              </dt>
-                              <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pi])}</dd>
-                            </>)}
+                            {(pi) => (
+                              <>
+                                <dt class="font-medium text-gray-600 dark:text-gray-300">
+                                  {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
+                                </dt>
+                                <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                  {formatPrice(pcols().price_usd[pi])}
+                                  <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const store = props.cardListStore!
+                                        const oracleId = d()!.oracle_ids[faces()[0]]
+                                        const scryfallId = pcols().scryfall_ids[pi]
+                                        const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                        if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                      }}
+                                      class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5"
+                                      aria-label={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
+                                    >
+                                      <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                      </svg>
+                                    </button>
+                                  </Show>
+                                </dd>
+                              </>
+                            )}
                           </For>
                         }>
                           <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
                           <dd class="text-gray-700 dark:text-gray-200">{FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'}</dd>
                           <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
-                          <dd class="text-gray-700 dark:text-gray-200">{formatPrice(pcols().price_usd[pidx])}</dd>
+                          <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                            {formatPrice(pcols().price_usd[pidx])}
+                            <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const store = props.cardListStore!
+                                  const oracleId = d()!.oracle_ids[faces()[0]]
+                                  const scryfallId = pcols().scryfall_ids[pidx]
+                                  const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                                  if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                }}
+                                class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5"
+                                aria-label="Add this printing to list"
+                              >
+                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                              </button>
+                            </Show>
+                          </dd>
                         </Show>
                       </dl>
                       <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
