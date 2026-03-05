@@ -32,6 +32,7 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     loyalty_lookup: data.loyalty_lookup,
     defense_lookup: data.defense_lookup,
     canonical_face: data.canonical_face,
+    oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(''),
   }
 }
 

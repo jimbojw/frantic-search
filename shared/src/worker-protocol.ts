@@ -29,6 +29,7 @@ export type DisplayColumns = {
   loyalty_lookup: string[]
   defense_lookup: string[]
   canonical_face: number[]
+  oracle_ids: string[]
 }
 
 export type BreakdownNode = {

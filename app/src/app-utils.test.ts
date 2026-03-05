@@ -157,6 +157,7 @@ function stubDisplay(overrides: Partial<DisplayColumns> = {}): DisplayColumns {
     loyalty_lookup: [''],
     defense_lookup: [''],
     canonical_face: [],
+    oracle_ids: [],
     ...overrides,
   }
 }
