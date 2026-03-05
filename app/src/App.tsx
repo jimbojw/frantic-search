@@ -321,8 +321,10 @@ function App() {
     }
   }
 
+  const [listVersion, setListVersion] = createSignal(0)
   let cardListStore: CardListStore
   cardListStore = new CardListStore((affectedListIds) => {
+    setListVersion((v) => v + 1)
     const d = display()
     if (!d) return
     sendListUpdatesFor(worker, affectedListIds, d, printingDisplay(), cardListStore)
@@ -733,6 +735,7 @@ function App() {
               printingDisplay={printingDisplay()}
               onNavigateToQuery={navigateToQuery}
               cardListStore={cardListStore}
+              listVersion={listVersion()}
             />
           )
         })()}

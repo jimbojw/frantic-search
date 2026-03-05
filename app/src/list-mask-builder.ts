@@ -109,6 +109,34 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
 }
 
 /**
+ * Counts instances in the list matching the given criteria.
+ * - Oracle-level: pass oracleId only (scryfallId and finish undefined/null); matches instances with scryfall_id and finish null.
+ * - Printing-level: pass all three; matches instances with exact scryfall_id and finish.
+ */
+export function getMatchingCount(
+  view: MaterializedView,
+  listId: string,
+  oracleId: string,
+  scryfallId?: string | null,
+  finish?: string | null
+): number {
+  const uuids = view.instancesByList.get(listId)
+  if (!uuids) return 0
+  const isOracleLevel = scryfallId == null && finish == null
+  let count = 0
+  for (const uuid of uuids) {
+    const instance = view.instances.get(uuid)
+    if (!instance || instance.oracle_id !== oracleId) continue
+    if (isOracleLevel) {
+      if (instance.scryfall_id == null && instance.finish == null) count++
+    } else {
+      if (instance.scryfall_id === scryfallId && instance.finish === finish) count++
+    }
+  }
+  return count
+}
+
+/**
  * Returns true if any instance in the list has printing-level data (scryfall_id and finish set).
  */
 export function hasPrintingLevelEntries(view: MaterializedView, listId: string): boolean {

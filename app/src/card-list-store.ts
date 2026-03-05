@@ -19,6 +19,7 @@ import {
   replayInstanceLog,
   replayListMetadataLog,
   getInstanceHistory,
+  getInstanceLatestLogKeys,
 } from './card-list-db'
 
 function buildInstancesByList(instances: Map<string, InstanceState>): Map<string, Set<string>> {
@@ -186,6 +187,48 @@ export class CardListStore {
     this.applyInstanceDelta(instance, { list_id: current.list_id })
     this.broadcastInstance(instance, { list_id: current.list_id })
     return instance
+  }
+
+  /**
+   * Remove the most recently added matching instance (LIFO pop) to trash.
+   * Oracle-level: pass oracleId only; printing-level: pass scryfallId and finish.
+   * Returns true if removed, false if none matched.
+   */
+  async removeMostRecentMatchingInstance(
+    listId: string,
+    oracleId: string,
+    scryfallId?: string | null,
+    finish?: string | null
+  ): Promise<boolean> {
+    if (!this.db) throw new Error('CardListStore not initialized')
+    const uuids = this.view.instancesByList.get(listId)
+    if (!uuids || uuids.size === 0) return false
+    const isOracleLevel = scryfallId == null && finish == null
+    const matching = new Set<string>()
+    for (const uuid of uuids) {
+      const instance = this.view.instances.get(uuid)
+      if (!instance || instance.oracle_id !== oracleId) continue
+      if (isOracleLevel) {
+        if (instance.scryfall_id == null && instance.finish == null) matching.add(uuid)
+      } else {
+        if (instance.scryfall_id === scryfallId && instance.finish === finish) matching.add(uuid)
+      }
+    }
+    if (matching.size === 0) return false
+    const keys = await getInstanceLatestLogKeys(this.db, matching)
+    let maxKey = -1
+    let targetUuid: string | null = null
+    for (const [uuid, key] of keys) {
+      if (key > maxKey) {
+        maxKey = key
+        targetUuid = uuid
+      }
+    }
+    if (targetUuid) {
+      await this.removeToTrash(targetUuid)
+      return true
+    }
+    return false
   }
 
   /**

@@ -4,6 +4,7 @@ import {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
   buildMasksForList,
+  getMatchingCount,
   hasPrintingLevelEntries,
 } from './list-mask-builder'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
@@ -283,6 +284,109 @@ describe('buildMasksForList', () => {
     expect(faceMask[0]).toBe(0)
     expect(faceMask[1]).toBe(0)
     expect(faceMask[2]).toBe(0)
+  })
+})
+
+describe('getMatchingCount', () => {
+  it('returns 0 for empty list', () => {
+    const view = makeView()
+    view.instancesByList.set('default', new Set())
+    expect(getMatchingCount(view, 'default', 'oid-bolt')).toBe(0)
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(0)
+  })
+
+  it('returns 0 for unknown list id', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', {
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: null,
+      finish: null,
+      list_id: 'default',
+    })
+    expect(getMatchingCount(view, 'other', 'oid-bolt')).toBe(0)
+  })
+
+  it('counts oracle-level entries', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    uuids.add('uuid-2')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', {
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: null,
+      finish: null,
+      list_id: 'default',
+    })
+    view.instances.set('uuid-2', {
+      uuid: 'uuid-2',
+      oracle_id: 'oid-bolt',
+      scryfall_id: null,
+      finish: null,
+      list_id: 'default',
+    })
+    expect(getMatchingCount(view, 'default', 'oid-bolt')).toBe(2)
+    expect(getMatchingCount(view, 'default', 'oid-sol')).toBe(0)
+  })
+
+  it('oracle-level excludes printing-level entries', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', {
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: 'nonfoil',
+      list_id: 'default',
+    })
+    expect(getMatchingCount(view, 'default', 'oid-bolt')).toBe(0)
+  })
+
+  it('counts printing-level entries', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    uuids.add('uuid-2')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', {
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: 'nonfoil',
+      list_id: 'default',
+    })
+    view.instances.set('uuid-2', {
+      uuid: 'uuid-2',
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: 'nonfoil',
+      list_id: 'default',
+    })
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(2)
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-b', 'foil')).toBe(0)
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'foil')).toBe(0)
+  })
+
+  it('printing-level excludes oracle-level entries', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', {
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: null,
+      finish: null,
+      list_id: 'default',
+    })
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(0)
   })
 })
 

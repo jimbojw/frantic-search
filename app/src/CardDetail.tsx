@@ -3,6 +3,7 @@ import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
+import { getMatchingCount } from './list-mask-builder'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
@@ -157,6 +158,41 @@ function FaceDetail(props: { d: DisplayColumns; fi: number }) {
   )
 }
 
+function ListControls(props: {
+  count: number
+  onAdd: () => void
+  onRemove: () => void
+  addLabel: string
+  removeLabel: string
+}) {
+  return (
+    <span class="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-100/80 dark:bg-gray-800/80 px-1.5 py-0.5">
+      <button
+        type="button"
+        onClick={props.onRemove}
+        disabled={props.count === 0}
+        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-0.5"
+        aria-label={props.removeLabel}
+      >
+        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+        </svg>
+      </button>
+      <span class="min-w-[1.5rem] text-center text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">{props.count}</span>
+      <button
+        type="button"
+        onClick={props.onAdd}
+        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-0.5"
+        aria-label={props.addLabel}
+      >
+        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </button>
+    </span>
+  )
+}
+
 function LegalityGrid(props: { legalities: { legal: number; banned: number; restricted: number } }) {
   return (
     <div class="grid grid-cols-2 gap-1.5">
@@ -184,6 +220,7 @@ export default function CardDetail(props: {
   printingDisplay?: PrintingDisplayColumns | null
   onNavigateToQuery?: (q: string) => void
   cardListStore?: CardListStore
+  listVersion?: number
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
@@ -228,22 +265,6 @@ export default function CardDetail(props: {
         </button>
         <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
         <div class="flex items-center gap-1 shrink-0">
-          <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
-            <button
-              type="button"
-              onClick={() => {
-                const store = props.cardListStore!
-                const oracleId = d()!.oracle_ids[faces()[0]]
-                if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID).catch(() => {})
-              }}
-              class="text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-1"
-              aria-label="Add card to list"
-            >
-              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
-          </Show>
           <a
             href={scryfallUrl()}
             target="_blank"
@@ -308,9 +329,31 @@ export default function CardDetail(props: {
                       setTimeout(() => setCopied(false), 1500)
                     })
                   }
+                  const oracleId = () => d()!.oracle_ids[faces()[0]]
+                  const nameCount = () => {
+                    props.listVersion
+                    const store = props.cardListStore
+                    if (!store) return 0
+                    const oid = oracleId()
+                    if (!oid) return 0
+                    return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid)
+                  }
                   return (
                     <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
                       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Name</dt>
+                        <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                          {fullName()}
+                          <Show when={props.cardListStore && oracleId()}>
+                            <ListControls
+                              count={nameCount()}
+                              onAdd={() => props.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {})}
+                              onRemove={() => props.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {})}
+                              addLabel="Add card to list"
+                              removeLabel="Remove from list"
+                            />
+                          </Show>
+                        </dd>
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
                         <dd class="text-gray-700 dark:text-gray-200">
                           <Show when={props.onNavigateToQuery} fallback={
@@ -331,34 +374,49 @@ export default function CardDetail(props: {
                         <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
-                            {(pi) => (
-                              <>
-                                <dt class="font-medium text-gray-600 dark:text-gray-300">
-                                  {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
-                                </dt>
-                                <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                                  {formatPrice(pcols().price_usd[pi])}
-                                  <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const store = props.cardListStore!
-                                        const oracleId = d()!.oracle_ids[faces()[0]]
-                                        const scryfallId = pcols().scryfall_ids[pi]
-                                        const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
-                                        if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
-                                      }}
-                                      class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5"
-                                      aria-label={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
-                                    >
-                                      <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                      </svg>
-                                    </button>
-                                  </Show>
-                                </dd>
-                              </>
-                            )}
+                            {(pi) => {
+                              const printingCount = () => {
+                                props.listVersion
+                                const store = props.cardListStore
+                                if (!store) return 0
+                                const oid = oracleId()
+                                if (!oid) return 0
+                                const scryfallId = pcols().scryfall_ids[pi]
+                                const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+                              }
+                              return (
+                                <>
+                                  <dt class="font-medium text-gray-600 dark:text-gray-300">
+                                    {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
+                                  </dt>
+                                  <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                    {formatPrice(pcols().price_usd[pi])}
+                                    <Show when={props.cardListStore && oracleId()}>
+                                      <ListControls
+                                        count={printingCount()}
+                                        onAdd={() => {
+                                          const store = props.cardListStore!
+                                          const oid = oracleId()
+                                          const scryfallId = pcols().scryfall_ids[pi]
+                                          const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                        }}
+                                        onRemove={() => {
+                                          const store = props.cardListStore!
+                                          const oid = oracleId()
+                                          const scryfallId = pcols().scryfall_ids[pi]
+                                          const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                          if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
+                                        }}
+                                        addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
+                                        removeLabel={`Remove ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing from list`}
+                                      />
+                                    </Show>
+                                  </dd>
+                                </>
+                              )
+                            }}
                           </For>
                         }>
                           <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
@@ -366,23 +424,40 @@ export default function CardDetail(props: {
                           <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
                           <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
                             {formatPrice(pcols().price_usd[pidx])}
-                            <Show when={props.cardListStore && ci() != null && d() && faces().length > 0}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const store = props.cardListStore!
-                                  const oracleId = d()!.oracle_ids[faces()[0]]
+                            <Show when={props.cardListStore && oracleId()}>
+                              {(() => {
+                                const singlePrintingCount = () => {
+                                  props.listVersion
+                                  const store = props.cardListStore
+                                  if (!store) return 0
+                                  const oid = oracleId()
+                                  if (!oid) return 0
                                   const scryfallId = pcols().scryfall_ids[pidx]
                                   const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
-                                  if (oracleId) store.addInstance(oracleId, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
-                                }}
-                                class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5"
-                                aria-label="Add this printing to list"
-                              >
-                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
-                              </button>
+                                  return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+                                }
+                                return (
+                                  <ListControls
+                                    count={singlePrintingCount()}
+                                    onAdd={() => {
+                                      const store = props.cardListStore!
+                                      const oid = oracleId()
+                                      const scryfallId = pcols().scryfall_ids[pidx]
+                                      const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                    }}
+                                    onRemove={() => {
+                                      const store = props.cardListStore!
+                                      const oid = oracleId()
+                                      const scryfallId = pcols().scryfall_ids[pidx]
+                                      const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                                      if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
+                                    }}
+                                    addLabel="Add this printing to list"
+                                    removeLabel="Remove this printing from list"
+                                  />
+                                )
+                              })()}
                             </Show>
                           </dd>
                         </Show>

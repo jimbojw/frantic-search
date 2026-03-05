@@ -170,6 +170,42 @@ export function replayListMetadataLog(
 }
 
 /**
+ * Get the latest (most recent) log primary key for each uuid in the set.
+ * Single reverse-order cursor scan; first occurrence per uuid = most recent.
+ * Used for LIFO pop to determine which instance to remove.
+ */
+export function getInstanceLatestLogKeys(
+  db: IDBDatabase,
+  uuids: Set<string>
+): Promise<Map<string, number>> {
+  return new Promise((resolve, reject) => {
+    const result = new Map<string, number>()
+    const remaining = new Set(uuids)
+    if (remaining.size === 0) {
+      resolve(result)
+      return
+    }
+    const store = db.transaction(INSTANCE_LOG_STORE, 'readonly').objectStore(INSTANCE_LOG_STORE)
+    const request = store.openCursor(undefined, 'prev')
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor || remaining.size === 0) {
+        resolve(result)
+        return
+      }
+      const entry = cursor.value as InstanceStateEntry
+      if (remaining.has(entry.uuid)) {
+        result.set(entry.uuid, cursor.primaryKey as number)
+        remaining.delete(entry.uuid)
+      }
+      cursor.continue()
+    }
+  })
+}
+
+/**
  * Get all log entries for an instance, in key order (oldest first).
  * Used for restore/undo to find the previous list_id.
  */
