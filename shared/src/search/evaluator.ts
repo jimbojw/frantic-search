@@ -107,14 +107,25 @@ export function nodeKey(ast: ASTNode): string {
   }
 }
 
+export type GetListMask = (listId: string) => { faceMask: Uint8Array; printingMask?: Uint8Array } | null;
+
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
   readonly index: CardIndex;
   private _printingIndex: PrintingIndex | null = null;
+  private _getListMask: GetListMask | null = null;
 
-  constructor(index: CardIndex, printingIndex?: PrintingIndex | null) {
+  constructor(index: CardIndex, printingIndex?: PrintingIndex | null, getListMask?: GetListMask | null) {
     this.index = index;
     this._printingIndex = printingIndex ?? null;
+    this._getListMask = getListMask ?? null;
+  }
+
+  /** Maps query value to protocol listId. MVP: "list", "default", "" → "default". */
+  private _resolveListId(value: string): string {
+    const v = (value || "list").toLowerCase();
+    if (v === "list" || v === "default") return "default";
+    return value;
   }
 
   get printingIndex(): PrintingIndex | null {
@@ -235,6 +246,13 @@ export class NodeCache {
       case "FIELD": {
         if (ast.field.toLowerCase() === "unique") return false;
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (canonical === "my") {
+          const listId = this._resolveListId(ast.value || "list");
+          const masks = this._getListMask?.(listId) ?? null;
+          if (masks === null) return false;
+          const pm = masks.printingMask;
+          return pm !== undefined && popcount(pm, pm.length) > 0;
+        }
         if (canonical === "is") {
           if (!PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase())) return false;
           // Face-fallback is: keywords only count as printing leaves when
@@ -277,7 +295,8 @@ export class NodeCache {
       case "FIELD": {
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
         const isPrinting = (canonical === "is" && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase()))
-          || (canonical !== undefined && isPrintingField(canonical));
+          || (canonical !== undefined && isPrintingField(canonical))
+          || (canonical === "my");
         if (isPrinting) {
           const interned = this.intern(ast);
           if (interned.computed && interned.computed.domain === "printing") {
@@ -418,6 +437,76 @@ export class NodeCache {
             interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0 };
           }
           timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
+        }
+
+        if (ast.field.toLowerCase() === "my") {
+          if (ast.operator !== ":" && ast.operator !== "=") {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: `my: requires : or = operator` };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          const listId = this._resolveListId(ast.value || "list");
+          const masks = this._getListMask?.(listId) ?? null;
+          if (masks === null) {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: `unknown list "${listId}"` };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          const faceMask = masks.faceMask;
+          const printingMask = masks.printingMask;
+          const faceHasBits = popcount(faceMask, Math.min(faceMask.length, n)) > 0;
+          const printingHasBits = printingMask !== undefined && popcount(printingMask, printingMask.length) > 0;
+
+          if (faceHasBits && !printingHasBits) {
+            const t0 = performance.now();
+            const buf = new Uint8Array(n);
+            const len = Math.min(faceMask.length, n);
+            for (let i = 0; i < len; i++) buf[i] = faceMask[i];
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          if (!faceHasBits && printingHasBits && this._printingIndex) {
+            const t0 = performance.now();
+            const pIdx = this._printingIndex;
+            const pn = pIdx.printingCount;
+            const buf = new Uint8Array(pn);
+            const copyLen = Math.min(printingMask!.length, pn);
+            for (let i = 0; i < copyLen; i++) buf[i] = printingMask![i];
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          if (faceHasBits && printingHasBits && this._printingIndex) {
+            const t0 = performance.now();
+            const pIdx = this._printingIndex;
+            const pn = pIdx.printingCount;
+            const buf = new Uint8Array(pn);
+            promoteFaceToPrinting(faceMask, buf, pIdx);
+            const copyLen = Math.min(printingMask!.length, pn);
+            for (let i = 0; i < copyLen; i++) buf[i] |= printingMask![i];
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          if (!faceHasBits && !printingHasBits) {
+            const buf = new Uint8Array(n);
+            interned.computed = { buf, domain: "face", matchCount: 0, productionMs: 0 };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          if (!faceHasBits && printingHasBits && !this._printingIndex) {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: "printing data not loaded",
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
           break;
         }
 

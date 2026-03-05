@@ -1,6 +1,6 @@
 # Spec 077: Query Engine — my:list
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 004 (Evaluation Cache), Spec 039 (Non-Destructive Error Handling), Spec 046 (Printing Data Model), Spec 075 (Card List Data Model and Persistence), Spec 076 (Worker Protocol and List Caching)
 
@@ -84,20 +84,20 @@ The existing `nodeKey` for `FIELD` nodes already includes `field`, `operator`, a
 
 ## Acceptance Criteria
 
-- [ ] `FIELD_ALIASES` includes `my`; `my:list` parses as `FIELD` node
-- [ ] NodeCache accepts optional `getListMask` callback; evaluator uses it when evaluating `my:` leaves
-- [ ] `my:list` and `my:default` both map to listId `"default"` and return only cards in the user's list
-- [ ] `my:` with empty value normalizes to `my:list` (default list)
-- [ ] `-my:list` returns only cards not in the user's list
-- [ ] `my:list t:creature` composes (AND)
-- [ ] `my:list OR t:legendary` composes (OR)
-- [ ] Empty list: `my:list` returns 0 results; `-my:list` returns all cards
-- [ ] Query debugger shows correct match count for `my:list` node
-- [ ] Unknown list: `my:foo` produces error node (`unknown list "foo"`); transparent to filtering; error visible in breakdown
-- [ ] Oracle-only list: `my:list` produces face-domain result; `_hasPrintingLeaves` returns false
-- [ ] Oracle-only list + `my:list is:foil`: matches (generic card has foil printings globally)
-- [ ] Printing-only list (foil entry): `my:list` produces printing-domain result; `_hasPrintingLeaves` returns true
-- [ ] Printing-only list (foil entry) + `my:list is:foil`: matches (specific printing is foil)
-- [ ] Printing-only list (foil entry) + `my:list is:nonfoil`: no match (only foil printing listed)
-- [ ] Mixed list: `my:list` produces printing-domain result (face entries expanded via `promoteFaceToPrinting`, OR with `printingMask`)
-- [ ] Mixed list + `my:list is:nonfoil`: matches (generic entry expands to all printings including nonfoil)
+- [x] `FIELD_ALIASES` includes `my`; `my:list` parses as `FIELD` node
+- [x] NodeCache accepts optional `getListMask` callback; evaluator uses it when evaluating `my:` leaves
+- [x] `my:list` and `my:default` both map to listId `"default"` and return only cards in the user's list
+- [x] `my:` with empty value normalizes to `my:list` (default list)
+- [x] `-my:list` returns only cards not in the user's list
+- [x] `my:list t:creature` composes (AND)
+- [x] `my:list OR t:legendary` composes (OR)
+- [x] Empty list: `my:list` returns 0 results; `-my:list` returns all cards
+- [x] Query debugger shows correct match count for `my:list` node
+- [x] Unknown list: `my:foo` produces error node (`unknown list "foo"`); transparent to filtering; error visible in breakdown
+- [x] Oracle-only list: `my:list` produces face-domain result; `_hasPrintingLeaves` returns false
+- [x] Oracle-only list + `my:list is:foil`: matches (generic card has foil printings globally)
+- [x] Printing-only list (foil entry): `my:list` produces printing-domain result; `_hasPrintingLeaves` returns true
+- [x] Printing-only list (foil entry) + `my:list is:foil`: matches (specific printing is foil)
+- [x] Printing-only list (foil entry) + `my:list is:nonfoil`: no match (only foil printing listed)
+- [x] Mixed list: `my:list` produces printing-domain result (face entries expanded via `promoteFaceToPrinting`, OR with `printingMask`)
+- [x] Mixed list + `my:list is:nonfoil`: matches (generic entry expands to all printings including nonfoil)

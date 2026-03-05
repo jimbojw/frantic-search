@@ -144,9 +144,10 @@ async function init(): Promise<void> {
   const printingIndex = printingData
     ? new PrintingIndex(printingData, data.scryfall_ids)
     : null
-  const cache = new NodeCache(index, printingIndex)
-  const display = extractDisplayColumns(data)
   const listMaskCache = new Map<string, { faceMask: Uint8Array; printingMask?: Uint8Array }>()
+  const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
+  const cache = new NodeCache(index, printingIndex, getListMask)
+  const display = extractDisplayColumns(data)
 
   post({ type: 'status', status: 'ready', display })
 
