@@ -20,7 +20,7 @@ The app (ADR-003) runs search in a WebWorker. Users want to maintain lists of ca
 
 - **MVP:** Single default list (e.g. `"default"` or `"cart"`). Schema supports multiple named lists for future use.
 - **In scope:** Oracle-level and printing-level entries; Instance-level provenance; immutable Instance identity; append-only logs (full state per entry for Instances and list metadata); trash list; undo; IndexedDB; BroadcastChannel with prev/current; main-thread materialized view.
-- **Out of scope:** Server sync, user accounts, list sharing.
+- **Out of scope:** Server sync, user accounts, list sharing, list deletion (MVP has a single permanent default list).
 
 ## Technical Details
 
@@ -42,7 +42,7 @@ When an Instance is created (pulled from external), all of these are locked in:
 | `uuid` | string | Instance identity. UUID v4 via `crypto.randomUUID()`. Assigned at creation. |
 | `oracle_id` | string | Scryfall oracle UUID. |
 | `scryfall_id` | string \| null | `null` = generic (oracle only). Specific printing when set. |
-| `finish` | string \| null | Tied to `scryfall_id`; `null` when generic. |
+| `finish` | string \| null | Tied to `scryfall_id`; `null` when generic. Valid values: `"nonfoil"`, `"foil"`, `"etched"` (matching Scryfall's `finishes` vocabulary). Spec 076 encodes these to numeric `0/1/2` when building printing masks. |
 
 **Only `list_id` mutates** — where the Instance lives. Records of location are in the append-only log.
 
@@ -82,7 +82,8 @@ List metadata uses the same append-only pattern. The latest entry per `list_id` 
 | `name` | string | Display name. |
 | `description` | string? | Optional. |
 | `short_name` | string? | For `my:` queries (e.g., `my:cart`, `my:trash`). |
-| `timestamp` | number | When this metadata was recorded. |
+
+Each log entry adds `timestamp: number` (when this metadata was recorded).
 
 **List creation:** No separate create event. The first metadata row for a `list_id` defines the list. Generate a UUID for `list_id` and append the first row.
 
@@ -107,19 +108,23 @@ interface InstanceStateEntry extends InstanceState {
   timestamp: number;
 }
 
-/** Full list metadata state. Each log entry is a complete snapshot. */
-interface ListMetadataState {
+/** List metadata in the materialized view (log entry minus timestamp). */
+interface ListMetadata {
   list_id: string;
   name: string;
   description?: string;
   short_name?: string;
+}
+
+/** List metadata log entry. Every entry is a full snapshot. Latest per list_id = current metadata. */
+interface ListMetadataEntry extends ListMetadata {
   timestamp: number;
 }
 
 /** Materialized view: current state derived from replaying the log. */
 interface MaterializedView {
   instances: Map<string, InstanceState>;  // uuid → current state
-  lists: Map<string, ListMetadataState>;  // list_id → current metadata
+  lists: Map<string, ListMetadata>;       // list_id → current metadata
   instancesByList: Map<string, Set<string>>;  // list_id → Set<uuid>
 }
 ```
@@ -128,7 +133,7 @@ interface MaterializedView {
 
 - **IndexedDB:** Two object stores:
   - `instance_log` — append-only. Full state per entry. Key = auto-increment. Index on `uuid` for temporal queries.
-  - `list_metadata_log` — append-only log of `ListMetadataState` rows. Key = auto-increment. Index on `list_id`.
+  - `list_metadata_log` — append-only log of `ListMetadataEntry` rows. Key = auto-increment. Index on `list_id`.
 - **BroadcastChannel:** Channel name `frantic-search-card-lists`. Each message includes **previous state** so receiving tabs can update their materialized view without an IndexedDB lookup.
 - **Main thread:** In-memory materialized view. Rebuild on startup by replaying; apply incrementally on write.
 
@@ -145,8 +150,8 @@ interface InstanceUpdatedMessage {
 /** List metadata changed. Receiver: overwrite metadata for list_id. */
 interface ListMetadataUpdatedMessage {
   type: 'list-metadata-updated';
-  metadata: ListMetadataState;
-  previous: Partial<ListMetadataState> | null;  // null = new list
+  metadata: ListMetadata;
+  previous: ListMetadata | null;  // null = new list
 }
 
 type CardListBroadcastMessage = InstanceUpdatedMessage | ListMetadataUpdatedMessage;
@@ -159,7 +164,7 @@ Every message includes full `instance` and `previous`; receivers apply the delta
 1. **Startup:** Main thread opens IndexedDB, reads `instance_log` and `list_metadata_log` in **reverse** key order (newest first). Replay: for each instance entry, if `uuid` not yet seen, add to `instances` and `instancesByList[list_id]`; otherwise skip. First occurrence wins (definitive). For list metadata, same pattern — reverse order, latest per `list_id` wins.
 2. **Read:** Return from materialized view (sync). Aggregate instances by `oracle_id`; when `scryfall_id` and `finish` are set, also by that pair.
 3. **Write:** Append full entry to IndexedDB, update materialized view, broadcast with `instance` and `previous`. Downstream consumers are notified separately.
-4. **Cross-tab:** On BroadcastChannel message, apply delta — no IndexedDB read.
+4. **Cross-tab:** On BroadcastChannel message, apply delta — no IndexedDB read. After applying the delta to the materialized view, the receiving tab must also rebuild and send `list-update` to its own worker (see Spec 076) so that `my:` queries in that tab reflect the change.
 5. **Restore from trash:** Find the previous `list_id` for the instance (from log). Append full entry with that `list_id`.
 6. **Undo:** Append full entry that reverts to the prior `list_id`.
 
@@ -176,7 +181,7 @@ Schema evolution: Add new fields to the entry type as needed. Old rows omit them
 
 ## Acceptance Criteria
 
-- [ ] `InstanceStateEntry`, `InstanceState`, and `ListMetadataState` types defined in `shared/src/card-list.ts`
+- [ ] `InstanceStateEntry`, `InstanceState`, `ListMetadata`, and `ListMetadataEntry` types defined in `shared/src/card-list.ts`
 - [ ] `MaterializedView` type defined; view derived by replaying logs
 - [ ] Instance identity (uuid, oracle_id, scryfall_id, finish) immutable at creation; only `list_id` mutates
 - [ ] Every instance log entry carries full state (uuid, oracle_id, scryfall_id, finish, list_id, timestamp)

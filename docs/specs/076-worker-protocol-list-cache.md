@@ -46,6 +46,7 @@ For `list-update`, pass `faceMask` (and optionally `printingMask`) as a [transfe
 3. Map Instance entries `(scryfall_id, finish)` to printing row indices using `PrintingDisplayColumns`. Build a lookup when `printings-ready` arrives; reuse for all lists. Encode `InstanceState.finish` (string) to match the numeric finish in the printing columns (0=nonfoil, 1=foil, 2=etched) for the lookup.
 4. Send `{ type: 'list-update', listId, faceMask, printingMask? }` to worker with transfer. Include `printingMask` when the list has printing-level entries and printing data is loaded.
 5. When `printings-ready` arrives: if any list has printing-level entries, rebuild that list's masks and send `list-update` again (so the worker receives `printingMask` once printing data exists).
+6. On BroadcastChannel receipt (cross-tab): after updating the materialized view, rebuild masks for the affected list and send `list-update` to this tab's worker. Each tab has its own dedicated worker (ADR-003); cross-tab list changes must propagate to each tab's worker independently.
 
 ### Worker Responsibilities
 
@@ -57,13 +58,24 @@ The worker maintains **two distinct caches**:
 
 **On `list-update`:**
 1. Overwrite the list mask cache entry for that `listId` with the incoming mask(s).
-2. Evict the entire NodeCache (clear all `computed` on interned nodes). Full eviction is correct because any cached `my:*` result may be stale, and we do not track which lists appear in the current query. List updates are rare; the cost of re-evaluating a handful of nodes on the next search is acceptable.
+2. Evict the entire NodeCache (clear all `computed` on interned nodes). The eviction loop mirrors the existing pattern in `NodeCache.setPrintingIndex()`; consider extracting a shared `clearComputed()` method. Full eviction is correct because any cached `my:*` result may be stale, and we do not track which lists appear in the current query. List updates are rare; the cost of re-evaluating a handful of nodes on the next search is acceptable.
 
 **On `search`:**
 1. Evaluate the query. The evaluator (future spec) uses the worker's list mask cache when evaluating `my:` leaves.
 2. `my:` leaf results and their parent nodes are interned in NodeCache as usual.
 
-**Initial state:** No masks in the list cache; each list starts empty (all zeros) until its first `list-update`.
+**Initial state:** The list mask cache starts empty (no entries). The main thread sends a `list-update` for each persisted list during startup (see Startup Sequencing). Until that message arrives, `getListMask` returns `null` for all lists. The startup contract guarantees this window closes before the first `search` message.
+
+### Startup Sequencing
+
+1. Worker posts `ready` with `DisplayColumns`.
+2. Main thread receives `ready`, stores display data, builds `oracle_id` → canonical face index map from `display.oracle_ids` and `display.canonical_face`.
+3. Main thread replays list log from IndexedDB, materializes view (Spec 075).
+4. Main thread builds masks for every persisted list (including the default list, even if empty).
+5. Main thread sends `list-update` for each list to the worker.
+6. Main thread begins forwarding user input as `search` messages.
+
+The main thread MUST send `list-update` for the default list before any `search` message, even if the list is empty. This ensures the worker can distinguish "known empty list" (zeroed mask in cache) from "unknown list" (`getListMask` returns `null`) from the first query onward.
 
 ### Empty List Behavior
 
