@@ -6,17 +6,17 @@
 
 ## Goal
 
-Extend the worker protocol so the search worker caches one or more named card lists. The worker receives list updates via a dedicated message and uses the cached data when evaluating `my:` queries (e.g. `my:list` for MVP; future variants such as `my:deck:user-deck-name` or `my:collection`). List data is not sent with every search request.
+Extend the worker protocol so the search worker caches one or more named card lists. The worker receives list updates via a dedicated message and uses the cached data when evaluating `my:` queries (e.g. `my:cart`, `my:trash` for MVP; future variants such as `my:deck:user-deck-name` or `my:collection`). List data is not sent with every search request.
 
 ## Background
 
-The app runs search in a WebWorker (ADR-003). Spec 075 defines the main-thread storage for card lists (IndexedDB, BroadcastChannel, in-memory cache). To support `my:` queries (e.g. `my:list` for MVP; later `my:deck:name`, `my:collection`, etc.), the worker must know which cards are in each named list. Sending full list data with every `search` message would be wasteful — the user may type many keystrokes without changing any list, and structured-cloning list data on each request adds latency.
+The app runs search in a WebWorker (ADR-003). Spec 075 defines the main-thread storage for card lists (IndexedDB, BroadcastChannel, main thread materialized view). To support `my:` queries (e.g. `my:list` for MVP; later `my:deck:name`, `my:collection`, etc.), the worker must know which cards are in each named list. Sending full list data with every `search` message would be wasteful — the user may type many keystrokes without changing any list, and structured-cloning list data on each request adds latency.
 
-The solution: the worker caches up to two compact bitmasks per named list. Since a list may contain oracle-level entries, printing-level entries, or both, `my:` evaluation is a hybrid card-and-printings check — each list has at least one of a card-level mask (`faceMask`) and a printings-level mask (`printingMask`), or both. The main thread sends a dedicated `list-update` message only when a list changes. Each mask is a `Uint8Array` transferred zero-copy via `Transferable`, avoiding serialization overhead. The worker starts with empty masks until the first `list-update` for each list arrives.
+The solution: the worker caches up to two compact bitmasks per named list. Since list Instances are either oracle-level or printing-level entries, `my:` evaluation is a hybrid card-and-printings check — each list has at a card-level mask (`faceMask`) and optionally a printings-level mask (`printingMask`). The main thread sends a dedicated `list-update` message only when a list changes. Each mask is a `Uint8Array` transferred zero-copy via `Transferable`, avoiding serialization overhead. The worker starts with empty masks until the first `list-update` for each list arrives.
 
 ## Scope
 
-- **In scope:** `list-update` message type with `listId`; worker-side list mask cache (separate from NodeCache); full NodeCache eviction on list-update; transferable `Uint8Array` masks; main-thread mask building and send logic.
+- **In scope:** `list-update` message type with `listId`; worker-side list mask cache (separate from NodeCache); full NodeCache eviction on every list-update; transferable `Uint8Array` masks; main-thread mask building and send logic.
 - **Out of scope:** Query evaluation for `my:list` (future spec); list management UI (future spec).
 
 ## Technical Details
@@ -36,15 +36,16 @@ For `list-update`, pass `faceMask` (and optionally `printingMask`) as a [transfe
 ### Mask Semantics
 
 - **listId:** Identifies the named list. MVP uses a single list (e.g. `"default"`); future variants support multiple lists.
-- **faceMask:** `Uint8Array(faceCount)`. `faceMask[canonicalFaceIndex] = 1` if that card is in the list.
-- **printingMask:** `Uint8Array(printingCount)`. `printingMask[printingIndex] = 1` if that printing is in the list. Optional for MVP (oracle-level only).
+- **faceMask:** `Uint8Array(faceCount)`. `faceMask[canonicalFaceIndex] = 1` if that card (oracle) is in the list. Always sent.
+- **printingMask:** `Uint8Array(printingCount)`. `printingMask[printingIndex] = 1` if that printing is in the list. Sent when the list has printing-level entries and printing data is loaded; otherwise omitted (worker treats as all zeros).
 
 ### Main Thread Responsibilities
 
-1. On list load or change: build `faceMask` from list entries.
-2. Map `oracle_id` → canonical face index using the `oracle_ids` column (see Mask Building below).
-3. Map `printing_id` → printing row index if printing-level entries exist.
-4. Send `{ type: 'list-update', listId, faceMask }` to worker with transfer. For MVP, a single default list (e.g. `listId: "default"`) is sufficient; the protocol supports multiple lists from the start.
+1. On list load or change: build `faceMask` from oracle-level Instances; build `printingMask` from printing-level Instances when printing data is available (`scryfall_id` and `finish`).
+2. Map `oracle_id` → canonical face index using `display.oracle_ids` — index in the array is the face row index; `canonical_face` maps face → canonical for multi-face cards.
+3. Map Instance entries `(scryfall_id, finish)` to printing row indices using `PrintingDisplayColumns`. Build a lookup when `printings-ready` arrives; reuse for all lists. Encode `InstanceState.finish` (string) to match the numeric finish in the printing columns (0=nonfoil, 1=foil, 2=etched) for the lookup.
+4. Send `{ type: 'list-update', listId, faceMask, printingMask? }` to worker with transfer. Include `printingMask` when the list has printing-level entries and printing data is loaded.
+5. When `printings-ready` arrives: if any list has printing-level entries, rebuild that list's masks and send `list-update` again (so the worker receives `printingMask` once printing data exists).
 
 ### Worker Responsibilities
 
@@ -56,7 +57,7 @@ The worker maintains **two distinct caches**:
 
 **On `list-update`:**
 1. Overwrite the list mask cache entry for that `listId` with the incoming mask(s).
-2. Evict the entire NodeCache (clear all `computed` on interned nodes). Full eviction is correct because any cached `my:*` result may be stale, and we do not track which lists appear in the current query. List updates are rare; the cost of re-evaluating a handful of nodes on the next search is acceptable for MVP.
+2. Evict the entire NodeCache (clear all `computed` on interned nodes). Full eviction is correct because any cached `my:*` result may be stale, and we do not track which lists appear in the current query. List updates are rare; the cost of re-evaluating a handful of nodes on the next search is acceptable.
 
 **On `search`:**
 1. Evaluate the query. The evaluator (future spec) uses the worker's list mask cache when evaluating `my:` leaves.
@@ -64,17 +65,9 @@ The worker maintains **two distinct caches**:
 
 **Initial state:** No masks in the list cache; each list starts empty (all zeros) until its first `list-update`.
 
-### Mask Building
-
-The main thread needs a mapping from `oracle_id` to canonical face index. `ColumnarData` already includes `oracle_ids` (Spec 003). However, the main thread receives `DisplayColumns` from the worker's `ready` message (Spec 024), and `DisplayColumns` does not currently include `oracle_ids`.
-
-**Add `oracle_ids: string[]` to `DisplayColumns`** so the main thread receives it when the worker posts `ready`. The worker's `extractDisplayColumns` (in `app/src/worker.ts`) should include `oracle_ids` from `ColumnarData` when present. The main thread then builds `Map<oracle_id, canonicalFaceIndex>` at startup (or when display columns arrive) by iterating `display.oracle_ids` — index in the array is the face row index; `canonical_face` maps face → canonical for multi-face cards.
-
-**Alternative:** Load `oracle-cards.json` in the app and build the map at startup. This avoids protocol changes but adds a separate fetch and duplicates data the worker already has. The DisplayColumns approach is preferred.
-
 ### Empty List Behavior
 
-When a list is empty, send `list-update` with a zeroed mask (same length as faceCount) for that `listId`. This keeps worker semantics consistent and avoids ambiguity between "no list cached" and "empty list." Do not omit the message.
+When a list is empty, send `list-update` with a zeroed `faceMask` (same length as faceCount). Omit `printingMask` (worker treats as zeros). This keeps worker semantics consistent and avoids ambiguity between "no list cached" and "empty list." Do not omit the message.
 
 ## Acceptance Criteria
 
@@ -87,4 +80,4 @@ When a list is empty, send `list-update` with a zeroed mask (same length as face
 - [ ] No list data sent with `search` messages
 - [ ] Worker starts with no masks cached; handles first `list-update` before any `my:` query
 - [ ] Empty list sends `list-update` with zeroed mask (not omitted)
-- [ ] `DisplayColumns` includes `oracle_ids`; main thread can build oracle_id → canonical face index map
+- [ ] Main thread builds `(scryfall_id, finish)` → printing index lookup from `PrintingDisplayColumns`; sends `printingMask` when list has printing-level entries and printings are loaded
