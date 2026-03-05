@@ -9,7 +9,7 @@ import {
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
-import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
+import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, promoteFaceToPrintingCanonicalNonfoil, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 import { SORT_FIELDS } from "./sort-fields";
 import { parse } from "./parser";
@@ -114,6 +114,8 @@ export class NodeCache {
   readonly index: CardIndex;
   private _printingIndex: PrintingIndex | null = null;
   private _getListMask: GetListMask | null = null;
+  /** Root AST during evaluate(); used for my: + unique:prints override. */
+  private _rootAstForOverride: ASTNode | undefined = undefined;
 
   constructor(index: CardIndex, printingIndex?: PrintingIndex | null, getListMask?: GetListMask | null) {
     this.index = index;
@@ -162,6 +164,7 @@ export class NodeCache {
   evaluate(ast: ASTNode): EvalOutput {
     const timings = new Map<string, EvalTiming>();
     const root = this.internTree(ast);
+    this._rootAstForOverride = ast;
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
 
@@ -380,12 +383,21 @@ export class NodeCache {
   }
 
   private computeTree(interned: InternedNode, timings: Map<string, EvalTiming>): void {
-    if (interned.computed) {
-      this.markCached(interned, timings);
-      return;
-    }
-
     const ast = interned.ast;
+    if (interned.computed) {
+      if (ast.type === "FIELD" && FIELD_ALIASES[ast.field?.toLowerCase()] === "my" && this._rootAstForOverride && getUniqueModeFromAst(this._rootAstForOverride) === "prints") {
+        const masks = this._getListMask?.(this._resolveListId(ast.value || "list")) ?? null;
+        if (masks?.faceMask && masks?.printingMask) {
+          const fBits = popcount(masks.faceMask, Math.min(masks.faceMask.length, this.index.faceCount));
+          const pBits = popcount(masks.printingMask, masks.printingMask.length);
+          if (fBits > 0 && pBits > 0) interned.computed = undefined;
+        }
+      }
+      if (interned.computed) {
+        this.markCached(interned, timings);
+        return;
+      }
+    }
     const n = this.index.faceCount;
 
     switch (ast.type) {
@@ -485,7 +497,12 @@ export class NodeCache {
             const pIdx = this._printingIndex;
             const pn = pIdx.printingCount;
             const buf = new Uint8Array(pn);
-            promoteFaceToPrinting(faceMask, buf, pIdx);
+            const useMatchesOverride = this._rootAstForOverride && getUniqueModeFromAst(this._rootAstForOverride) === "prints";
+            if (useMatchesOverride) {
+              promoteFaceToPrintingCanonicalNonfoil(faceMask, buf, pIdx);
+            } else {
+              promoteFaceToPrinting(faceMask, buf, pIdx);
+            }
             const copyLen = Math.min(printingMask!.length, pn);
             for (let i = 0; i < copyLen; i++) buf[i] |= printingMask![i];
             const ms = performance.now() - t0;

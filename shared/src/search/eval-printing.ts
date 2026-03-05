@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
-import { RARITY_NAMES, RARITY_ORDER, Rarity, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag } from "../bits";
+import { RARITY_NAMES, RARITY_ORDER, Rarity, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 
 /** Scryfall language codes we recognize but do not support (in: language is out of scope). */
@@ -246,5 +246,31 @@ export function promoteFaceToPrinting(
 ): void {
   for (let p = 0; p < pIdx.printingCount; p++) {
     if (faceBuf[pIdx.canonicalFaceRef[p]]) printingBuf[p] = 1;
+  }
+}
+
+/**
+ * Add only the canonical nonfoil printing per face. Used when my: + unique:prints
+ * to show "exactly what's in the list" without expanding generic entries to all printings.
+ */
+export function promoteFaceToPrintingCanonicalNonfoil(
+  faceMask: Uint8Array,
+  printingBuf: Uint8Array,
+  pIdx: PrintingIndex,
+): void {
+  for (let cf = 0; cf < faceMask.length; cf++) {
+    if (!faceMask[cf]) continue;
+    const pRows = pIdx.printingsOf(cf);
+    let added = false;
+    for (const p of pRows) {
+      if (pIdx.finish[p] === Finish.Nonfoil) {
+        printingBuf[p] = 1;
+        added = true;
+        break;
+      }
+    }
+    if (!added && pRows.length > 0) {
+      printingBuf[pRows[0]] = 1;
+    }
   }
 }

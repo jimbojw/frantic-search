@@ -180,6 +180,17 @@ describe("my:list mixed (face + printing entries)", () => {
     const out = cache.evaluate(parse("my:list is:nonfoil"));
     expect(out.indices.length).toBe(1); // Bolt foil excluded; Sol Ring has nonfoil printings
   });
+
+  test("my:list unique:prints override: generic entries show only canonical nonfoil", () => {
+    const out = cache.evaluate(parse("my:list unique:prints"));
+    expect(out.hasPrintingConditions).toBe(true);
+    expect(out.printingIndices).toBeDefined();
+    // Without override: Bolt foil (1) + all Sol Ring printings (3,4,7) = 4 printings
+    // With override: Bolt foil (1) + Sol Ring canonical nonfoil only (3) = 2 printings
+    expect(out.printingIndices!.length).toBe(2);
+    expect(out.printingIndices).toContain(1); // Bolt foil (explicit)
+    expect(out.printingIndices).toContain(3); // Sol Ring canonical nonfoil (generic)
+  });
 });
 
 describe("my:list without getListMask (CLI)", () => {

@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 004 (Evaluation Cache), Spec 039 (Non-Destructive Error Handling), Spec 046 (Printing Data Model), Spec 075 (Card List Data Model and Persistence), Spec 076 (Worker Protocol and List Caching)
+**Depends on:** Spec 004 (Evaluation Cache), Spec 039 (Non-Destructive Error Handling), Spec 046 (Printing Data Model), Spec 048 (Printing-Aware Display), Spec 075 (Card List Data Model and Persistence), Spec 076 (Worker Protocol and List Caching)
 
 ## Goal
 
@@ -54,7 +54,7 @@ Handle `my` in `computeTree` as a special-case field, the same pattern as `uniqu
 |---|---|---|---|
 | Yes | No | Face | Copy `faceMask` into face-domain buffer |
 | No | Yes | Printing | Copy `printingMask` into printing-domain buffer |
-| Yes | Yes | Printing | Expand `faceMask` to printing domain via `promoteFaceToPrinting`, OR with `printingMask` |
+| Yes | Yes | Printing | Expand `faceMask` to printing domain via `promoteFaceToPrinting` (or `promoteFaceToPrintingCanonicalNonfoil` when `unique:prints` is in the query — see § unique:prints override), OR with `printingMask` |
 
 - **Non-existent list:** `getListMask` returns `null` → produce error node (e.g. `unknown list "foo"`), per Spec 039. Transparent to filtering; error shown in breakdown.
 
@@ -66,9 +66,14 @@ The evaluation domain of a `my:` node is determined at runtime by the list conte
 
 - **Printing-only** (list has only printing-level entries, `faceMask` all zeros): `my:` is a printing-domain node. Copy `printingMask` directly into a printing-domain buffer. Promoted to face at composite boundaries. `printingIndices` emitted in results.
 
-- **Mixed** (list has both oracle-level and printing-level entries): Expand face entries to all printings via `promoteFaceToPrinting` (generic "Lightning Bolt" expands to all Bolt printings), then OR with the explicit `printingMask`. Result is a printing-domain node. This means `my:list is:foil` filters to the foil printings of generically-listed cards plus any explicitly-listed foil printings. `printingIndices` emitted in results.
+- **Mixed** (list has both oracle-level and printing-level entries): Expand face entries to printings, then OR with the explicit `printingMask`. Result is a printing-domain node. This means `my:list is:foil` filters to the foil printings of generically-listed cards plus any explicitly-listed foil printings. `printingIndices` emitted in results.
 
-The mixed-mode expansion is the key semantic: a generic list entry means "all printings of this card are in the list." A specific list entry means "only this printing is in the list." Both coexist in the printing-domain buffer.
+The mixed-mode expansion strategy depends on whether `unique:prints` is in the query:
+
+- **Default (no `unique:prints`):** Use `promoteFaceToPrinting` — generic "Lightning Bolt" expands to all Bolt printings. A generic list entry means "all printings of this card are in the list."
+- **With `unique:prints` (override):** Use `promoteFaceToPrintingCanonicalNonfoil` — generic entries add only the canonical nonfoil printing per face. This shows "exactly what's in the list" in Images/Full view: one tile per generic entry (canonical nonfoil) plus one tile per explicit printing entry. The explicit-vs-generic distinction is preserved.
+
+A specific list entry always means "only this printing is in the list." Both coexist in the printing-domain buffer.
 
 ### `_hasPrintingLeaves`
 
@@ -77,6 +82,10 @@ Because the `my:` field's domain is runtime-determined, `_hasPrintingLeaves` mus
 ### nodeKey
 
 The existing `nodeKey` for `FIELD` nodes already includes `field`, `operator`, and `value`, so `my:list` produces a stable key. The mask is external state and is not part of the key. When the list updates, Spec 076 requires the worker to evict the entire NodeCache on `list-update` — all cached results (including `my:` leaves) are cleared before the next search. No special handling needed.
+
+### unique:prints override (mixed list only)
+
+When the query contains both `my:` and `unique:prints`, and the list has mixed entries (face + printing), `unique:prints` overrides the default expansion: instead of expanding to all printings via `promoteFaceToPrinting`, the evaluator uses `promoteFaceToPrintingCanonicalNonfoil` so each generic entry contributes only its canonical nonfoil printing. This preserves the distinction between "I added this card generically" and "I added this specific printing" in Images/Full view. The `my:` leaf's result depends on the query context, so the NodeCache must invalidate the cached `my:` result when the override applies (e.g. cache was populated by a query without `unique:prints`, then a query with `unique:prints` is evaluated).
 
 ### Error Handling
 
@@ -101,3 +110,4 @@ The existing `nodeKey` for `FIELD` nodes already includes `field`, `operator`, a
 - [x] Printing-only list (foil entry) + `my:list is:nonfoil`: no match (only foil printing listed)
 - [x] Mixed list: `my:list` produces printing-domain result (face entries expanded via `promoteFaceToPrinting`, OR with `printingMask`)
 - [x] Mixed list + `my:list is:nonfoil`: matches (generic entry expands to all printings including nonfoil)
+- [x] Mixed list + `my:list unique:prints`: override applies — generic entries show only canonical nonfoil; explicit printings shown; `printingIndices` reflects exactly what's in the list
