@@ -361,7 +361,7 @@ describe("seededSortPrintings", () => {
 // ---------------------------------------------------------------------------
 // Spec 059 — sort directive comparators and pipeline
 // ---------------------------------------------------------------------------
-import { sortByField, sortPrintingDomain } from "./ordering";
+import { sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./ordering";
 import type { SortDirective } from "./ast";
 import { index, printingIndex, TEST_DATA } from "./evaluator.test-fixtures";
 import { RARITY_ORDER } from "../../src/bits";
@@ -457,6 +457,32 @@ describe("sortByField — face-domain sort", () => {
     const d: SortDirective = { field: "name", direction: "asc", isPrintingDomain: false };
     sortByField(indices, d, index, 0);
     expect(indices).toEqual([3]);
+  });
+});
+
+describe("reorderPrintingsByCardOrder", () => {
+  // Bolt printings: 0,1,2,5,6,8,9,10. Sol Ring printings: 3,4,7.
+  test("reorders printings to match card order, preserving intra-card order", () => {
+    const printingIndices = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]); // Bolt first, then Sol Ring
+    const cardOrder = [3, 1]; // Sol Ring first, Bolt second (reverse of input)
+    const result = reorderPrintingsByCardOrder(
+      printingIndices,
+      cardOrder,
+      printingIndex.canonicalFaceRef,
+    );
+    // Sol Ring printings (3,4,7) first, then Bolt printings (0,1,2,5,6,8,9,10)
+    expect(Array.from(result)).toEqual([3, 4, 7, 0, 1, 2, 5, 6, 8, 9, 10]);
+  });
+
+  test("preserves intra-card order when cards have multiple printings", () => {
+    const printingIndices = new Uint32Array([2, 0, 1, 4, 3]); // Bolt: 2,0,1 then Sol: 4,3
+    const cardOrder = [1, 3]; // Bolt, Sol Ring
+    const result = reorderPrintingsByCardOrder(
+      printingIndices,
+      cardOrder,
+      printingIndex.canonicalFaceRef,
+    );
+    expect(Array.from(result)).toEqual([2, 0, 1, 4, 3]);
   });
 });
 

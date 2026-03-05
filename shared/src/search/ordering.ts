@@ -113,6 +113,37 @@ export function seededSortPrintings(
   for (let i = 0; i < n; i++) printingIndices[i] = sorted[i];
 }
 
+/**
+ * Reorder printing indices to match a given card order. Groups printings by
+ * canonical face (preserving input order within each group) and emits them in
+ * the order of cardOrder. Used when face-domain sort is active: cards are
+ * already sorted via sortByField; printings must follow that order.
+ */
+export function reorderPrintingsByCardOrder(
+  printingIndices: Uint32Array,
+  cardOrder: number[],
+  canonicalFaceRef: number[],
+): Uint32Array {
+  const cardPrintings = new Map<number, number[]>();
+  for (let i = 0; i < printingIndices.length; i++) {
+    const p = printingIndices[i];
+    const cf = canonicalFaceRef[p];
+    let arr = cardPrintings.get(cf);
+    if (!arr) {
+      arr = [];
+      cardPrintings.set(cf, arr);
+    }
+    arr.push(p);
+  }
+  const result = new Uint32Array(printingIndices.length);
+  let k = 0;
+  for (const cf of cardOrder) {
+    const prints = cardPrintings.get(cf);
+    if (prints) for (const p of prints) result[k++] = p;
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Spec 059 — field comparators
 // ---------------------------------------------------------------------------

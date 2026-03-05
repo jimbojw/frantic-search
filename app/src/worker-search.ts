@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, fnv1a } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
 
@@ -278,14 +278,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
     // Face-domain sort
     sortByField(deduped, effectiveSortBy, index, seedHash)
     if (printingIndices && printingIndex) {
-      // Reorder printings to match sorted card order (stable intra-card order).
-      const bareWords = collectBareWords(ast)
-        .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
-        .filter(w => w.length > 0)
-      seededSortPrintings(
-        printingIndices, sortSeed,
+      printingIndices = reorderPrintingsByCardOrder(
+        printingIndices,
+        deduped,
         printingIndex.canonicalFaceRef,
-        index.combinedNamesNormalized, bareWords, sessionSalt,
       )
     }
   } else {

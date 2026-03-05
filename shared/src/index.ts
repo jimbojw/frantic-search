@@ -38,7 +38,7 @@ export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";
 export { queryForSortSeed } from "./search/query-for-sort";
-export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, sortPrintingDomain } from "./search/ordering";
+export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./search/ordering";
 export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
