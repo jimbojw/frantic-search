@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, Show, createMemo, createSignal } from 'solid-js'
+import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
@@ -38,10 +38,10 @@ function sortChip(value: string): ChipDef {
   return { label: `sort:${value}`, field: SORT_CHIP_FIELDS, operator: ':', value, term: `sort:${value}` }
 }
 
-const TABS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
-type TabId = (typeof TABS)[number]
+const SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
+type SectionId = (typeof SECTIONS)[number]
 
-const TAB_CHIPS: Record<TabId, ChipDef[]> = {
+const SECTION_CHIPS: Record<SectionId, ChipDef[]> = {
   formats: [
     fmtChip('commander'),
     fmtChip('modern'),
@@ -121,11 +121,22 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
   ],
 }
 
+const SECTION_LABELS: Record<SectionId, string> = {
+  formats: 'Formats',
+  layouts: 'Layouts',
+  roles: 'Roles',
+  lands: 'Lands',
+  rarities: 'Rarities',
+  printings: 'Printings',
+  prices: 'Prices',
+  sort: 'Sort',
+}
+
 const STORAGE_KEY = 'frantic-terms-tab'
 
-function loadTab(): TabId {
+function loadSection(): SectionId {
   const stored = localStorage.getItem(STORAGE_KEY)
-  return TABS.includes(stored as TabId) ? (stored as TabId) : 'formats'
+  return SECTIONS.includes(stored as SectionId) ? (stored as SectionId) : 'formats'
 }
 
 // ---------------------------------------------------------------------------
@@ -186,8 +197,8 @@ function TermChip(props: {
 // Bimodal chips: unique:prints, include:extras
 // ---------------------------------------------------------------------------
 
-const UNIQUE_PRINTS_TABS: ReadonlySet<TabId> = new Set(['rarities', 'printings'])
-const MODIFIER_TABS: ReadonlySet<TabId> = new Set(['formats', 'roles', 'rarities', 'printings'])
+const UNIQUE_PRINTS_SECTIONS: ReadonlySet<SectionId> = new Set(['rarities', 'printings'])
+const MODIFIER_SECTIONS: ReadonlySet<SectionId> = new Set(['formats', 'roles', 'rarities', 'printings'])
 
 function UniquePrintsChip(props: {
   active: boolean
@@ -272,7 +283,6 @@ function SortTermChip(props: {
   onSetQuery: (query: string) => void
 }) {
   const arrow = () => sortArrow(props.chip.value, props.state)
-  // For the negative state, don't use line-through (it's a reversed sort, not exclusion)
   const classes = () => {
     if (props.state === 'neutral') return CHIP_CLASSES.neutral
     if (props.state === 'positive') return CHIP_CLASSES.positive
@@ -308,39 +318,69 @@ export default function TermsDrawer(props: {
   query: string
   onSetQuery: (query: string) => void
   onHelpClick: () => void
+  onReportClick: () => void
   onClose: () => void
 }) {
-  const [activeTab, setActiveTab] = createSignal<TabId>(loadTab())
+  const [activeSection, setActiveSection] = createSignal<SectionId>(loadSection())
   const bd = createMemo(() => parseBreakdown(props.query))
+  let contentRef: HTMLDivElement | undefined
+  const navRefs: Partial<Record<SectionId, HTMLButtonElement>> = {}
 
-  function selectTab(tab: TabId) {
-    setActiveTab(tab)
-    localStorage.setItem(STORAGE_KEY, tab)
+  function scrollToSection(section: SectionId) {
+    const el = contentRef?.querySelector(`#${section}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+    setActiveSection(section)
+    localStorage.setItem(STORAGE_KEY, section)
   }
 
-  const chips = createMemo(() => TAB_CHIPS[activeTab()])
+  onMount(() => {
+    const root = contentRef
+    if (!root) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const id = entry.target.id as SectionId
+          if (SECTIONS.includes(id)) {
+            setActiveSection(id)
+            localStorage.setItem(STORAGE_KEY, id)
+            const btn = navRefs[id]
+            if (btn) btn.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+            break
+          }
+        }
+      },
+      {
+        root,
+        rootMargin: '-10% 0px -80% 0px',
+        threshold: 0,
+      },
+    )
+
+    for (const id of SECTIONS) {
+      const el = root.querySelector(`#${id}`)
+      if (el) observer.observe(el)
+    }
+
+    onCleanup(() => observer.disconnect())
+
+    const target = loadSection()
+    requestAnimationFrame(() => {
+      const el = root.querySelector(`#${target}`)
+      if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  })
 
   return (
-    <div class="flex flex-col px-3 pt-1.5 pb-2">
-      {/* Header row: label, info, spacer, close */}
-      <div class="flex items-center gap-1 pb-1.5">
+    <div class="flex flex-col flex-1 min-h-0 px-3 pt-1.5 pb-2">
+      {/* Header row: label, spacer, close */}
+      <div class="flex items-center gap-1 pb-1.5 shrink-0">
         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Terms
         </span>
-        <button
-          type="button"
-          onClick={() => props.onHelpClick()}
-          class="min-h-11 min-w-11 flex items-center justify-center p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
-          aria-label="Syntax help"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-3.5">
-            <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="2" fill="none" />
-            <circle cx="12" cy="7.5" r="1.5" fill="currentColor" />
-            <rect x="10.5" y="11" width="3" height="7" rx="0.5" fill="currentColor" />
-            <rect x="9" y="11" width="3" height="1.5" rx="0.5" fill="currentColor" />
-            <rect x="9" y="16.5" width="6" height="1.5" rx="0.5" fill="currentColor" />
-          </svg>
-        </button>
         <div class="flex-1" />
         <button
           type="button"
@@ -354,68 +394,108 @@ export default function TermsDrawer(props: {
         </button>
       </div>
 
-      {/* Content row: tabs + chips */}
-      <div class="flex">
-        <div class="flex flex-col gap-0.5 shrink-0 pr-2">
-          <For each={TABS}>
-            {(tab) => (
+      {/* Two-column layout: nav rail + content */}
+      <div class="flex flex-row flex-1 min-h-0 gap-2 overflow-hidden">
+        {/* Left rail: category list + sticky footer */}
+        <div class="flex flex-col shrink-0 w-24 min-h-0">
+          <div class="flex-1 min-h-0 overflow-y-auto">
+            <div class="flex flex-col gap-0.5 py-0.5">
+              <For each={SECTIONS}>
+                {(section) => (
+                  <button
+                    ref={(el) => { navRefs[section] = el }}
+                    type="button"
+                    onClick={() => scrollToSection(section)}
+                    class={`min-h-11 px-2 py-2 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
+                      activeSection() === section
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    {section}
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+          {/* Sticky Help footer */}
+          <div class="shrink-0 pt-2 mt-auto border-t border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col gap-1 py-2">
               <button
                 type="button"
-                onClick={() => selectTab(tab)}
-                class={`min-h-11 px-2 py-2 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left ${
-                    activeTab() === tab
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
+                onClick={() => props.onHelpClick()}
+                class="text-left text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
-                {tab}
+                Syntax Help
               </button>
-            )}
-          </For>
+              <button
+                type="button"
+                onClick={() => props.onReportClick()}
+                class="text-left text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                Report Bug
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="flex-1 flex flex-col gap-1.5 min-w-0">
-          <div class="flex flex-wrap gap-1.5 content-start">
-            <For each={chips()}>
-              {(chip) => (
-                <Show when={activeTab() === 'sort'} fallback={
-                  <TermChip
-                    chip={chip}
-                    state={getChipState(bd(), chip)}
-                    query={props.query}
-                    breakdown={bd()}
-                    onSetQuery={props.onSetQuery}
-                  />
-                }>
-                  <SortTermChip
-                    chip={chip}
-                    state={getChipState(bd(), chip)}
-                    query={props.query}
-                    breakdown={bd()}
-                    onSetQuery={props.onSetQuery}
-                  />
-                </Show>
+        {/* Right content: all sections in one scroll container */}
+        <div
+          ref={(el) => { contentRef = el }}
+          class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-smooth scroll-pt-2"
+        >
+          <div class="flex flex-col gap-4 pb-4">
+            <For each={SECTIONS}>
+              {(section) => (
+                <section id={section} class="flex flex-col gap-1.5">
+                  <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
+                    {SECTION_LABELS[section]}
+                  </h2>
+                  <div class="flex flex-wrap gap-1.5 content-start">
+                    <For each={SECTION_CHIPS[section]}>
+                      {(chip) => (
+                        <Show when={section === 'sort'} fallback={
+                          <TermChip
+                            chip={chip}
+                            state={getChipState(bd(), chip)}
+                            query={props.query}
+                            breakdown={bd()}
+                            onSetQuery={props.onSetQuery}
+                          />
+                        }>
+                          <SortTermChip
+                            chip={chip}
+                            state={getChipState(bd(), chip)}
+                            query={props.query}
+                            breakdown={bd()}
+                            onSetQuery={props.onSetQuery}
+                          />
+                        </Show>
+                      )}
+                    </For>
+                  </div>
+                  <Show when={MODIFIER_SECTIONS.has(section)}>
+                    <div class="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
+                      <Show when={UNIQUE_PRINTS_SECTIONS.has(section)}>
+                        <UniquePrintsChip
+                          active={hasUniquePrints(bd())}
+                          query={props.query}
+                          breakdown={bd()}
+                          onSetQuery={props.onSetQuery}
+                        />
+                      </Show>
+                      <IncludeExtrasChip
+                        active={hasIncludeExtras(bd())}
+                        query={props.query}
+                        breakdown={bd()}
+                        onSetQuery={props.onSetQuery}
+                      />
+                    </div>
+                  </Show>
+                </section>
               )}
             </For>
           </div>
-          <Show when={MODIFIER_TABS.has(activeTab())}>
-            <div class="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
-              <Show when={UNIQUE_PRINTS_TABS.has(activeTab())}>
-                <UniquePrintsChip
-                  active={hasUniquePrints(bd())}
-                  query={props.query}
-                  breakdown={bd()}
-                  onSetQuery={props.onSetQuery}
-                />
-              </Show>
-              <IncludeExtrasChip
-                active={hasIncludeExtras(bd())}
-                query={props.query}
-                breakdown={bd()}
-                onSetQuery={props.onSetQuery}
-              />
-            </div>
-          </Show>
         </div>
       </div>
     </div>

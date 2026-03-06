@@ -1,6 +1,6 @@
 # Spec 081: Side Panel Scrollspy
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 044 (Terms Drawer Redesign)
 
@@ -138,3 +138,7 @@ No changes to `query-edit`, worker protocol, or shared packages. Chip components
 8. The close button remains functional.
 9. The last active section is persisted to `frantic-terms-tab`; on open, the panel scrolls to that section when possible.
 10. No new dependencies. Use native `IntersectionObserver`.
+
+## Implementation Notes
+
+- 2026-03-05: Implemented two-column scrollspy layout. Modal aside changed from `overflow-y-auto` to `overflow-hidden` so inner columns scroll independently. Inline context wrapped in `max-h-96` container for constrained height. Included stretch goal: active nav button auto-scrolls into view when scrollspy updates.

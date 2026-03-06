@@ -826,14 +826,15 @@ function App() {
             onClick={toggleTerms}
           />
           <aside
-            class="fixed top-0 right-0 bottom-0 z-50 w-[min(100%,20rem)] overflow-y-auto bg-white dark:bg-gray-900 shadow-xl transition-transform duration-200 ease-out translate-x-0"
+            class="fixed top-0 right-0 bottom-0 z-50 w-[min(100%,20rem)] overflow-hidden flex flex-col bg-white dark:bg-gray-900 shadow-xl transition-transform duration-200 ease-out translate-x-0"
             aria-label="Filters menu"
           >
-            <div class="flex flex-col min-h-full pt-[env(safe-area-inset-top)]">
+            <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
               <TermsDrawer
                 query={query()}
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
+                onReportClick={navigateToReport}
                 onClose={toggleTerms}
               />
             </div>
@@ -842,12 +843,15 @@ function App() {
 
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
           <Show when={termsExpanded() && !headerCollapsed()}>
-            <TermsDrawer
-              query={query()}
-              onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
-              onHelpClick={navigateToHelp}
-              onClose={toggleTerms}
-            />
+            <div class="max-h-96 overflow-hidden flex flex-col">
+              <TermsDrawer
+                query={query()}
+                onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
+                onHelpClick={navigateToHelp}
+                onReportClick={navigateToReport}
+                onClose={toggleTerms}
+              />
+            </div>
           </Show>
           <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() && !headerCollapsed() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
