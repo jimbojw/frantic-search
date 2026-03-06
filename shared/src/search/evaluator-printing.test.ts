@@ -2,7 +2,8 @@
 import { describe, test, expect } from "vitest";
 import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
-import { index, printingIndex } from "./evaluator.test-fixtures";
+import { index, printingIndex, TEST_PRINTING_DATA } from "./evaluator.test-fixtures";
+import { PrintingIndex } from "./printing-index";
 
 // ---------------------------------------------------------------------------
 // Printing-domain integration tests (through NodeCache.evaluate)
@@ -291,6 +292,38 @@ describe("NOT with printing domain", () => {
     expect(printingIndices).toBeDefined();
     // Bolt's non-MH2 printings: A25 (rows 2,10), CMR etched (row 5), WCD (row 6), SLD (row 8)
     expect(Array.from(printingIndices!)).toEqual([2, 5, 6, 8, 10]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 080: usd=null and negated price semantics
+// ---------------------------------------------------------------------------
+
+describe("Spec 080: usd null and negated price", () => {
+  test("-usd=null matches printings with price data", () => {
+    // All printings in standard fixture have price data
+    expect(cardCount("-usd=null")).toBe(2);
+  });
+
+  test("usd=null matches no cards when all have price data", () => {
+    expect(cardCount("usd=null")).toBe(0);
+  });
+
+  test("-usd>100 excludes null-price printings (operator inversion)", () => {
+    // Row 1 (Bolt foil) set to 0 = no price data. usd>100 matches rows 4,5,8.
+    // -usd>100 = usd<=100 should match 0,2,3,6,7,9,10 (NOT row 1).
+    const dataWithNull = {
+      ...TEST_PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200, 10, 50, 200, 150, 60],
+    };
+    const pIdx = new PrintingIndex(dataWithNull);
+    const cache = new NodeCache(index, pIdx);
+    const { printingIndices } = cache.evaluate(parse("-usd>100"));
+    expect(printingIndices).toBeDefined();
+    const indices = Array.from(printingIndices!);
+    expect(indices).not.toContain(1);
+    expect(indices).toContain(0);
+    expect(indices).toContain(2);
   });
 });
 

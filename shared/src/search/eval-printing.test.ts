@@ -217,6 +217,35 @@ describe("usd field", () => {
   test("invalid price returns error", () => {
     expect(evalField("usd", ":", "abc").error).toBe('invalid price "abc"');
   });
+
+  test("usd=null matches printings with no price data (Spec 080)", () => {
+    const dataWithZero: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200],
+    };
+    const idx = new PrintingIndex(dataWithZero);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", "=", "null", idx, buf);
+    expect(marked(buf)).toEqual([1]);
+    const buf2 = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", ":", "null", idx, buf2);
+    expect(marked(buf2)).toEqual([1]);
+  });
+
+  test("usd!=null matches printings with price data (Spec 080)", () => {
+    const dataWithZero: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200],
+    };
+    const idx = new PrintingIndex(dataWithZero);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", "!=", "null", idx, buf);
+    expect(marked(buf)).toEqual([0, 2, 3, 4, 5]);
+  });
+
+  test("usd>null returns error (Spec 080)", () => {
+    expect(evalField("usd", ">", "null").error).toBe("null cannot be used with comparison operators");
+  });
 });
 
 // ---------------------------------------------------------------------------

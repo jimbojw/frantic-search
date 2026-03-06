@@ -73,6 +73,19 @@ export function evalPrintingField(
       break;
     }
     case "usd": {
+      if (valLower === "null") {
+        switch (op) {
+          case ":": case "=":
+            for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] === 0) buf[i] = 1;
+            break;
+          case "!=":
+            for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] !== 0) buf[i] = 1;
+            break;
+          default:
+            return "null cannot be used with comparison operators";
+        }
+        break;
+      }
       const queryDollars = parseFloat(val);
       if (isNaN(queryDollars)) return `invalid price "${val}"`;
       const queryCents = Math.round(queryDollars * 100);

@@ -100,7 +100,9 @@ Examples: `frame:2015`, `frame:future`
 
 The value is parsed as a dollar amount (e.g., `1`, `0.50`, `10.00`) and converted to cents for comparison against `price_usd`. Rows where `price_usd === 0` (no price data) are excluded from all price comparisons — they never match `usd<1` or `usd>=0`.
 
-Examples: `usd<1`, `usd>=10`, `$:0.25` (Scryfall uses `usd`; see Spec 090)
+**Spec 080** extends `usd` with: value `null` for missing price data (`usd=null`, `usd!=null`), and corrected negated price semantics (operator inversion, null exclusion).
+
+Examples: `usd<1`, `usd>=10`, `$:0.25`, `usd=null` (Scryfall uses `usd`; see Spec 090)
 
 ### `cn:` / `number:` — Collector number
 

@@ -69,6 +69,13 @@ describe("toScryfallQuery", () => {
     expect(canon("-sort:usd")).toBe("");
   });
 
+  it("strips usd=null and usd!=null for Scryfall (Spec 080)", () => {
+    expect(canon("usd=null")).toBe("");
+    expect(canon("usd!=null")).toBe("");
+    expect(canon("t:creature usd=null")).toBe("t:creature");
+    expect(canon("usd!=null lightning")).toBe("lightning");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {

@@ -78,8 +78,10 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       if (node.field.toLowerCase() === "view") return "";
       if (node.field.toLowerCase() === "sort") return "";
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
-      // Spec 074: $ is Frantic Search–only; Scryfall expects "usd" (https://scryfall.com/docs/syntax#prices)
+      // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
       const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
+      if (canonical === "usd" && node.value.toLowerCase() === "null") return "";
+      // Spec 074: $ is Frantic Search–only; Scryfall expects "usd" (https://scryfall.com/docs/syntax#prices)
       const fieldForScryfall = canonical === "usd" ? "usd" : node.field;
       const quoted = needsQuoting(node.value) ? `"${node.value}"` : node.value;
       return `${fieldForScryfall}${node.operator}${quoted}`;

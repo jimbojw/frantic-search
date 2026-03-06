@@ -659,6 +659,29 @@ export class NodeCache {
           break;
         }
         if (childInterned.computed!.domain === "printing" && this._printingIndex) {
+          // Spec 080: Negated usd with non-null value → operator inversion (excludes nulls).
+          // -usd>100 = usd<=100; -usd=null uses normal buffer invert.
+          const childField = ast.child.type === "FIELD" ? ast.child : null;
+          const isUsdField = childField
+            && FIELD_ALIASES[childField.field.toLowerCase()] === "usd"
+            && childField.value.toLowerCase() !== "null";
+          if (isUsdField && childField) {
+            const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
+            const op = childField.operator;
+            const invertedOp = invOp[op] ?? op;
+            const pn = this._printingIndex.printingCount;
+            const buf = new Uint8Array(pn);
+            const t0 = performance.now();
+            const err = evalPrintingField("usd", invertedOp, childField.value, this._printingIndex, buf, this.index);
+            const ms = performance.now() - t0;
+            if (err) {
+              interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
+            } else {
+              interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+            }
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
           // Stay in printing domain: invert the printing buffer row-wise.
           // -is:foil = "printing rows that are not foil" (Scryfall semantics).
           const pn = this._printingIndex.printingCount;
