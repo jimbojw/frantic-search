@@ -212,6 +212,7 @@ Tapping the banner clears the live query but does **not** clear the pinned query
 
 ## Implementation Notes
 
+- 2026-03-05: Spec 079 consolidates the PINNED and MATCHES drawers into a single accordion. The "Pinned query drawer" and MATCHES drawer sections above describe the original two-panel design; the as-built UI uses one unified accordion with a two-row summary footer.
 - 2026-03-04: Spec 071 fixes paren handling when pinning/unpinning OR nodes: removeNode extends span to include surrounding parens; prependTerm wraps OR terms.
 - 2026-03-02: Issue #52 fix — PINNED lip shows pinned-only card and printing counts; MATCHES lip shows intersection. Worker returns `pinnedIndicesCount` and `pinnedPrintingCount` when `pinnedBreakdown` is present. Pinned-only branch now forwards `hasPrintingConditions` and `uniqueMode` from the pinned evaluation.
 - 2026-03-02: Pin/unpin handlers use `parseBreakdown(query)` instead of the worker's breakdown for splice operations. This avoids stale-span bugs when the query string updates faster than the worker can respond (e.g., rapid pin/unpin sequences that reorder terms). Same pattern as TERMS drawer (Spec 044) and `cycleChip`.

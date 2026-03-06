@@ -93,7 +93,7 @@ function chipLabel(node: BreakdownNode): string {
 // Pin icon SVG — always visible, filled (pinned) vs outlined (live)
 // ---------------------------------------------------------------------------
 
-function PinIcon(props: { pinned: boolean }) {
+export function PinIcon(props: { pinned: boolean }) {
   return (
     <svg
       class={`size-3 shrink-0 ${props.pinned ? 'text-blue-500 dark:text-blue-400' : 'opacity-40'}`}

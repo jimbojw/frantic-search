@@ -6,8 +6,7 @@ import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
-import InlineBreakdown from './InlineBreakdown'
-import PinnedBreakdown from './PinnedBreakdown'
+import UnifiedBreakdown from './UnifiedBreakdown'
 import TermsDrawer from './TermsDrawer'
 import QueryHighlight from './QueryHighlight'
 import { SearchProvider } from './SearchContext'
@@ -80,18 +79,21 @@ function App() {
   const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
-  const [pinnedExpanded, setPinnedExpanded] = createSignal(
-    localStorage.getItem('frantic-pinned-expanded') !== 'false'
-  )
-  function togglePinned() {
-    setPinnedExpanded(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-pinned-expanded', String(next))
-      return next
-    })
+  function getInitialBreakdownExpanded(): boolean {
+    const pinned = localStorage.getItem('frantic-pinned-expanded')
+    const breakdown = localStorage.getItem('frantic-breakdown-expanded')
+    const hasOldKeys = pinned !== null || breakdown !== null
+    if (hasOldKeys) {
+      const expanded = pinned === 'true' || breakdown === 'true'
+      localStorage.setItem('frantic-breakdown-expanded', String(expanded))
+      localStorage.removeItem('frantic-pinned-expanded')
+      localStorage.removeItem('frantic-breakdown-expanded')
+      return expanded
+    }
+    return localStorage.getItem('frantic-breakdown-expanded') !== 'false'
   }
   const [breakdownExpanded, setBreakdownExpanded] = createSignal(
-    localStorage.getItem('frantic-breakdown-expanded') !== 'false'
+    getInitialBreakdownExpanded()
   )
   function toggleBreakdown() {
     setBreakdownExpanded(prev => {
@@ -886,31 +888,21 @@ function App() {
               </button>
             </Show>
           </div>
-          <Show when={pinnedBreakdown()}>
-            {(pbd) => (
-              <PinnedBreakdown
-                breakdown={pbd()}
-                cardCount={pinnedIndicesCount() ?? 0}
-                printingCount={pinnedPrintingCount()}
-                expanded={pinnedExpanded()}
-                onToggle={togglePinned}
-                onUnpin={(nodeLabel) => { flushPendingCommit(); handleUnpin(nodeLabel) }}
-                onRemove={(q) => { flushPendingCommit(); handlePinnedRemove(q) }}
-              />
-            )}
-          </Show>
-          <Show when={query().trim() !== '' && breakdown()}>
-            {(bd) => (
-              <InlineBreakdown
-                breakdown={bd()}
-                cardCount={totalCards()}
-                printingCount={showPrintingResults() ? totalPrintingItems() : undefined}
-                expanded={breakdownExpanded()}
-                onToggle={toggleBreakdown}
-                onPin={(nodeLabel) => { flushPendingCommit(); handlePin(nodeLabel) }}
-                onNodeRemove={(q) => { flushPendingCommit(); setQuery(q) }}
-              />
-            )}
+          <Show when={pinnedBreakdown() || (query().trim() !== '' && breakdown())}>
+            <UnifiedBreakdown
+              pinnedBreakdown={pinnedBreakdown()}
+              pinnedCardCount={pinnedIndicesCount() ?? 0}
+              pinnedPrintingCount={pinnedPrintingCount()}
+              liveBreakdown={query().trim() !== '' ? breakdown() : null}
+              liveCardCount={totalCards()}
+              livePrintingCount={showPrintingResults() ? totalPrintingItems() : undefined}
+              expanded={breakdownExpanded()}
+              onToggle={toggleBreakdown}
+              onPin={(nodeLabel) => { flushPendingCommit(); handlePin(nodeLabel) }}
+              onUnpin={(nodeLabel) => { flushPendingCommit(); handleUnpin(nodeLabel) }}
+              onPinnedRemove={(q) => { flushPendingCommit(); handlePinnedRemove(q) }}
+              onLiveRemove={(q) => { flushPendingCommit(); setQuery(q) }}
+            />
           </Show>
         </div>
       </header>

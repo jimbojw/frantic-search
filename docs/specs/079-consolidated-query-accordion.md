@@ -1,6 +1,6 @@
 # Spec 079: Consolidated Query Accordion
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 021 (Inline Query Breakdown), Spec 054 (Pinned Search Criteria)
 
@@ -46,13 +46,13 @@ Two rows, stacked vertically:
 
 | Row | Label | Content | Visual weight |
 |-----|-------|---------|---------------|
-| 1 | `^ PINNED` | `N cards (M printings)` + optional `· X ignored` | Secondary (muted) |
+| 1 | `PINNED` (with pin icon) | `N cards (M printings)` + optional `· X ignored` | Secondary (muted) |
 | 2 | `MATCHES` | `J cards (K printings)` + optional `· Y ignored` | Primary (higher contrast) |
 
 Example:
 
 ```
-^ PINNED                    1,234 cards (1,500 printings)
+[pin icon] PINNED           1,234 cards (1,500 printings)
  MATCHES [1 ignored]        456 cards (520 printings)
 ```
 
@@ -63,7 +63,7 @@ The chevron (▾/▸) appears once, vertically centered relative to the footer c
 Single row:
 
 ```
-^ PINNED                    1,234 cards (1,500 printings)
+[pin icon] PINNED           1,234 cards (1,500 printings)
 ```
 
 #### When only live exists
