@@ -76,6 +76,9 @@ jobs:
       # -- App --
       - name: Build app
         run: npm run build -w app
+        env:
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
 
       # -- Deploy --
       - name: Upload Pages artifact

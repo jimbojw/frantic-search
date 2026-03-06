@@ -139,6 +139,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       pinnedPrintingCount,
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
       uniqueMode: pinnedEval.uniqueMode,
+      includeExtras: pinnedEval.includeExtras,
     }
     return result
   }
@@ -335,7 +336,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   const result: SearchResult = {
     type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
-    printingIndices, hasPrintingConditions, uniqueMode,
+    printingIndices, hasPrintingConditions, uniqueMode, includeExtras,
     effectiveBreakdown,
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),

@@ -107,44 +107,9 @@ export default defineConfig({
     solid(),
     VitePWA({
       registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,woff,woff2,png,ico}'],
-        runtimeCaching: [
-          {
-            urlPattern: /columns\.[a-f0-9]+\.json$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'card-data',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: /thumb-hashes\.[a-f0-9]+\.json$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'card-data',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: /printings\.[a-f0-9]+\.json$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'card-data',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/cards\.scryfall\.io\//,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'card-art',
-              expiration: { maxEntries: 500 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
-      },
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       manifest: {
         name: 'Frantic Search',
         short_name: 'Frantic',

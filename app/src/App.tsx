@@ -34,6 +34,7 @@ import {
   buildMasksForList,
   hasPrintingLevelEntries,
 } from './list-mask-builder'
+import { captureSearchExecuted, captureUiInteracted } from './analytics'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -99,6 +100,7 @@ function App() {
     setBreakdownExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-breakdown-expanded', String(next))
+      captureUiInteracted({ element_name: 'breakdown', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
       return next
     })
   }
@@ -109,6 +111,7 @@ function App() {
     setHistogramsExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-results-options-expanded', String(next))
+      captureUiInteracted({ element_name: 'histograms', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
       return next
     })
   }
@@ -119,6 +122,8 @@ function App() {
     setTermsExpanded(prev => {
       const next = !prev
       localStorage.setItem('frantic-terms-expanded', String(next))
+      captureUiInteracted({ element_name: 'terms', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
+      captureUiInteracted({ element_name: 'menu_drawer', action: 'clicked', state: next ? 'opened' : 'closed' })
       return next
     })
   }
@@ -301,6 +306,36 @@ function App() {
 
   const worker = new SearchWorker()
   let latestQueryId = 0
+  let searchCaptureTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingSearchCapture: { query: string; used_extension: boolean; results_count: number } | null = null
+
+  function scheduleSearchCapture(
+    query: string,
+    usedExtension: boolean,
+    resultsCount: number
+  ): void {
+    if (!query.trim()) return
+    pendingSearchCapture = { query: query.trim(), used_extension: usedExtension, results_count: resultsCount }
+    if (searchCaptureTimer) clearTimeout(searchCaptureTimer)
+    searchCaptureTimer = setTimeout(() => {
+      if (pendingSearchCapture) {
+        captureSearchExecuted(pendingSearchCapture)
+        pendingSearchCapture = null
+      }
+      searchCaptureTimer = null
+    }, 750)
+  }
+
+  function flushSearchCapture(): void {
+    if (searchCaptureTimer) {
+      clearTimeout(searchCaptureTimer)
+      searchCaptureTimer = null
+    }
+    if (pendingSearchCapture) {
+      captureSearchExecuted(pendingSearchCapture)
+      pendingSearchCapture = null
+    }
+  }
 
   function sendListUpdatesFor(
     workerRef: Worker,
@@ -425,6 +460,14 @@ function App() {
           setUniqueMode(msg.uniqueMode)
           setIndicesIncludingExtras(msg.indicesIncludingExtras)
           setPrintingIndicesIncludingExtras(msg.printingIndicesIncludingExtras)
+          const eq = effectiveQuery().trim()
+          if (eq) {
+            const usedExtension = (msg.includeExtras ?? false) || msg.uniqueMode !== 'cards'
+            const resultsCount = msg.printingIndices && msg.printingIndices.length > 0 && (viewMode() === 'images' || viewMode() === 'full')
+              ? msg.printingIndices.length
+              : msg.indices.length
+            scheduleSearchCapture(eq, usedExtension, resultsCount)
+          }
         }
         break
     }
@@ -512,6 +555,7 @@ function App() {
   function navigateToHelp() {
     cancelPendingCommit()
     saveScrollPosition()
+    captureUiInteracted({ element_name: 'syntax_help', action: 'clicked' })
     const params = new URLSearchParams(location.search)
     params.set('help', '')
     history.pushState(null, '', `?${params}`)
@@ -546,6 +590,7 @@ function App() {
   function navigateToReport() {
     cancelPendingCommit()
     saveScrollPosition()
+    captureUiInteracted({ element_name: 'bug_report', action: 'clicked' })
     const params = new URLSearchParams()
     const q = query().trim()
     if (q) params.set('q', q)
@@ -883,7 +928,7 @@ function App() {
                 onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
                 onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
-                onBlur={() => setInputFocused(false)}
+                onBlur={() => { setInputFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
                 class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
               />
