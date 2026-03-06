@@ -74,8 +74,7 @@ For a tapped color C:
    - C not in value → **no change** (C excluded by exact match).
 
 2. **`ci:` WUBRG node found:**
-   - C in value, multi-color → remove C from value (narrow the allowed set). E.g., `ci:wurg` + tap G × → `ci:wur`. `ci:wr` + tap R × → `ci:w`.
-   - C in value, single-color → splice operator `:` → `>=` (downgrade). E.g., `ci:r` + tap R × → `ci>=r`.
+   - C in value → splice operator `:` → `>=` (downgrade). E.g., `ci:r` + tap R × → `ci>=r`. Multi-color: `ci:wg` + tap W × → `ci>=wg`.
    - C not in value → **no change** (C excluded by subset).
 
 3. **`ci>=` node found:**

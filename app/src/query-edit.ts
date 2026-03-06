@@ -435,13 +435,8 @@ export function graduatedColorX(
     const val = extractValue(colonNode.label, ':')
     const mask = parseColorMask(val)
     if (mask & colorBit) {
-      const newMask = mask & ~colorBit
-      if (newMask === 0) {
-        // Single-color: downgrade operator to >=
-        return spliceOpAndValue(query, colonNode, ':', '>=', val)
-      }
-      // Multi-color: remove C from allowed set
-      return spliceQuery(query, colonNode.valueSpan!, serializeColors(newMask))
+      // Downgrade operator from : to >= (symmetric with bar tap upgrade)
+      return spliceOpAndValue(query, colonNode, ':', '>=', val)
     }
     return query
   }

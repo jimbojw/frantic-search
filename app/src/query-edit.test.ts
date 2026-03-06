@@ -852,9 +852,9 @@ describe('graduatedColorX', () => {
     expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:wr')
   })
 
-  it('removes color from ci: multi-color node', () => {
+  it('downgrades ci: multi-color node to ci>= on minus tap', () => {
     const q = 'ci:wr'
-    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci:w')
+    expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=wr')
   })
 
   it('removes color from ci>= multi-color node', () => {
@@ -862,9 +862,9 @@ describe('graduatedColorX', () => {
     expect(graduatedColorX(q, buildBreakdown(q), 'r')).toBe('ci>=w')
   })
 
-  it('removes color from ci: with four colors', () => {
+  it('downgrades ci: with four colors to ci>= on minus tap', () => {
     const q = 'ci:wurg'
-    expect(graduatedColorX(q, buildBreakdown(q), 'g')).toBe('ci:wur')
+    expect(graduatedColorX(q, buildBreakdown(q), 'g')).toBe('ci>=wurg')
   })
 
   // Cross-color × interactions
