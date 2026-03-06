@@ -20,6 +20,13 @@ interface CombiningEntry {
   example: string
 }
 
+interface ModifierEntry {
+  alias: string
+  canonical: string
+  description: string
+  example: string
+}
+
 interface RegexEntry {
   label: string
   description: string
@@ -45,6 +52,11 @@ const FIELDS: FieldEntry[] = [
   { field: 'mana value', aliases: ['mv', 'cmc'], description: 'Mana value (numeric)', example: 'mv<=2' },
   { field: 'mana', aliases: ['m'], description: 'Mana cost (symbols)', example: 'm:{b/p}' },
   { field: 'legal', aliases: ['f', 'format'], description: 'Format legality', example: 'f:modern' },
+  { field: 'banned', aliases: [], description: 'Banned in format', example: 'banned:legacy' },
+  { field: 'restricted', aliases: [], description: 'Restricted in format', example: 'restricted:vintage' },
+  { field: 'is', aliases: [], description: 'Mechanics, layouts, roles (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
+  { field: 'rarity', aliases: ['r'], description: 'Rarity', example: 'r:mythic' },
+  { field: 'price', aliases: ['usd', '$'], description: 'Price in USD', example: 'price<5' },
 ]
 
 const OPERATORS: OperatorEntry[] = [
@@ -63,6 +75,14 @@ const COMBINING: CombiningEntry[] = [
   { label: 'NOT', description: 'Exclude matching cards', example: '-c:black' },
   { label: 'Parentheses', description: 'Group sub-expressions', example: '(c:red OR c:blue) t:instant' },
   { label: 'Exact name', description: 'Match full card name', example: '!"Lightning Bolt"' },
+]
+
+const MODIFIERS: ModifierEntry[] = [
+  { alias: '++', canonical: 'unique:prints', description: 'Show all printings per card', example: 't:bolt ++' },
+  { alias: '@@', canonical: 'unique:art', description: 'Show one per unique artwork per card', example: 't:bolt @@' },
+  { alias: '**', canonical: 'include:extras', description: 'Include non-playable cards (acorn, silver-border, etc.)', example: 't:bolt **' },
+  { alias: 'sort:', canonical: 'sort:name, sort:mv, sort:price, etc.', description: 'Order results (-sort: reverses direction)', example: 't:creature sort:name' },
+  { alias: 'view:', canonical: 'view:slim, view:detail, view:images, view:full', description: 'Display mode', example: 't:creature view:images' },
 ]
 
 const REGEX: RegexEntry[] = [
@@ -193,6 +213,39 @@ export default function SyntaxHelp(props: { onSelectExample: (q: string) => void
             )}
           </For>
         </div>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Display modifiers</h2>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <th class="px-4 py-2 font-medium">Alias</th>
+                <th class="px-4 py-2 font-medium hidden sm:table-cell">Canonical</th>
+                <th class="px-4 py-2 font-medium">Effect</th>
+                <th class="px-4 py-2 font-medium">Example</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <For each={MODIFIERS}>
+                {(entry) => (
+                  <tr>
+                    <td class="px-4 py-1.5 font-mono text-xs">{entry.alias}</td>
+                    <td class="px-4 py-1.5 font-mono text-xs text-gray-400 dark:text-gray-500 hidden sm:table-cell">{entry.canonical}</td>
+                    <td class="px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">{entry.description}</td>
+                    <td class="px-4 py-1.5 text-xs">
+                      <ExampleButton example={entry.example} onSelect={props.onSelectExample} />
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 px-1">
+          <code class="font-mono">++</code> and <code class="font-mono">@@</code> are Scryfall aliases. <code class="font-mono">**</code> is Frantic Search–exclusive. Use <code class="font-mono">-sort:field</code> to reverse sort direction.
+        </p>
       </section>
 
       <section class="mb-8">
