@@ -57,6 +57,12 @@ describe("toScryfallQuery", () => {
     expect(canon("c:r view:full t:instant")).toBe("c:r t:instant");
   });
 
+  it("strips v: alias for Scryfall (Spec 083)", () => {
+    expect(canon("lightning v:images")).toBe("lightning");
+    expect(canon("v:slim t:creature")).toBe("t:creature");
+    expect(canon("c:r v:full t:instant")).toBe("c:r t:instant");
+  });
+
   it("strips sort: terms for Scryfall (Spec 059)", () => {
     expect(canon("lightning sort:name")).toBe("lightning");
     expect(canon("sort:mv t:creature")).toBe("t:creature");

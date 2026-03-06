@@ -247,7 +247,7 @@ export default function CardDetail(props: {
   const scryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
   const allPrintsQuery = () => {
     const name = fullName()
-    return name ? `!"${name}" unique:prints include:extras view:images` : ''
+    return name ? `!"${name}" unique:prints include:extras v:images` : ''
   }
 
   return (

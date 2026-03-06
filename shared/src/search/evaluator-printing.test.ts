@@ -1081,6 +1081,17 @@ describe("view:", () => {
     const output = evaluate("t:creature view:invalid");
     expect(output.indices.length).toBe(4); // t:creature count
   });
+
+  test("v:slim alias works like view:slim (Spec 083)", () => {
+    const output = evaluate("v:slim");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("v:images alias works like view:images (Spec 083)", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant v:images");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
 });
 
 // ---------------------------------------------------------------------------

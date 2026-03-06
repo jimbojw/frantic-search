@@ -710,7 +710,7 @@ export function hasIncludeExtras(breakdown: BreakdownNode | null): boolean {
 // View mode term (Spec 058)
 // ---------------------------------------------------------------------------
 
-const VIEW_FIELDS = ['view']
+const VIEW_FIELDS = ['view', 'v']
 
 function isViewLabel(label: string): boolean {
   return isFieldLabel(label, VIEW_FIELDS, [':'])
@@ -726,7 +726,7 @@ export function setViewTerm(
   mode: 'slim' | 'detail' | 'images' | 'full',
 ): string {
   const cleared = clearViewTerms(query, breakdown)
-  return appendTerm(cleared, `view:${mode}`, parseBreakdown(cleared))
+  return appendTerm(cleared, `v:${mode}`, parseBreakdown(cleared))
 }
 
 // ---------------------------------------------------------------------------

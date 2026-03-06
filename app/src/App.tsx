@@ -7,7 +7,7 @@ import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import UnifiedBreakdown from './UnifiedBreakdown'
-import TermsDrawer from './TermsDrawer'
+import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import { SearchProvider } from './SearchContext'
 import SearchResults from './SearchResults'
@@ -24,7 +24,7 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
-import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms } from './query-edit'
+import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms, setViewTerm } from './query-edit'
 import { extractViewMode } from './view-query'
 import { reconstructQuery } from './InlineBreakdown'
 import { CardListStore } from './card-list-store'
@@ -64,7 +64,7 @@ function App() {
     if (!stored || !isViewMode(stored)) return
     const pq = pinnedQuery()
     if (extractViewMode(pq) !== 'slim') return
-    setPinnedQuery(appendTerm(pq, `view:${stored}`, parseBreakdown(pq)))
+    setPinnedQuery(appendTerm(pq, `v:${stored}`, parseBreakdown(pq)))
     localStorage.removeItem('frantic-view-mode')
   })
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
@@ -152,7 +152,7 @@ function App() {
     if (extractViewMode(effectiveAfter) === mode) {
       setQuery(cleared)
     } else {
-      setQuery(appendTerm(cleared, `view:${mode}`, parseBreakdown(cleared)))
+      setQuery(setViewTerm(cleared, parseBreakdown(cleared), mode))
     }
     setVisibleCount(BATCH_SIZES[mode])
   }
@@ -831,7 +831,7 @@ function App() {
             onWheel={(e) => e.stopPropagation()}
           >
             <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
-              <TermsDrawer
+              <MenuDrawer
                 query={query()}
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
@@ -845,7 +845,7 @@ function App() {
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
           <Show when={termsExpanded() && !headerCollapsed()}>
             <div class="max-h-96 overflow-hidden flex flex-col">
-              <TermsDrawer
+              <MenuDrawer
                 query={query()}
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}

@@ -428,9 +428,10 @@ export class NodeCache {
           break;
         }
 
-        if (ast.field.toLowerCase() === "view") {
+        const viewField = ast.field.toLowerCase();
+        if (viewField === "view" || viewField === "v") {
           // Display modifier only — does not filter. Valid or invalid, treat as
-          // match-all so view: terms have no effect on results (Spec 058).
+          // match-all so view:/v: terms have no effect on results (Spec 058, Spec 083).
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };

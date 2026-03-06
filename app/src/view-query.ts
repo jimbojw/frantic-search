@@ -11,14 +11,15 @@ export function isValidViewValue(value: string): boolean {
 }
 
 /**
- * Walk the AST and collect view: FIELD node values in document order.
+ * Walk the AST and collect view:/v: FIELD node values in document order.
  * Returns the last valid value, or undefined if none found.
  */
 function collectViewValues(node: ASTNode): string[] {
   const values: string[] = []
   function walk(n: ASTNode) {
-    if (n.type === 'FIELD' && n.field.toLowerCase() === 'view') {
-      values.push(n.value.toLowerCase())
+    if (n.type === 'FIELD') {
+      const f = n.field.toLowerCase()
+      if (f === 'view' || f === 'v') values.push(n.value.toLowerCase())
     }
     if (n.type === 'NOT') walk(n.child)
     if (n.type === 'AND' || n.type === 'OR') {

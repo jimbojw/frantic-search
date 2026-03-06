@@ -1,6 +1,6 @@
 # Spec 083: MenuDrawer
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 081 (Side Panel Scrollspy), Spec 038 (Collapsible Sparkline Histograms), Spec 041 (Result Display Modes)
 
@@ -37,38 +37,52 @@ The toolbar and the terms panel serve related purposes (tools and filters) but l
 
 ### Left rail layout
 
-The left rail (navigation column) is restructured to accommodate VIEWS and TOOLS above the TERMS category list:
+The left rail (navigation column) lists section labels only. VIEWS and TOOLS are sections like FORMATS, LAYOUTS, etc. — a unified scrollspy menu system:
 
 ```
 ┌─ Left rail ─────────┐
-│ VIEWS               │  ← v:slim | v:detail | v:images | v:full (chips)
-│ TOOLS               │  ← Try on Scryfall ↗
+│ views              │
+│ tools              │
+│ formats            │
+│ layouts            │
+│ roles              │
+│ lands              │
+│ rarities           │
+│ printings          │
+│ prices             │
+│ sort               │
 │ ─────────────────── │
-│ formats             │
-│ layouts             │
-│ roles               │
-│ lands               │
-│ rarities            │
-│ printings           │
-│ prices              │
-│ sort                │
-│ ─────────────────── │
-│ Syntax Help         │  ← sticky footer
-│ Report Bug          │
+│ Syntax Help        │  ← sticky footer
+│ Report Bug         │
 └─────────────────────┘
 ```
 
-**VIEWS:** Renders four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Chips use the same tri-state/selection pattern as TERMS chips: the active chip (matching the effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent) to update the query. Chip labels use the `v:` alias for consistency with other drawer terminology. Layout: flex wrap, same gap and sizing as TERMS chips.
-
-**TOOLS:** Single link, "Try on Scryfall ↗". Same styling as the current toolbar link: `text-blue-500 hover:text-blue-600`. Opens in new tab with `target="_blank" rel="noopener noreferrer"`.
-
-**TERMS:** Scrollable category list, unchanged from Spec 081. Scrollspy and section navigation work as today.
-
-**Sticky footer:** Unchanged. Syntax Help and Report Bug links.
+Tapping a section scrolls the right content area to that section. Scrollspy highlights the active section as the user scrolls. Sticky footer unchanged.
 
 ### Right content area
 
-Unchanged. All eight TERMS sections in one scroll container with IntersectionObserver-based scrollspy. Chip behavior (tri-state, modifiers, sort arrows) unchanged from Spec 044 and Spec 059.
+All sections (VIEWS, TOOLS, plus the eight TERMS sections) in one scroll container with IntersectionObserver-based scrollspy:
+
+```
+VIEWS
+[v:slim] [v:detail] [v:images] [v:full]
+
+TOOLS
+[Try on Scryfall ↗]
+
+FORMATS
+[f:commander] [f:modern] ... [include:extras]
+
+LAYOUTS
+[is:dfc] [is:transform] ...
+...
+```
+
+**VIEWS:** Four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Active chip (matching effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent). Chip labels use the `v:` alias.
+
+**TOOLS:** Single link, "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. Opens in new tab with `target="_blank" rel="noopener noreferrer"`.
+
+**TERMS:** Chip behavior (tri-state, modifiers, sort arrows) unchanged from Spec 044 and Spec 059.
 
 ### Data source for VIEWS and TOOLS
 
@@ -108,7 +122,7 @@ Both contexts render the full MenuDrawer including VIEWS, TOOLS, TERMS, and foot
 
 ### Persistence
 
-The `frantic-terms-tab` localStorage key (last active TERMS section) is unchanged. VIEWS and TOOLS have no persisted state; view mode is derived from the query via `view:` or `v:` term (Spec 058).
+The `frantic-terms-tab` localStorage key stores the last active section (views, tools, or any terms section). On open, the panel scrolls to that section. View mode is derived from the query via `view:` or `v:` term (Spec 058).
 
 ### v: alias (Spec 058 extension)
 
@@ -123,7 +137,7 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 | `shared/src/search/query-for-sort.ts` | Strip `v:` in addition to `view:` when building sort seed. |
 | `app/src/view-query.ts` | `collectViewValues` / `extractViewMode` recognize `v` field in addition to `view`. |
 | `app/src/query-edit.ts` | Extend `VIEW_FIELDS` to `['view', 'v']`; `setViewTerm` clears both, appends `v:{mode}`. |
-| `app/src/TermsDrawer.tsx` | Rename to `MenuDrawer.tsx`. Add VIEWS (chips: v:slim, v:detail, v:images, v:full) and TOOLS sections to left rail. Change header label to "Menu". Use `useSearchContext()` for scryfallUrl, viewMode, changeViewMode. |
+| `app/src/TermsDrawer.tsx` | Rename to `MenuDrawer.tsx`. Add VIEWS and TOOLS as first-class sections in the unified scrollspy: left rail lists section labels (views, tools, formats, …); right content renders VIEWS chips, TOOLS link, and eight TERMS sections. Change header label to "Menu". Use `useSearchContext()` for scryfallUrl, viewMode, changeViewMode. |
 | `app/src/App.tsx` | Update import and component name from TermsDrawer to MenuDrawer. No new props. |
 | `app/src/SearchResults.tsx` | Remove toolbar div (lines 119–139). Add zero-results inline row with Try on Scryfall and Report a problem below "No cards found". |
 | `docs/specs/038-collapsible-sparkline-histograms.md` | Add "Modified by Spec 083" note: toolbar removed. |
@@ -134,7 +148,7 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 ## Acceptance Criteria
 
 1. The terms panel is renamed to MenuDrawer. The header label reads "Menu".
-2. The left rail contains VIEWS (ViewModeToggle), TOOLS (Try on Scryfall link), and the eight TERMS categories in that order, followed by the sticky footer (Syntax Help, Report Bug).
+2. The left rail contains section labels only: views, tools, formats, layouts, roles, lands, rarities, printings, prices, sort, followed by the sticky footer (Syntax Help, Report Bug). The right content area renders VIEWS (chips), TOOLS (Try on Scryfall link), and the eight TERMS sections in that order.
 3. VIEWS chips (`v:slim`, `v:detail`, `v:images`, `v:full`) correctly control result display mode. Tapping a chip updates the query via `v:` or `view:` term (last one wins). The active chip reflects the effective view mode.
 4. The Try on Scryfall link in TOOLS opens the effective query in Scryfall search in a new tab.
 5. The toolbar between histograms and the card list is removed. Histograms connect directly to the card list.

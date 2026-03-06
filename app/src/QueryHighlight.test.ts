@@ -15,7 +15,7 @@ type HighlightRole =
   | 'paren'
   | 'keyword'
 
-const EXTRA_KNOWN_FIELDS = new Set(['unique'])
+const EXTRA_KNOWN_FIELDS = new Set(['unique', 'view', 'v', 'include', 'sort'])
 
 const OPERATORS = new Set<string>([
   TokenType.COLON,
@@ -223,6 +223,14 @@ describe('buildSpans', () => {
       ['unique', 'field'],
       [':', 'operator'],
       ['prints', 'value'],
+    ])
+  })
+
+  it('classifies v: alias as known field (Spec 083)', () => {
+    expect(roles('v:slim')).toEqual([
+      ['v', 'field'],
+      [':', 'operator'],
+      ['slim', 'value'],
     ])
   })
 

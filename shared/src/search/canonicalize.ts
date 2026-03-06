@@ -75,7 +75,8 @@ function serializeNode(node: ASTNode, parentType?: string): string {
     case "FIELD": {
       if (node.value === "") return "";
       // Frantic Search–specific display modifiers — strip for Scryfall
-      if (node.field.toLowerCase() === "view") return "";
+      const f = node.field.toLowerCase();
+      if (f === "view" || f === "v") return "";
       if (node.field.toLowerCase() === "sort") return "";
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip

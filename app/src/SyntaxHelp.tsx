@@ -82,7 +82,7 @@ const MODIFIERS: ModifierEntry[] = [
   { alias: '@@', canonical: 'unique:art', description: 'Show one per unique artwork per card', example: 't:bolt @@' },
   { alias: '**', canonical: 'include:extras', description: 'Include non-playable cards (acorn, silver-border, etc.)', example: 't:bolt **' },
   { alias: 'sort:', canonical: 'sort:name, sort:mv, sort:usd, etc.', description: 'Order results (-sort: reverses direction)', example: 't:creature sort:name' },
-  { alias: 'view:', canonical: 'view:slim, view:detail, view:images, view:full', description: 'Display mode', example: 't:creature view:images' },
+  { alias: 'view:, v:', canonical: 'v:slim, v:detail, v:images, v:full', description: 'Display mode', example: 't:creature v:images' },
 ]
 
 const REGEX: RegexEntry[] = [

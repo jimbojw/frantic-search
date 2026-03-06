@@ -7,7 +7,6 @@ import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './co
 import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import CardImage from './CardImage'
-import ViewModeToggle from './ViewModeToggle'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
@@ -114,28 +113,6 @@ export default function SearchResults() {
             </div>
           </>)}
         </Show>
-        <div class="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
-          <div class="flex items-center gap-x-3 gap-y-1 text-sm">
-            <a
-              href={ctx.scryfallUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-            >
-              <span class="hidden min-[420px]:inline">Try on </span>Scryfall ↗
-            </a>
-            <button
-              type="button"
-              onClick={() => ctx.navigateToReport()}
-              title="Report a problem"
-              aria-label="Report a problem"
-              class="inline-flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <IconBug />
-            </button>
-          </div>
-          <ViewModeToggle value={ctx.viewMode()} onChange={ctx.changeViewMode} />
-        </div>
         <Show when={ctx.hasPrintingConditions() && !ctx.printingDisplay()}>
           <p class="px-3 py-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-t border-amber-200 dark:border-amber-800/50">
             Printing data loading — set, rarity, and price filters are not yet available.
@@ -144,6 +121,23 @@ export default function SearchResults() {
         <Show when={ctx.totalCards() > 0} fallback={
           <div class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
             <p>No cards found</p>
+            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
+              <a
+                href={ctx.scryfallUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+              >
+                Try on Scryfall ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => ctx.navigateToReport()}
+                class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+              >
+                Report a problem
+              </button>
+            </p>
             <Show when={ctx.indicesIncludingExtras()}>
               {(extrasCount) => {
                 const pExtras = ctx.printingIndicesIncludingExtras()

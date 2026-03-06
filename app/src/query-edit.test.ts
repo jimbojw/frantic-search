@@ -1491,28 +1491,38 @@ describe('prependTerm', () => {
 // ---------------------------------------------------------------------------
 
 describe('setViewTerm', () => {
-  it('appends view: term to empty query', () => {
-    expect(setViewTerm('', null, 'images')).toBe('view:images')
+  it('appends v: term to empty query (Spec 083)', () => {
+    expect(setViewTerm('', null, 'images')).toBe('v:images')
   })
 
-  it('appends view: term when none exists', () => {
+  it('appends v: term when none exists', () => {
     expect(setViewTerm('t:creature', buildBreakdown('t:creature'), 'detail'))
-      .toBe('t:creature view:detail')
+      .toBe('t:creature v:detail')
   })
 
-  it('replaces existing view: term', () => {
+  it('replaces existing view: term with v:', () => {
     expect(setViewTerm('view:slim', buildBreakdown('view:slim'), 'images'))
-      .toBe('view:images')
+      .toBe('v:images')
   })
 
-  it('removes all view: terms and appends new one', () => {
+  it('replaces existing v: term (Spec 083)', () => {
+    expect(setViewTerm('v:slim', buildBreakdown('v:slim'), 'images'))
+      .toBe('v:images')
+  })
+
+  it('removes all view:/v: terms and appends new one', () => {
     expect(setViewTerm('view:slim view:detail', buildBreakdown('view:slim view:detail'), 'full'))
-      .toBe('view:full')
+      .toBe('v:full')
+  })
+
+  it('clears v: when replacing (Spec 083)', () => {
+    expect(setViewTerm('v:slim t:creature', buildBreakdown('v:slim t:creature'), 'detail'))
+      .toBe('t:creature v:detail')
   })
 
   it('clears invalid view: and sets valid', () => {
     expect(setViewTerm('view:invalid t:creature', buildBreakdown('view:invalid t:creature'), 'images'))
-      .toBe('t:creature view:images')
+      .toBe('t:creature v:images')
   })
 })
 
@@ -1520,11 +1530,18 @@ describe('clearViewTerms', () => {
   it('removes view: term', () => {
     expect(clearViewTerms('view:images', buildBreakdown('view:images'))).toBe('')
   })
+  it('removes v: term (Spec 083)', () => {
+    expect(clearViewTerms('v:images', buildBreakdown('v:images'))).toBe('')
+  })
   it('removes view: but preserves other terms', () => {
     expect(clearViewTerms('t:creature view:full', buildBreakdown('t:creature view:full')))
       .toBe('t:creature')
   })
-  it('returns query unchanged when no view: terms', () => {
+  it('removes v: but preserves other terms (Spec 083)', () => {
+    expect(clearViewTerms('t:creature v:full', buildBreakdown('t:creature v:full')))
+      .toBe('t:creature')
+  })
+  it('returns query unchanged when no view:/v: terms', () => {
     expect(clearViewTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
   })
 })

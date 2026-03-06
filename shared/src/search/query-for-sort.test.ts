@@ -9,7 +9,13 @@ describe("queryForSortSeed", () => {
     expect(queryForSortSeed("lightning view:images")).toBe("lightning");
     expect(queryForSortSeed("view:detail t:creature")).toBe("t:creature");
     expect(queryForSortSeed("view:detail")).toBe("");
-   });
+  });
+
+  it("strips v: alias (Spec 083)", () => {
+    expect(queryForSortSeed("t:creature v:detail")).toBe("t:creature");
+    expect(queryForSortSeed("lightning v:images")).toBe("lightning");
+    expect(queryForSortSeed("v:slim t:creature")).toBe("t:creature");
+  });
 
   it("view: variants produce same result", () => {
     const a = queryForSortSeed("t:creature view:detail");

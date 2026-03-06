@@ -5,6 +5,9 @@ import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
+import { useSearchContext } from './SearchContext'
+import type { ViewMode } from './view-mode'
+import { VIEW_MODES } from './view-mode'
 
 // ---------------------------------------------------------------------------
 // Chip data
@@ -39,10 +42,13 @@ function sortChip(value: string): ChipDef {
   return { label: `sort:${value}`, field: SORT_CHIP_FIELDS, operator: ':', value, term: `sort:${value}` }
 }
 
-const SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
-type SectionId = (typeof SECTIONS)[number]
+const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
+type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
-const SECTION_CHIPS: Record<SectionId, ChipDef[]> = {
+const ALL_SECTIONS = ['views', 'tools', ...TERMS_SECTIONS] as const
+type SectionId = (typeof ALL_SECTIONS)[number]
+
+const SECTION_CHIPS: Record<TermsSectionId, ChipDef[]> = {
   formats: [
     fmtChip('commander'),
     fmtChip('modern'),
@@ -123,6 +129,8 @@ const SECTION_CHIPS: Record<SectionId, ChipDef[]> = {
 }
 
 const SECTION_LABELS: Record<SectionId, string> = {
+  views: 'Views',
+  tools: 'Tools',
   formats: 'Formats',
   layouts: 'Layouts',
   roles: 'Roles',
@@ -137,7 +145,7 @@ const STORAGE_KEY = 'frantic-terms-tab'
 
 function loadSection(): SectionId {
   const stored = localStorage.getItem(STORAGE_KEY)
-  return SECTIONS.includes(stored as SectionId) ? (stored as SectionId) : 'formats'
+  return ALL_SECTIONS.includes(stored as SectionId) ? (stored as SectionId) : 'views'
 }
 
 // ---------------------------------------------------------------------------
@@ -195,11 +203,36 @@ function TermChip(props: {
 }
 
 // ---------------------------------------------------------------------------
+// ViewChip (Spec 083)
+// ---------------------------------------------------------------------------
+
+function ViewChip(props: {
+  mode: ViewMode
+  label: string
+  active: boolean
+  onChange: (mode: ViewMode) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onChange(props.mode)}
+      class={`inline-flex items-center justify-center min-h-9 min-w-9 px-1.5 py-1.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
+        props.active
+          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
+          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+      }`}
+    >
+      {props.label}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Bimodal chips: unique:prints, include:extras
 // ---------------------------------------------------------------------------
 
-const UNIQUE_PRINTS_SECTIONS: ReadonlySet<SectionId> = new Set(['rarities', 'printings'])
-const MODIFIER_SECTIONS: ReadonlySet<SectionId> = new Set(['formats', 'roles', 'rarities', 'printings'])
+const UNIQUE_PRINTS_SECTIONS: ReadonlySet<TermsSectionId> = new Set(['rarities', 'printings'])
+const MODIFIER_SECTIONS: ReadonlySet<TermsSectionId> = new Set(['formats', 'roles', 'rarities', 'printings'])
 
 function UniquePrintsChip(props: {
   active: boolean
@@ -312,16 +345,17 @@ function SortTermChip(props: {
 }
 
 // ---------------------------------------------------------------------------
-// TermsDrawer
+// MenuDrawer
 // ---------------------------------------------------------------------------
 
-export default function TermsDrawer(props: {
+export default function MenuDrawer(props: {
   query: string
   onSetQuery: (query: string) => void
   onHelpClick: () => void
   onReportClick: () => void
   onClose: () => void
 }) {
+  const ctx = useSearchContext()
   const [activeSection, setActiveSection] = createSignal<SectionId>(loadSection())
   const bd = createMemo(() => parseBreakdown(props.query))
   let contentRef: HTMLDivElement | undefined
@@ -345,7 +379,7 @@ export default function TermsDrawer(props: {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue
           const id = entry.target.id as SectionId
-          if (SECTIONS.includes(id)) {
+          if (ALL_SECTIONS.includes(id)) {
             setActiveSection(id)
             localStorage.setItem(STORAGE_KEY, id)
             const btn = navRefs[id]
@@ -361,7 +395,7 @@ export default function TermsDrawer(props: {
       },
     )
 
-    for (const id of SECTIONS) {
+    for (const id of ALL_SECTIONS) {
       const el = root.querySelector(`#${id}`)
       if (el) observer.observe(el)
     }
@@ -380,7 +414,7 @@ export default function TermsDrawer(props: {
       {/* Header row: label, spacer, close */}
       <div class="flex items-center gap-1 pb-1.5 shrink-0">
         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Terms
+          Menu
         </span>
         <div class="flex-1" />
         <button
@@ -397,11 +431,11 @@ export default function TermsDrawer(props: {
 
       {/* Two-column layout: nav rail + content */}
       <div class="flex flex-row flex-1 min-h-0 gap-2 overflow-hidden">
-        {/* Left rail: category list + sticky footer */}
+        {/* Left rail: section labels + sticky footer */}
         <div class="flex flex-col shrink-0 w-24 min-h-0">
           <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div class="flex flex-col gap-0.5 py-0.5">
-              <For each={SECTIONS}>
+            <div class="flex flex-col gap-0.5 py-2">
+              <For each={ALL_SECTIONS}>
                 {(section) => (
                   <button
                     ref={(el) => { navRefs[section] = el }}
@@ -448,7 +482,40 @@ export default function TermsDrawer(props: {
           class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth scroll-pt-2"
         >
           <div class="flex flex-col gap-4 pb-4">
-            <For each={SECTIONS}>
+            {/* VIEWS section */}
+            <section id="views" class="flex flex-col gap-1.5">
+              <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
+                Views
+              </h2>
+              <div class="flex flex-wrap gap-1.5 content-start">
+                <For each={VIEW_MODES}>
+                  {(mode) => (
+                    <ViewChip
+                      mode={mode}
+                      label={`v:${mode}`}
+                      active={ctx.viewMode() === mode}
+                      onChange={ctx.changeViewMode}
+                    />
+                  )}
+                </For>
+              </div>
+            </section>
+            {/* TOOLS section */}
+            <section id="tools" class="flex flex-col gap-1.5">
+              <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
+                Tools
+              </h2>
+              <a
+                href={ctx.scryfallUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
+              >
+                Try on Scryfall ↗
+              </a>
+            </section>
+            {/* TERMS sections */}
+            <For each={TERMS_SECTIONS}>
               {(section) => (
                 <section id={section} class="flex flex-col gap-1.5">
                   <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">

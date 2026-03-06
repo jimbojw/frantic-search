@@ -4,6 +4,7 @@ import { parse } from "./parser";
 
 const DISPLAY_FIELDS: Array<{ field: string; value?: string }> = [
   { field: "view" },
+  { field: "v" },
   { field: "unique" },
   { field: "sort" },
 ];

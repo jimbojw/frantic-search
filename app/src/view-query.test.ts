@@ -15,6 +15,12 @@ describe('extractViewMode', () => {
     expect(extractViewMode('view:slim')).toBe('slim')
   })
 
+  it('returns the value for v: alias (Spec 083)', () => {
+    expect(extractViewMode('v:detail')).toBe('detail')
+    expect(extractViewMode('v:images')).toBe('images')
+    expect(extractViewMode('v:slim t:creature')).toBe('slim')
+  })
+
   it('returns the last valid view: when multiple exist', () => {
     expect(extractViewMode('a view:slim b view:images')).toBe('images')
     expect(extractViewMode('view:detail view:full')).toBe('full')
