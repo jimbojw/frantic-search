@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Extended by:** Spec 086 (Dual Wield — adds `q1`, `q2` params when `q2` present)
+
 ## Goal
 
 Sync the search query to the URL so that queries are shareable, bookmarkable, and navigable with the browser back button. Establish history semantics that distinguish continuous editing (typing) from discrete navigation events (tapping a link, loading a URL).
