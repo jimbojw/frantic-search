@@ -398,7 +398,7 @@ export default function TermsDrawer(props: {
       <div class="flex flex-row flex-1 min-h-0 gap-2 overflow-hidden">
         {/* Left rail: category list + sticky footer */}
         <div class="flex flex-col shrink-0 w-24 min-h-0">
-          <div class="flex-1 min-h-0 overflow-y-auto">
+          <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div class="flex flex-col gap-0.5 py-0.5">
               <For each={SECTIONS}>
                 {(section) => (
@@ -442,7 +442,7 @@ export default function TermsDrawer(props: {
         {/* Right content: all sections in one scroll container */}
         <div
           ref={(el) => { contentRef = el }}
-          class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-smooth scroll-pt-2"
+          class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth scroll-pt-2"
         >
           <div class="flex flex-col gap-4 pb-4">
             <For each={SECTIONS}>

@@ -828,6 +828,7 @@ function App() {
           <aside
             class="fixed top-0 right-0 bottom-0 z-50 w-[min(100%,20rem)] overflow-hidden flex flex-col bg-white dark:bg-gray-900 shadow-xl transition-transform duration-200 ease-out translate-x-0"
             aria-label="Filters menu"
+            onWheel={(e) => e.stopPropagation()}
           >
             <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
               <TermsDrawer
