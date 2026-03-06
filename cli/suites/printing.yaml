@@ -124,16 +124,16 @@
     count_min: 500
 
 # ---------------------------------------------------------------------------
-# price:
+# usd:
 # ---------------------------------------------------------------------------
 
-- name: "price<0.10 t:creature finds cheap creature printings"
-  query: "price<0.10 t:creature"
+- name: "usd<0.10 t:creature finds cheap creature printings"
+  query: "usd<0.10 t:creature"
   assertions:
     count_min: 500
 
-- name: "price>=100 finds expensive printings"
-  query: "price>=100"
+- name: "usd>=100 finds expensive printings"
+  query: "usd>=100"
   assertions:
     contains:
       - "Tundra"

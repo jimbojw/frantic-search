@@ -70,7 +70,7 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "price", "collectornumber", "frame", "year", "date", "game", "in"]) {
+    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in"]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -173,33 +173,33 @@ describe("rarity field", () => {
 });
 
 // ---------------------------------------------------------------------------
-// price
+// usd
 // ---------------------------------------------------------------------------
 
-describe("price field", () => {
+describe("usd field", () => {
   test("exact match (dollars → cents)", () => {
-    expect(marked(evalField("price", ":", "1").buf)).toEqual([0]);
-    expect(marked(evalField("price", ":", "0.50").buf)).toEqual([2]);
+    expect(marked(evalField("usd", ":", "1").buf)).toEqual([0]);
+    expect(marked(evalField("usd", ":", "0.50").buf)).toEqual([2]);
   });
 
   test("> comparison", () => {
-    expect(marked(evalField("price", ">", "2").buf)).toEqual([1, 4]);
+    expect(marked(evalField("usd", ">", "2").buf)).toEqual([1, 4]);
   });
 
   test("< comparison", () => {
-    expect(marked(evalField("price", "<", "1").buf)).toEqual([2, 3]);
+    expect(marked(evalField("usd", "<", "1").buf)).toEqual([2, 3]);
   });
 
   test(">= comparison", () => {
-    expect(marked(evalField("price", ">=", "1").buf)).toEqual([0, 1, 4, 5]);
+    expect(marked(evalField("usd", ">=", "1").buf)).toEqual([0, 1, 4, 5]);
   });
 
   test("<= comparison", () => {
-    expect(marked(evalField("price", "<=", "0.75").buf)).toEqual([2, 3]);
+    expect(marked(evalField("usd", "<=", "0.75").buf)).toEqual([2, 3]);
   });
 
   test("!= comparison", () => {
-    const result = marked(evalField("price", "!=", "1").buf);
+    const result = marked(evalField("usd", "!=", "1").buf);
     expect(result).toEqual([1, 2, 3, 4, 5]);
   });
 
@@ -210,12 +210,12 @@ describe("price field", () => {
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
-    evalPrintingField("price", ">=", "0", idx, buf);
+    evalPrintingField("usd", ">=", "0", idx, buf);
     expect(marked(buf)).toEqual([0, 2, 3, 4, 5]);
   });
 
   test("invalid price returns error", () => {
-    expect(evalField("price", ":", "abc").error).toBe('invalid price "abc"');
+    expect(evalField("usd", ":", "abc").error).toBe('invalid price "abc"');
   });
 });
 

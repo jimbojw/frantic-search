@@ -211,7 +211,7 @@ function compareFieldRaw(a: number, b: number, field: string, idx: CardIndex): {
 
 function comparePrintingFieldRaw(a: number, b: number, field: string, pIdx: PrintingIndex): { cmp: number; applyDir: boolean } {
   switch (field) {
-    case "price": {
+    case "usd": {
       const pa = pIdx.priceUsd[a];
       const pb = pIdx.priceUsd[b];
       if (pa === 0 && pb === 0) return { cmp: 0, applyDir: false };

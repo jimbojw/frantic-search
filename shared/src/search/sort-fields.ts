@@ -24,9 +24,8 @@ export const SORT_FIELDS: Record<string, SortFieldEntry> = {
   tou: { canonical: "toughness", defaultDir: "desc", isPrintingDomain: false },
 
   // Printing-domain fields
-  price: { canonical: "price", defaultDir: "asc", isPrintingDomain: true },
-  usd: { canonical: "price", defaultDir: "asc", isPrintingDomain: true },
-  $: { canonical: "price", defaultDir: "asc", isPrintingDomain: true },
+  usd: { canonical: "usd", defaultDir: "asc", isPrintingDomain: true },
+  $: { canonical: "usd", defaultDir: "asc", isPrintingDomain: true },
   date: { canonical: "date", defaultDir: "desc", isPrintingDomain: true },
   released: { canonical: "date", defaultDir: "desc", isPrintingDomain: true },
   year: { canonical: "date", defaultDir: "desc", isPrintingDomain: true },

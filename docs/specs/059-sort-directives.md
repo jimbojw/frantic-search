@@ -29,8 +29,8 @@ sort:name           # alphabetical A–Z (ascending is name's default)
 -sort:name          # alphabetical Z–A (NOT reverses direction)
 sort:mv             # mana value low-to-high
 -sort:mv            # mana value high-to-low
-sort:price          # price low-to-high
--sort:price         # price high-to-low
+sort:usd            # price low-to-high (Scryfall field name)
+-sort:usd           # price high-to-low
 sort:date           # newest-first (descending is date's default)
 -sort:date          # oldest-first
 sort:power          # highest-first (descending is power's default)
@@ -44,7 +44,7 @@ Sort directives reuse the existing `FIELD` parse rule (`WORD COLON WORD`). The e
 ```
 sort_value = sort_field
 sort_field = "name" | "mv" | "cmc" | "manavalue"
-           | "price" | "usd"
+           | "usd" | "$"
            | "date" | "released" | "year"
            | "rarity"
            | "color" | "c"
@@ -94,7 +94,7 @@ These fields sort over individual printings, then project that ordering onto car
 
 | Sort field | Aliases | Column | Default dir | Behavior |
 |---|---|---|---|---|
-| `price` | `usd` | `priceUsd` | asc | Numeric (cheapest first). Zero-price printings (no price data) sort last. |
+| `usd` | `$` | `priceUsd` | asc | Numeric (cheapest first). Zero-price printings (no price data) sort last. |
 | `date` | `released`, `year` | `releasedAt` | desc | Newest-first. Stored as YYYYMMDD integers. Zero (unknown date) sorts last. |
 | `rarity` | — | `rarity` | desc | Mythic-first. Uses the Rarity bitmask's numeric values (Mythic > Special > Rare > Uncommon > Common). |
 
@@ -121,7 +121,7 @@ Sort directives follow the established modifier pattern used by `unique:prints` 
 
 ```typescript
 interface SortDirective {
-  field: string;       // canonical field name: "name", "mv", "price", etc.
+  field: string;       // canonical field name: "name", "mv", "usd", etc.
   direction: 'asc' | 'desc';
   isPrintingDomain: boolean;
 }
@@ -331,7 +331,7 @@ Sort directives compose across pinned and live queries. The effective sort is de
 2. Else if the **pinned** query has a **valid** `sort:` term, use it.
 3. Else fall back to `seededSort`.
 
-Live takes priority because it represents the user's current intent. A pinned `sort:name` provides a stable default that the user can temporarily override by typing `sort:price` in the live query.
+Live takes priority because it represents the user's current intent. A pinned `sort:name` provides a stable default that the user can temporarily override by typing `sort:usd` in the live query.
 
 This means a pinned `sort:name` acts as "my default sort preference" — always applied unless the live query says otherwise.
 
@@ -409,7 +409,7 @@ const SORT_CHIPS: ChipDef[] = [
   { label: 'sort:power', field: SORT_FIELDS, operator: ':', value: 'power', term: 'sort:power' },
   { label: 'sort:toughness', field: SORT_FIELDS, operator: ':', value: 'toughness', term: 'sort:toughness' },
   // Printing-domain
-  { label: 'sort:price', field: SORT_FIELDS, operator: ':', value: 'price', term: 'sort:price' },
+  { label: 'sort:$', field: SORT_FIELDS, operator: ':', value: '$', term: 'sort:$' },
   { label: 'sort:date', field: SORT_FIELDS, operator: ':', value: 'date', term: 'sort:date' },
   { label: 'sort:rarity', field: SORT_FIELDS, operator: ':', value: 'rarity', term: 'sort:rarity' },
 ]
@@ -440,7 +440,7 @@ The field name mapping from Frantic Search to Scryfall:
 | `color` | `color` | `asc` / `desc` |
 | `power` | `power` | `asc` / `desc` |
 | `toughness` | `toughness` | `asc` / `desc` |
-| `price` | `usd` | `asc` / `desc` |
+| `usd` | `$` | `asc` / `desc` |
 | `date` | `released` | `asc` / `desc` |
 | `rarity` | `rarity` | `asc` / `desc` |
 
@@ -554,8 +554,8 @@ test("sortBy extracted: -sort:date (reversed to asc)", () => {
 });
 
 test("last valid sort: wins", () => {
-  const { sortBy } = evaluate("sort:name sort:price");
-  expect(sortBy).toEqual({ field: "price", direction: "asc", isPrintingDomain: true });
+  const { sortBy } = evaluate("sort:name sort:usd");
+  expect(sortBy).toEqual({ field: "usd", direction: "asc", isPrintingDomain: true });
 });
 
 test("invalid trailing sort: does not override earlier valid sort:", () => {
@@ -575,12 +575,12 @@ test("sort:mv sorts by mana value ascending", ...);
 test("sort:power sorts by power descending (default)", ...);
 test("-sort:power sorts by power ascending (reversed)", ...);
 test("non-numeric power sorts last regardless of direction", ...);
-test("sort:price sorts printings by price ascending", ...);
+test("sort:usd sorts printings by price ascending", ...);
 test("zero-price printings sort last", ...);
 test("sort:date sorts printings by release date descending (default)", ...);
 test("printing-domain sort keeps card printings contiguous (no interleaving)", ...);
-test("sort:price asc groups cards by cheapest printing, then printings asc within card", ...);
-test("sort:price desc groups cards by priciest printing, then printings desc within card", ...);
+test("sort:usd asc groups cards by cheapest printing, then printings asc within card", ...);
+test("sort:usd desc groups cards by priciest printing, then printings desc within card", ...);
 test("ties broken by name for face-domain sorts", ...);
 test("ties broken by release date + collector number for printing-domain sorts", ...);
 test("no sort directive preserves Spec 019 ordering", ...);
@@ -605,14 +605,14 @@ test("pinned sort: applies when live has no sort:", ...);
 test("cycleChip: neutral → adds sort:name", ...);
 test("cycleChip: sort:name (positive) → replaces with -sort:name (negative)", ...);
 test("cycleChip: -sort:name (negative) → removes (neutral)", ...);
-test("exclusive selection: activating sort:price removes existing sort:name", ...);
+test("exclusive selection: activating sort:$ removes existing sort:name", ...);
 ```
 
 ## Acceptance Criteria
 
 1. `sort:name` in the query sorts results alphabetically A–Z. `-sort:name` sorts Z–A.
 2. `sort:mv` sorts by mana value ascending. `-sort:mv` sorts descending. `sort:cmc` and `sort:manavalue` are accepted aliases.
-3. `sort:price` sorts by printing price low-to-high. With default `unique:cards`, card order is projected from grouped sorted printings (first-seen printing per card). With `unique:prints`, printings are shown as grouped card runs ordered by price semantics (per Spec 048 view rules).
+3. `sort:usd` sorts by printing price low-to-high. With default `unique:cards`, card order is projected from grouped sorted printings (first-seen printing per card). With `unique:prints`, printings are shown as grouped card runs ordered by price semantics (per Spec 048 view rules).
 4. `sort:date` sorts printings by release date newest-first (default desc). `-sort:date` sorts oldest-first.
 5. `sort:rarity` sorts printings by rarity mythic-first (default desc).
 6. `sort:power` sorts by power highest-first (default desc). Non-numeric power sorts last.

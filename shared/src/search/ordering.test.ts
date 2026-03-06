@@ -492,7 +492,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
   test("sort:price sorts by cheapest printing per card", () => {
     const deduped = [1, 3]; // Bolt, Sol Ring
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
-    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
     const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // Bolt cheapest=10 ($0.10 via WCD), Sol Ring cheapest=50 ($0.50)
     // asc: Bolt (cheapest $0.10) before Sol Ring (cheapest $0.50)
@@ -503,7 +503,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
   test("-sort:price sorts by most expensive printing per card", () => {
     const deduped = [1, 3];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
-    const d: SortDirective = { field: "price", direction: "desc", isPrintingDomain: true };
+    const d: SortDirective = { field: "usd", direction: "desc", isPrintingDomain: true };
     const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // desc: Sol Ring (max $5.00) before Bolt (max $3.00)
     expect(cardOrder[0]).toBe(3); // Sol Ring
@@ -513,7 +513,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
   test("printing-domain sort keeps card printings contiguous", () => {
     const deduped = [1, 3];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
-    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
     const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // All printings of one card should appear contiguously
     const faces = Array.from(groupedPrintings).map(p => printingIndex.canonicalFaceRef[p]);
@@ -551,7 +551,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
   test("intra-card printing order follows direction for printing-domain sorts", () => {
     const deduped = [1];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);
-    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
     const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // Bolt printings by price asc: #6($0.10), #2($0.50), #10($0.60), #0($1.00), #9($1.50), #5($2.00), #8($2.00), #1($3.00)
     const prices = Array.from(groupedPrintings).map(p => printingIndex.priceUsd[p]);
@@ -565,7 +565,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     // All our test data has non-zero prices, so this is a structural test
     const deduped = [1];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);
-    const d: SortDirective = { field: "price", direction: "asc", isPrintingDomain: true };
+    const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
     const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     expect(groupedPrintings.length).toBe(8);
   });

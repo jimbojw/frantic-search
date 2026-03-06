@@ -91,16 +91,16 @@ Implementation: Bitmask-encoded. `frame[i] & targetBit`.
 
 Examples: `frame:2015`, `frame:future`
 
-### `price:` / `usd:` — Price (USD)
+### `usd:` / `$` — Price (USD)
 
 | Operator | Semantics |
 |---|---|
 | `:`, `=` | Exact price match (in dollars, parsed to cents) |
 | `>`, `>=`, `<`, `<=` | Price comparison |
 
-The value is parsed as a dollar amount (e.g., `1`, `0.50`, `10.00`) and converted to cents for comparison against `price_usd`. Rows where `price_usd === 0` (no price data) are excluded from all price comparisons — they never match `price<1` or `price>=0`.
+The value is parsed as a dollar amount (e.g., `1`, `0.50`, `10.00`) and converted to cents for comparison against `price_usd`. Rows where `price_usd === 0` (no price data) are excluded from all price comparisons — they never match `usd<1` or `usd>=0`.
 
-Examples: `price<1`, `usd>=10`, `price:0.25`
+Examples: `usd<1`, `usd>=10`, `$:0.25` (Scryfall uses `usd`; see Spec 090)
 
 ### `cn:` / `number:` — Collector number
 
@@ -250,7 +250,7 @@ const FIELD_ALIASES: Record<string, string> = {
   // ... existing face-level aliases ...
   s: "set", e: "set",
   rarity: "rarity", r: "rarity",
-  price: "price", usd: "price",
+  usd: "usd", $: "usd",
   cn: "collectornumber", number: "collectornumber",
   frame: "frame",
 };
@@ -260,7 +260,7 @@ const FIELD_ALIASES: Record<string, string> = {
 
 ```typescript
 const PRINTING_FIELDS = new Set([
-  "set", "rarity", "price", "collectornumber", "frame",
+  "set", "rarity", "usd", "collectornumber", "frame",
 ]);
 ```
 

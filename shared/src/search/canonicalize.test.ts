@@ -60,13 +60,13 @@ describe("toScryfallQuery", () => {
   it("strips sort: terms for Scryfall (Spec 059)", () => {
     expect(canon("lightning sort:name")).toBe("lightning");
     expect(canon("sort:mv t:creature")).toBe("t:creature");
-    expect(canon("sort:price")).toBe("");
+    expect(canon("sort:usd")).toBe("");
     expect(canon("c:r sort:date t:instant")).toBe("c:r t:instant");
   });
 
   it("strips -sort: terms for Scryfall (Spec 059)", () => {
     expect(canon("-sort:name t:creature")).toBe("t:creature");
-    expect(canon("-sort:price")).toBe("");
+    expect(canon("-sort:usd")).toBe("");
   });
 
   // --- Regex field nodes ---
@@ -225,8 +225,9 @@ describe("toScryfallQuery", () => {
     expect(canon("pow>=3")).toBe("pow>=3");
   });
 
-  it("canonicalizes $ to price for Scryfall (Spec 074)", () => {
-    expect(canon("$<1")).toBe("price<1");
-    expect(canon("$>=5 t:creature")).toBe("price>=5 t:creature");
+  it("canonicalizes $ and usd to usd for Scryfall (Spec 074, issue #90)", () => {
+    expect(canon("$<1")).toBe("usd<1");
+    expect(canon("$>=5 t:creature")).toBe("usd>=5 t:creature");
+    expect(canon("usd<5")).toBe("usd<5");
   });
 });

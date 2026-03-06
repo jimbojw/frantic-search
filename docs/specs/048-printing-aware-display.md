@@ -12,7 +12,7 @@ Adapt the result display to show printing-specific information when the query co
 
 Currently, search results are a list of canonical face indices. Each result shows the oracle card's art crop or card image (via the oracle-level `scryfall_id`), name, type line, and other face-level data. There is no concept of "which printing" — results represent cards, not printings.
 
-Spec 047 adds printing-level query fields (`set:`, `r:`, `is:foil`, `price:`, etc.) that evaluate in the printing domain. The evaluator returns both `indices` (matching canonical face indices, for card-level display) and `printingIndices` (matching printing rows, for printing-level display). This spec defines how the display layer uses `printingIndices`.
+Spec 047 adds printing-level query fields (`set:`, `r:`, `is:foil`, `usd:`, etc.) that evaluate in the printing domain. The evaluator returns both `indices` (matching canonical face indices, for card-level display) and `printingIndices` (matching printing rows, for printing-level display). This spec defines how the display layer uses `printingIndices`.
 
 ## Display Rules
 

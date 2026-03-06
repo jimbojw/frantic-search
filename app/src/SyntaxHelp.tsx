@@ -56,7 +56,7 @@ const FIELDS: FieldEntry[] = [
   { field: 'restricted', aliases: [], description: 'Restricted in format', example: 'restricted:vintage' },
   { field: 'is', aliases: [], description: 'Mechanics, layouts, roles (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
   { field: 'rarity', aliases: ['r'], description: 'Rarity', example: 'r:mythic' },
-  { field: 'price', aliases: ['usd', '$'], description: 'Price in USD', example: 'price<5' },
+  { field: 'usd', aliases: ['$'], description: 'Price in USD', example: 'usd<5' },
 ]
 
 const OPERATORS: OperatorEntry[] = [
@@ -81,7 +81,7 @@ const MODIFIERS: ModifierEntry[] = [
   { alias: '++', canonical: 'unique:prints', description: 'Show all printings per card', example: 't:bolt ++' },
   { alias: '@@', canonical: 'unique:art', description: 'Show one per unique artwork per card', example: 't:bolt @@' },
   { alias: '**', canonical: 'include:extras', description: 'Include non-playable cards (acorn, silver-border, etc.)', example: 't:bolt **' },
-  { alias: 'sort:', canonical: 'sort:name, sort:mv, sort:price, etc.', description: 'Order results (-sort: reverses direction)', example: 't:creature sort:name' },
+  { alias: 'sort:', canonical: 'sort:name, sort:mv, sort:usd, etc.', description: 'Order results (-sort: reverses direction)', example: 't:creature sort:name' },
   { alias: 'view:', canonical: 'view:slim, view:detail, view:images, view:full', description: 'Display mode', example: 't:creature view:images' },
 ]
 

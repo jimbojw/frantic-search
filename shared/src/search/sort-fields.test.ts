@@ -8,8 +8,8 @@ describe("SORT_FIELDS", () => {
     expect(SORT_FIELDS["manavalue"].canonical).toBe("mv");
     expect(SORT_FIELDS["pow"].canonical).toBe("power");
     expect(SORT_FIELDS["tou"].canonical).toBe("toughness");
-    expect(SORT_FIELDS["usd"].canonical).toBe("price");
-    expect(SORT_FIELDS["$"].canonical).toBe("price");
+    expect(SORT_FIELDS["usd"].canonical).toBe("usd");
+    expect(SORT_FIELDS["$"].canonical).toBe("usd");
     expect(SORT_FIELDS["released"].canonical).toBe("date");
     expect(SORT_FIELDS["year"].canonical).toBe("date");
     expect(SORT_FIELDS["c"].canonical).toBe("color");
@@ -22,7 +22,7 @@ describe("SORT_FIELDS", () => {
   });
 
   test("printing-domain fields are printing domain", () => {
-    for (const key of ["price", "usd", "$", "date", "released", "rarity"]) {
+    for (const key of ["usd", "$", "date", "released", "rarity"]) {
       expect(SORT_FIELDS[key].isPrintingDomain).toBe(true);
     }
   });
@@ -33,7 +33,7 @@ describe("SORT_FIELDS", () => {
     expect(SORT_FIELDS["color"].defaultDir).toBe("asc");
     expect(SORT_FIELDS["power"].defaultDir).toBe("desc");
     expect(SORT_FIELDS["toughness"].defaultDir).toBe("desc");
-    expect(SORT_FIELDS["price"].defaultDir).toBe("asc");
+    expect(SORT_FIELDS["usd"].defaultDir).toBe("asc");
     expect(SORT_FIELDS["date"].defaultDir).toBe("desc");
     expect(SORT_FIELDS["rarity"].defaultDir).toBe("desc");
   });

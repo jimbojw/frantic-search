@@ -1,4 +1,4 @@
-# Spec 074: `$` Alias for Price
+# Spec 074: `$` Alias for USD Price
 
 **Status:** Implemented
 
@@ -6,17 +6,19 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 052 (Scryfall Outlink Canonicalization)
 
+**Updated:** Issue [#90](https://github.com/jimbojw/frantic-search/issues/90) — canonical field renamed from `price` to `usd` to match Scryfall syntax.
+
 ## Goal
 
-Add `$` as an alias for the `price` field so that queries like `$<1` and `$>=5` work identically to `price<1` and `price>=5`. This makes price filtering more ergonomic.
+Add `$` as an alias for the `usd` field so that queries like `$<1` and `$>=5` work identically to `usd<1` and `usd>=5`. This makes price filtering more ergonomic.
 
 ## Scope
 
 ### In scope
 
 - **Filter:** `$` as a field name in filter expressions (e.g. `$<1`, `$:0.50`, `$>=10`)
-- **Sort:** `sort:$` as an alias for `sort:price` / `sort:usd`
-- **Canonicalization:** When serializing to Scryfall outlinks, `$` is emitted as `price` (Scryfall accepts `price` for USD price filtering)
+- **Sort:** `sort:$` as an alias for `sort:usd`
+- **Canonicalization:** When serializing to Scryfall outlinks, `$` and `usd` are emitted as `usd` (Scryfall's USD price field per <https://scryfall.com/docs/syntax#prices>)
 
 ### Out of scope
 
@@ -35,29 +37,28 @@ No changes. The parser treats `WORD` + operator + value as a `FIELD` node. `$` i
 
 ### Evaluator
 
-- **`FIELD_ALIASES`** (`shared/src/search/eval-leaves.ts`): Add `$: "price"` so `$` resolves to the canonical `price` field.
-- **`SORT_FIELDS`** (`shared/src/search/sort-fields.ts`): Add `$: { canonical: "price", defaultDir: "asc", isPrintingDomain: true }` so `sort:$` behaves like `sort:price`.
+- **`FIELD_ALIASES`** (`shared/src/search/eval-leaves.ts`): Add `$: "usd"` so `$` resolves to the canonical `usd` field.
+- **`SORT_FIELDS`** (`shared/src/search/sort-fields.ts`): Add `$: { canonical: "usd", defaultDir: "asc", isPrintingDomain: true }` so `sort:$` behaves like `sort:usd`.
 
 ### Canonicalization
 
-**`shared/src/search/canonicalize.ts`:** When serializing `FIELD` nodes to Scryfall, use the canonical field name from `FIELD_ALIASES` instead of the raw `node.field`. This ensures `$<1` is emitted as `price<1` in Scryfall outlinks. Scryfall accepts `price` for USD price filtering.
+**`shared/src/search/canonicalize.ts`:** When serializing `FIELD` nodes to Scryfall, use the canonical field name for USD price. Both `$` and `usd` emit as `usd` in Scryfall outlinks.
 
 ## Implementation
 
 | File | Change |
 |------|--------|
-| `shared/src/search/eval-leaves.ts` | Add `$: "price"` to `FIELD_ALIASES` |
+| `shared/src/search/eval-leaves.ts` | Add `$: "usd"` to `FIELD_ALIASES` |
 | `shared/src/search/sort-fields.ts` | Add `$` entry to `SORT_FIELDS` |
-| `shared/src/search/canonicalize.ts` | Use canonical field when serializing `FIELD` nodes |
+| `shared/src/search/canonicalize.ts` | Emit `usd` for USD price field when serializing to Scryfall |
 | `shared/src/search/eval-printing.test.ts` or `evaluator-printing.test.ts` | Tests for `$<1`, `$>=5`, etc. |
-| `shared/src/search/sort-fields.test.ts` | Test `sort:$` → `price` |
-| `shared/src/search/canonicalize.test.ts` | Test `$<1` → `price<1` |
+| `shared/src/search/sort-fields.test.ts` | Test `sort:$` → `usd` |
+| `shared/src/search/canonicalize.test.ts` | Test `$<1` → `usd<1` |
 
 ## Acceptance Criteria
 
-- [x] `$<1` returns the same results as `price<1`
+- [x] `$<1` returns the same results as `usd<1`
 - [x] `$>=5`, `$:0.50`, `$!=0` all match expected printings
-- [x] `sort:$` sorts by price ascending (same as `sort:price`)
+- [x] `sort:$` sorts by price ascending (same as `sort:usd`)
 - [x] `-sort:$` sorts by price descending
-- [x] `toScryfallQuery(parse("$<1"))` → `"price<1"`
-- [x] Existing `price` and `usd` aliases continue to work
+- [x] `toScryfallQuery(parse("$<1"))` → `"usd<1"`

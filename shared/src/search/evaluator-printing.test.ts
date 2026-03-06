@@ -72,15 +72,15 @@ describe("printing-domain leaves", () => {
     expect(cardCount("rarity<mythic")).toBe(2);
   });
 
-  test("price>=5 matches Sol Ring (foil at $5.00)", () => {
-    expect(cardCount("price>=5")).toBe(1);
+  test("usd>=5 matches Sol Ring (foil at $5.00)", () => {
+    expect(cardCount("usd>=5")).toBe(1);
   });
 
-  test("price<1 matches both cards (Bolt A25 at $0.50, Sol Ring at $0.75)", () => {
-    expect(cardCount("price<1")).toBe(2);
+  test("usd<1 matches both cards (Bolt A25 at $0.50, Sol Ring at $0.75)", () => {
+    expect(cardCount("usd<1")).toBe(2);
   });
 
-  test("$<1 matches same as price<1 (Spec 074)", () => {
+  test("$<1 matches same as usd<1 (Spec 074)", () => {
     expect(cardCount("$<1")).toBe(2);
   });
 
@@ -195,12 +195,12 @@ describe("printing-only AND", () => {
     expect(cardCount("set:c21 is:foil")).toBe(1);
   });
 
-  test("set:mh2 price>2 — MH2 foil at $3.00 qualifies", () => {
-    expect(cardCount("set:mh2 price>2")).toBe(1);
+  test("set:mh2 usd>2 — MH2 foil at $3.00 qualifies", () => {
+    expect(cardCount("set:mh2 usd>2")).toBe(1);
   });
 
-  test("set:mh2 price<1 — no MH2 printing under $1.00", () => {
-    expect(cardCount("set:mh2 price<1")).toBe(0);
+  test("set:mh2 usd<1 — no MH2 printing under $1.00", () => {
+    expect(cardCount("set:mh2 usd<1")).toBe(0);
   });
 });
 
@@ -483,9 +483,9 @@ describe("printing metadata flags", () => {
 // ---------------------------------------------------------------------------
 
 describe("spec 047 test cases", () => {
-  test("is:foil price<2 — no foil printing is under $2.00", () => {
-    // Foil rows: #1 ($3.00), #4 ($5.00). Neither satisfies price<2.
-    expect(cardCount("is:foil price<2")).toBe(0);
+  test("is:foil usd<2 — no foil printing is under $2.00", () => {
+    // Foil rows: #1 ($3.00), #4 ($5.00). Neither satisfies usd<2.
+    expect(cardCount("is:foil usd<2")).toBe(0);
   });
 
   test("-set:mh2 lightning — Bolt survives via non-MH2 printings", () => {
@@ -762,7 +762,7 @@ describe("printing error handling", () => {
   });
 
   test("invalid price returns error", () => {
-    const { result } = evaluate("price:abc");
+    const { result } = evaluate("usd:abc");
     expect(result.error).toBe('invalid price "abc"');
     expect(result.matchCount).toBe(-1);
   });
@@ -1052,7 +1052,7 @@ describe("sort:", () => {
   });
 
   test("sort: is not treated as printing condition", () => {
-    const output = evaluate("sort:price");
+    const output = evaluate("sort:usd");
     expect(output.hasPrintingConditions).toBe(false);
   });
 });
@@ -1112,14 +1112,14 @@ describe("sort: sortBy extraction", () => {
     expect(sortBy!.field).toBe("power");
   });
 
-  test("aliases: sort:usd → field price", () => {
+  test("aliases: sort:usd → field usd", () => {
     const { sortBy } = evaluate("sort:usd");
-    expect(sortBy!.field).toBe("price");
+    expect(sortBy!.field).toBe("usd");
   });
 
-  test("aliases: sort:$ → field price (Spec 074)", () => {
+  test("aliases: sort:$ → field usd (Spec 074)", () => {
     const { sortBy } = evaluate("sort:$");
-    expect(sortBy!.field).toBe("price");
+    expect(sortBy!.field).toBe("usd");
   });
 
   test("aliases: sort:released → field date", () => {
@@ -1127,9 +1127,9 @@ describe("sort: sortBy extraction", () => {
     expect(sortBy!.field).toBe("date");
   });
 
-  test("last valid wins: sort:name sort:price → price", () => {
-    const { sortBy } = evaluate("sort:name sort:price");
-    expect(sortBy).toEqual({ field: "price", direction: "asc", isPrintingDomain: true });
+  test("last valid wins: sort:name sort:usd → usd", () => {
+    const { sortBy } = evaluate("sort:name sort:usd");
+    expect(sortBy).toEqual({ field: "usd", direction: "asc", isPrintingDomain: true });
   });
 
   test("invalid trailing does not override: sort:name sort:bogus → name", () => {

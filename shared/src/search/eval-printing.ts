@@ -12,7 +12,7 @@ const KNOWN_LANGUAGES = new Set([
 ]);
 
 export const PRINTING_FIELDS = new Set([
-  "set", "rarity", "price", "collectornumber", "frame", "year", "date",
+  "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
   "game", "legal", "banned", "restricted", "in",
 ]);
 
@@ -72,7 +72,7 @@ export function evalPrintingField(
       }
       break;
     }
-    case "price": {
+    case "usd": {
       const queryDollars = parseFloat(val);
       if (isNaN(queryDollars)) return `invalid price "${val}"`;
       const queryCents = Math.round(queryDollars * 100);

@@ -12,7 +12,7 @@ import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 const FORMAT_FIELDS = ['f', 'format', 'legal']
 const IS_FIELDS = ['is']
 const RARITY_FIELDS = ['r', 'rarity']
-const PRICE_FIELDS = ['price', 'usd']
+const USD_FIELDS = ['usd', '$']
 
 type ChipDef = { label: string; field: string[]; operator: string; value: string; term: string }
 
@@ -28,8 +28,8 @@ function rarityChip(value: string): ChipDef {
   return { label: `r:${value}`, field: RARITY_FIELDS, operator: ':', value, term: `r:${value}` }
 }
 
-function priceChip(value: string): ChipDef {
-  return { label: `price<${value}`, field: PRICE_FIELDS, operator: '<', value, term: `price<${value}` }
+function usdChip(value: string): ChipDef {
+  return { label: `$<${value}`, field: USD_FIELDS, operator: '<', value, term: `$<${value}` }
 }
 
 const SORT_CHIP_FIELDS = ['sort']
@@ -100,14 +100,14 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     isChip('reprint'),
   ],
   prices: [
-    priceChip('0.10'),
-    priceChip('1'),
-    priceChip('2'),
-    priceChip('5'),
-    priceChip('10'),
-    priceChip('20'),
-    priceChip('50'),
-    priceChip('100'),
+    usdChip('0.10'),
+    usdChip('1'),
+    usdChip('2'),
+    usdChip('5'),
+    usdChip('10'),
+    usdChip('20'),
+    usdChip('50'),
+    usdChip('100'),
   ],
   sort: [
     sortChip('name'),
@@ -115,7 +115,7 @@ const TAB_CHIPS: Record<TabId, ChipDef[]> = {
     sortChip('color'),
     sortChip('power'),
     sortChip('toughness'),
-    sortChip('price'),
+    sortChip('$'),
     sortChip('date'),
     sortChip('rarity'),
   ],
