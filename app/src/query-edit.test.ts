@@ -25,6 +25,8 @@ import {
   prependTerm,
   setViewTerm,
   clearViewTerms,
+  clearUniqueTerms,
+  setUniqueTerm,
   clearSortTerms,
   cycleSortChip,
 } from './query-edit'
@@ -1543,6 +1545,67 @@ describe('clearViewTerms', () => {
   })
   it('returns query unchanged when no view:/v: terms', () => {
     expect(clearViewTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// clearUniqueTerms, setUniqueTerm (Spec 084)
+// ---------------------------------------------------------------------------
+
+describe('clearUniqueTerms', () => {
+  it('removes unique:prints', () => {
+    expect(clearUniqueTerms('unique:prints', buildBreakdown('unique:prints'))).toBe('')
+  })
+  it('removes unique:art', () => {
+    expect(clearUniqueTerms('unique:art', buildBreakdown('unique:art'))).toBe('')
+  })
+  it('removes unique:cards', () => {
+    expect(clearUniqueTerms('unique:cards', buildBreakdown('unique:cards'))).toBe('')
+  })
+  it('removes ++ alias', () => {
+    expect(clearUniqueTerms('t:creature ++', buildBreakdown('t:creature ++'))).toBe('t:creature')
+  })
+  it('removes @@ alias', () => {
+    expect(clearUniqueTerms('t:creature @@', buildBreakdown('t:creature @@'))).toBe('t:creature')
+  })
+  it('removes unique: but preserves other terms', () => {
+    expect(clearUniqueTerms('t:creature unique:art', buildBreakdown('t:creature unique:art')))
+      .toBe('t:creature')
+  })
+  it('returns query unchanged when no unique: terms', () => {
+    expect(clearUniqueTerms('t:creature', buildBreakdown('t:creature'))).toBe('t:creature')
+  })
+})
+
+describe('setUniqueTerm', () => {
+  it('pinned has unique:art, tap cards → append unique:cards', () => {
+    expect(setUniqueTerm('', null, 'unique:art', 'cards')).toBe('unique:cards')
+  })
+  it('pinned has unique:prints, live empty, tap cards → append unique:cards', () => {
+    expect(setUniqueTerm('', null, 'unique:prints', 'cards')).toBe('unique:cards')
+  })
+  it('pinned empty, live has unique:art, tap cards → splice out (no append)', () => {
+    expect(setUniqueTerm('unique:art', buildBreakdown('unique:art'), '', 'cards')).toBe('')
+  })
+  it('pinned empty, live has unique:prints, tap cards → splice out', () => {
+    expect(setUniqueTerm('t:creature unique:prints', buildBreakdown('t:creature unique:prints'), '', 'cards'))
+      .toBe('t:creature')
+  })
+  it('pinned has unique:art, live has unique:prints, tap cards → append unique:cards', () => {
+    expect(setUniqueTerm('unique:prints', buildBreakdown('unique:prints'), 'unique:art', 'cards'))
+      .toBe('unique:cards')
+  })
+  it('tap art → append unique:art', () => {
+    expect(setUniqueTerm('t:creature', buildBreakdown('t:creature'), '', 'art'))
+      .toBe('t:creature unique:art')
+  })
+  it('tap prints → append unique:prints', () => {
+    expect(setUniqueTerm('t:creature', buildBreakdown('t:creature'), '', 'prints'))
+      .toBe('t:creature unique:prints')
+  })
+  it('live has unique:art, tap prints → replace with unique:prints', () => {
+    expect(setUniqueTerm('t:creature unique:art', buildBreakdown('t:creature unique:art'), '', 'prints'))
+      .toBe('t:creature unique:prints')
   })
 })
 

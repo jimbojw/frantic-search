@@ -6,6 +6,8 @@
 
 **Modifies:** Spec 038 (toolbar removal), Spec 016 (Report Bug entry points), Spec 026 (Options Panel), Spec 041 (view mode toggle location), Spec 058 (adds `v:` alias for `view:`)
 
+**Extended by:** Spec 084 (MenuDrawer View Consolidation — unique row, include:extras in VIEWS)
+
 ## Goal
 
 Consolidate the terms panel and results toolbar into a single MenuDrawer. The drawer becomes the primary hub for view controls, outlinks, and filter chips. This removes the toolbar between histograms and the card list, simplifying the results area while keeping all controls accessible from the menu.

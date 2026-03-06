@@ -3,7 +3,7 @@ import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-j
 import { IconBug, IconInfoCircle } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import type { ViewMode } from './view-mode'
@@ -228,39 +228,28 @@ function ViewChip(props: {
 }
 
 // ---------------------------------------------------------------------------
-// Bimodal chips: unique:prints, include:extras
+// UniqueChip, IncludeExtrasChip (Spec 084)
 // ---------------------------------------------------------------------------
 
-const UNIQUE_PRINTS_SECTIONS: ReadonlySet<TermsSectionId> = new Set(['rarities', 'printings'])
-const MODIFIER_SECTIONS: ReadonlySet<TermsSectionId> = new Set(['formats', 'roles', 'rarities', 'printings'])
+const UNIQUE_MODES = ['cards', 'art', 'prints'] as const
 
-function UniquePrintsChip(props: {
+function UniqueChip(props: {
+  mode: 'cards' | 'art' | 'prints'
+  label: string
   active: boolean
-  query: string
-  breakdown: BreakdownNode | null
-  onSetQuery: (query: string) => void
+  onChange: (mode: 'cards' | 'art' | 'prints') => void
 }) {
   return (
     <button
       type="button"
-      onClick={() => props.onSetQuery(toggleUniquePrints(props.query, props.breakdown))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
+      onClick={() => props.onChange(props.mode)}
+      class={`inline-flex items-center justify-center min-h-9 min-w-9 px-1.5 py-1.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
         props.active
           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
     >
-      {props.active ? (
-        'unique:prints'
-      ) : (
-        <For each={buildSpans('unique:prints')}>
-          {(span) =>
-            span.role
-              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
-              : <>{span.text}</>
-          }
-        </For>
-      )}
+      {props.label}
     </button>
   )
 }
@@ -482,7 +471,7 @@ export default function MenuDrawer(props: {
           class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth scroll-pt-2"
         >
           <div class="flex flex-col gap-4 pb-4">
-            {/* VIEWS section */}
+            {/* VIEWS section (Spec 084: three rows) */}
             <section id="views" class="flex flex-col gap-1.5">
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                 Views
@@ -498,6 +487,26 @@ export default function MenuDrawer(props: {
                     />
                   )}
                 </For>
+              </div>
+              <div class="flex flex-wrap gap-1.5 content-start">
+                <For each={UNIQUE_MODES}>
+                  {(mode) => (
+                    <UniqueChip
+                      mode={mode}
+                      label={`unique:${mode}`}
+                      active={ctx.uniqueMode() === mode}
+                      onChange={ctx.changeUniqueMode}
+                    />
+                  )}
+                </For>
+              </div>
+              <div class="flex flex-wrap gap-1.5 content-start">
+                <IncludeExtrasChip
+                  active={hasIncludeExtras(bd())}
+                  query={props.query}
+                  breakdown={bd()}
+                  onSetQuery={props.onSetQuery}
+                />
               </div>
             </section>
             {/* TOOLS section */}
@@ -544,24 +553,6 @@ export default function MenuDrawer(props: {
                       )}
                     </For>
                   </div>
-                  <Show when={MODIFIER_SECTIONS.has(section)}>
-                    <div class="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-gray-200 dark:border-gray-700">
-                      <Show when={UNIQUE_PRINTS_SECTIONS.has(section)}>
-                        <UniquePrintsChip
-                          active={hasUniquePrints(bd())}
-                          query={props.query}
-                          breakdown={bd()}
-                          onSetQuery={props.onSetQuery}
-                        />
-                      </Show>
-                      <IncludeExtrasChip
-                        active={hasIncludeExtras(bd())}
-                        query={props.query}
-                        breakdown={bd()}
-                        onSetQuery={props.onSetQuery}
-                      />
-                    </div>
-                  </Show>
                 </section>
               )}
             </For>

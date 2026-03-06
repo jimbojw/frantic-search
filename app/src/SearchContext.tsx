@@ -25,6 +25,7 @@ export interface SearchContextValue {
   printingIndicesIncludingExtras: Accessor<number | undefined>
   viewMode: Accessor<ViewMode>
   changeViewMode: (mode: ViewMode) => void
+  changeUniqueMode: (mode: UniqueMode) => void
   showOracleText: () => boolean
   facesOf: Accessor<Map<number, number[]>>
   visibleIndices: Accessor<number[]>

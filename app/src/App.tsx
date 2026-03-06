@@ -24,7 +24,7 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
-import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms, setViewTerm } from './query-edit'
+import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms, setViewTerm, setUniqueTerm } from './query-edit'
 import { extractViewMode } from './view-query'
 import { reconstructQuery } from './InlineBreakdown'
 import { CardListStore } from './card-list-store'
@@ -157,6 +157,12 @@ function App() {
     setVisibleCount(BATCH_SIZES[mode])
   }
   const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
+
+  function changeUniqueMode(mode: UniqueMode) {
+    flushPendingCommit()
+    const bd = parseBreakdown(query())
+    setQuery(setUniqueTerm(query(), bd, pinnedQuery(), mode))
+  }
 
   const facesOf = createMemo(() => {
     const d = display()
@@ -686,6 +692,7 @@ function App() {
     printingIndicesIncludingExtras,
     viewMode,
     changeViewMode,
+    changeUniqueMode,
     showOracleText,
     facesOf,
     visibleIndices,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode } from '@frantic-search/shared'
-import { lex, parse, TokenType } from '@frantic-search/shared'
+import { lex, parse, TokenType, getUniqueModeFromQuery } from '@frantic-search/shared'
 
 /**
  * Close any unclosed syntactic constructs (quotes, regex, parentheses) so that
@@ -663,7 +663,7 @@ export function cycleChip(
 }
 
 // ---------------------------------------------------------------------------
-// Bimodal toggle: unique:prints (Spec 048)
+// Bimodal toggle: unique:prints (Spec 048) — deprecated, use setUniqueTerm
 // ---------------------------------------------------------------------------
 
 const UNIQUE_FIELDS = ['unique']
@@ -682,6 +682,72 @@ export function toggleUniquePrints(
 export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
   if (!breakdown) return false
   return findFieldNode(breakdown, UNIQUE_FIELDS, ':', false, v => v === 'prints') !== null
+}
+
+// ---------------------------------------------------------------------------
+// clearUniqueTerms, setUniqueTerm (Spec 084)
+// ---------------------------------------------------------------------------
+
+function isUniqueLabel(label: string): boolean {
+  if (label === '++' || label === '@@') return true
+  return isFieldLabel(label, UNIQUE_FIELDS, [':'])
+}
+
+function collectUniqueNodes(node: BreakdownNode, out: BreakdownNode[]): void {
+  if (node.type === 'FIELD' && isUniqueLabel(node.label)) {
+    out.push(node)
+    return
+  }
+  if (node.type === 'NOT' && isUniqueLabel(node.label.startsWith('-') ? node.label.slice(1) : node.label)) {
+    out.push(node)
+    return
+  }
+  if (node.children) {
+    for (const c of node.children) collectUniqueNodes(c, out)
+  }
+}
+
+/**
+ * Remove all unique: terms (including ++, @@) from the query.
+ */
+export function clearUniqueTerms(
+  query: string,
+  breakdown: BreakdownNode | null,
+): string {
+  if (!breakdown || !query.trim()) return query
+  const nodes: BreakdownNode[] = []
+  collectUniqueNodes(breakdown, nodes)
+  if (nodes.length === 0) return query
+  if (nodes.length === 1 && breakdown === nodes[0]) return ''
+  nodes.sort((a, b) => (b.span?.end ?? 0) - (a.span?.end ?? 0))
+  let result = query
+  for (const n of nodes) {
+    if (n.span) result = spliceQuery(result, n.span, '')
+  }
+  return result.replace(/  +/g, ' ').trim()
+}
+
+type UniqueMode = 'cards' | 'art' | 'prints'
+
+/**
+ * Set the effective unique mode. Makes the minimum viable edit to the live query.
+ * For unique:cards: append only when pinned overrides; otherwise splice out.
+ */
+export function setUniqueTerm(
+  liveQuery: string,
+  liveBreakdown: BreakdownNode | null,
+  pinnedQuery: string,
+  desiredMode: UniqueMode,
+): string {
+  const cleared = clearUniqueTerms(liveQuery, liveBreakdown)
+  const p = pinnedQuery.trim()
+  const combined = p ? `${sealQuery(p)} ${cleared}`.trim() : cleared
+  const effectiveAfterClear = getUniqueModeFromQuery(combined)
+  if (desiredMode === 'cards') {
+    if (effectiveAfterClear === 'cards') return cleared
+    return appendTerm(cleared, 'unique:cards', parseBreakdown(cleared))
+  }
+  return appendTerm(cleared, `unique:${desiredMode}`, parseBreakdown(cleared))
 }
 
 // ---------------------------------------------------------------------------
