@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-js'
+import { IconBug, IconInfoCircle } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleUniquePrints, hasUniquePrints, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
@@ -420,19 +421,21 @@ export default function TermsDrawer(props: {
           </div>
           {/* Sticky Help footer */}
           <div class="shrink-0 pt-2 mt-auto border-t border-gray-200 dark:border-gray-700">
-            <div class="flex flex-col gap-1 py-2">
+            <div class="flex flex-col gap-0.5 py-2">
               <button
                 type="button"
                 onClick={() => props.onHelpClick()}
-                class="text-left text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                class="flex items-center gap-2 min-h-11 px-2 py-2 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
+                <IconInfoCircle class="size-3.5 shrink-0" />
                 Syntax Help
               </button>
               <button
                 type="button"
                 onClick={() => props.onReportClick()}
-                class="text-left text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                class="flex items-center gap-2 min-h-11 px-2 py-2 text-[11px] font-medium uppercase tracking-wider rounded transition-colors cursor-pointer text-left text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
+                <IconBug class="size-3.5 shrink-0" />
                 Report Bug
               </button>
             </div>
