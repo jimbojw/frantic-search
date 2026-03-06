@@ -6,6 +6,8 @@
 
 **Modifies:** Spec 026 (Results Box with Options Drawer)
 
+**Modified by:** Spec 083 (MenuDrawer) — the toolbar between histograms and the card list is removed. Try on Scryfall, Report Bug, and ViewModeToggle move to the MenuDrawer. A compact zero-results escape hatch (Try on Scryfall + Report a problem) remains below "No cards found".
+
 ## Goal
 
 Replace the RESULTS hat and drawer toggle with a two-state histogram area: a **collapsed sparkline bar** (default) and an **expanded interactive histogram**. The toolbar (Scryfall link, bug report, Oracle text toggle) becomes always-visible, no longer gated behind the drawer toggle. This saves vertical space on mobile while keeping the histogram data glanceable at all times.

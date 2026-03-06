@@ -6,6 +6,8 @@
 
 **Modifies:** Spec 026 (replaces Oracle text toggle with view mode selector)
 
+**Modified by:** Spec 083 (MenuDrawer) — the view mode selector moves from the results toolbar to the MenuDrawer VIEWS section as chips (`v:slim`, `v:detail`, `v:images`, `v:full`). The `v:` alias is added for `view:` (Spec 058). Behavior unchanged.
+
 ## Goal
 
 Replace the single "Oracle text" toggle with a four-way view mode selector that controls how search results are rendered. The four modes map to Scryfall's "Display as" options:

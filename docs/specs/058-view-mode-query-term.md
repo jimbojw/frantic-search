@@ -6,6 +6,8 @@
 
 **Supersedes:** Spec 041 § "View mode persistence", § "View mode signal"
 
+**Extended by:** Spec 083 (MenuDrawer) — adds `v:` as alias for `view:`; MenuDrawer VIEWS chips use `v:slim`, `v:detail`, `v:images`, `v:full`.
+
 **GitHub Issue:** [#59](https://github.com/jimbojw/frantic-search/issues/59)
 
 ## Goal
@@ -21,8 +23,9 @@ Currently, view mode is persisted in `localStorage` as `frantic-view-mode`. With
 ### Field syntax
 
 - `view:slim`, `view:detail`, `view:images`, `view:full`
+- `v:slim`, `v:detail`, `v:images`, `v:full` — `v:` is an alias for `view:` (Spec 083)
 
-The `view` field is a display modifier (like `unique:prints`), not a filter. The evaluator does not process it as a filter — it is extracted before or during evaluation and passed to the display layer. The app derives the active view mode from the effective query (pinned AND live).
+The `view` (or `v`) field is a display modifier (like `unique:prints`), not a filter. The evaluator does not process it as a filter — it is extracted before or during evaluation and passed to the display layer. The app derives the active view mode from the effective query (pinned AND live).
 
 ### Normalization rules
 
@@ -50,11 +53,14 @@ Because the live query is in the URL (`?q=`), sharing a link like `?q=lightning 
 
 | File | Change |
 |------|--------|
-| `shared/src/search/evaluator.ts` | Handle `view:` FIELD nodes as match-all (like `unique:prints`). Invalid values produce error or are ignored. |
-| `shared/src/search/canonicalize.ts` | Skip `view:` FIELD nodes in `serializeNode` (strip from Scryfall outlinks). |
-| `app/src/view-query.ts` (new) | `extractViewMode(effectiveQuery): ViewMode` — parse, find last valid `view:` node. |
-| `app/src/query-edit.ts` | Add `setViewTerm(query, breakdown, mode)` — clear all `view:` terms, append `view:{mode}`. |
+| `shared/src/search/evaluator.ts` | Handle `view:` and `v:` FIELD nodes as match-all (like `unique:prints`). Invalid values produce error or are ignored. |
+| `shared/src/search/canonicalize.ts` | Skip `view:` and `v:` FIELD nodes in `serializeNode` (strip from Scryfall outlinks). |
+| `shared/src/search/query-for-sort.ts` | Strip `v:` in addition to `view:` when building sort seed. |
+| `app/src/view-query.ts` (new) | `extractViewMode(effectiveQuery): ViewMode` — parse, find last valid `view:` or `v:` node. |
+| `app/src/query-edit.ts` | Add `setViewTerm(query, breakdown, mode)` — clear all `view:` and `v:` terms, append `v:{mode}` (or `view:{mode}`). Extend `VIEW_FIELDS` / `isViewLabel` to recognize `v`. |
 | `app/src/App.tsx` | Derive `viewMode` from effective query; `changeViewMode` calls `setViewTerm` on live query; migration logic. |
+
+**Spec 083 extension:** Add `v:` as alias for `view:`. All consumers (evaluator, canonicalize, view-query, query-edit, query-for-sort) must recognize both field names. MenuDrawer VIEWS chips display `v:slim`, `v:detail`, `v:images`, `v:full`.
 
 ## Acceptance criteria
 

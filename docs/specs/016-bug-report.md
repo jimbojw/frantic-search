@@ -18,11 +18,11 @@ The breakdown tree (Spec 009) already provides per-node match counts, which is e
 
 ### Primary: zero-results state
 
-When a query returns no results, a "Report a problem" link appears alongside the existing "Try on Scryfall ↗" link. This is the moment when users are most likely to suspect a bug.
+When a query returns no results, a "Report a problem" link appears alongside the existing "Try on Scryfall ↗" link. This is the moment when users are most likely to suspect a bug. (Spec 083: these appear in a compact inline row below "No cards found" when the results toolbar is removed.)
 
-### Secondary: query breakdown panel
+### Secondary: menu drawer
 
-A "Report a problem" link at the bottom of the breakdown panel. Users who are already inspecting per-node match counts and spot something wrong can report directly from that context.
+A "Report Bug" link in the sticky footer of the MenuDrawer (Spec 083). Available whenever the menu is open, regardless of result count.
 
 ### Tertiary: init page
 
