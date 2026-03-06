@@ -79,6 +79,13 @@ function childKeyword(child: BreakdownNode): string {
 
 const MAX_PREVIEW_KEYWORDS = 3
 
+/** Format count for chip display: abbreviate ≥1000 as "30.6k", full number otherwise. */
+export function formatDualCount(cards: number, prints?: number): string {
+  const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString())
+  if (prints !== undefined) return `${fmt(cards)} cards (${fmt(prints)} prints)`
+  return `${fmt(cards)} cards`
+}
+
 function chipLabel(node: BreakdownNode): string {
   if (node.type === 'AND' || node.type === 'OR') {
     const kids = (node.children ?? []).filter(c => c.type !== 'NOP')
@@ -111,12 +118,17 @@ export function PinIcon(props: { pinned: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// BreakdownChip — universal chip for all breakdown nodes (Spec 054)
+// BreakdownChip — universal chip for all breakdown nodes (Spec 054, 082)
 // ---------------------------------------------------------------------------
 
 export function BreakdownChip(props: {
   label: string
+  /** Primary count; used when dual counts absent. */
   count: number
+  /** Card count; when present with printCount, shows dual format. */
+  cardCount?: number
+  /** Print count; when present with cardCount, shows dual format. */
+  printCount?: number
   error?: string
   pinned: boolean
   nop?: boolean
@@ -127,7 +139,9 @@ export function BreakdownChip(props: {
 }) {
   const isError = () => !!props.error
   const isNop = () => props.nop ?? false
-  const zeroMatch = () => !isError() && !isNop() && props.count === 0
+  const cardCount = () => props.cardCount ?? props.count
+  const printCount = () => props.printCount
+  const zeroMatch = () => !isError() && !isNop() && cardCount() === 0
   const useHighlight = () => !isError() && !isNop() && !zeroMatch()
   const chipClasses = () =>
     isError()
@@ -138,45 +152,53 @@ export function BreakdownChip(props: {
           ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
           : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
   const hoverClass = () => props.onClick ? 'hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer' : ''
+  const countDisplay = () => formatDualCount(cardCount(), printCount())
+  const countTitle = () => {
+    const p = printCount()
+    return `${cardCount().toLocaleString()} cards${p !== undefined ? ` (${p.toLocaleString()} prints)` : ''}`
+  }
 
   return (
     <span
-      class={`inline-flex items-center gap-1.5 min-h-11 md:min-h-0 pl-2 py-2 md:py-0 rounded text-xs font-mono transition-colors ${chipClasses()} ${hoverClass()} ${props.onRemove ? 'pr-0.5' : 'pr-2'}`}
-      style={{ "line-height": "1.75rem" }}
+      class={`inline-flex flex-col min-w-0 rounded text-xs font-mono transition-colors ${chipClasses()} ${hoverClass()} ${props.onRemove ? 'pr-0.5' : 'pr-2'}`}
       onClick={props.onClick}
     >
-      <Show when={!isNop()}>
-        <PinIcon pinned={props.pinned} />
-      </Show>
-      <span class="truncate">
-        <Show when={useHighlight()} fallback={props.label}>
-          <Show when={props.labelHighlightOnly !== undefined} fallback={
-            <HighlightedLabel label={props.label} />
-          }>
-            <>
-              <HighlightedLabel label={props.labelHighlightOnly!} />
-              <span class="opacity-60">{props.label.slice(props.labelHighlightOnly!.length)}</span>
-            </>
-          </Show>
+      <div class="flex justify-between items-center gap-1.5 pl-2 pt-1 pb-0.5">
+        <Show when={!isNop()} fallback={<span class="shrink-0 w-3" />}>
+          <PinIcon pinned={props.pinned} />
         </Show>
-      </span>
-      <span
-        class={`text-[10px] tabular-nums shrink-0 ${isError() ? '' : isNop() ? '' : zeroMatch() ? 'font-medium' : 'opacity-60'}`}
-        title={props.error}
-      >
-        {isError() ? '!!' : isNop() ? '--' : props.count.toLocaleString()}
-      </span>
-      <Show when={props.onRemove}>
-        <button
-          onClick={(e) => { e.stopPropagation(); props.onRemove!() }}
-          class="size-11 md:size-5 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-          aria-label={`Remove ${props.label}`}
+        <span class="truncate min-w-0 flex-1">
+          <Show when={useHighlight()} fallback={props.label}>
+            <Show when={props.labelHighlightOnly !== undefined} fallback={
+              <HighlightedLabel label={props.label} />
+            }>
+              <>
+                <HighlightedLabel label={props.labelHighlightOnly!} />
+                <span class="opacity-60">{props.label.slice(props.labelHighlightOnly!.length)}</span>
+              </>
+            </Show>
+          </Show>
+        </span>
+        <Show when={props.onRemove}>
+          <button
+            onClick={(e) => { e.stopPropagation(); props.onRemove!() }}
+            class="size-5 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            aria-label={`Remove ${props.label}`}
+          >
+            <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </Show>
+      </div>
+      <div class="flex justify-center items-center px-1.5 pt-0.5 pb-1">
+        <span
+          class={`text-[10px] tabular-nums ${isError() ? '' : isNop() ? '' : zeroMatch() ? 'font-medium' : 'opacity-60'}`}
+          title={isError() ? props.error : countTitle()}
         >
-          <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </Show>
+          {isError() ? '!!' : isNop() ? '--' : countDisplay()}
+        </span>
+      </div>
     </span>
   )
 }
@@ -213,6 +235,8 @@ export function ChipTreeNode(props: {
         <BreakdownChip
           label={label()}
           count={props.node.matchCount}
+          cardCount={props.node.matchCountCards}
+          printCount={props.node.matchCountPrints}
           error={props.node.error}
           pinned={props.pinned}
           nop={isNop()}
@@ -268,7 +292,7 @@ export function BreakdownLip(props: {
       <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
         {props.cardCount.toLocaleString()} cards
         <Show when={props.printingCount !== undefined}>
-          {' '}({props.printingCount!.toLocaleString()} printings)
+          {' '}({props.printingCount!.toLocaleString()} prints)
         </Show>
       </span>
     </div>
@@ -314,6 +338,8 @@ export default function InlineBreakdown(props: {
                     <BreakdownChip
                       label={child.label}
                       count={child.matchCount}
+                      cardCount={child.matchCountCards}
+                      printCount={child.matchCountPrints}
                       error={child.error}
                       pinned={false}
                       onClick={() => props.onPin(reconstructQuery(child))}
@@ -325,6 +351,8 @@ export default function InlineBreakdown(props: {
                 <BreakdownChip
                   label={props.breakdown.label}
                   count={props.breakdown.matchCount}
+                  cardCount={props.breakdown.matchCountCards}
+                  printCount={props.breakdown.matchCountPrints}
                   error={props.breakdown.error}
                   pinned={false}
                   onClick={() => props.onPin(reconstructQuery(props.breakdown))}

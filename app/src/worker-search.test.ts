@@ -361,3 +361,29 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     expect(result.hasPrintingConditions).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Spec 082: dual counts on breakdown nodes
+// ---------------------------------------------------------------------------
+
+describe('dual counts (Spec 082)', () => {
+  it('toBreakdown propagates matchCountCards and matchCountPrints to BreakdownNode', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant set:mh2' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.breakdown).toBeDefined()
+    const bd = result.breakdown!
+    expect(bd.matchCountCards).toBe(1)
+    expect(bd.matchCountPrints).toBe(3)
+    expect(bd.children).toHaveLength(2)
+    const [tInstant, setMh2] = bd.children!
+    expect(tInstant.matchCountCards).toBe(4)
+    expect(tInstant.matchCountPrints).toBe(8)
+    expect(setMh2.matchCountPrints).toBe(3)
+    expect(setMh2.matchCountCards).toBe(1)
+  })
+})

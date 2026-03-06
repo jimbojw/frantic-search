@@ -107,6 +107,10 @@ export type ASTNode =
 export interface QueryNodeResult {
   node: ASTNode;
   matchCount: number;
+  /** Card count; present when dual counts available. */
+  matchCountCards?: number;
+  /** Print count; present when PrintingIndex is loaded and dual counts available. */
+  matchCountPrints?: number;
   cached: boolean;
   productionMs: number;
   evalMs: number;

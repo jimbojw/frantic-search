@@ -852,6 +852,32 @@ export class NodeCache {
     };
     if (computed.error) result.error = computed.error;
 
+    // Dual counts (Spec 082): when PrintingIndex available and node is valid
+    if (!computed.error && computed.matchCount !== -1 && this._printingIndex) {
+      const pIdx = this._printingIndex;
+      const n = this.index.faceCount;
+      if (computed.domain === "face") {
+        result.matchCountCards = computed.matchCount;
+        if (this._hasPrintingLeaves(ast)) {
+          // Cross-domain: refine by intersecting with printing-domain leaves
+          const printBuf = new Uint8Array(pIdx.printingCount);
+          promoteFaceToPrinting(computed.buf, printBuf, pIdx);
+          this._intersectPrintingLeaves(ast, printBuf);
+          result.matchCountPrints = popcount(printBuf, pIdx.printingCount);
+        } else {
+          let sum = 0;
+          for (let i = 0; i < n && i < computed.buf.length; i++) {
+            if (computed.buf[i]) sum += pIdx.printingsOf(i).length;
+          }
+          result.matchCountPrints = sum;
+        }
+      } else {
+        result.matchCountPrints = computed.matchCount;
+        const faceBuf = this._promoteBufToFace(computed.buf);
+        result.matchCountCards = popcount(faceBuf, n);
+      }
+    }
+
     switch (ast.type) {
       case "NOT":
         result.children = [this.buildResult(this.intern(ast.child), timings)];

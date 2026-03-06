@@ -35,6 +35,10 @@ export type BreakdownNode = {
   type: 'AND' | 'OR' | 'NOT' | 'NOP' | 'FIELD' | 'BARE' | 'EXACT' | 'REGEX_FIELD'
   label: string
   matchCount: number
+  /** Card count; present when dual counts available. */
+  matchCountCards?: number
+  /** Print count; present when PrintingIndex is loaded and dual counts available. */
+  matchCountPrints?: number
   error?: string
   children?: BreakdownNode[]
   span?: { start: number; end: number }

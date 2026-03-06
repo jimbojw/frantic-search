@@ -485,6 +485,43 @@ describe("matchCount domain semantics", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 082: dual counts (matchCountCards, matchCountPrints)
+// ---------------------------------------------------------------------------
+
+describe("dual counts (Spec 082)", () => {
+  test("face-domain leaf t:creature has matchCountCards and matchCountPrints", () => {
+    const { result } = evaluate("t:creature");
+    expect(result.matchCountCards).toBe(4); // Birds, Tarmogoyf, Thalia, Ayara
+    expect(result.matchCountPrints).toBe(0); // none of these have printings in fixture
+  });
+
+  test("printing-domain leaf set:mh2 has matchCountCards and matchCountPrints", () => {
+    const { result } = evaluate("set:mh2");
+    expect(result.matchCountPrints).toBe(3); // MH2 rows 0,1,9
+    expect(result.matchCountCards).toBe(1); // Lightning Bolt only
+  });
+
+  test("cross-domain AND t:instant set:mh2 has dual counts on root and children", () => {
+    const { result } = evaluate("t:instant set:mh2");
+    expect(result.matchCountCards).toBe(1);
+    expect(result.matchCountPrints).toBe(3);
+    expect(result.children).toHaveLength(2);
+    const [tInstant, setMh2] = result.children!;
+    expect(tInstant.matchCountCards).toBe(4); // 4 instants
+    expect(tInstant.matchCountPrints).toBe(8); // Bolt has 8 printings
+    expect(setMh2.matchCountPrints).toBe(3);
+    expect(setMh2.matchCountCards).toBe(1);
+  });
+
+  test("without PrintingIndex, dual counts are omitted", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("t:creature"));
+    expect(result.matchCountCards).toBeUndefined();
+    expect(result.matchCountPrints).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // hasPrintingConditions / printingsUnavailable flags
 // ---------------------------------------------------------------------------
 

@@ -42,6 +42,8 @@ function ChipSection(props: {
               <BreakdownChip
                 label={child.label}
                 count={child.matchCount}
+                cardCount={child.matchCountCards}
+                printCount={child.matchCountPrints}
                 error={child.error}
                 pinned={props.pinned}
                 onClick={() => props.onChipClick(reconstructQuery(child))}
@@ -53,6 +55,8 @@ function ChipSection(props: {
           <BreakdownChip
             label={props.breakdown.label}
             count={props.breakdown.matchCount}
+            cardCount={props.breakdown.matchCountCards}
+            printCount={props.breakdown.matchCountPrints}
             error={props.breakdown.error}
             pinned={props.pinned}
             onClick={() => props.onChipClick(reconstructQuery(props.breakdown))}
@@ -89,9 +93,9 @@ export default function UnifiedBreakdown(props: {
   const liveErrorCount = () =>
     props.liveBreakdown ? countErrors(props.liveBreakdown) : 0
 
-  const formatCount = (cards: number, printings?: number) =>
+  const formatCount = (cards: number, prints?: number) =>
     `${cards.toLocaleString()} cards` +
-    (printings !== undefined ? ` (${printings.toLocaleString()} printings)` : '')
+    (prints !== undefined ? ` (${prints.toLocaleString()} prints)` : '')
 
   return (
     <div class="border-t border-gray-200 dark:border-gray-700">
