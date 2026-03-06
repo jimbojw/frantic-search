@@ -17,7 +17,7 @@ import { dedupePrintingItems } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex,
-  parseView,
+  parseView, isDualWield, getPaneQueries,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -35,6 +35,8 @@ import {
   hasPrintingLevelEntries,
 } from './list-mask-builder'
 import { captureSearchExecuted, captureUiInteracted } from './analytics'
+import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
+import type { PaneState } from './DualWieldLayout'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -45,9 +47,12 @@ const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 
 function App() {
   history.scrollRestoration = 'manual'
+  const viewportWide = useViewportWide()
 
   const initialParams = new URLSearchParams(location.search)
-  const [query, setQuery] = createSignal(initialParams.get('q') ?? '')
+  const initialQueries = getPaneQueries(initialParams)
+  const [query, setQuery] = createSignal(initialQueries.left)
+  const [query2, setQuery2] = createSignal(initialQueries.right)
   const [view, setView] = createSignal<View>(parseView(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
@@ -59,6 +64,9 @@ function App() {
   const [indices, setIndices] = createSignal<Uint32Array>(new Uint32Array(0))
   const [pinnedQuery, setPinnedQuery] = createSignal(
     localStorage.getItem('frantic-pinned-query') ?? ''
+  )
+  const [pinnedQuery2, setPinnedQuery2] = createSignal(
+    localStorage.getItem('frantic-pinned2') ?? ''
   )
   createEffect(() => {
     const stored = localStorage.getItem('frantic-view-mode')
@@ -80,6 +88,26 @@ function App() {
   const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
+  // Right-pane state (Dual Wield only)
+  const [indices2, setIndices2] = createSignal<Uint32Array>(new Uint32Array(0))
+  const [breakdown2, setBreakdown2] = createSignal<BreakdownNode | null>(null)
+  const [histograms2, setHistograms2] = createSignal<Histograms | null>(null)
+  const [printingIndices2, setPrintingIndices2] = createSignal<Uint32Array | undefined>(undefined)
+  const [hasPrintingConditions2, setHasPrintingConditions2] = createSignal(false)
+  const [uniqueMode2, setUniqueMode2] = createSignal<UniqueMode>('cards')
+  const [pinnedBreakdown2, setPinnedBreakdown2] = createSignal<BreakdownNode | null>(null)
+  const [effectiveBreakdown2, setEffectiveBreakdown2] = createSignal<BreakdownNode | null>(null)
+  const [pinnedIndicesCount2, setPinnedIndicesCount2] = createSignal<number | undefined>(undefined)
+  const [pinnedPrintingCount2, setPinnedPrintingCount2] = createSignal<number | undefined>(undefined)
+  const [indicesIncludingExtras2, setIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
+  const [printingIndicesIncludingExtras2, setPrintingIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
+  const [visibleCount2, setVisibleCount2] = createSignal(BATCH_SIZES.slim)
+  const [breakdownExpanded2, setBreakdownExpanded2] = createSignal(
+    localStorage.getItem('frantic-breakdown-expanded') !== 'false'
+  )
+  const [histogramsExpanded2, setHistogramsExpanded2] = createSignal(
+    localStorage.getItem('frantic-results-options-expanded') === 'true'
+  )
   function getInitialBreakdownExpanded(): boolean {
     const pinned = localStorage.getItem('frantic-pinned-expanded')
     const breakdown = localStorage.getItem('frantic-breakdown-expanded')
@@ -198,6 +226,12 @@ function App() {
     viewMode()
     setVisibleCount(batchSize())
   })
+  createEffect(() => {
+    indices2()
+    printingIndices2()
+    viewMode2()
+    setVisibleCount2(BATCH_SIZES[viewMode2()])
+  })
 
   const visibleIndices = createMemo(() => {
     const idx = indices()
@@ -306,6 +340,8 @@ function App() {
 
   const worker = new SearchWorker()
   let latestQueryId = 0
+  let latestQueryIdLeft = 0
+  let latestQueryIdRight = 0
   let searchCaptureTimer: ReturnType<typeof setTimeout> | null = null
   let pendingSearchCapture: { query: string; used_extension: boolean; results_count: number } | null = null
 
@@ -446,8 +482,25 @@ function App() {
           }
         }
         break
-      case 'result':
-        if (msg.queryId === latestQueryId) {
+      case 'result': {
+        const side = msg.side
+        const matchesLeft = !side && msg.queryId === latestQueryId
+        const matchesLeftDual = side === 'left' && msg.queryId === latestQueryIdLeft
+        const matchesRight = side === 'right' && msg.queryId === latestQueryIdRight
+        if (matchesRight) {
+          setIndices2(msg.indices)
+          setBreakdown2(msg.breakdown)
+          setPinnedBreakdown2(msg.pinnedBreakdown ?? null)
+          setEffectiveBreakdown2(msg.effectiveBreakdown ?? msg.breakdown)
+          setPinnedIndicesCount2(msg.pinnedIndicesCount)
+          setPinnedPrintingCount2(msg.pinnedPrintingCount)
+          setHistograms2(msg.histograms)
+          setPrintingIndices2(msg.printingIndices)
+          setHasPrintingConditions2(msg.hasPrintingConditions)
+          setUniqueMode2(msg.uniqueMode)
+          setIndicesIncludingExtras2(msg.indicesIncludingExtras)
+          setPrintingIndicesIncludingExtras2(msg.printingIndicesIncludingExtras)
+        } else if (matchesLeft || matchesLeftDual) {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
           setPinnedBreakdown(msg.pinnedBreakdown ?? null)
@@ -470,6 +523,7 @@ function App() {
           }
         }
         break
+      }
     }
   }
 
@@ -478,54 +532,126 @@ function App() {
     if (pq) localStorage.setItem('frantic-pinned-query', pq)
     else localStorage.removeItem('frantic-pinned-query')
   })
+  createEffect(() => {
+    const pq = pinnedQuery2()
+    if (pq) localStorage.setItem('frantic-pinned2', pq)
+    else localStorage.removeItem('frantic-pinned2')
+  })
 
   createEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const dual = isDualWield(params)
     const q = query().trim()
     const pq = pinnedQuery().trim()
-    if (workerStatus() === 'ready' && (q || pq)) {
-      latestQueryId++
-      worker.postMessage({
-        type: 'search', queryId: latestQueryId, query: query(),
-        pinnedQuery: pq || undefined,
-        viewMode: viewMode(),
-      })
-    }
-    if (!q && !pq) {
-      setIndices(new Uint32Array(0))
-      setBreakdown(null)
-      setPinnedBreakdown(null)
-      setEffectiveBreakdown(null)
-      setPinnedIndicesCount(undefined)
-      setPinnedPrintingCount(undefined)
-      setHistograms(null)
-      setPrintingIndices(undefined)
-      setHasPrintingConditions(false)
-      setUniqueMode('cards')
-      setIndicesIncludingExtras(undefined)
-      setPrintingIndicesIncludingExtras(undefined)
-    } else if (!q) {
-      setIndices(new Uint32Array(0))
-      setBreakdown(null)
-      setHistograms(null)
-      setPrintingIndices(undefined)
-      setHasPrintingConditions(false)
-      setUniqueMode('cards')
-      setIndicesIncludingExtras(undefined)
-      setPrintingIndicesIncludingExtras(undefined)
+    const q2 = query2().trim()
+    const pq2 = pinnedQuery2().trim()
+
+    if (dual) {
+      if (workerStatus() === 'ready') {
+        if (q || pq) {
+          latestQueryIdLeft++
+          worker.postMessage({
+            type: 'search', queryId: latestQueryIdLeft, query: query(),
+            pinnedQuery: pq || undefined,
+            viewMode: viewMode(),
+            side: 'left',
+          })
+        } else {
+          setIndices(new Uint32Array(0))
+          setBreakdown(null)
+          setPinnedBreakdown(null)
+          setEffectiveBreakdown(null)
+          setPinnedIndicesCount(undefined)
+          setPinnedPrintingCount(undefined)
+          setHistograms(null)
+          setPrintingIndices(undefined)
+          setHasPrintingConditions(false)
+          setUniqueMode('cards')
+          setIndicesIncludingExtras(undefined)
+          setPrintingIndicesIncludingExtras(undefined)
+        }
+        if (q2 || pq2) {
+          latestQueryIdRight++
+          const viewMode2 = extractViewMode(
+            pq2 ? sealQuery(pq2) + ' ' + sealQuery(q2) : q2
+          )
+          worker.postMessage({
+            type: 'search', queryId: latestQueryIdRight, query: query2(),
+            pinnedQuery: pq2 || undefined,
+            viewMode: viewMode2,
+            side: 'right',
+          })
+        } else {
+          setIndices2(new Uint32Array(0))
+          setBreakdown2(null)
+          setPinnedBreakdown2(null)
+          setEffectiveBreakdown2(null)
+          setPinnedIndicesCount2(undefined)
+          setPinnedPrintingCount2(undefined)
+          setHistograms2(null)
+          setPrintingIndices2(undefined)
+          setHasPrintingConditions2(false)
+          setUniqueMode2('cards')
+          setIndicesIncludingExtras2(undefined)
+          setPrintingIndicesIncludingExtras2(undefined)
+        }
+      }
+    } else {
+      if (workerStatus() === 'ready' && (q || pq)) {
+        latestQueryId++
+        worker.postMessage({
+          type: 'search', queryId: latestQueryId, query: query(),
+          pinnedQuery: pq || undefined,
+          viewMode: viewMode(),
+        })
+      }
+      if (!q && !pq) {
+        setIndices(new Uint32Array(0))
+        setBreakdown(null)
+        setPinnedBreakdown(null)
+        setEffectiveBreakdown(null)
+        setPinnedIndicesCount(undefined)
+        setPinnedPrintingCount(undefined)
+        setHistograms(null)
+        setPrintingIndices(undefined)
+        setHasPrintingConditions(false)
+        setUniqueMode('cards')
+        setIndicesIncludingExtras(undefined)
+        setPrintingIndicesIncludingExtras(undefined)
+      } else if (!q) {
+        setIndices(new Uint32Array(0))
+        setBreakdown(null)
+        setHistograms(null)
+        setPrintingIndices(undefined)
+        setHasPrintingConditions(false)
+        setUniqueMode('cards')
+        setIndicesIncludingExtras(undefined)
+        setPrintingIndicesIncludingExtras(undefined)
+      }
     }
   })
 
   createEffect(() => {
-    const q = query().trim()
     const engaged = userEngaged() || termsExpanded()
     if (view() !== 'search') return
     const params = new URLSearchParams(location.search)
-    if (q) {
-      params.set('q', query())
-    } else if (engaged) {
-      params.set('q', '')
-    } else {
+    if (isDualWield(params)) {
+      const q1 = query().trim()
+      if (q1) params.set('q1', query())
+      else params.delete('q1')
+      params.set('q2', query2())
       params.delete('q')
+    } else {
+      const q = query().trim()
+      if (q) {
+        params.set('q', query())
+      } else if (engaged) {
+        params.set('q', '')
+      } else {
+        params.delete('q')
+      }
+      params.delete('q1')
+      params.delete('q2')
     }
     const url = params.toString() ? `?${params}` : location.pathname
     pushIfNeeded()
@@ -538,7 +664,9 @@ function App() {
 
     const params = new URLSearchParams(location.search)
     setView(parseView(params))
-    setQuery(params.get('q') ?? '')
+    const { left, right } = getPaneQueries(params)
+    setQuery(left)
+    setQuery2(right)
     setCardId(params.get('card') ?? '')
     setUserEngaged(params.has('q') && params.get('q') === '')
 
@@ -571,6 +699,7 @@ function App() {
     const url = params.toString() ? `?${params}` : location.pathname
     history.pushState(null, '', url)
     setQuery(q)
+    setQuery2('')
     setView('search')
     window.scrollTo(0, 0)
   }
@@ -597,6 +726,37 @@ function App() {
     params.set('report', '')
     history.pushState(null, '', `?${params}`)
     setView('report')
+    window.scrollTo(0, 0)
+  }
+
+  function enterDualWield() {
+    cancelPendingCommit()
+    saveScrollPosition()
+    const params = new URLSearchParams(location.search)
+    const current = query().trim() || query2().trim() || params.get('q1') || params.get('q') || ''
+    params.delete('q')
+    params.set('q1', current)
+    params.set('q2', current)
+    history.pushState(null, '', `?${params}`)
+    setQuery(current)
+    setQuery2(current)
+    setView('search')
+    window.scrollTo(0, 0)
+  }
+
+  function leaveDualWield() {
+    cancelPendingCommit()
+    saveScrollPosition()
+    const params = new URLSearchParams(location.search)
+    const left = query().trim()
+    if (left) params.set('q', left)
+    else params.delete('q')
+    params.delete('q1')
+    params.delete('q2')
+    const url = params.toString() ? `?${params}` : location.pathname
+    history.pushState(null, '', url)
+    setQuery2('')
+    setView('search')
     window.scrollTo(0, 0)
   }
 
@@ -669,6 +829,7 @@ function App() {
     saveScrollPosition()
     history.pushState(null, '', location.pathname)
     setQuery('')
+    setQuery2('')
     setView('search')
     setCardId('')
     setUserEngaged(false)
@@ -709,6 +870,73 @@ function App() {
     setPinnedQuery(newPinnedQuery)
   }
 
+  const effectiveQuery2 = createMemo(() => {
+    const p = pinnedQuery2().trim()
+    const q = query2().trim()
+    if (!p) return q
+    if (!q) return p
+    return sealQuery(p) + ' ' + sealQuery(q)
+  })
+  const viewMode2 = createMemo(() => extractViewMode(effectiveQuery2()))
+  function changeViewMode2(mode: ViewMode) {
+    flushPendingCommit()
+    const bd = parseBreakdown(query2())
+    const cleared = clearViewTerms(query2(), bd)
+    const p = pinnedQuery2().trim()
+    const q = cleared.trim()
+    const effectiveAfter = !p ? q : !q ? p : sealQuery(p) + ' ' + sealQuery(q)
+    if (extractViewMode(effectiveAfter) === mode) {
+      setQuery2(cleared)
+    } else {
+      setQuery2(setViewTerm(cleared, parseBreakdown(cleared), mode))
+    }
+    setVisibleCount2(BATCH_SIZES[mode])
+  }
+  function changeUniqueMode2(mode: UniqueMode) {
+    flushPendingCommit()
+    const bd = parseBreakdown(query2())
+    setQuery2(setUniqueTerm(query2(), bd, pinnedQuery2(), mode))
+  }
+  function toggleBreakdown2() {
+    setBreakdownExpanded2(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-breakdown-expanded', String(next))
+      captureUiInteracted({ element_name: 'breakdown', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
+      return next
+    })
+  }
+  function toggleHistograms2() {
+    setHistogramsExpanded2(prev => {
+      const next = !prev
+      localStorage.setItem('frantic-results-options-expanded', String(next))
+      captureUiInteracted({ element_name: 'histograms', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
+      return next
+    })
+  }
+  function handlePin2(nodeLabel: string) {
+    const liveQ = query2().trim()
+    const pinnedQ = pinnedQuery2()
+    const bd = parseBreakdown(liveQ)
+    if (!bd) return
+    const newLive = findAndRemoveNode(liveQ, bd, nodeLabel)
+    setQuery2(newLive)
+    const pinnedBd = parseBreakdown(pinnedQ)
+    setPinnedQuery2(appendTerm(pinnedQ, nodeLabel, pinnedBd))
+  }
+  function handleUnpin2(nodeLabel: string) {
+    const pinnedQ = pinnedQuery2().trim()
+    const liveQ = query2()
+    const bd = parseBreakdown(pinnedQ)
+    if (!bd) return
+    const newPinned = findAndRemoveNode(pinnedQ, bd, nodeLabel)
+    setPinnedQuery2(newPinned)
+    const liveBd = parseBreakdown(liveQ)
+    setQuery2(prependTerm(liveQ, nodeLabel, liveBd))
+  }
+  function handlePinnedRemove2(newPinnedQuery: string) {
+    setPinnedQuery2(newPinnedQuery)
+  }
+
   function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
     if (reconstructQuery(bd) === nodeLabel) {
       return removeNode(q, bd, bd)
@@ -721,6 +949,84 @@ function App() {
       }
     }
     return q
+  }
+
+  const params = () => new URLSearchParams(location.search)
+  const showDualWield = () =>
+    view() === 'search' && isDualWield(params()) && viewportWide()
+
+  const leftPaneState: PaneState = {
+    query,
+    setQuery,
+    pinnedQuery,
+    setPinnedQuery,
+    indices,
+    breakdown,
+    pinnedBreakdown,
+    effectiveBreakdown,
+    pinnedIndicesCount,
+    pinnedPrintingCount,
+    histograms,
+    printingIndices,
+    hasPrintingConditions,
+    uniqueMode,
+    indicesIncludingExtras,
+    printingIndicesIncludingExtras,
+    display,
+    printingDisplay,
+    breakdownExpanded,
+    toggleBreakdown,
+    histogramsExpanded,
+    toggleHistograms,
+    visibleCount,
+    setVisibleCount,
+    handlePin,
+    handleUnpin,
+    handlePinnedRemove,
+    flushPendingCommit,
+    changeViewMode,
+    changeUniqueMode,
+    navigateToReport,
+    navigateToCard,
+    appendTerm,
+    parseBreakdown,
+  }
+
+  const rightPaneState: PaneState = {
+    query: query2,
+    setQuery: setQuery2,
+    pinnedQuery: pinnedQuery2,
+    setPinnedQuery: setPinnedQuery2,
+    indices: indices2,
+    breakdown: breakdown2,
+    pinnedBreakdown: pinnedBreakdown2,
+    effectiveBreakdown: effectiveBreakdown2,
+    pinnedIndicesCount: pinnedIndicesCount2,
+    pinnedPrintingCount: pinnedPrintingCount2,
+    histograms: histograms2,
+    printingIndices: printingIndices2,
+    hasPrintingConditions: hasPrintingConditions2,
+    uniqueMode: uniqueMode2,
+    indicesIncludingExtras: indicesIncludingExtras2,
+    printingIndicesIncludingExtras: printingIndicesIncludingExtras2,
+    display,
+    printingDisplay,
+    breakdownExpanded: breakdownExpanded2,
+    toggleBreakdown: toggleBreakdown2,
+    histogramsExpanded: histogramsExpanded2,
+    toggleHistograms: toggleHistograms2,
+    visibleCount: visibleCount2,
+    setVisibleCount: setVisibleCount2,
+    handlePin: handlePin2,
+    handleUnpin: handleUnpin2,
+    handlePinnedRemove: handlePinnedRemove2,
+    flushPendingCommit,
+    changeViewMode: changeViewMode2,
+    changeUniqueMode: changeUniqueMode2,
+    navigateToReport,
+    navigateToCard,
+    appendTerm,
+    parseBreakdown,
   }
 
   const searchContextValue = {
@@ -808,6 +1114,18 @@ function App() {
         />
       </Show>
       <Show when={view() === 'search'}>
+        <Show when={showDualWield()}>
+          <DualWieldLayout
+            leftState={leftPaneState}
+            rightState={rightPaneState}
+            setUserEngaged={setUserEngaged}
+            workerStatus={workerStatus}
+            navigateToHelp={navigateToHelp}
+            navigateToReport={navigateToReport}
+            onLeaveDualWield={leaveDualWield}
+          />
+        </Show>
+        <Show when={!showDualWield()}>
         <SearchProvider value={searchContextValue}>
       <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
         <Show when={headerCollapsed()} fallback={
@@ -858,16 +1176,32 @@ function App() {
             >
               <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
             </button>
-            <button
-              type="button"
-              onClick={toggleTerms}
-              aria-label="Menu"
-              class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            </button>
+            <div class="flex items-center gap-1">
+              <Show when={viewportWide()}>
+                <button
+                  type="button"
+                  onClick={enterDualWield}
+                  aria-label="Split view"
+                  title="Split view"
+                  class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                    <rect x="3" y="3" width="9" height="18" rx="1" />
+                    <rect x="12" y="3" width="9" height="18" rx="1" />
+                  </svg>
+                </button>
+              </Show>
+              <button
+                type="button"
+                onClick={toggleTerms}
+                aria-label="Menu"
+                class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              </button>
+            </div>
           </div>
         </Show>
 
@@ -1009,6 +1343,7 @@ function App() {
         </Show>
       </main>
         </SearchProvider>
+        </Show>
       </Show>
     </div>
   )

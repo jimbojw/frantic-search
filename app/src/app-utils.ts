@@ -90,3 +90,19 @@ export function parseView(params: URLSearchParams): View {
   if (params.has('help')) return 'help'
   return 'search'
 }
+
+/** Dual Wield mode is active when q2 param is present (Spec 086). */
+export function isDualWield(params: URLSearchParams): boolean {
+  return params.has('q2')
+}
+
+/** Get left and right pane queries from URL. When not in Dual Wield, left uses q. */
+export function getPaneQueries(params: URLSearchParams): { left: string; right: string } {
+  if (!isDualWield(params)) {
+    const q = params.get('q') ?? ''
+    return { left: q, right: '' }
+  }
+  const left = params.get('q1') ?? params.get('q') ?? ''
+  const right = params.get('q2') ?? ''
+  return { left, right }
+}

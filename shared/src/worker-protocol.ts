@@ -2,8 +2,10 @@
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 
+export type DualWieldSide = 'left' | 'right'
+
 export type ToWorker =
-  | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode }
+  | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode; side?: DualWieldSide }
   | { type: 'list-update'; listId: string; faceMask: Uint8Array; printingMask?: Uint8Array }
 
 export type DisplayColumns = {
@@ -71,4 +73,4 @@ export type FromWorker =
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide }

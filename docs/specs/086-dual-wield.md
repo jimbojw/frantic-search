@@ -1,6 +1,6 @@
 # Spec 086: Dual Wield
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State), Spec 083 (MenuDrawer), Spec 079 (Consolidated Query Accordion), Spec 038 (Collapsible Sparkline Histograms), Spec 041 (Result Display Modes)
 
@@ -144,3 +144,4 @@ When `q2` is absent, the app behaves exactly as today. Single-pane retains the c
 - **Breakpoint:** Exact min-width for Dual Wield. 1024px is a starting point.
 - **Enter affordance:** Button in header? Link in empty state? Keyboard shortcut?
 - **localStorage:** Per-pane keys for pinned query, breakdown expanded, etc., or shared?
+- **Page overlays (out of scope for initial implementation):** Card detail, help, report — when opened from a pane, should they overlay only that pane or full-screen? Deferred; desktop may have better options than the current card detail view anyway.

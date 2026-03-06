@@ -180,9 +180,10 @@ async function init(): Promise<void> {
       sessionSalt,
     })
 
+    const resultWithSide = msg.side !== undefined ? { ...resultMsg, side: msg.side } : resultMsg
     const transfer: Transferable[] = [resultMsg.indices.buffer]
     if (resultMsg.printingIndices) transfer.push(resultMsg.printingIndices.buffer)
-    post(resultMsg, transfer)
+    post(resultWithSide, transfer)
   }
 }
 

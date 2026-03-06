@@ -30,6 +30,10 @@ The `q` parameter uses standard `encodeURIComponent` encoding. This matches Scry
 
 When the help page is open, the `q` parameter preserves the user's current query so it survives a round-trip through the help page and back.
 
+### Dual Wield (Spec 086)
+
+When the `q2` parameter is present, the app is in Dual Wield mode. The left pane uses `q1`, the right pane uses `q2`. The `q` parameter is not used. See Spec 086 for details.
+
 ## History Semantics
 
 Two categories of query change produce different history behavior:
