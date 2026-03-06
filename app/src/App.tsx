@@ -11,7 +11,6 @@ import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import { SearchProvider } from './SearchContext'
 import SearchResults from './SearchResults'
-import type { ViewMode } from './view-mode'
 import { BATCH_SIZES, isViewMode } from './view-mode'
 import { dedupePrintingItems } from './dedup-printing-items'
 import {
@@ -24,9 +23,8 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
-import { appendTerm, prependTerm, removeNode, parseBreakdown, sealQuery, clearViewTerms, setViewTerm, setUniqueTerm } from './query-edit'
+import { appendTerm, parseBreakdown, sealQuery } from './query-edit'
 import { extractViewMode } from './view-query'
-import { reconstructQuery } from './InlineBreakdown'
 import { CardListStore } from './card-list-store'
 import {
   buildOracleToCanonicalFaceMap,
@@ -36,7 +34,7 @@ import {
 } from './list-mask-builder'
 import { captureSearchExecuted, captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
-import type { PaneState } from './DualWieldLayout'
+import { createPaneState } from './pane-state-factory'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -124,25 +122,9 @@ function App() {
   const [breakdownExpanded, setBreakdownExpanded] = createSignal(
     getInitialBreakdownExpanded()
   )
-  function toggleBreakdown() {
-    setBreakdownExpanded(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-breakdown-expanded', String(next))
-      captureUiInteracted({ element_name: 'breakdown', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
-      return next
-    })
-  }
   const [histogramsExpanded, setHistogramsExpanded] = createSignal(
     localStorage.getItem('frantic-results-options-expanded') === 'true'
   )
-  function toggleHistograms() {
-    setHistogramsExpanded(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-results-options-expanded', String(next))
-      captureUiInteracted({ element_name: 'histograms', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
-      return next
-    })
-  }
   const [termsExpanded, setTermsExpanded] = createSignal(
     localStorage.getItem('frantic-terms-expanded') === 'true'
   )
@@ -175,27 +157,7 @@ function App() {
     return sealQuery(p) + ' ' + sealQuery(q)
   })
   const viewMode = createMemo(() => extractViewMode(effectiveQuery()))
-  function changeViewMode(mode: ViewMode) {
-    flushPendingCommit()
-    const bd = parseBreakdown(query())
-    const cleared = clearViewTerms(query(), bd)
-    const p = pinnedQuery().trim()
-    const q = cleared.trim()
-    const effectiveAfter = !p ? q : !q ? p : sealQuery(p) + ' ' + sealQuery(q)
-    if (extractViewMode(effectiveAfter) === mode) {
-      setQuery(cleared)
-    } else {
-      setQuery(setViewTerm(cleared, parseBreakdown(cleared), mode))
-    }
-    setVisibleCount(BATCH_SIZES[mode])
-  }
   const showOracleText = () => viewMode() === 'detail' || viewMode() === 'full'
-
-  function changeUniqueMode(mode: UniqueMode) {
-    flushPendingCommit()
-    const bd = parseBreakdown(query())
-    setQuery(setUniqueTerm(query(), bd, pinnedQuery(), mode))
-  }
 
   const facesOf = createMemo(() => {
     const d = display()
@@ -836,40 +798,6 @@ function App() {
     window.scrollTo(0, 0)
   }
 
-  function handlePin(nodeLabel: string) {
-    const liveQ = query().trim()
-    const pinnedQ = pinnedQuery()
-    const bd = parseBreakdown(liveQ)
-    if (!bd) return
-
-    // Find the matching node and splice it out of the live query
-    const newLive = findAndRemoveNode(liveQ, bd, nodeLabel)
-    setQuery(newLive)
-
-    // Append to pinned query
-    const pinnedBd = parseBreakdown(pinnedQ)
-    setPinnedQuery(appendTerm(pinnedQ, nodeLabel, pinnedBd))
-  }
-
-  function handleUnpin(nodeLabel: string) {
-    const pinnedQ = pinnedQuery().trim()
-    const liveQ = query()
-    const bd = parseBreakdown(pinnedQ)
-    if (!bd) return
-
-    // Find the matching node and splice it out of the pinned query
-    const newPinned = findAndRemoveNode(pinnedQ, bd, nodeLabel)
-    setPinnedQuery(newPinned)
-
-    // Prepend to live query
-    const liveBd = parseBreakdown(liveQ)
-    setQuery(prependTerm(liveQ, nodeLabel, liveBd))
-  }
-
-  function handlePinnedRemove(newPinnedQuery: string) {
-    setPinnedQuery(newPinnedQuery)
-  }
-
   const effectiveQuery2 = createMemo(() => {
     const p = pinnedQuery2().trim()
     const q = query2().trim()
@@ -878,84 +806,12 @@ function App() {
     return sealQuery(p) + ' ' + sealQuery(q)
   })
   const viewMode2 = createMemo(() => extractViewMode(effectiveQuery2()))
-  function changeViewMode2(mode: ViewMode) {
-    flushPendingCommit()
-    const bd = parseBreakdown(query2())
-    const cleared = clearViewTerms(query2(), bd)
-    const p = pinnedQuery2().trim()
-    const q = cleared.trim()
-    const effectiveAfter = !p ? q : !q ? p : sealQuery(p) + ' ' + sealQuery(q)
-    if (extractViewMode(effectiveAfter) === mode) {
-      setQuery2(cleared)
-    } else {
-      setQuery2(setViewTerm(cleared, parseBreakdown(cleared), mode))
-    }
-    setVisibleCount2(BATCH_SIZES[mode])
-  }
-  function changeUniqueMode2(mode: UniqueMode) {
-    flushPendingCommit()
-    const bd = parseBreakdown(query2())
-    setQuery2(setUniqueTerm(query2(), bd, pinnedQuery2(), mode))
-  }
-  function toggleBreakdown2() {
-    setBreakdownExpanded2(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-breakdown-expanded', String(next))
-      captureUiInteracted({ element_name: 'breakdown', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
-      return next
-    })
-  }
-  function toggleHistograms2() {
-    setHistogramsExpanded2(prev => {
-      const next = !prev
-      localStorage.setItem('frantic-results-options-expanded', String(next))
-      captureUiInteracted({ element_name: 'histograms', action: 'toggled', state: next ? 'expanded' : 'collapsed' })
-      return next
-    })
-  }
-  function handlePin2(nodeLabel: string) {
-    const liveQ = query2().trim()
-    const pinnedQ = pinnedQuery2()
-    const bd = parseBreakdown(liveQ)
-    if (!bd) return
-    const newLive = findAndRemoveNode(liveQ, bd, nodeLabel)
-    setQuery2(newLive)
-    const pinnedBd = parseBreakdown(pinnedQ)
-    setPinnedQuery2(appendTerm(pinnedQ, nodeLabel, pinnedBd))
-  }
-  function handleUnpin2(nodeLabel: string) {
-    const pinnedQ = pinnedQuery2().trim()
-    const liveQ = query2()
-    const bd = parseBreakdown(pinnedQ)
-    if (!bd) return
-    const newPinned = findAndRemoveNode(pinnedQ, bd, nodeLabel)
-    setPinnedQuery2(newPinned)
-    const liveBd = parseBreakdown(liveQ)
-    setQuery2(prependTerm(liveQ, nodeLabel, liveBd))
-  }
-  function handlePinnedRemove2(newPinnedQuery: string) {
-    setPinnedQuery2(newPinnedQuery)
-  }
-
-  function findAndRemoveNode(q: string, bd: BreakdownNode, nodeLabel: string): string {
-    if (reconstructQuery(bd) === nodeLabel) {
-      return removeNode(q, bd, bd)
-    }
-    if (bd.children) {
-      for (const child of bd.children) {
-        if (reconstructQuery(child) === nodeLabel) {
-          return removeNode(q, child, bd)
-        }
-      }
-    }
-    return q
-  }
 
   const params = () => new URLSearchParams(location.search)
   const showDualWield = () =>
     view() === 'search' && isDualWield(params()) && viewportWide()
 
-  const leftPaneState: PaneState = {
+  const leftPaneState = createPaneState({
     query,
     setQuery,
     pinnedQuery,
@@ -975,24 +831,17 @@ function App() {
     display,
     printingDisplay,
     breakdownExpanded,
-    toggleBreakdown,
+    setBreakdownExpanded,
     histogramsExpanded,
-    toggleHistograms,
+    setHistogramsExpanded,
     visibleCount,
     setVisibleCount,
-    handlePin,
-    handleUnpin,
-    handlePinnedRemove,
     flushPendingCommit,
-    changeViewMode,
-    changeUniqueMode,
     navigateToReport,
     navigateToCard,
-    appendTerm,
-    parseBreakdown,
-  }
+  })
 
-  const rightPaneState: PaneState = {
+  const rightPaneState = createPaneState({
     query: query2,
     setQuery: setQuery2,
     pinnedQuery: pinnedQuery2,
@@ -1012,38 +861,31 @@ function App() {
     display,
     printingDisplay,
     breakdownExpanded: breakdownExpanded2,
-    toggleBreakdown: toggleBreakdown2,
+    setBreakdownExpanded: setBreakdownExpanded2,
     histogramsExpanded: histogramsExpanded2,
-    toggleHistograms: toggleHistograms2,
+    setHistogramsExpanded: setHistogramsExpanded2,
     visibleCount: visibleCount2,
     setVisibleCount: setVisibleCount2,
-    handlePin: handlePin2,
-    handleUnpin: handleUnpin2,
-    handlePinnedRemove: handlePinnedRemove2,
     flushPendingCommit,
-    changeViewMode: changeViewMode2,
-    changeUniqueMode: changeUniqueMode2,
     navigateToReport,
     navigateToCard,
-    appendTerm,
-    parseBreakdown,
-  }
+  })
 
   const searchContextValue = {
     query,
     setQuery,
     display,
     histograms,
-    histogramsExpanded,
-    toggleHistograms,
+    histogramsExpanded: leftPaneState.histogramsExpanded,
+    toggleHistograms: leftPaneState.toggleHistograms,
     hasPrintingConditions,
     printingDisplay,
     uniqueMode,
     indicesIncludingExtras,
     printingIndicesIncludingExtras,
     viewMode,
-    changeViewMode,
-    changeUniqueMode,
+    changeViewMode: leftPaneState.changeViewMode,
+    changeUniqueMode: leftPaneState.changeUniqueMode,
     showOracleText,
     facesOf,
     visibleIndices,
@@ -1289,10 +1131,10 @@ function App() {
               liveCardCount={totalCards()}
               livePrintingCount={showPrintingResults() ? totalPrintingItems() : undefined}
               expanded={breakdownExpanded()}
-              onToggle={toggleBreakdown}
-              onPin={(nodeLabel) => { flushPendingCommit(); handlePin(nodeLabel) }}
-              onUnpin={(nodeLabel) => { flushPendingCommit(); handleUnpin(nodeLabel) }}
-              onPinnedRemove={(q) => { flushPendingCommit(); handlePinnedRemove(q) }}
+              onToggle={leftPaneState.toggleBreakdown}
+              onPin={(nodeLabel) => { flushPendingCommit(); leftPaneState.handlePin(nodeLabel) }}
+              onUnpin={(nodeLabel) => { flushPendingCommit(); leftPaneState.handleUnpin(nodeLabel) }}
+              onPinnedRemove={(q) => { flushPendingCommit(); leftPaneState.handlePinnedRemove(q) }}
               onLiveRemove={(q) => { flushPendingCommit(); setQuery(q) }}
             />
           </Show>
