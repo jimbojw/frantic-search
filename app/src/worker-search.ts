@@ -116,15 +116,23 @@ export function runSearch(params: RunSearchParams): SearchResult {
     const pinnedAst = parse(msg.pinnedQuery!)
     const pinnedEval = cache.evaluate(pinnedAst)
     const pinnedBreakdown = toBreakdown(pinnedEval.result)
+    let pinnedPrintingCount: number | undefined = (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards")
+      ? (pinnedEval.printingIndices?.length ?? 0)
+      : undefined
+    if (pinnedPrintingCount === undefined && printingIndex && (msg.viewMode === 'images' || msg.viewMode === 'full')) {
+      let count = 0
+      for (let i = 0; i < pinnedEval.indices.length; i++) {
+        count += printingIndex.printingsOf(pinnedEval.indices[i]).length
+      }
+      pinnedPrintingCount = count
+    }
     const indices = new Uint32Array(0)
     const result: SearchResult = {
       type: 'result', queryId: msg.queryId, indices,
       breakdown: { type: 'NOP', label: '', matchCount: 0 },
       pinnedBreakdown, effectiveBreakdown: pinnedBreakdown, histograms: emptyHistograms,
       pinnedIndicesCount: pinnedEval.indices.length,
-      pinnedPrintingCount: (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards")
-        ? (pinnedEval.printingIndices?.length ?? 0)
-        : undefined,
+      pinnedPrintingCount,
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
       uniqueMode: pinnedEval.uniqueMode,
     }
@@ -152,6 +160,13 @@ export function runSearch(params: RunSearchParams): SearchResult {
     pinnedIndicesCount = pinnedEval.indices.length
     if (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards") {
       pinnedPrintingCount = pinnedEval.printingIndices?.length ?? 0
+    }
+    if (pinnedPrintingCount === undefined && printingIndex && (msg.viewMode === 'images' || msg.viewMode === 'full')) {
+      let count = 0
+      for (let i = 0; i < pinnedEval.indices.length; i++) {
+        count += printingIndex.printingsOf(pinnedEval.indices[i]).length
+      }
+      pinnedPrintingCount = count
     }
 
     const pinnedSet = new Set<number>(pinnedEval.indices)

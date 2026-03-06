@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
+export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
+
 export type ToWorker =
-  | { type: 'search'; queryId: number; query: string; pinnedQuery?: string }
+  | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode }
   | { type: 'list-update'; listId: string; faceMask: Uint8Array; printingMask?: Uint8Array }
 
 export type DisplayColumns = {

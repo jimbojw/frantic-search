@@ -85,6 +85,34 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     // Intersection: creatures ∩ cards-with-commander-printings = 0 (Bolt/Sol Ring aren't creatures)
     expect(result.indices.length).toBe(0)
   })
+
+  it('pinned-only view:images returns pinnedPrintingCount when viewMode is images', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '', pinnedQuery: 'view:images', viewMode: 'images' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.pinnedBreakdown).toBeDefined()
+    // view:images is display-only; no printing conditions. But viewMode triggers printing count for display.
+    expect(result.pinnedIndicesCount).toBeGreaterThan(0)
+    expect(result.pinnedPrintingCount).toBeDefined()
+    expect(result.pinnedPrintingCount).toBeGreaterThan(result.pinnedIndicesCount!)
+  })
+
+  it('pinned-only view:images without viewMode does not return pinnedPrintingCount', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '', pinnedQuery: 'view:images' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.pinnedBreakdown).toBeDefined()
+    expect(result.pinnedIndicesCount).toBeGreaterThan(0)
+    expect(result.pinnedPrintingCount).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------

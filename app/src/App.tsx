@@ -438,6 +438,7 @@ function App() {
       worker.postMessage({
         type: 'search', queryId: latestQueryId, query: query(),
         pinnedQuery: pq || undefined,
+        viewMode: viewMode(),
       })
     }
     if (!q && !pq) {
