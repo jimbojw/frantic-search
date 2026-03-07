@@ -78,7 +78,7 @@ export type PaneState = {
   navigateToCard: (scryfallId: string) => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
-  /** When my:list is in query, list entry count per canonical face (Spec 097). */
+  /** When my:list is in query, list entry count per canonical face (Spec 087). */
   listEntryCountPerCard?: () => Map<number, number> | null
 }
 

@@ -154,7 +154,7 @@ describe('buildSpans', () => {
     }
   })
 
-  describe('breakdown overlay (Spec 098)', () => {
+  describe('breakdown overlay (Spec 088)', () => {
     it('overrides value to value-error when breakdown has error on value', () => {
       const query = 'set:us'
       const breakdown: BreakdownNode = {

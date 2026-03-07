@@ -277,7 +277,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   let printingIndices = rawPrintingIndices
 
-  // Spec 097: expand printings for card-level queries so aggregation counts can be shown
+  // Spec 087: expand printings for card-level queries so aggregation counts can be shown
   if (!printingIndices && printingIndex && deduped.length > 0) {
     let total = 0
     for (const fi of deduped) total += printingIndex.printingsOf(fi).length

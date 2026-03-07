@@ -66,7 +66,7 @@ export interface CreatePaneStateOpts {
   flushPendingCommit: () => void
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
-  /** When my:list is in query, list entry count per canonical face (Spec 097). */
+  /** When my:list is in query, list entry count per canonical face (Spec 087). */
   listEntryCountPerCard?: () => Map<number, number> | null
 }
 

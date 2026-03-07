@@ -1,4 +1,4 @@
-# Spec 098: Syntax Highlight Eval Feedback
+# Spec 088: Syntax Highlight Eval Feedback
 
 **Status:** Implemented
 

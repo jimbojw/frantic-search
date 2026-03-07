@@ -1,4 +1,4 @@
-# Spec 097: Aggregation Counts
+# Spec 087: Aggregation Counts
 
 **Status:** Implemented
 

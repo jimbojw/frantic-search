@@ -411,10 +411,10 @@ describe('pinned my:list + live unique:prints override (Issue #96)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Spec 097: aggregation counts for card-level queries
+// Spec 087: aggregation counts for card-level queries
 // ---------------------------------------------------------------------------
 
-describe('aggregation counts (Spec 097)', () => {
+describe('aggregation counts (Spec 087)', () => {
   it('card-level query expands printings for aggregation count display', () => {
     // t:instant is card-only; evaluator does not return printingIndices.
     // Worker expands so display can show aggregation counts.

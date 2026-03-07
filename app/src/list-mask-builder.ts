@@ -137,7 +137,7 @@ export function getMatchingCount(
 }
 
 /**
- * Counts list entries per canonical face for aggregation display (Spec 097).
+ * Counts list entries per canonical face for aggregation display (Spec 087).
  * When my:list is in the query, aggregation counts should reflect how many list entries
  * match each card, not how many printings exist in the database.
  */

@@ -67,7 +67,7 @@ export function dedupePrintingItems(
 }
 
 /**
- * Aggregation counts for displayed items (Spec 097).
+ * Aggregation counts for displayed items (Spec 087).
  * When deduplication occurs, each displayed item represents N printings.
  * Returns maps from (canonical face index | printing index) to count.
  * - byCard: for Slim/Detail — count of printings per canonical_face_ref.
