@@ -2,9 +2,8 @@
 import type { JSX } from 'solid-js'
 
 /**
- * Opens a URL in a new browser tab/window. Uses window.open() instead of
- * target="_blank" so links escape the PWA webview on iOS (issue #92).
- * Also used for future deep-linking (TCGPlayer, Mana Pool, etc.).
+ * Opens a URL in a new tab. Used for programmatic opens (e.g. BugReport button)
+ * where the URL is built dynamically and an anchor with href is not feasible.
  */
 export function openOutlink(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
@@ -18,8 +17,8 @@ export type OutlinkProps = {
 }
 
 /**
- * External link that uses window.open() on click to escape PWA webview on iOS.
- * Keeps href for accessibility and context-menu "Open in new tab".
+ * External link that opens in a new tab. Uses target="_blank" for native
+ * behavior; programmatic window.open() does not escape PWA webview on iOS/Android.
  */
 export function Outlink(props: OutlinkProps) {
   return (
@@ -27,13 +26,8 @@ export function Outlink(props: OutlinkProps) {
       href={props.href}
       class={props.class}
       aria-label={props['aria-label']}
+      target="_blank"
       rel="noopener noreferrer"
-      onClick={(e) => {
-        if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-          e.preventDefault()
-          openOutlink(props.href)
-        }
-      }}
     >
       {props.children}
     </a>

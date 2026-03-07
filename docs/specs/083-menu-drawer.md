@@ -82,7 +82,7 @@ LAYOUTS
 
 **VIEWS:** Four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Active chip (matching effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent). Chip labels use the `v:` alias.
 
-**TOOLS:** "My List" link (Spec 090) and "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. My List navigates to the Lists page via `onListsClick`. Try on Scryfall uses `Outlink` component (issue #92): `window.open()` on click to escape PWA webview on iOS; `href` retained for accessibility.
+**TOOLS:** "My List" link (Spec 090) and "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. My List navigates to the Lists page via `onListsClick`. Try on Scryfall uses `Outlink` component (`target="_blank"`).
 
 **TERMS:** Chip behavior (tri-state, modifiers, sort arrows) unchanged from Spec 044 and Spec 059.
 
