@@ -234,7 +234,7 @@ async function init(): Promise<void> {
   otagsPromise.then((otags) => {
     if (otags) {
       tagDataRef.oracle = otags
-      post({ type: 'status', status: 'otags-ready' })
+      post({ type: 'status', status: 'otags-ready', tagLabels: Object.keys(otags) })
     }
   })
 
@@ -242,8 +242,9 @@ async function init(): Promise<void> {
     if (!printingDataForAtags) return
     const atags = await fetchAtags()
     if (atags) {
-      tagDataRef.illustration = resolveAtagsToPrintingRows(atags, printingDataForAtags)
-      post({ type: 'status', status: 'atags-ready' })
+      const resolved = resolveAtagsToPrintingRows(atags, printingDataForAtags)
+      tagDataRef.illustration = resolved
+      post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
     }
   })
 

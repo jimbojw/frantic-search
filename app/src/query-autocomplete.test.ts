@@ -121,6 +121,29 @@ describe('computeSuggestion', () => {
     expect(computeSuggestion(ctx!, data)).toBeNull()
   })
 
+  it('suggests oracle tag for otag:ram', () => {
+    const tagData = makeData({ oracleTagLabels: ['ramp', 'removal', 'rampage'] })
+    const ctx = getCompletionContext('otag:ram', 7)!
+    expect(computeSuggestion(ctx, tagData)).toBe('ramp')
+  })
+
+  it('suggests illustration tag for atag:cha', () => {
+    const tagData = makeData({ illustrationTagLabels: ['chair', 'champion', 'chaos'] })
+    const ctx = getCompletionContext('atag:cha', 8)!
+    expect(computeSuggestion(ctx, tagData)).toBe('chair')
+  })
+
+  it('art: uses same data as atag:', () => {
+    const tagData = makeData({ illustrationTagLabels: ['foot', 'foo', 'forest'] })
+    const ctx = getCompletionContext('art:fo', 6)!
+    expect(computeSuggestion(ctx, tagData)).toBe('foot')
+  })
+
+  it('returns null for otag: when oracle tags not loaded', () => {
+    const ctx = getCompletionContext('otag:ramp', 8)!
+    expect(computeSuggestion(ctx, data)).toBeNull()
+  })
+
   it('returns null for empty data names', () => {
     const ctx = getCompletionContext('!"gris', 6)!
     expect(computeSuggestion(ctx, makeData({ names: [] }))).toBeNull()

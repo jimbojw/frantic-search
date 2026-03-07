@@ -57,6 +57,8 @@ export interface CreatePaneStateOpts {
   printingIndicesIncludingExtras: Accessor<number | undefined>
   display: Accessor<DisplayColumns | null>
   printingDisplay: Accessor<PrintingDisplayColumns | null>
+  oracleTagLabels: Accessor<string[]>
+  illustrationTagLabels: Accessor<string[]>
   breakdownExpanded: Accessor<boolean>
   setBreakdownExpanded: Setter<boolean>
   histogramsExpanded: Accessor<boolean>
@@ -155,6 +157,8 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     printingIndicesIncludingExtras: opts.printingIndicesIncludingExtras,
     display: opts.display,
     printingDisplay: opts.printingDisplay,
+    oracleTagLabels: opts.oracleTagLabels,
+    illustrationTagLabels: opts.illustrationTagLabels,
     breakdownExpanded: opts.breakdownExpanded,
     toggleBreakdown,
     histogramsExpanded: opts.histogramsExpanded,

@@ -89,7 +89,7 @@ No changes. `otag`, `atag`, and `art` will be in `FIELD_ALIASES`, so they receiv
 
 ## Autocomplete
 
-Out of scope for this spec. Tag label autocomplete can be a future enhancement when tag lists are exposed (e.g. via `otags-ready` / `atags-ready` messages).
+Implemented in Spec 094. Tag labels are sent with `otags-ready` and `atags-ready` messages for autocomplete.
 
 ## File Organization
 

@@ -90,6 +90,8 @@ function App() {
   const [breakdown, setBreakdown] = createSignal<BreakdownNode | null>(null)
   const [histograms, setHistograms] = createSignal<Histograms | null>(null)
   const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
+  const [oracleTagLabels, setOracleTagLabels] = createSignal<string[]>([])
+  const [illustrationTagLabels, setIllustrationTagLabels] = createSignal<string[]>([])
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
@@ -164,7 +166,10 @@ function App() {
   let textareaHlRef: HTMLDivElement | undefined
 
   const autocompleteData = createMemo(() =>
-    buildAutocompleteData(display(), printingDisplay())
+    buildAutocompleteData(display(), printingDisplay(), {
+      oracle: oracleTagLabels().length ? oracleTagLabels() : undefined,
+      illustration: illustrationTagLabels().length ? illustrationTagLabels() : undefined,
+    })
   )
   const ghostText = createMemo(() => {
     if (isComposing() || !autocompleteData()) return null
@@ -428,8 +433,10 @@ function App() {
       case 'status':
         if (msg.status === 'progress') {
           setDataProgress(msg.fraction)
-        } else if (msg.status === 'otags-ready' || msg.status === 'atags-ready') {
-          // Tag data loaded in worker; no main-thread action needed (evaluator integration is future spec)
+        } else if (msg.status === 'otags-ready') {
+          setOracleTagLabels(msg.tagLabels)
+        } else if (msg.status === 'atags-ready') {
+          setIllustrationTagLabels(msg.tagLabels)
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()
@@ -955,6 +962,8 @@ function App() {
     printingIndicesIncludingExtras,
     display,
     printingDisplay,
+    oracleTagLabels,
+    illustrationTagLabels,
     breakdownExpanded,
     setBreakdownExpanded,
     histogramsExpanded,
@@ -986,6 +995,8 @@ function App() {
     printingIndicesIncludingExtras: printingIndicesIncludingExtras2,
     display,
     printingDisplay,
+    oracleTagLabels,
+    illustrationTagLabels,
     breakdownExpanded: breakdownExpanded2,
     setBreakdownExpanded: setBreakdownExpanded2,
     histogramsExpanded: histogramsExpanded2,

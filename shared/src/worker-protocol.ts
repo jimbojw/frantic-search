@@ -72,7 +72,7 @@ export type FromWorker =
   | { type: 'status'; status: 'progress'; fraction: number }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
-  | { type: 'status'; status: 'otags-ready' }
-  | { type: 'status'; status: 'atags-ready' }
+  | { type: 'status'; status: 'otags-ready'; tagLabels: string[] }
+  | { type: 'status'; status: 'atags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide }

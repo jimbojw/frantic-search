@@ -18,6 +18,8 @@ export type AutocompleteData = {
   formatNames: Record<string, number>
   colorNames: Record<string, number>
   isKeywords: string[]
+  oracleTagLabels?: string[]
+  illustrationTagLabels?: string[]
 }
 
 const OPERATORS = new Set<string>([
@@ -202,6 +204,16 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
         const match = firstMatchByPrefix(data.isKeywords, prefix)
         return match
       }
+      if (fn === 'otag') {
+        if (!data.oracleTagLabels?.length) return null
+        const match = firstMatchByPrefix(data.oracleTagLabels, prefix)
+        return match
+      }
+      if (fn === 'atag' || fn === 'art') {
+        if (!data.illustrationTagLabels?.length) return null
+        const match = firstMatchByPrefix(data.illustrationTagLabels, prefix)
+        return match
+      }
       return null
     }
     case 'exact-name': {
@@ -225,7 +237,8 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
 
 export function buildAutocompleteData(
   display: DisplayColumns | null,
-  printingDisplay: PrintingDisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null,
+  tagLabels?: { oracle?: string[]; illustration?: string[] }
 ): AutocompleteData | null {
   if (!display) return null
   const setCodes = printingDisplay?.set_codes
@@ -240,6 +253,8 @@ export function buildAutocompleteData(
     formatNames: FORMAT_NAMES,
     colorNames: COLOR_NAMES,
     isKeywords: IS_KEYWORDS,
+    oracleTagLabels: tagLabels?.oracle,
+    illustrationTagLabels: tagLabels?.illustration,
   }
 }
 
