@@ -7,6 +7,7 @@ import { getMatchingCount } from './list-mask-builder'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
+import { Outlink } from './Outlink'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },
@@ -265,17 +266,15 @@ export default function CardDetail(props: {
         </button>
         <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
         <div class="flex items-center gap-1 shrink-0">
-          <a
+          <Outlink
             href={scryfallUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
             aria-label="View on Scryfall"
           >
             <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
-          </a>
+          </Outlink>
         </div>
       </div>
       <Show when={allPrintsQuery() && props.onNavigateToQuery}>

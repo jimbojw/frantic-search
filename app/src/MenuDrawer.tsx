@@ -6,6 +6,7 @@ import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
+import { Outlink } from './Outlink'
 import type { ViewMode } from './view-mode'
 import { VIEW_MODES } from './view-mode'
 
@@ -514,14 +515,12 @@ export default function MenuDrawer(props: {
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                 Tools
               </h2>
-              <a
+              <Outlink
                 href={ctx.scryfallUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
                 class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
               >
                 Try on Scryfall ↗
-              </a>
+              </Outlink>
             </section>
             {/* TERMS sections */}
             <For each={TERMS_SECTIONS}>

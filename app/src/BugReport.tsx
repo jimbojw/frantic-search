@@ -2,6 +2,7 @@
 import { createSignal, Show, For } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { parse, toScryfallQuery } from '@frantic-search/shared'
+import { openOutlink } from './Outlink'
 
 declare const __APP_VERSION__: string
 declare const __BUGS_URL__: string
@@ -164,8 +165,7 @@ export default function BugReport(props: {
   }
 
   function handleReviewOnGitHub() {
-    const url = buildGitHubUrl(props.query, getReportBody())
-    window.open(url, '_blank', 'noopener,noreferrer')
+    openOutlink(buildGitHubUrl(props.query, getReportBody()))
   }
 
   function handleCopy() {

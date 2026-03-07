@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For } from 'solid-js'
+import { Outlink } from './Outlink'
 
 interface FieldEntry {
   field: string
@@ -126,14 +127,12 @@ export default function SyntaxHelp(props: { onSelectExample: (q: string) => void
 
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
         Frantic Search is based on{' '}
-        <a
+        <Outlink
           href="https://scryfall.com/docs/syntax"
-          target="_blank"
-          rel="noopener noreferrer"
           class="text-blue-600 dark:text-blue-400 hover:underline"
         >
           Scryfall syntax
-        </a>.
+        </Outlink>.
       </p>
 
       <section class="mb-8">

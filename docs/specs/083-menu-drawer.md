@@ -82,7 +82,7 @@ LAYOUTS
 
 **VIEWS:** Four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Active chip (matching effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent). Chip labels use the `v:` alias.
 
-**TOOLS:** Single link, "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. Opens in new tab with `target="_blank" rel="noopener noreferrer"`.
+**TOOLS:** Single link, "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. Uses `Outlink` component (issue #92): `window.open()` on click to escape PWA webview on iOS; `href` retained for accessibility.
 
 **TERMS:** Chip behavior (tri-state, modifiers, sort arrows) unchanged from Spec 044 and Spec 059.
 
@@ -106,7 +106,7 @@ When the result set is empty (`totalCards() === 0`), users are most likely to su
 
 A **compact inline row** appears below the "No cards found" message, containing:
 
-- "Try on Scryfall ↗" link (`href={scryfallUrl()}`)
+- "Try on Scryfall ↗" link via `Outlink` (`href={scryfallUrl()}`)
 - "Report a problem" button (`onClick={navigateToReport}`)
 
 Styling: `text-sm` with muted colors (`text-gray-400 dark:text-gray-600`), inline flex with gap. Matches the density of the existing empty-state "Source on GitHub" / "Report a problem" row on the init page.
