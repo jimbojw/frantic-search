@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createMemo, Show, onMount } from 'solid-js'
+import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
 import { toScryfallQuery, parse } from '@frantic-search/shared'
 import { buildFacesOf } from './app-utils'
@@ -16,6 +16,18 @@ import SearchResults from './SearchResults'
 import type { SearchContextValue } from './SearchContext'
 
 const DUAL_WIELD_BREAKPOINT = 1024
+const SPLIT_STORAGE_KEY = 'frantic-dual-wield-split'
+const SPLIT_MIN = 0.25
+const SPLIT_MAX = 0.75
+const HANDLE_WIDTH = 8
+
+function parseStoredSplit(): number {
+  const stored = localStorage.getItem(SPLIT_STORAGE_KEY)
+  if (stored === null) return 0.5
+  const n = Number.parseFloat(stored)
+  if (!Number.isFinite(n) || n < SPLIT_MIN || n > SPLIT_MAX) return 0.5
+  return n
+}
 
 export function useViewportWide(breakpoint = DUAL_WIELD_BREAKPOINT) {
   const [wide, setWide] = createSignal(
@@ -279,9 +291,47 @@ export function DualWieldLayout(props: {
   onLeaveDualWield: () => void
 }) {
   const [drawerOpen, setDrawerOpen] = createSignal<'left' | 'right' | null>(null)
+  const [split, setSplit] = createSignal(parseStoredSplit())
 
   let leftHlRef: HTMLDivElement | undefined
   let rightHlRef: HTMLDivElement | undefined
+  let gridRef: HTMLDivElement | undefined
+
+  const onResizeStart = (e: MouseEvent) => {
+    e.preventDefault()
+
+    const onMove = (moveE: MouseEvent) => {
+      if (!gridRef) return
+      const rect = gridRef.getBoundingClientRect()
+      const railWidth = 48
+      const centerLeft = rect.left + railWidth
+      const centerRight = rect.right - railWidth
+      const centerWidth = centerRight - centerLeft - HANDLE_WIDTH
+      if (centerWidth <= 0) return
+      const leftPaneWidth = moveE.clientX - centerLeft
+      let next = leftPaneWidth / centerWidth
+      next = Math.max(SPLIT_MIN, Math.min(SPLIT_MAX, next))
+      setSplit(next)
+    }
+
+    const onEnd = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onEnd)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      localStorage.setItem(SPLIT_STORAGE_KEY, String(split()))
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onEnd)
+  }
+
+  onCleanup(() => {
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  })
 
   const leftOnInput = (e: Event) => {
     const target = e.target as HTMLTextAreaElement
@@ -303,7 +353,13 @@ export function DualWieldLayout(props: {
   }
 
   return (
-    <div class="grid grid-cols-[48px_1fr_1fr_48px] min-h-dvh">
+    <div
+      ref={gridRef}
+      class="grid min-h-dvh"
+      style={{
+        'grid-template-columns': `48px minmax(200px, ${split()}fr) ${HANDLE_WIDTH}px minmax(200px, ${1 - split()}fr) 48px`,
+      }}
+    >
       {/* Left rail */}
       <div class="flex flex-col items-center pt-4 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
         <button
@@ -332,6 +388,18 @@ export function DualWieldLayout(props: {
           workerStatus={props.workerStatus}
           class="flex-1 min-h-0"
         />
+      </div>
+
+      {/* Resize handle */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panes"
+        tabIndex={-1}
+        onMouseDown={onResizeStart}
+        class="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 cursor-col-resize group min-w-0"
+      >
+        <div class="w-1 h-12 rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-colors" />
       </div>
 
       {/* Right pane */}

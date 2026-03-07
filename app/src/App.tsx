@@ -949,7 +949,7 @@ function App() {
         </Show>
         <Show when={!showDualWield()}>
         <SearchProvider value={searchContextValue}>
-      <header class={`mx-auto max-w-2xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
+      <header class={`mx-auto max-w-4xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
         <Show when={headerCollapsed()} fallback={
           <>
             <button
@@ -1121,7 +1121,7 @@ function App() {
         </div>
       </header>
 
-      <main class="mx-auto max-w-2xl px-4">
+      <main class="mx-auto max-w-4xl px-4">
         <WorkerErrorBanner
           workerStatus={workerStatus}
           errorCause={errorCause}

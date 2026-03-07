@@ -75,12 +75,17 @@ Users who want to compare two queries (e.g. "creatures in my list" vs "creatures
 
 The spatial mapping is explicit: left rail → left drawer → left pane. Right rail → right drawer → right pane. No "active side" tracking required.
 
+### Resizable split
+
+A draggable handle between the two panes lets users adjust how much horizontal space each pane receives. The split is expressed as the left pane's fraction of the center area (0–1), default 0.5 (50/50). The fraction is clamped (e.g. 0.25–0.75) so neither pane collapses below a minimum usable width. Persisted to localStorage as `frantic-dual-wield-split`.
+
 ### Per-pane independence
 
 Each pane has:
 
 - Its own `query` and `pinnedQuery` (stored in `q1`/`q2` in URL and `frantic-pinned-query`/`frantic-pinned2` in localStorage)
 - `frantic-last-q2` in localStorage: the right pane's last live query, recalled when re-entering Dual Wield
+- `frantic-dual-wield-split` in localStorage: left pane's fraction of center width (0–1), for the resizable split
 - Its own `indices`, `breakdown`, `histograms`, `printingIndices`, etc.
 - Its own `SearchProvider` — the MenuDrawer in each rail uses the context for that pane
 - Its own histograms expand/collapse, breakdown expand/collapse (localStorage keys can be shared or per-pane; implementation detail)
@@ -122,7 +127,7 @@ When `q2` is absent, the app behaves exactly as today. Single-pane retains the c
 | Area | Change |
 |------|--------|
 | `app/src/App.tsx` | Branch on Dual Wield (q2 present + viewport). Render DualWieldLayout vs current layout. Extract or duplicate pane state for two panes. |
-| `app/src/` (new or refactored) | `DualWieldLayout`, `SearchPane`, `SideRail` components. `useSearchPane(side)` hook or equivalent to encapsulate per-pane state and worker communication. |
+| `app/src/` (new or refactored) | `DualWieldLayout`, `SearchPane`, `SideRail` components. `useSearchPane(side)` hook or equivalent to encapsulate per-pane state and worker communication. Resizable split handle with `frantic-dual-wield-split` persistence. |
 | `app/src/SearchContext.tsx` | No interface change. Each pane gets its own provider. |
 | `shared/src/worker-protocol.ts` | Add `side?: 'left' \| 'right'` to `ToWorker` search and `FromWorker` result. Or define batch search format. |
 | `app/src/worker.ts` | Handle dual-search messages; return results tagged by side. |
@@ -140,6 +145,7 @@ When `q2` is absent, the app behaves exactly as today. Single-pane retains the c
 7. An affordance exists to enter Dual Wield (adds `q2` to URL). Exact UX TBD.
 8. Worker executes both pane queries and returns results to the correct pane.
 9. When re-entering Dual Wield after having used it before, the right pane restores its last live query (and pinned query) from localStorage.
+10. A draggable handle between the panes adjusts the split; the proportion is persisted to `frantic-dual-wield-split` and restored on load.
 
 ## Open Questions
 
