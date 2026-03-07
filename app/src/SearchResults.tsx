@@ -357,7 +357,7 @@ export default function SearchResults() {
             </ul>
           }>
             <div class="border-t border-gray-200 dark:border-gray-800 overflow-hidden rounded-b-xl">
-              <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-px bg-gray-200 dark:bg-gray-800">
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(min(200px,45vw),1fr))] gap-px bg-gray-200 dark:bg-gray-800">
                 <Show when={ctx.visibleDisplayItems()} fallback={
                   <For each={ctx.visibleIndices()}>
                     {(ci) => {

@@ -99,10 +99,10 @@ Identical to the current "Oracle text on" rendering. `CardFaceRow` receives `sho
 A responsive CSS grid replacing the `<ul>`, rendered as a contact-sheet layout:
 
 ```
-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-gray-200 dark:bg-gray-800
+grid grid-cols-[repeat(auto-fill,minmax(min(200px,45vw),1fr))] gap-px bg-gray-200 dark:bg-gray-800
 ```
 
-The grid uses `gap-px` (1px) with a gray background that shows through the gaps as hairline dividers. There is no internal padding — cards extend to the container edges. The grid wrapper has `overflow-hidden rounded-b-xl` to clip the bottom corners flush with the results container's border radius.
+The grid uses `auto-fill` with a responsive minimum: `min(200px, 45vw)` ensures cards can shrink on narrow viewports (e.g. 2 columns on ~375px mobile) while capping at 200px on wider screens. The grid uses `gap-px` (1px) with a gray background that shows through the gaps as hairline dividers. There is no internal padding — cards extend to the container edges. The grid wrapper has `overflow-hidden rounded-b-xl` to clip the bottom corners flush with the results container's border radius.
 
 Each cell is a clickable card that navigates to the card detail page. Cards have no individual border radius (the contact-sheet layout clips them at the container level). The cell contains:
 
@@ -170,7 +170,7 @@ Card images have their own backgrounds (card frames), so they look fine against 
 
 ### Mobile considerations
 
-The Images grid uses `grid-cols-2` on small screens, scaling up to 4 columns on large screens. Card images from Scryfall's `normal` size (488×680) are appropriately sized for these column widths — no need for `large` size images.
+The Images grid uses `minmax(min(200px, 45vw), 1fr)` so the minimum column width shrinks on narrow viewports (e.g. ~170px on 375px mobile, allowing 2 columns) and caps at 200px on desktop. Card images from Scryfall's `normal` size (488×680) are appropriately sized for these column widths — no need for `large` size images.
 
 ### View mode persistence
 
