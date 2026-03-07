@@ -98,6 +98,45 @@ describe("my:list empty list", () => {
   });
 });
 
+describe("my:trash", () => {
+  const getListMask = (listId: string) =>
+    listId === "trash" ? { faceMask: faceMask([3], FACE_COUNT), printingMask: undefined as undefined } : null;
+  const cache = new NodeCache(index, null, getListMask);
+
+  test("my:trash returns only cards in trash", () => {
+    const out = cache.evaluate(parse("my:trash"));
+    expect(out.indices.length).toBe(1);
+    expect(out.indices[0]).toBe(3); // Sol Ring
+  });
+
+  test("-my:trash returns only cards not in trash", () => {
+    const out = cache.evaluate(parse("-my:trash"));
+    expect(out.indices.length).toBe(8);
+    expect(out.indices.includes(3)).toBe(false);
+  });
+
+  test("empty trash: my:trash returns 0 results", () => {
+    const emptyTrash = (listId: string) =>
+      listId === "trash" ? { faceMask: faceMask([], FACE_COUNT), printingMask: undefined as undefined } : null;
+    const emptyCache = new NodeCache(index, null, emptyTrash);
+    const out = emptyCache.evaluate(parse("my:trash"));
+    expect(out.indices.length).toBe(0);
+  });
+
+  test("empty trash: -my:trash returns all cards", () => {
+    const emptyTrash = (listId: string) =>
+      listId === "trash" ? { faceMask: faceMask([], FACE_COUNT), printingMask: undefined as undefined } : null;
+    const emptyCache = new NodeCache(index, null, emptyTrash);
+    const out = emptyCache.evaluate(parse("-my:trash"));
+    expect(out.indices.length).toBe(9);
+  });
+
+  test("my:trash t:creature composes (AND)", () => {
+    const out = cache.evaluate(parse("my:trash t:creature"));
+    expect(out.indices.length).toBe(0); // Sol Ring is artifact, not creature
+  });
+});
+
 describe("my:list unknown list", () => {
   const getListMask = (listId: string) =>
     listId === "default" ? { faceMask: faceMask([1], FACE_COUNT), printingMask: undefined as undefined } : null;

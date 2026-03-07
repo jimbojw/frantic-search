@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode } from '@frantic-search/shared'
-import { lex, parse, TokenType, getUniqueModeFromQuery } from '@frantic-search/shared'
+import { lex, parse, TokenType, getUniqueModeFromQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 
 /**
  * Close any unclosed syntactic constructs (quotes, regex, parentheses) so that
@@ -683,6 +683,21 @@ export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
 export function hasMyInQuery(breakdown: BreakdownNode | null): boolean {
   if (!breakdown) return false
   return findFieldNode(breakdown, ['my'], ':', false) !== null
+}
+
+/**
+ * Extracts the list ID from the first positive my: node in the breakdown.
+ * Used for list-entry aggregation counts (Spec 087) so counts match the queried list.
+ * Returns null if no positive my: node exists.
+ */
+export function getMyListIdFromBreakdown(breakdown: BreakdownNode | null): string | null {
+  if (!breakdown) return null
+  const node = findFieldNode(breakdown, ['my'], ':', false)
+  if (!node) return null
+  const raw = node.label.startsWith('-') ? node.label.slice(1) : node.label
+  const value = extractValue(raw, ':').toLowerCase() || 'list'
+  if (value === 'trash') return TRASH_LIST_ID
+  return DEFAULT_LIST_ID
 }
 
 // ---------------------------------------------------------------------------

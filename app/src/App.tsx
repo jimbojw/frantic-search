@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from '@frantic-search/shared'
-import { parse, toScryfallQuery, DEFAULT_LIST_ID } from '@frantic-search/shared'
+import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -24,7 +24,7 @@ import {
   saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
-import { appendTerm, parseBreakdown, sealQuery, hasMyInQuery } from './query-edit'
+import { appendTerm, parseBreakdown, sealQuery, getMyListIdFromBreakdown } from './query-edit'
 import { extractViewMode } from './view-query'
 import { CardListStore } from './card-list-store'
 import {
@@ -431,7 +431,7 @@ function App() {
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()
-          const listsWithPrintings = [...view.lists.keys()].filter((lid) =>
+          const listsWithPrintings = [...new Set([...view.lists.keys(), TRASH_LIST_ID])].filter((lid) =>
             hasPrintingLevelEntries(view, lid)
           )
           if (listsWithPrintings.length > 0) {
@@ -463,7 +463,7 @@ function App() {
                 const faceCount = d.oracle_ids.length
                 const printingCount = pd?.scryfall_ids.length ?? 0
                 const printingLookup = pd ? buildPrintingLookup(pd) : undefined
-                const listIds = [...view.lists.keys()]
+                const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
                 for (const listId of listIds) {
                   const { faceMask, printingMask } = buildMasksForList({
                     view,
@@ -913,23 +913,25 @@ function App() {
     view() === 'search' && dualWieldActive() && viewportWide()
 
   const listEntryCountPerCard = createMemo(() => {
-    if (!hasMyInQuery(effectiveBreakdown())) return null
+    const listId = getMyListIdFromBreakdown(effectiveBreakdown())
+    if (!listId) return null
     const d = display()
     const view = cardListStore.getView()
     if (!d || !view) return null
     listVersion()
     const oracleMap = buildOracleToCanonicalFaceMap(d)
-    return countListEntriesPerCard(view, DEFAULT_LIST_ID, oracleMap)
+    return countListEntriesPerCard(view, listId, oracleMap)
   })
 
   const listEntryCountPerCard2 = createMemo(() => {
-    if (!hasMyInQuery(effectiveBreakdown2())) return null
+    const listId = getMyListIdFromBreakdown(effectiveBreakdown2())
+    if (!listId) return null
     const d = display()
     const view = cardListStore.getView()
     if (!d || !view) return null
     listVersion()
     const oracleMap = buildOracleToCanonicalFaceMap(d)
-    return countListEntriesPerCard(view, DEFAULT_LIST_ID, oracleMap)
+    return countListEntriesPerCard(view, listId, oracleMap)
   })
 
   const leftPaneState = createPaneState({

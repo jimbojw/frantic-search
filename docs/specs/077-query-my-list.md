@@ -39,7 +39,12 @@ The evaluator (NodeCache / evaluator.ts) needs a way to obtain the mask for a gi
 
 ### List ID Mapping
 
-Spec 076 uses `listId: "default"` for the single MVP list. The query accepts `my:list` (canonical) or `my:default`; both map to protocol `listId: "default"`. The evaluator normalizes the query value to the listId before calling `getListMask`. For the default list, Spec 075's `short_name` (if set) should align with this mapping so the main thread sends `list-update` with the same `listId`.
+| Query value | Protocol listId |
+|-------------|-----------------|
+| `list`, `default`, empty | `default` |
+| `trash` | `trash` |
+
+Spec 076 uses `listId: "default"` for the default list and `listId: "trash"` for trash. The query accepts `my:list` (canonical) or `my:default`; both map to protocol `listId: "default"`. The query accepts `my:trash`; it maps to protocol `listId: "trash"`. The evaluator normalizes the query value to the listId before calling `getListMask`. For the default list, Spec 075's `short_name` (if set) should align with this mapping so the main thread sends `list-update` with the same `listId`.
 
 ### Leaf Evaluation
 
@@ -47,7 +52,7 @@ Handle `my` in `computeTree` as a special-case field, the same pattern as `uniqu
 
 - **Canonical:** `my`
 - **Operators:** `:`, `=` (in list). Negation uses `-my:list` (NOT node), consistent with `is:` fields.
-- **Value:** List name. MVP: `"list"` or `"default"` → `listId: "default"`. When `value` is empty (e.g. `my:`), normalize to `"list"` (the default list) before resolving the listId. This differs from other fields where empty value produces a universal set.
+- **Value:** List name. `"list"` or `"default"` → `listId: "default"`; `"trash"` → `listId: "trash"`. When `value` is empty (e.g. `my:`), normalize to `"list"` (the default list) before resolving the listId. This differs from other fields where empty value produces a universal set.
 - **Logic:** Obtain masks via `getListMask(listId)`. The evaluation domain depends on which masks have bits set:
 
 | `faceMask` has bits | `printingMask` present with bits | Eval domain | Strategy |
@@ -114,3 +119,6 @@ When the query contains both `my:` and `unique:prints`, and the list has mixed e
 - [x] Mixed list + `my:list is:nonfoil`: matches (generic entry expands to all printings including nonfoil)
 - [x] Mixed list + `my:list unique:prints`: override applies — generic entries show only canonical nonfoil; explicit printings shown; `printingIndices` reflects exactly what's in the list
 - [x] Pinned `my:list` + live `unique:prints` (or vice versa): override applies — effective query drives expansion (Issue #96)
+- [x] `my:trash` maps to listId `"trash"` and returns only cards in trash
+- [x] `-my:trash` returns only cards not in trash
+- [x] Empty trash: `my:trash` returns 0 results; `-my:trash` returns all cards

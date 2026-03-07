@@ -20,6 +20,7 @@ import {
   toggleUniquePrints,
   hasUniquePrints,
   hasMyInQuery,
+  getMyListIdFromBreakdown,
   toggleIncludeExtras,
   hasIncludeExtras,
   appendTerm,
@@ -1331,6 +1332,27 @@ describe('hasMyInQuery', () => {
   })
   it('returns false when my: is negated', () => {
     expect(hasMyInQuery(buildBreakdown('-my:list'))).toBe(false)
+  })
+})
+
+describe('getMyListIdFromBreakdown', () => {
+  it('returns default for my:list', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:list'))).toBe('default')
+  })
+  it('returns default for my:default', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:default'))).toBe('default')
+  })
+  it('returns trash for my:trash', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:trash'))).toBe('trash')
+  })
+  it('returns null when my: is absent', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('t:creature'))).toBe(null)
+  })
+  it('returns null when my: is negated', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('-my:list'))).toBe(null)
+  })
+  it('returns trash when my:trash is among other terms', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:trash t:creature'))).toBe('trash')
   })
 })
 

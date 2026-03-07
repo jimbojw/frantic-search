@@ -71,11 +71,11 @@ The worker maintains **two distinct caches**:
 1. Worker posts `ready` with `DisplayColumns`.
 2. Main thread receives `ready`, stores display data, builds `oracle_id` → canonical face index map from `display.oracle_ids` and `display.canonical_face`.
 3. Main thread replays list log from IndexedDB, materializes view (Spec 075).
-4. Main thread builds masks for every persisted list (including the default list, even if empty).
+4. Main thread builds masks for every list: default list, trash list, and any other lists in `view.lists` (including empty lists).
 5. Main thread sends `list-update` for each list to the worker.
 6. Main thread begins forwarding user input as `search` messages.
 
-The main thread MUST send `list-update` for the default list before any `search` message, even if the list is empty. This ensures the worker can distinguish "known empty list" (zeroed mask in cache) from "unknown list" (`getListMask` returns `null`) from the first query onward.
+The main thread MUST send `list-update` for both the default list and the trash list before any `search` message, even if either list is empty. Trash has no metadata in `view.lists` but must still receive updates. This ensures the worker can distinguish "known empty list" (zeroed mask in cache) from "unknown list" (`getListMask` returns `null`) from the first query onward.
 
 ### Empty List Behavior
 
@@ -92,3 +92,7 @@ When a list is empty, send `list-update` with a zeroed `faceMask` (same length a
 - [x] Worker starts with no masks cached; handles first `list-update` before any `my:` query
 - [x] Empty list sends `list-update` with zeroed mask (not omitted)
 - [x] Main thread builds `(scryfall_id, finish)` → printing index lookup from `PrintingDisplayColumns`; sends `printingMask` when list has printing-level entries and printings are loaded
+
+## Implementation Notes
+
+- 2026-03-07: Extended to include trash. Main thread now sends list-update for `TRASH_LIST_ID` in addition to `view.lists.keys()`; trash is a system list without metadata.
