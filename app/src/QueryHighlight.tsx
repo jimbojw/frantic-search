@@ -18,6 +18,7 @@ type HighlightRole =
   | 'keyword'
   | 'value-error'
   | 'value-zero'
+  | 'ghost'
 
 // Fields the evaluator handles directly, outside FIELD_ALIASES
 const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include', 'view', 'v', 'sort'])
@@ -45,6 +46,7 @@ export const ROLE_CLASSES: Record<HighlightRole, string> = {
   keyword:          'text-blue-600 dark:text-blue-400 font-semibold',
   'value-error':   'text-red-600 dark:text-red-400 underline decoration-wavy decoration-red-400 dark:decoration-red-500',
   'value-zero':    'text-amber-600 dark:text-amber-400 underline decoration-wavy decoration-amber-400 dark:decoration-amber-500',
+  ghost:           'text-gray-400 dark:text-gray-500',
 }
 
 interface ProblemRegion {
@@ -168,8 +170,50 @@ export function buildSpans(query: string, breakdown?: BreakdownNode | null): Hig
   return spans
 }
 
-export default function QueryHighlight(props: { query: string; breakdown?: BreakdownNode | null; class?: string }) {
-  const spans = createMemo(() => buildSpans(props.query, props.breakdown))
+function insertGhostSpan(spans: HighlightSpan[], cursorOffset: number, ghostText: string): HighlightSpan[] {
+  if (!ghostText) return spans
+  const out: HighlightSpan[] = []
+  let inserted = false
+  for (const s of spans) {
+    if (inserted) {
+      out.push(s)
+      continue
+    }
+    if (s.end <= cursorOffset) {
+      out.push(s)
+    } else if (s.start >= cursorOffset) {
+      out.push({ text: ghostText, role: 'ghost', start: cursorOffset, end: cursorOffset })
+      out.push(s)
+      inserted = true
+    } else {
+      const before = { text: s.text.slice(0, cursorOffset - s.start), role: s.role, start: s.start, end: cursorOffset }
+      const after = { text: s.text.slice(cursorOffset - s.start), role: s.role, start: cursorOffset, end: s.end }
+      if (before.text) out.push(before)
+      out.push({ text: ghostText, role: 'ghost', start: cursorOffset, end: cursorOffset })
+      if (after.text) out.push(after)
+      inserted = true
+    }
+  }
+  if (!inserted) {
+    out.push({ text: ghostText, role: 'ghost', start: cursorOffset, end: cursorOffset })
+  }
+  return out
+}
+
+export default function QueryHighlight(props: {
+  query: string
+  breakdown?: BreakdownNode | null
+  cursorOffset?: number
+  ghostText?: string | null
+  class?: string
+}) {
+  const spans = createMemo(() => {
+    const base = buildSpans(props.query, props.breakdown)
+    if (props.cursorOffset != null && props.ghostText) {
+      return insertGhostSpan(base, props.cursorOffset, props.ghostText)
+    }
+    return base
+  })
 
   return (
     <pre

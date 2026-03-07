@@ -239,6 +239,20 @@ export const UNSUPPORTED_IS_KEYWORDS = new Set([
   "newinpauper", "meldpart", "meldresult",
 ]);
 
+/** All is: keywords for autocomplete (face + printing). */
+export const IS_KEYWORDS = [
+  ...new Set([
+    ...FACE_FALLBACK_IS_KEYWORDS,
+    ...PRINTING_IS_KEYWORDS,
+    "permanent", "spell", "historic", "party", "outlaw",
+    "split", "flip", "adventure", "leveler", "saga", "host", "augment",
+    "token", "double_faced_token", "dfctoken", "art_series", "emblem",
+    "planar", "scheme", "vanguard", "transform", "modal", "mdfc", "dfc", "meld",
+    "vanilla", "frenchvanilla", "commander", "brawler", "companion", "partner",
+    "bear", "reserved", "funny", "gamechanger", "gc", "hybrid", "phyrexian",
+  ]),
+];
+
 export function evalIsKeyword(
   keyword: string,
   index: CardIndex,

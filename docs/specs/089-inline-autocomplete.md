@@ -1,6 +1,6 @@
 # Spec 089: Inline Autocomplete & Typeahead for Search Queries
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 053 (Search Input Syntax Highlighting)
 
@@ -158,3 +158,11 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 10. No ghost text during IME composition.
 11. No completion before `display` is ready; no `set:` completion before `printings-ready`.
 12. No regressions to syntax highlighting, scroll sync, or focus management.
+
+## Implementation Notes
+
+- 2026-03-06: `computeSuggestion` for field names returns the canonical field name (e.g. `unique`) rather than whichever alias prefix-matches first. Context detection prefers value context over field context when cursor is in a token after a colon.
+- 2026-03-06: `IS_KEYWORDS` list exported from `shared/src/search/eval-is.ts` for autocomplete; combines face-level and printing-level keywords (deduped).
+- 2026-03-06: Set codes for autocomplete are deduped from `PrintingDisplayColumns.set_codes` on the main thread; no worker protocol change needed.
+- 2026-03-06: Tap target uses Option B (right-half overlay) rather than measuring ghost span bounds; simpler and sufficient for v1.
+- 2026-03-06: `applyCompletion` for exact names: `computeSuggestion` returns `"CardName"` (with both quotes); the prefix starts after `!` at the opening quote, so replacement includes the full quoted name.

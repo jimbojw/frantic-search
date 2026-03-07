@@ -38,6 +38,12 @@ import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
 import { createPaneState } from './pane-state-factory'
 import { useSearchCapture } from './useSearchCapture'
 import { WorkerErrorBanner } from './WorkerErrorBanner'
+import {
+  getCompletionContext,
+  computeSuggestion,
+  buildAutocompleteData,
+  applyCompletion,
+} from './query-autocomplete'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -149,9 +155,60 @@ function App() {
   const [userEngaged, setUserEngaged] = createSignal(
     initialParams.has('q') && initialParams.get('q') === ''
   )
+  const [cursorOffset, setCursorOffset] = createSignal(0)
+  const [isComposing, setIsComposing] = createSignal(false)
   let programmaticFocusInProgress = false
   let textareaRef: HTMLTextAreaElement | undefined
   let textareaHlRef: HTMLDivElement | undefined
+
+  const autocompleteData = createMemo(() =>
+    buildAutocompleteData(display(), printingDisplay())
+  )
+  const ghostText = createMemo(() => {
+    if (isComposing() || !autocompleteData()) return null
+    const q = query()
+    const cursor = cursorOffset()
+    const ctx = getCompletionContext(q, cursor)
+    if (!ctx) return null
+    if (cursor < ctx.tokenEnd) return null
+    const suggestion = computeSuggestion(ctx, autocompleteData()!)
+    if (!suggestion) return null
+    return suggestion.slice(cursor - ctx.tokenStart)
+  })
+
+  function acceptGhostCompletion() {
+    const ctx = getCompletionContext(query(), cursorOffset())
+    if (!ctx || !autocompleteData() || !ghostText()) return
+    const suggestion = computeSuggestion(ctx, autocompleteData()!)
+    if (!suggestion) return
+    const { newQuery, newCursor } = applyCompletion(query(), cursorOffset(), suggestion, ctx)
+    setCursorOffset(newCursor)
+    setQuery(newQuery)
+    queueMicrotask(() => {
+      if (textareaRef) {
+        textareaRef.focus()
+        textareaRef.setSelectionRange(newCursor, newCursor)
+      }
+    })
+  }
+
+  const touchStart = { x: 0, y: 0 }
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStart.x = e.touches[0].clientX
+      touchStart.y = e.touches[0].clientY
+    }
+  }
+  const onTouchEnd = (e: TouchEvent) => {
+    if (e.changedTouches.length === 1 && ghostText()) {
+      const deltaX = e.changedTouches[0].clientX - touchStart.x
+      const deltaY = e.changedTouches[0].clientY - touchStart.y
+      if (deltaX > 40 && Math.abs(deltaY) < 20) {
+        e.preventDefault()
+        acceptGhostCompletion()
+      }
+    }
+  }
 
   const effectiveQuery = createMemo(() => {
     const p = pinnedQuery().trim()
@@ -1140,9 +1197,19 @@ function App() {
                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
             </div>
-            <div class="grid overflow-hidden">
+            <div
+              class="grid overflow-hidden relative"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+            >
               <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
-                <QueryHighlight query={query()} breakdown={breakdown()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+                <QueryHighlight
+                  query={query()}
+                  breakdown={breakdown()}
+                  cursorOffset={cursorOffset()}
+                  ghostText={ghostText()}
+                  class="text-base leading-normal whitespace-pre-wrap break-words"
+                />
               </div>
               <textarea
                 ref={textareaRef}
@@ -1153,13 +1220,42 @@ function App() {
                 autocorrect="off"
                 spellcheck={false}
                 value={query()}
-                onInput={(e) => { setQuery(e.currentTarget.value); setUserEngaged(true); if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                onInput={(e) => {
+                  const el = e.currentTarget
+                  setQuery(el.value)
+                  setCursorOffset(el.selectionStart ?? 0)
+                  setUserEngaged(true)
+                  if (textareaHlRef) {
+                    textareaHlRef.scrollTop = el.scrollTop
+                    textareaHlRef.scrollLeft = el.scrollLeft
+                  }
+                }}
+                onSelect={(e) => setCursorOffset(e.currentTarget.selectionStart ?? 0)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && ghostText()) {
+                    e.preventDefault()
+                    acceptGhostCompletion()
+                  }
+                }}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={(e) => {
+                  setIsComposing(false)
+                  setCursorOffset(e.currentTarget.selectionStart ?? 0)
+                }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                onFocus={(e) => { setInputFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
+                onFocus={(e) => { setInputFocused(true); setCursorOffset(e.currentTarget.selectionStart ?? 0); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => { setInputFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
                 class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
               />
+              <Show when={ghostText()}>
+                <div
+                  role="button"
+                  aria-label="Accept suggestion"
+                  class="absolute right-0 top-0 bottom-0 left-1/2 min-w-[80px] cursor-default"
+                  onClick={(e) => { e.preventDefault(); acceptGhostCompletion() }}
+                />
+              </Show>
             </div>
             <Show when={!headerCollapsed()}>
               <button

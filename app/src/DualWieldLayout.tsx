@@ -3,6 +3,12 @@ import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
 import { toScryfallQuery, parse } from '@frantic-search/shared'
 import { buildFacesOf } from './app-utils'
+import {
+  getCompletionContext,
+  computeSuggestion,
+  buildAutocompleteData,
+  applyCompletion,
+} from './query-autocomplete'
 import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import { sealQuery } from './query-edit'
 import { extractViewMode } from './view-query'
@@ -245,6 +251,80 @@ export function SearchPane(props: {
   class?: string
 }) {
   const ctx = buildPaneContext(props.state)
+  let textareaEl: HTMLTextAreaElement | undefined
+  const [cursorOffset, setCursorOffset] = createSignal(0)
+  const [isComposing, setIsComposing] = createSignal(false)
+  const autocompleteData = createMemo(() =>
+    buildAutocompleteData(props.state.display(), props.state.printingDisplay())
+  )
+  const ghostText = createMemo(() => {
+    if (isComposing() || !autocompleteData()) return null
+    const q = props.state.query()
+    const cursor = cursorOffset()
+    const completionCtx = getCompletionContext(q, cursor)
+    if (!completionCtx) return null
+    if (cursor < completionCtx.tokenEnd) return null
+    const suggestion = computeSuggestion(completionCtx, autocompleteData()!)
+    if (!suggestion) return null
+    return suggestion.slice(cursor - completionCtx.tokenStart)
+  })
+  const handleInput = (e: Event) => {
+    const el = e.target as HTMLTextAreaElement
+    setCursorOffset(el.selectionStart ?? 0)
+    props.onInput(e)
+  }
+  const acceptGhostCompletion = () => {
+    const completionCtx = getCompletionContext(props.state.query(), cursorOffset())
+    if (!completionCtx || !autocompleteData() || !ghostText()) return
+    const suggestion = computeSuggestion(completionCtx, autocompleteData()!)
+    if (!suggestion) return
+    const { newQuery, newCursor } = applyCompletion(
+      props.state.query(),
+      cursorOffset(),
+      suggestion,
+      completionCtx
+    )
+    setCursorOffset(newCursor)
+    props.state.setQuery(newQuery)
+    queueMicrotask(() => {
+      if (textareaEl) {
+        textareaEl.focus()
+        textareaEl.setSelectionRange(newCursor, newCursor)
+      }
+    })
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Tab' && ghostText()) {
+      const completionCtx = getCompletionContext(props.state.query(), cursorOffset())
+      if (completionCtx && autocompleteData()) {
+        const suggestion = computeSuggestion(completionCtx, autocompleteData()!)
+        if (suggestion) {
+          e.preventDefault()
+          acceptGhostCompletion()
+        }
+      }
+    }
+  }
+
+  const touchStart = { x: 0, y: 0 }
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      touchStart.x = e.touches[0].clientX
+      touchStart.y = e.touches[0].clientY
+    }
+  }
+  const onTouchEnd = (e: TouchEvent) => {
+    if (e.changedTouches.length === 1 && ghostText()) {
+      const deltaX = e.changedTouches[0].clientX - touchStart.x
+      const deltaY = e.changedTouches[0].clientY - touchStart.y
+      if (deltaX > 40 && Math.abs(deltaY) < 20) {
+        e.preventDefault()
+        acceptGhostCompletion()
+      }
+    }
+  }
+
   return (
     <SearchProvider value={ctx}>
       <div class={`flex flex-col min-h-0 ${props.class ?? ''}`}>
@@ -255,12 +335,22 @@ export function SearchPane(props: {
                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
             </div>
-            <div class="grid overflow-hidden">
+            <div
+              class="grid overflow-hidden relative"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+            >
               <div ref={props.setTextareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-4">
-                <QueryHighlight query={props.state.query()} breakdown={props.state.breakdown()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+                <QueryHighlight
+                  query={props.state.query()}
+                  breakdown={props.state.breakdown()}
+                  cursorOffset={cursorOffset()}
+                  ghostText={ghostText()}
+                  class="text-base leading-normal whitespace-pre-wrap break-words"
+                />
               </div>
               <textarea
-                ref={props.setTextareaRef}
+                ref={(el) => { textareaEl = el; if (el) props.setTextareaRef(el) }}
                 rows={1}
                 placeholder="Search cards…"
                 autocapitalize="none"
@@ -268,13 +358,28 @@ export function SearchPane(props: {
                 autocorrect="off"
                 spellcheck={false}
                 value={props.state.query()}
-                onInput={props.onInput}
+                onInput={handleInput}
+                onSelect={(e) => setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+                onKeyDown={handleKeyDown}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={(e) => {
+                  setIsComposing(false)
+                  setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0)
+                }}
                 onScroll={props.onScroll}
-                onFocus={props.onFocus}
+                onFocus={(e) => { setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0); props.onFocus(e) }}
                 onBlur={props.onBlur}
                 disabled={props.workerStatus() === 'error'}
                 class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
               />
+              <Show when={ghostText()}>
+                <div
+                  role="button"
+                  aria-label="Accept suggestion"
+                  class="absolute right-0 top-0 bottom-0 left-1/2 min-w-[80px] cursor-default"
+                  onClick={(e) => { e.preventDefault(); acceptGhostCompletion() }}
+                />
+              </Show>
             </div>
           </div>
           <Show when={props.state.pinnedBreakdown() || (props.state.query().trim() !== '' && props.state.breakdown())}>
