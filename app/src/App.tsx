@@ -51,6 +51,7 @@ function App() {
 
   const initialParams = new URLSearchParams(location.search)
   const initialQueries = getPaneQueries(initialParams)
+  const [dualWieldActive, setDualWieldActive] = createSignal(isDualWield(initialParams))
   const [query, setQuery] = createSignal(initialQueries.left)
   const [query2, setQuery2] = createSignal(initialQueries.right)
   const [view, setView] = createSignal<View>(parseView(initialParams))
@@ -598,6 +599,7 @@ function App() {
     cancelPendingCommit()
 
     const params = new URLSearchParams(location.search)
+    setDualWieldActive(isDualWield(params))
     setView(parseView(params))
     const { left, right } = getPaneQueries(params)
     setQuery(left)
@@ -675,6 +677,7 @@ function App() {
     params.set('q1', current)
     params.set('q2', right)
     history.pushState(null, '', `?${params}`)
+    setDualWieldActive(true)
     setQuery(current)
     setQuery2(right)
     setView('search')
@@ -695,6 +698,7 @@ function App() {
     params.delete('q2')
     const url = params.toString() ? `?${params}` : location.pathname
     history.pushState(null, '', url)
+    setDualWieldActive(false)
     setQuery2('')
     setView('search')
     window.scrollTo(0, 0)
@@ -785,9 +789,8 @@ function App() {
   })
   const viewMode2 = createMemo(() => extractViewMode(effectiveQuery2()))
 
-  const params = () => new URLSearchParams(location.search)
   const showDualWield = () =>
-    view() === 'search' && isDualWield(params()) && viewportWide()
+    view() === 'search' && dualWieldActive() && viewportWide()
 
   const leftPaneState = createPaneState({
     query,
