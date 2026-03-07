@@ -1142,7 +1142,7 @@ function App() {
             </div>
             <div class="grid overflow-hidden">
               <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
-                <QueryHighlight query={query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+                <QueryHighlight query={query()} breakdown={breakdown()} class="text-base leading-normal whitespace-pre-wrap break-words" />
               </div>
               <textarea
                 ref={textareaRef}

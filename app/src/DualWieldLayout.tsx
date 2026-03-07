@@ -257,7 +257,7 @@ export function SearchPane(props: {
             </div>
             <div class="grid overflow-hidden">
               <div ref={props.setTextareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-4">
-                <QueryHighlight query={props.state.query()} class="text-base leading-normal whitespace-pre-wrap break-words" />
+                <QueryHighlight query={props.state.query()} breakdown={props.state.breakdown()} class="text-base leading-normal whitespace-pre-wrap break-words" />
               </div>
               <textarea
                 ref={props.setTextareaRef}

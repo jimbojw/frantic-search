@@ -1,101 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
-import { lex, TokenType, FIELD_ALIASES } from '@frantic-search/shared'
-import type { Token } from '@frantic-search/shared'
+import { FIELD_ALIASES } from '@frantic-search/shared'
+import type { BreakdownNode } from '@frantic-search/shared'
+import { buildSpans } from './QueryHighlight'
+import type { HighlightSpan } from './QueryHighlight'
 
-type HighlightRole =
-  | 'field'
-  | 'field-unknown'
-  | 'operator'
-  | 'value'
-  | 'bare'
-  | 'quoted'
-  | 'regex'
-  | 'not'
-  | 'paren'
-  | 'keyword'
+type HighlightRole = NonNullable<HighlightSpan['role']>
 
-const EXTRA_KNOWN_FIELDS = new Set(['unique', 'view', 'v', 'include', 'sort'])
-
-const OPERATORS = new Set<string>([
-  TokenType.COLON,
-  TokenType.EQ,
-  TokenType.NEQ,
-  TokenType.LT,
-  TokenType.GT,
-  TokenType.LTE,
-  TokenType.GTE,
-])
-
-function classifyToken(token: Token, prev: Token | undefined, next: Token | undefined): HighlightRole {
-  switch (token.type) {
-    case TokenType.DASH:
-    case TokenType.BANG:
-      return 'not'
-    case TokenType.LPAREN:
-    case TokenType.RPAREN:
-      return 'paren'
-    case TokenType.OR:
-      return 'keyword'
-    case TokenType.QUOTED:
-      return 'quoted'
-    case TokenType.REGEX:
-      return 'regex'
-    case TokenType.COLON:
-    case TokenType.EQ:
-    case TokenType.NEQ:
-    case TokenType.LT:
-    case TokenType.GT:
-    case TokenType.LTE:
-    case TokenType.GTE:
-      return 'operator'
-    case TokenType.WORD:
-      if (prev && OPERATORS.has(prev.type)) return 'value'
-      if (next && OPERATORS.has(next.type)) {
-        const lower = token.value.toLowerCase()
-        return (lower in FIELD_ALIASES || EXTRA_KNOWN_FIELDS.has(lower)) ? 'field' : 'field-unknown'
-      }
-      return 'bare'
-    default:
-      return 'bare'
-  }
-}
-
-interface HighlightSpan {
-  text: string
-  role: HighlightRole | null
-}
-
-function buildSpans(query: string): HighlightSpan[] {
-  if (!query) return []
-  const tokens = lex(query)
-  const spans: HighlightSpan[] = []
-  let cursor = 0
-
-  for (let i = 0; i < tokens.length; i++) {
-    const tok = tokens[i]
-    if (tok.type === TokenType.EOF) break
-
-    if (tok.start > cursor) {
-      spans.push({ text: query.slice(cursor, tok.start), role: null })
-    }
-
-    const prev = i > 0 ? tokens[i - 1] : undefined
-    const next = i + 1 < tokens.length ? tokens[i + 1] : undefined
-    const role = classifyToken(tok, prev, next)
-    spans.push({ text: query.slice(tok.start, tok.end), role })
-    cursor = tok.end
-  }
-
-  if (cursor < query.length) {
-    spans.push({ text: query.slice(cursor), role: null })
-  }
-
-  return spans
-}
-
-function roles(query: string): Array<[string, HighlightRole | null]> {
-  return buildSpans(query).map(s => [s.text, s.role])
+function roles(query: string, breakdown?: BreakdownNode | null): Array<[string, HighlightRole | null]> {
+  return buildSpans(query, breakdown).map(s => [s.text, s.role])
 }
 
 describe('buildSpans', () => {
@@ -239,5 +152,91 @@ describe('buildSpans', () => {
       const result = roles(`${alias}:val`)
       expect(result[0]).toEqual([alias, 'field'])
     }
+  })
+
+  describe('breakdown overlay (Spec 098)', () => {
+    it('overrides value to value-error when breakdown has error on value', () => {
+      const query = 'set:us'
+      const breakdown: BreakdownNode = {
+        type: 'FIELD',
+        label: 'set:us',
+        matchCount: -1,
+        error: 'unknown set "us"',
+        span: { start: 0, end: 6 },
+        valueSpan: { start: 4, end: 6 },
+      }
+      expect(roles(query, breakdown)).toEqual([
+        ['set', 'field'],
+        [':', 'operator'],
+        ['us', 'value-error'],
+      ])
+    })
+
+    it('overrides whole term to value-zero when breakdown has zero matchCount', () => {
+      const query = 't:nonexistent'
+      const flatBreakdown = {
+        type: 'FIELD',
+        label: 't:nonexistent',
+        matchCount: 0,
+        span: { start: 0, end: 13 },
+      } as BreakdownNode
+      const result = roles(query, flatBreakdown)
+      expect(result).toEqual([
+        ['t', 'value-zero'],
+        [':', 'value-zero'],
+        ['nonexistent', 'value-zero'],
+      ])
+    })
+
+    it('uses full span for error when valueSpan absent', () => {
+      const query = 'foo:bar'
+      const breakdown: BreakdownNode = {
+        type: 'FIELD',
+        label: 'foo:bar',
+        matchCount: -1,
+        error: 'unknown field "foo"',
+        span: { start: 0, end: 7 },
+      }
+      expect(roles(query, breakdown)).toEqual([
+        ['foo', 'value-error'],
+        [':', 'value-error'],
+        ['bar', 'value-error'],
+      ])
+    })
+
+    it('ignores breakdown when null', () => {
+      expect(roles('set:us', null)).toEqual(roles('set:us'))
+    })
+
+    it('ignores breakdown when it does not match current query (stale)', () => {
+      const query = 'tarmogy'
+      const staleBreakdown: BreakdownNode = {
+        type: 'BARE',
+        label: 'tarmog',
+        matchCount: 1,
+        span: { start: 0, end: 6 },
+      }
+      expect(roles(query, staleBreakdown)).toEqual(roles(query))
+    })
+
+    it('ignores spans beyond query length', () => {
+      const query = 'set:us'
+      const breakdown: BreakdownNode = {
+        type: 'AND',
+        label: 'AND',
+        matchCount: 0,
+        children: [
+          {
+            type: 'FIELD',
+            label: 'set:us',
+            matchCount: -1,
+            error: 'unknown set "us"',
+            span: { start: 0, end: 10 },
+            valueSpan: { start: 4, end: 10 },
+          },
+        ],
+      }
+      expect(roles(query, breakdown)).toEqual(roles(query))
+    })
   })
 })
