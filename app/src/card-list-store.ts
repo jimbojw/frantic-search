@@ -18,6 +18,8 @@ import {
   appendListMetadataEntry,
   replayInstanceLog,
   replayListMetadataLog,
+  readAllInstanceLog,
+  readAllListMetadataLog,
   getInstanceHistory,
   getInstanceLatestLogKeys,
 } from './card-list-db'
@@ -267,6 +269,34 @@ export class CardListStore {
     if (history.length < 2) return null
     const previousListId = history[history.length - 2].list_id
     return this.transferInstance(uuid, previousListId)
+  }
+
+  /**
+   * Export full history for debugging. Returns JSON string of instance_log,
+   * list_metadata_log, and materialized view.
+   */
+  async getDebugDump(): Promise<string> {
+    if (!this.db) return JSON.stringify({ error: 'CardListStore not initialized' })
+    const [instanceLog, metadataLog] = await Promise.all([
+      readAllInstanceLog(this.db),
+      readAllListMetadataLog(this.db),
+    ])
+    const materialized = {
+      instances: Object.fromEntries(this.view.instances),
+      lists: Object.fromEntries(this.view.lists),
+      instancesByList: Object.fromEntries(
+        [...this.view.instancesByList.entries()].map(([k, v]) => [k, [...v]])
+      ),
+    }
+    return JSON.stringify(
+      {
+        instance_log: instanceLog,
+        list_metadata_log: metadataLog,
+        materialized_view: materialized,
+      },
+      null,
+      2
+    )
   }
 
   /**

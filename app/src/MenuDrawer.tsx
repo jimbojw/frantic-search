@@ -343,6 +343,7 @@ export default function MenuDrawer(props: {
   onSetQuery: (query: string) => void
   onHelpClick: () => void
   onReportClick: () => void
+  onListsClick: () => void
   onClose: () => void
 }) {
   const ctx = useSearchContext()
@@ -515,12 +516,21 @@ export default function MenuDrawer(props: {
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                 Tools
               </h2>
-              <Outlink
-                href={ctx.scryfallUrl()}
-                class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
-              >
-                Try on Scryfall ↗
-              </Outlink>
+              <div class="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={props.onListsClick}
+                  class="text-left whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
+                >
+                  My List
+                </button>
+                <Outlink
+                  href={ctx.scryfallUrl()}
+                  class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
+                >
+                  Try on Scryfall ↗
+                </Outlink>
+              </div>
             </section>
             {/* TERMS sections */}
             <For each={TERMS_SECTIONS}>

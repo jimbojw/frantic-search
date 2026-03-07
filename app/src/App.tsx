@@ -6,6 +6,7 @@ import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
+import ListsPage from './ListsPage'
 import UnifiedBreakdown from './UnifiedBreakdown'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
@@ -16,7 +17,7 @@ import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex,
-  parseView, isDualWield, getPaneQueries,
+  parseView, parseListTab, isDualWield, getPaneQueries,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -62,6 +63,7 @@ function App() {
   const [query, setQuery] = createSignal(initialQueries.left)
   const [query2, setQuery2] = createSignal(initialQueries.right)
   const [view, setView] = createSignal<View>(parseView(initialParams))
+  const [listTab, setListTab] = createSignal<'default' | 'trash'>(parseListTab(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [reportingPane, setReportingPane] = createSignal<'left' | 'right'>('left')
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
@@ -674,6 +676,7 @@ function App() {
     const params = new URLSearchParams(location.search)
     setDualWieldActive(isDualWield(params))
     setView(parseView(params))
+    setListTab(parseListTab(params))
     const { left, right } = getPaneQueries(params)
     setQuery(left)
     setQuery2(right)
@@ -741,6 +744,25 @@ function App() {
     history.pushState(null, '', `?${params}`)
     setView('report')
     window.scrollTo(0, 0)
+  }
+
+  function navigateToLists(tab: 'default' | 'trash' = 'default') {
+    cancelPendingCommit()
+    saveScrollPosition()
+    captureUiInteracted({ element_name: 'lists', action: 'clicked' })
+    const params = new URLSearchParams()
+    params.set('list', tab === 'trash' ? 'trash' : '')
+    history.pushState(null, '', `?${params}`)
+    setListTab(tab)
+    setView('lists')
+    window.scrollTo(0, 0)
+  }
+
+  function navigateToListsTab(tab: 'default' | 'trash') {
+    const params = new URLSearchParams(location.search)
+    params.set('list', tab === 'trash' ? 'trash' : '')
+    history.pushState(null, '', `?${params}`)
+    setListTab(tab)
   }
 
   function enterDualWield() {
@@ -1064,6 +1086,16 @@ function App() {
           printingCount={reportPrintingCount()}
         />
       </Show>
+      <Show when={view() === 'lists'}>
+        <ListsPage
+          listTab={listTab()}
+          onTabChange={navigateToListsTab}
+          cardListStore={cardListStore}
+          listVersion={listVersion()}
+          display={display()}
+          onBack={() => history.back()}
+        />
+      </Show>
       <Show when={view() === 'search'}>
         <Show when={showDualWield()}>
           <DualWieldLayout
@@ -1072,6 +1104,7 @@ function App() {
             setUserEngaged={setUserEngaged}
             workerStatus={workerStatus}
             navigateToHelp={navigateToHelp}
+            onListsClick={navigateToLists}
             onNavigateHome={navigateHome}
             onLeaveDualWield={leaveDualWield}
           />
@@ -1173,6 +1206,7 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
+                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>
@@ -1187,6 +1221,7 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
+                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>

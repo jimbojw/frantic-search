@@ -14,6 +14,7 @@ import {
   faceStat,
   fullCardName,
   parseView,
+  parseListTab,
 } from './app-utils'
 
 // ---------------------------------------------------------------------------
@@ -277,6 +278,37 @@ describe('parseView', () => {
 
   it('prioritizes report over help', () => {
     expect(parseView(new URLSearchParams('report&help'))).toBe('report')
+  })
+
+  it('returns "lists" when list param is present', () => {
+    expect(parseView(new URLSearchParams('list'))).toBe('lists')
+    expect(parseView(new URLSearchParams('list='))).toBe('lists')
+    expect(parseView(new URLSearchParams('list=trash'))).toBe('lists')
+  })
+
+  it('prioritizes card over lists', () => {
+    expect(parseView(new URLSearchParams('card=abc&list'))).toBe('card')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseListTab
+// ---------------------------------------------------------------------------
+
+describe('parseListTab', () => {
+  it('returns "trash" when list=trash', () => {
+    expect(parseListTab(new URLSearchParams('list=trash'))).toBe('trash')
+  })
+
+  it('returns "default" when list param is empty or absent', () => {
+    expect(parseListTab(new URLSearchParams('list'))).toBe('default')
+    expect(parseListTab(new URLSearchParams('list='))).toBe('default')
+    expect(parseListTab(new URLSearchParams())).toBe('default')
+  })
+
+  it('returns "default" when list has other values', () => {
+    expect(parseListTab(new URLSearchParams('list=default'))).toBe('default')
+    expect(parseListTab(new URLSearchParams('list=foo'))).toBe('default')
   })
 })
 

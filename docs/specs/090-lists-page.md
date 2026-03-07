@@ -1,6 +1,6 @@
 # Spec 090: Lists Page
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State & History), Spec 075 (Card List Data Model and Persistence), Spec 077 (Query Engine — my:list)
 
@@ -162,3 +162,7 @@ All data comes from IndexedDB (via CardListStore) and in-memory display. The Lis
 8. Browser back returns to the previous view (search or prior list tab).
 9. The page is fully functional offline using IndexedDB and in-memory display.
 10. Orphaned entries (oracle_id not in display) are shown as "Unknown card" and do not break the page.
+
+## Implementation Notes
+
+- 2026-03-06: Implemented per spec. Lists page at `?list` and `?list=trash`; MenuDrawer TOOLS section includes "My List" link; metadata editable (name, short_name); per-card remove (minus) for default list. Trash restore deferred to phase 2.

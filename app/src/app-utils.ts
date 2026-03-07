@@ -82,13 +82,19 @@ export function fullCardName(d: DisplayColumns, faceIndices: number[]): string {
   return faceIndices.map(fi => d.names[fi]).join(' // ')
 }
 
-export type View = 'search' | 'help' | 'card' | 'report'
+export type View = 'search' | 'help' | 'card' | 'report' | 'lists'
 
 export function parseView(params: URLSearchParams): View {
   if (params.has('card')) return 'card'
   if (params.has('report')) return 'report'
   if (params.has('help')) return 'help'
+  if (params.has('list')) return 'lists'
   return 'search'
+}
+
+/** List tab when view is 'lists'. 'default' or 'trash'. */
+export function parseListTab(params: URLSearchParams): 'default' | 'trash' {
+  return params.get('list') === 'trash' ? 'trash' : 'default'
 }
 
 /** Dual Wield mode is active when q2 param is present (Spec 086). */

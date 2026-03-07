@@ -206,6 +206,58 @@ export function getInstanceLatestLogKeys(
 }
 
 /**
+ * Read all instance_log entries in key order (oldest first).
+ * Used for debug export.
+ */
+export function readAllInstanceLog(
+  db: IDBDatabase
+): Promise<InstanceStateEntry[]> {
+  return new Promise((resolve, reject) => {
+    const result: InstanceStateEntry[] = []
+    const store = db.transaction(INSTANCE_LOG_STORE, 'readonly').objectStore(INSTANCE_LOG_STORE)
+    const request = store.openCursor()
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) {
+        resolve(result)
+        return
+      }
+      result.push(cursor.value as InstanceStateEntry)
+      cursor.continue()
+    }
+  })
+}
+
+/**
+ * Read all list_metadata_log entries in key order (oldest first).
+ * Used for debug export.
+ */
+export function readAllListMetadataLog(
+  db: IDBDatabase
+): Promise<ListMetadataEntry[]> {
+  return new Promise((resolve, reject) => {
+    const result: ListMetadataEntry[] = []
+    const store = db
+      .transaction(LIST_METADATA_LOG_STORE, 'readonly')
+      .objectStore(LIST_METADATA_LOG_STORE)
+    const request = store.openCursor()
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) {
+        resolve(result)
+        return
+      }
+      result.push(cursor.value as ListMetadataEntry)
+      cursor.continue()
+    }
+  })
+}
+
+/**
  * Get all log entries for an instance, in key order (oldest first).
  * Used for restore/undo to find the previous list_id.
  */

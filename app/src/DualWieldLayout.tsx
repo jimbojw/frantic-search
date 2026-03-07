@@ -417,6 +417,7 @@ export function DualWieldLayout(props: {
   setUserEngaged: (v: boolean) => void
   workerStatus: () => 'loading' | 'ready' | 'error'
   navigateToHelp: () => void
+  onListsClick: () => void
   onNavigateHome: () => void
   onLeaveDualWield: () => void
 }) {
@@ -600,6 +601,7 @@ export function DualWieldLayout(props: {
                 onSetQuery={(q) => { props.leftState.flushPendingCommit(); props.leftState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.leftState.navigateToReport}
+                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>
@@ -625,6 +627,7 @@ export function DualWieldLayout(props: {
                 onSetQuery={(q) => { props.rightState.flushPendingCommit(); props.rightState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.rightState.navigateToReport}
+                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>
