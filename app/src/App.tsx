@@ -56,6 +56,7 @@ function App() {
   const [query2, setQuery2] = createSignal(initialQueries.right)
   const [view, setView] = createSignal<View>(parseView(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
+  const [reportingPane, setReportingPane] = createSignal<'left' | 'right'>('left')
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [dataProgress, setDataProgress] = createSignal(0)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
@@ -652,12 +653,16 @@ function App() {
     window.scrollTo(0, 0)
   }
 
-  function navigateToReport() {
+  function navigateToReport(side: 'left' | 'right' = 'left') {
     cancelPendingCommit()
     saveScrollPosition()
     captureUiInteracted({ element_name: 'bug_report', action: 'clicked' })
+    setReportingPane(side)
     const params = new URLSearchParams()
-    const q = query().trim()
+    const q =
+      side === 'right' && showDualWield()
+        ? effectiveQuery2().trim()
+        : effectiveQuery().trim()
     if (q) params.set('q', q)
     params.set('report', '')
     history.pushState(null, '', `?${params}`)
@@ -789,6 +794,26 @@ function App() {
   })
   const viewMode2 = createMemo(() => extractViewMode(effectiveQuery2()))
 
+  const reportQuery = createMemo(() =>
+    reportingPane() === 'right' ? effectiveQuery2() : effectiveQuery()
+  )
+  const reportBreakdown = createMemo(() =>
+    reportingPane() === 'right' ? effectiveBreakdown2() : effectiveBreakdown()
+  )
+  const reportResultCount = createMemo(() =>
+    reportingPane() === 'right' ? indices2().length : indices().length
+  )
+  const reportPrintingCount = createMemo(() => {
+    if (reportingPane() === 'right') {
+      return hasPrintingConditions2() || uniqueMode2() !== 'cards'
+        ? (printingIndices2()?.length ?? 0)
+        : undefined
+    }
+    return hasPrintingConditions() || uniqueMode() !== 'cards'
+      ? totalPrintingItems()
+      : undefined
+  })
+
   const showDualWield = () =>
     view() === 'search' && dualWieldActive() && viewportWide()
 
@@ -818,7 +843,7 @@ function App() {
     visibleCount,
     setVisibleCount,
     flushPendingCommit,
-    navigateToReport,
+    navigateToReport: () => navigateToReport('left'),
     navigateToCard,
   })
 
@@ -848,7 +873,7 @@ function App() {
     visibleCount: visibleCount2,
     setVisibleCount: setVisibleCount2,
     flushPendingCommit,
-    navigateToReport,
+    navigateToReport: () => navigateToReport('right'),
     navigateToCard,
   })
 
@@ -885,7 +910,7 @@ function App() {
     scryfallUrl,
     flushPendingCommit,
     setVisibleCount,
-    navigateToReport,
+    navigateToReport: () => navigateToReport('left'),
     navigateToCard,
     appendTerm,
     parseBreakdown,
@@ -926,14 +951,10 @@ function App() {
       </Show>
       <Show when={view() === 'report'}>
         <BugReport
-          query={effectiveQuery()}
-          breakdown={effectiveBreakdown()}
-          resultCount={totalCards()}
-          printingCount={
-            hasPrintingConditions() || uniqueMode() !== 'cards'
-              ? totalPrintingItems()
-              : undefined
-          }
+          query={reportQuery()}
+          breakdown={reportBreakdown()}
+          resultCount={reportResultCount()}
+          printingCount={reportPrintingCount()}
         />
       </Show>
       <Show when={view() === 'search'}>
@@ -944,7 +965,6 @@ function App() {
             setUserEngaged={setUserEngaged}
             workerStatus={workerStatus}
             navigateToHelp={navigateToHelp}
-            navigateToReport={navigateToReport}
             onNavigateHome={navigateHome}
             onLeaveDualWield={leaveDualWield}
           />
