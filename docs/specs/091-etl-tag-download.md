@@ -1,6 +1,6 @@
 # Spec 091: ETL Tag Download
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 001 (ETL Download), Issue #99 (Epic: otag/atag Support)
 

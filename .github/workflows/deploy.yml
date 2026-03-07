@@ -53,6 +53,9 @@ jobs:
       - name: Download Oracle Cards
         run: npm run etl -- download
 
+      - name: Download Scryfall tags
+        run: npm run etl -- download-tags --verbose
+
       - name: Restore ThumbHash cache
         uses: actions/cache@v4
         with:

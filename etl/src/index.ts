@@ -19,6 +19,7 @@ import { processCards } from "./process";
 import { processPrintings } from "./process-printings";
 import { generateThumbHashes } from "./thumbhash";
 import { restoreManifest } from "./restore";
+import { runDownloadTags } from "./download-tags";
 
 const cli = cac("etl");
 
@@ -72,6 +73,22 @@ cli
       process.stderr.write(`Error: ${msg}\n`);
       process.exit(1);
     }
+  });
+
+cli
+  .command("download-tags", "Download Scryfall oracle and illustration tags from private API")
+  .option("--force", "Download even if cached files exist and are recent", {
+    default: false,
+  })
+  .option("--verbose", "Print detailed progress", { default: false })
+  .action(async (options: { force: boolean; verbose: boolean }) => {
+    try {
+      await runDownloadTags(options);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Warning: ${msg}\n`);
+    }
+    // Always exit 0 — tag data is optional, must not block CI
   });
 
 cli
