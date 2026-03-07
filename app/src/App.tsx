@@ -160,7 +160,13 @@ function App() {
     initialParams.has('q') && initialParams.get('q') === ''
   )
   const [cursorOffset, setCursorOffset] = createSignal(0)
+  const [selectionEnd, setSelectionEnd] = createSignal(0)
   const [isComposing, setIsComposing] = createSignal(false)
+
+  function updateSelection(el: HTMLTextAreaElement) {
+    setCursorOffset(el.selectionStart ?? 0)
+    setSelectionEnd(el.selectionEnd ?? 0)
+  }
   let programmaticFocusInProgress = false
   let textareaRef: HTMLTextAreaElement | undefined
   let textareaHlRef: HTMLDivElement | undefined
@@ -173,6 +179,7 @@ function App() {
   )
   const ghostText = createMemo(() => {
     if (isComposing() || !autocompleteData()) return null
+    if (cursorOffset() !== selectionEnd()) return null // has selection
     const q = query()
     const cursor = cursorOffset()
     const ctx = getCompletionContext(q, cursor)
@@ -191,6 +198,7 @@ function App() {
     const { newQuery, newCursor } = applyCompletion(query(), cursorOffset(), suggestion, ctx)
     setCursorOffset(newCursor)
     setQuery(newQuery)
+    setSelectionEnd(newCursor)
     queueMicrotask(() => {
       if (textareaRef) {
         textareaRef.focus()
@@ -1273,14 +1281,14 @@ function App() {
                 onInput={(e) => {
                   const el = e.currentTarget
                   setQuery(el.value)
-                  setCursorOffset(el.selectionStart ?? 0)
+                  updateSelection(el)
                   setUserEngaged(true)
                   if (textareaHlRef) {
                     textareaHlRef.scrollTop = el.scrollTop
                     textareaHlRef.scrollLeft = el.scrollLeft
                   }
                 }}
-                onSelect={(e) => setCursorOffset(e.currentTarget.selectionStart ?? 0)}
+                onSelect={(e) => updateSelection(e.currentTarget)}
                 onKeyDown={(e) => {
                   if (e.key === 'Tab' && ghostText()) {
                     e.preventDefault()
@@ -1290,10 +1298,10 @@ function App() {
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={(e) => {
                   setIsComposing(false)
-                  setCursorOffset(e.currentTarget.selectionStart ?? 0)
+                  updateSelection(e.currentTarget)
                 }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                onFocus={(e) => { setInputFocused(true); setCursorOffset(e.currentTarget.selectionStart ?? 0); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
+                onFocus={(e) => { setInputFocused(true); updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => { setInputFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
                 class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}

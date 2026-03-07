@@ -138,7 +138,7 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 
 - **Empty query:** No completion.
 - **Cursor at start/end of token:** Context still detected; suggestion may be full token or suffix.
-- **Selection (range):** Use `selectionStart` as the effective cursor for completion. Ignore `selectionEnd` for context.
+- **Selection (range):** When `selectionStart !== selectionEnd`, do not show ghost text. The syntax highlight layer must exactly match the textarea; ghost text would cause misalignment. When there is no selection (caret only), use `selectionStart` as the effective cursor for completion.
 - **Multi-line query:** Cursor position is character offset; works across lines.
 - **DualWieldLayout:** Each pane has independent query and cursor. Autocomplete state is per-pane; no cross-talk.
 - **Worker error state:** Input disabled; no completion.

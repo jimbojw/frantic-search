@@ -255,7 +255,13 @@ export function SearchPane(props: {
   const ctx = buildPaneContext(props.state)
   let textareaEl: HTMLTextAreaElement | undefined
   const [cursorOffset, setCursorOffset] = createSignal(0)
+  const [selectionEnd, setSelectionEnd] = createSignal(0)
   const [isComposing, setIsComposing] = createSignal(false)
+
+  function updateSelection(el: HTMLTextAreaElement) {
+    setCursorOffset(el.selectionStart ?? 0)
+    setSelectionEnd(el.selectionEnd ?? 0)
+  }
   const autocompleteData = createMemo(() =>
     buildAutocompleteData(props.state.display(), props.state.printingDisplay(), {
       oracle: props.state.oracleTagLabels().length ? props.state.oracleTagLabels() : undefined,
@@ -264,6 +270,7 @@ export function SearchPane(props: {
   )
   const ghostText = createMemo(() => {
     if (isComposing() || !autocompleteData()) return null
+    if (cursorOffset() !== selectionEnd()) return null // has selection
     const q = props.state.query()
     const cursor = cursorOffset()
     const completionCtx = getCompletionContext(q, cursor)
@@ -275,7 +282,7 @@ export function SearchPane(props: {
   })
   const handleInput = (e: Event) => {
     const el = e.target as HTMLTextAreaElement
-    setCursorOffset(el.selectionStart ?? 0)
+    updateSelection(el)
     props.onInput(e)
   }
   const acceptGhostCompletion = () => {
@@ -290,6 +297,7 @@ export function SearchPane(props: {
       completionCtx
     )
     setCursorOffset(newCursor)
+    setSelectionEnd(newCursor)
     props.state.setQuery(newQuery)
     queueMicrotask(() => {
       if (textareaEl) {
@@ -364,15 +372,15 @@ export function SearchPane(props: {
                 spellcheck={false}
                 value={props.state.query()}
                 onInput={handleInput}
-                onSelect={(e) => setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+                onSelect={(e) => updateSelection(e.target as HTMLTextAreaElement)}
                 onKeyDown={handleKeyDown}
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={(e) => {
                   setIsComposing(false)
-                  setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0)
+                  updateSelection(e.target as HTMLTextAreaElement)
                 }}
                 onScroll={props.onScroll}
-                onFocus={(e) => { setCursorOffset((e.target as HTMLTextAreaElement).selectionStart ?? 0); props.onFocus(e) }}
+                onFocus={(e) => { updateSelection(e.target as HTMLTextAreaElement); props.onFocus(e) }}
                 onBlur={props.onBlur}
                 disabled={props.workerStatus() === 'error'}
                 class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
