@@ -117,7 +117,6 @@ function App() {
       const expanded = pinned === 'true' || breakdown === 'true'
       localStorage.setItem('frantic-breakdown-expanded', String(expanded))
       localStorage.removeItem('frantic-pinned-expanded')
-      localStorage.removeItem('frantic-breakdown-expanded')
       return expanded
     }
     return localStorage.getItem('frantic-breakdown-expanded') !== 'false'
