@@ -11,8 +11,10 @@ import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, promoteFaceToPrintingCanonicalNonfoil, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
+import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
 import { SORT_FIELDS } from "./sort-fields";
 import { parse } from "./parser";
+import type { OracleTagData } from "../data";
 
 export { FIELD_ALIASES } from "./eval-leaves";
 
@@ -109,18 +111,30 @@ export function nodeKey(ast: ASTNode): string {
 
 export type GetListMask = (listId: string) => { faceMask: Uint8Array; printingMask?: Uint8Array } | null;
 
+export type TagDataRef = {
+  oracle: OracleTagData | null;
+  illustration: Map<string, Uint32Array> | null;
+};
+
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
   readonly index: CardIndex;
   private _printingIndex: PrintingIndex | null = null;
   private _getListMask: GetListMask | null = null;
+  private _tagDataRef: TagDataRef | null = null;
   /** Root AST during evaluate(); used for my: + unique:prints override. */
   private _rootAstForOverride: ASTNode | undefined = undefined;
 
-  constructor(index: CardIndex, printingIndex?: PrintingIndex | null, getListMask?: GetListMask | null) {
+  constructor(
+    index: CardIndex,
+    printingIndex?: PrintingIndex | null,
+    getListMask?: GetListMask | null,
+    tagDataRef?: TagDataRef | null,
+  ) {
     this.index = index;
     this._printingIndex = printingIndex ?? null;
     this._getListMask = getListMask ?? null;
+    this._tagDataRef = tagDataRef ?? null;
   }
 
   /** Maps query value to protocol listId. MVP: "list", "default", "" → "default". */
@@ -552,6 +566,12 @@ export class NodeCache {
               );
               if (status === "unknown") error = `unknown keyword "${ast.value}"`;
             }
+          } else if (canonical === "atag") {
+            if (ast.operator !== ":" && ast.operator !== "=") {
+              error = "atag: requires : or = operator";
+            } else {
+              error = evalIllustrationTag(ast.value, this._tagDataRef?.illustration ?? null, buf);
+            }
           } else if (canonical && ast.value !== "") {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index);
           }
@@ -588,6 +608,25 @@ export class NodeCache {
             timings.set(interned.key, { cached: false, evalMs: 0 });
             break;
           }
+        }
+
+        if (canonical === "otag") {
+          const buf = new Uint8Array(n);
+          const t0 = performance.now();
+          let err: string | null = null;
+          if (ast.operator !== ":" && ast.operator !== "=") {
+            err = "otag: requires : or = operator";
+          } else {
+            err = evalOracleTag(ast.value, this._tagDataRef?.oracle ?? null, buf);
+          }
+          const ms = performance.now() - t0;
+          if (err) {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
+          } else {
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          }
+          timings.set(interned.key, { cached: false, evalMs: err ? 0 : ms });
+          break;
         }
 
         // Face-domain evaluation (existing logic)

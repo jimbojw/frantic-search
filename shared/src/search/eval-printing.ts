@@ -13,7 +13,7 @@ const KNOWN_LANGUAGES = new Set([
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
-  "game", "legal", "banned", "restricted", "in",
+  "game", "legal", "banned", "restricted", "in", "atag",
 ]);
 
 export const FACE_FALLBACK_PRINTING_FIELDS = new Set([

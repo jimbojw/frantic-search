@@ -35,6 +35,9 @@ export const FIELD_ALIASES: Record<string, string> = {
   game: "game",
   in: "in",
   my: "my",
+  otag: "otag",
+  atag: "atag",
+  art: "atag",
 };
 
 function parseColorValue(value: string): number {

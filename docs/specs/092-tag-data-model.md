@@ -285,4 +285,4 @@ Worker                                    Main Thread
 
 ## Implementation Notes
 
-- 2026-03-07: Implemented per spec. ETL `processTags()` in `etl/src/process-tags.ts`; Vite plugin and worker loading; PWA cache rules. Tag data is stored in worker and passed to `runSearch` via `tagDataRef`; parser/evaluator support for `otag:` and `atag:` is a future spec (Issue #99).
+- 2026-03-07: Implemented per spec. ETL `processTags()` in `etl/src/process-tags.ts`; Vite plugin and worker loading; PWA cache rules. Tag data is stored in worker and passed to `NodeCache` via `tagDataRef`; evaluator support for `otag:` and `atag:` implemented in Spec 093.

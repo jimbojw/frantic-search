@@ -218,18 +218,17 @@ async function init(): Promise<void> {
     : null
   const listMaskCache = new Map<string, { faceMask: Uint8Array; printingMask?: Uint8Array }>()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
-  const cache = new NodeCache(index, printingIndex, getListMask)
+  const tagDataRef = {
+    oracle: null as OracleTagData | null,
+    illustration: null as Map<string, Uint32Array> | null,
+  }
+  const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef)
   const display = extractDisplayColumns(data)
 
   post({ type: 'status', status: 'ready', display })
 
   if (printingData) {
     post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })
-  }
-
-  const tagDataRef = {
-    oracle: null as OracleTagData | null,
-    illustration: null as Map<string, Uint32Array> | null,
   }
 
   otagsPromise.then((otags) => {
