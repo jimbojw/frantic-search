@@ -217,13 +217,23 @@ function ViewChip(props: {
     <button
       type="button"
       onClick={() => props.onChange(props.mode)}
-      class={`inline-flex items-center justify-center min-h-9 min-w-9 px-1.5 py-1.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
         props.active
           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
     >
-      {props.label}
+      {props.active ? (
+        props.label
+      ) : (
+        <For each={buildSpans(props.label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      )}
     </button>
   )
 }
@@ -244,13 +254,23 @@ function UniqueChip(props: {
     <button
       type="button"
       onClick={() => props.onChange(props.mode)}
-      class={`inline-flex items-center justify-center min-h-9 min-w-9 px-1.5 py-1.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
         props.active
           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
           : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
     >
-      {props.label}
+      {props.active ? (
+        props.label
+      ) : (
+        <For each={buildSpans(props.label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      )}
     </button>
   )
 }
