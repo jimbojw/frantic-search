@@ -372,6 +372,8 @@ function App() {
                 msg.printingDisplay,
                 cardListStore
               )
+              // Re-run search so my:list + unique:prints override applies with full masks
+              setListVersion((v) => v + 1)
             }
           }
         } else {
@@ -475,6 +477,7 @@ function App() {
   })
 
   createEffect(() => {
+    listVersion() // Re-run when list masks update (e.g. printings-ready)
     const params = new URLSearchParams(location.search)
     const dual = isDualWield(params)
     const q = query().trim()
