@@ -26,6 +26,7 @@ import {
 
 interface DefaultCardFace {
   illustration_id?: string;
+  oracle_id?: string;
 }
 
 interface DefaultCard {
@@ -319,12 +320,14 @@ export function processPrintings(verbose: boolean): void {
   let totalEntries = 0;
 
   for (const card of defaultCards) {
-    if (!card.oracle_id) {
+    // reversible_card layout: Scryfall puts oracle_id on card_faces[0], not top-level (Issue #98)
+    const oracleId = card.oracle_id ?? card.card_faces?.[0]?.oracle_id;
+    if (!oracleId) {
       dropped++;
       continue;
     }
 
-    const canonicalFace = oracleIdMap.get(card.oracle_id);
+    const canonicalFace = oracleIdMap.get(oracleId);
     if (canonicalFace === undefined) {
       dropped++;
       continue;

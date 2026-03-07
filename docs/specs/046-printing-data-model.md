@@ -48,8 +48,11 @@ The `scryfall_id` is duplicated across finish rows of the same physical printing
 Each Scryfall printing entry has an `oracle_id` field that identifies the oracle card it belongs to. During processing:
 
 1. Build a `Map<string, number>` from `oracle_id` → canonical face index by iterating the existing `columns.json` (or the oracle cards used to build it).
-2. For each printing in `default-cards.json`, look up its `oracle_id` to get the `canonical_face_ref`.
-3. Printings whose `oracle_id` doesn't appear in the map (e.g. missing `oracle_id` in Scryfall data) are dropped.
+2. For each printing in `default-cards.json`, resolve `oracle_id`:
+   - Use top-level `card.oracle_id` when present.
+   - For `reversible_card` layout, Scryfall omits top-level `oracle_id`; fall back to `card_faces[0].oracle_id` (Issue #98).
+3. Look up the resolved `oracle_id` to get the `canonical_face_ref`.
+4. Printings whose `oracle_id` doesn't appear in the map (e.g. missing in Scryfall data) are dropped.
 
 ## Columnar Schema: `PrintingColumnarData`
 
@@ -258,3 +261,6 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 - 2026-03-04: Removed ETL-level layout filtering (Issue #80). Printings for tokens, emblems,
   art_series, planar, scheme, and vanguard are now included when their oracle cards are
   in columns.json.
+- 2026-03-06: For `reversible_card` layout, Scryfall puts `oracle_id` on `card_faces[0]` only.
+  Added fallback `card.oracle_id ?? card.card_faces?.[0]?.oracle_id` so 81 reversible printings
+  (e.g. Krark's Thumb SLD) are no longer dropped (Issue #98).
