@@ -269,7 +269,7 @@ export function SearchPane(props: {
             />
           </Show>
         </div>
-        <div class="flex-1 min-h-0 overflow-auto px-2">
+        <div class="flex-1 min-h-0 overflow-auto">
           <SearchResults />
         </div>
       </div>
