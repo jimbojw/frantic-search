@@ -6,6 +6,7 @@ import { PrintingIndex } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
 const cache = new NodeCache(index, printingIndex)
+
 const sessionSalt = 12345
 
 describe('runSearch pinned lip counts (issue #52)', () => {
@@ -359,6 +360,53 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     })
     expect(result.indices.length).toBeGreaterThan(0)
     expect(result.hasPrintingConditions).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #96: Pinned my:list + live unique:prints applies override
+// ---------------------------------------------------------------------------
+describe('pinned my:list + live unique:prints override (Issue #96)', () => {
+  const getListMask = () => {
+    const faceMask = new Uint8Array(index.faceCount)
+    faceMask[3] = 1 // Sol Ring (oracle-level)
+    const printingMask = new Uint8Array(printingIndex.printingCount)
+    printingMask[1] = 1 // Bolt foil (printing-level)
+    return { faceMask, printingMask }
+  }
+  const cacheWithList = new NodeCache(index, printingIndex, getListMask)
+
+  it('pinned my:list + live unique:prints applies override (2 printings)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'unique:prints', pinnedQuery: 'my:list' },
+      cache: cacheWithList,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.hasPrintingConditions).toBe(true)
+    expect(result.uniqueMode).toBe('prints')
+    // Override: Bolt foil (1) + Sol Ring canonical nonfoil (3) = 2 printings
+    expect(result.printingIndices).toBeDefined()
+    expect(result.printingIndices!.length).toBe(2)
+    expect(Array.from(result.printingIndices!)).toContain(1)
+    expect(Array.from(result.printingIndices!)).toContain(3)
+  })
+
+  it('pinned unique:prints + live my:list applies override (2 printings)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'my:list', pinnedQuery: 'unique:prints' },
+      cache: cacheWithList,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.hasPrintingConditions).toBe(true)
+    expect(result.uniqueMode).toBe('prints')
+    expect(result.printingIndices).toBeDefined()
+    expect(result.printingIndices!.length).toBe(2)
+    expect(Array.from(result.printingIndices!)).toContain(1)
+    expect(Array.from(result.printingIndices!)).toContain(3)
   })
 })
 

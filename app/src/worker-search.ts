@@ -145,7 +145,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
   }
 
   const ast = parse(msg.query)
-  const liveEval = cache.evaluate(ast)
+  const effectiveAst = hasPinned
+    ? parse(sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(msg.query.trim()))
+    : undefined
+  const liveEval = cache.evaluate(ast, effectiveAst ? { effectiveAst } : undefined)
   const breakdown = toBreakdown(liveEval.result)
 
   let deduped: number[]
@@ -160,7 +163,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   if (hasPinned) {
     const pinnedAst = parse(msg.pinnedQuery!)
-    const pinnedEval = cache.evaluate(pinnedAst)
+    const pinnedEval = cache.evaluate(pinnedAst, effectiveAst ? { effectiveAst } : undefined)
     pinnedBreakdown = toBreakdown(pinnedEval.result)
     pinnedIndicesCount = pinnedEval.indices.length
     if (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards") {

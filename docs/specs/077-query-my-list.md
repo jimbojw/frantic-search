@@ -87,6 +87,8 @@ The existing `nodeKey` for `FIELD` nodes already includes `field`, `operator`, a
 
 When the query contains both `my:` and `unique:prints`, and the list has mixed entries (face + printing), `unique:prints` overrides the default expansion: instead of expanding to all printings via `promoteFaceToPrinting`, the evaluator uses `promoteFaceToPrintingCanonicalNonfoil` so each generic entry contributes only its canonical nonfoil printing. This preserves the distinction between "I added this card generically" and "I added this specific printing" in Images/Full view. The `my:` leaf's result depends on the query context, so the NodeCache must invalidate the cached `my:` result when the override applies (e.g. cache was populated by a query without `unique:prints`, then a query with `unique:prints` is evaluated).
 
+**Pinned + live (Spec 054):** When pinned and live queries are both present, "the query" means the effective combined query. The override applies when the effective query contains both `my:` and `unique:prints`, regardless of which part contributes each term. The worker passes an effective AST context to `evaluate()` so the `my:` leaf sees the combined unique mode (Issue #96).
+
 ### Error Handling
 
 - Unknown list name: `getListMask` returns `null` → error node (e.g. `unknown list "foo"`). Per Spec 039, error nodes are transparent to filtering (match-all) and surface the error in the breakdown.
@@ -111,3 +113,4 @@ When the query contains both `my:` and `unique:prints`, and the list has mixed e
 - [x] Mixed list: `my:list` produces printing-domain result (face entries expanded via `promoteFaceToPrinting`, OR with `printingMask`)
 - [x] Mixed list + `my:list is:nonfoil`: matches (generic entry expands to all printings including nonfoil)
 - [x] Mixed list + `my:list unique:prints`: override applies — generic entries show only canonical nonfoil; explicit printings shown; `printingIndices` reflects exactly what's in the list
+- [x] Pinned `my:list` + live `unique:prints` (or vice versa): override applies — effective query drives expansion (Issue #96)

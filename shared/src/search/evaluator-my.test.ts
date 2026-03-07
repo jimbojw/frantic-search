@@ -191,6 +191,18 @@ describe("my:list mixed (face + printing entries)", () => {
     expect(out.printingIndices).toContain(1); // Bolt foil (explicit)
     expect(out.printingIndices).toContain(3); // Sol Ring canonical nonfoil (generic)
   });
+
+  test("effectiveAst: pinned my:list + live unique:prints applies override (Issue #96)", () => {
+    // Simulate pinned "my:list", live "unique:prints" — effective query has both
+    const pinnedAst = parse("my:list");
+    const effectiveAst = parse("my:list unique:prints");
+    const out = cache.evaluate(pinnedAst, { effectiveAst });
+    expect(out.hasPrintingConditions).toBe(true);
+    expect(out.printingIndices).toBeDefined();
+    expect(out.printingIndices!.length).toBe(2);
+    expect(out.printingIndices).toContain(1); // Bolt foil (explicit)
+    expect(out.printingIndices).toContain(3); // Sol Ring canonical nonfoil (generic)
+  });
 });
 
 describe("my:list without getListMask (CLI)", () => {

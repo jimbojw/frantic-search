@@ -161,10 +161,10 @@ export class NodeCache {
     return interned;
   }
 
-  evaluate(ast: ASTNode): EvalOutput {
+  evaluate(ast: ASTNode, options?: { effectiveAst?: ASTNode }): EvalOutput {
     const timings = new Map<string, EvalTiming>();
     const root = this.internTree(ast);
-    this._rootAstForOverride = ast;
+    this._rootAstForOverride = options?.effectiveAst ?? ast;
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
 
