@@ -32,9 +32,10 @@ import {
   buildMasksForList,
   hasPrintingLevelEntries,
 } from './list-mask-builder'
-import { captureSearchExecuted, captureUiInteracted } from './analytics'
+import { captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
 import { createPaneState } from './pane-state-factory'
+import { useSearchCapture } from './useSearchCapture'
 import { WorkerErrorBanner } from './WorkerErrorBanner'
 
 declare const __REPO_URL__: string
@@ -305,36 +306,7 @@ function App() {
   let latestQueryId = 0
   let latestQueryIdLeft = 0
   let latestQueryIdRight = 0
-  let searchCaptureTimer: ReturnType<typeof setTimeout> | null = null
-  let pendingSearchCapture: { query: string; used_extension: boolean; results_count: number } | null = null
-
-  function scheduleSearchCapture(
-    query: string,
-    usedExtension: boolean,
-    resultsCount: number
-  ): void {
-    if (!query.trim()) return
-    pendingSearchCapture = { query: query.trim(), used_extension: usedExtension, results_count: resultsCount }
-    if (searchCaptureTimer) clearTimeout(searchCaptureTimer)
-    searchCaptureTimer = setTimeout(() => {
-      if (pendingSearchCapture) {
-        captureSearchExecuted(pendingSearchCapture)
-        pendingSearchCapture = null
-      }
-      searchCaptureTimer = null
-    }, 750)
-  }
-
-  function flushSearchCapture(): void {
-    if (searchCaptureTimer) {
-      clearTimeout(searchCaptureTimer)
-      searchCaptureTimer = null
-    }
-    if (pendingSearchCapture) {
-      captureSearchExecuted(pendingSearchCapture)
-      pendingSearchCapture = null
-    }
-  }
+  const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
 
   function sendListUpdatesFor(
     workerRef: Worker,
