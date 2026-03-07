@@ -33,15 +33,15 @@ Dual Wield mode is enabled when the `q2` URL parameter is **present** (even with
 
 An affordance (e.g. a "Split" button, keyboard shortcut, or link) adds `q2` to the URL. On transition:
 
-- Copy the current single-pane query to **both** `q1` and `q2`. (Read from `q1 ?? q` if already in Dual Wield; otherwise from `q`.)
+- **First-time (user has never used Dual Wield):** Copy the current single-pane query to **both** `q1` and `q2`. (Read from `q1 ?? q` if already in Dual Wield; otherwise from `q`.) Result: `?q1=<current>&q2=<current>` — both panes start with the same query.
+- **Returning (user has used Dual Wield before):** Restore the right pane's last live query from localStorage (`frantic-last-q2`). The left pane still uses the current single-pane query for `q1`. The right pane's pinned query is already restored from `frantic-pinned2` on app load.
 - Remove `q` from the URL.
-- Result: `?q1=<current>&q2=<current>` — both panes start with the same query.
 
-**Rationale:** The typical use case is comparing a list to a card pool slice. Both sides start identical; the user then diverges them (e.g. left: `(is:ub OR s:sld) ci:boros t:equipment unique:art -my:list`, right: `my:list`).
+**Rationale:** The typical first-time use case is comparing a list to a card pool slice. Both sides start identical; the user then diverges them. Returning users benefit from resuming where they left off in the right pane.
 
 ### Leaving Dual Wield
 
-Removing `q2` from the URL returns to single-pane mode. The left pane's query (`q1`) becomes the sole query. The right pane's query is discarded unless we add an explicit "merge" or "copy to left" action (out of scope for initial implementation).
+Removing `q2` from the URL returns to single-pane mode. The left pane's query (`q1`) becomes the sole query. Before discarding, the right pane's live query is saved to localStorage (`frantic-last-q2`) so it can be recalled when the user re-enters Dual Wield.
 
 ## Background
 
@@ -79,7 +79,8 @@ The spatial mapping is explicit: left rail → left drawer → left pane. Right 
 
 Each pane has:
 
-- Its own `query` and `pinnedQuery` (stored in `q1`/`q2` and `pinned1`/`pinned2` or equivalent localStorage keys)
+- Its own `query` and `pinnedQuery` (stored in `q1`/`q2` in URL and `frantic-pinned-query`/`frantic-pinned2` in localStorage)
+- `frantic-last-q2` in localStorage: the right pane's last live query, recalled when re-entering Dual Wield
 - Its own `indices`, `breakdown`, `histograms`, `printingIndices`, etc.
 - Its own `SearchProvider` — the MenuDrawer in each rail uses the context for that pane
 - Its own histograms expand/collapse, breakdown expand/collapse (localStorage keys can be shared or per-pane; implementation detail)
@@ -138,6 +139,7 @@ When `q2` is absent, the app behaves exactly as today. Single-pane retains the c
 6. When `q2` is absent, the app behaves as today (single-pane, `q` param). No regression.
 7. An affordance exists to enter Dual Wield (adds `q2` to URL). Exact UX TBD.
 8. Worker executes both pane queries and returns results to the correct pane.
+9. When re-entering Dual Wield after having used it before, the right pane restores its last live query (and pinned query) from localStorage.
 
 ## Open Questions
 

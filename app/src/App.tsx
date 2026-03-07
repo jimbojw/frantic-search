@@ -669,12 +669,14 @@ function App() {
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
     const current = query().trim() || query2().trim() || params.get('q1') || params.get('q') || ''
+    const lastQ2 = localStorage.getItem('frantic-last-q2')
+    const right = lastQ2 ?? current
     params.delete('q')
     params.set('q1', current)
-    params.set('q2', current)
+    params.set('q2', right)
     history.pushState(null, '', `?${params}`)
     setQuery(current)
-    setQuery2(current)
+    setQuery2(right)
     setView('search')
     window.scrollTo(0, 0)
   }
@@ -682,6 +684,9 @@ function App() {
   function leaveDualWield() {
     cancelPendingCommit()
     saveScrollPosition()
+    const right = query2().trim()
+    if (right) localStorage.setItem('frantic-last-q2', right)
+    else localStorage.removeItem('frantic-last-q2')
     const params = new URLSearchParams(location.search)
     const left = query().trim()
     if (left) params.set('q', left)
