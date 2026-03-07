@@ -35,6 +35,7 @@ import {
 import { captureSearchExecuted, captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
 import { createPaneState } from './pane-state-factory'
+import { WorkerErrorBanner } from './WorkerErrorBanner'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -1142,44 +1143,12 @@ function App() {
       </header>
 
       <main class="mx-auto max-w-2xl px-4">
-        <Show when={workerStatus() === 'error'}>
-          <div class="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-6 shadow-sm">
-            <Show when={errorCause() === 'stale'} fallback={<>
-              <p class="text-sm font-medium text-red-800 dark:text-red-200">Could not load card data</p>
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errorCause() === 'network'
-                  ? 'Check your internet connection. The page will reload automatically when connectivity is restored.'
-                  : workerError()}
-              </p>
-              <button
-                type="button"
-                onClick={() => location.reload()}
-                class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 active:bg-red-800 transition-colors"
-              >
-                Try again
-              </button>
-            </>}>
-              <p class="text-sm font-medium text-red-800 dark:text-red-200">Card data is out of date</p>
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">
-                A newer version of Frantic Search has been deployed. Reload to get the latest data.
-              </p>
-              <button
-                type="button"
-                onClick={() => hardReload()}
-                class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 active:bg-red-800 transition-colors"
-              >
-                Reload
-              </button>
-            </Show>
-          </div>
-        </Show>
-
-        <Show when={workerStatus() === 'loading'}>
-          <p class="text-center text-sm text-gray-400 dark:text-gray-600 pt-8">
-            Loading card data…
-          </p>
-        </Show>
-
+        <WorkerErrorBanner
+          workerStatus={workerStatus}
+          errorCause={errorCause}
+          workerError={workerError}
+          onHardReload={hardReload}
+        />
         <Show when={workerStatus() === 'ready' && display()}>
           <SearchResults />
         </Show>
