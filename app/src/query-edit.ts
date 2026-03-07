@@ -679,6 +679,12 @@ export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
   return findFieldNode(breakdown, UNIQUE_FIELDS, ':', false, v => v === 'prints') !== null
 }
 
+/** True when query contains my: (e.g. my:list) in positive form. Used for list-entry aggregation counts (Spec 097). */
+export function hasMyInQuery(breakdown: BreakdownNode | null): boolean {
+  if (!breakdown) return false
+  return findFieldNode(breakdown, ['my'], ':', false) !== null
+}
+
 // ---------------------------------------------------------------------------
 // clearUniqueTerms, setUniqueTerm (Spec 084)
 // ---------------------------------------------------------------------------

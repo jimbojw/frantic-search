@@ -6,6 +6,7 @@ import {
   buildMasksForList,
   getMatchingCount,
   hasPrintingLevelEntries,
+  countListEntriesPerCard,
 } from './list-mask-builder'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import type { MaterializedView } from '@frantic-search/shared'
@@ -425,5 +426,27 @@ describe('hasPrintingLevelEntries', () => {
       list_id: 'default',
     })
     expect(hasPrintingLevelEntries(view, 'default')).toBe(true)
+  })
+})
+
+describe('countListEntriesPerCard', () => {
+  it('returns empty map for empty list', () => {
+    const view = makeView()
+    view.instancesByList.set('default', new Set())
+    const oracleMap = buildOracleToCanonicalFaceMap(makeDisplay())
+    expect(countListEntriesPerCard(view, 'default', oracleMap).size).toBe(0)
+  })
+
+  it('counts list entries per canonical face', () => {
+    const view = makeView()
+    const uuids = new Set<string>(['uuid-1', 'uuid-2', 'uuid-3'])
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', { uuid: 'uuid-1', oracle_id: 'oid-bolt', scryfall_id: null, finish: null, list_id: 'default' })
+    view.instances.set('uuid-2', { uuid: 'uuid-2', oracle_id: 'oid-bolt', scryfall_id: 'p-a', finish: 'nonfoil', list_id: 'default' })
+    view.instances.set('uuid-3', { uuid: 'uuid-3', oracle_id: 'oid-sol', scryfall_id: null, finish: null, list_id: 'default' })
+    const oracleMap = buildOracleToCanonicalFaceMap(makeDisplay())
+    const result = countListEntriesPerCard(view, 'default', oracleMap)
+    expect(result.get(0)).toBe(2)
+    expect(result.get(1)).toBe(1)
   })
 })

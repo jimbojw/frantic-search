@@ -19,6 +19,7 @@ import {
   parseBreakdown,
   toggleUniquePrints,
   hasUniquePrints,
+  hasMyInQuery,
   toggleIncludeExtras,
   hasIncludeExtras,
   appendTerm,
@@ -1312,6 +1313,24 @@ describe('hasUniquePrints', () => {
   it('returns true when ++ alias is present (Spec 048)', () => {
     expect(hasUniquePrints(buildBreakdown('++'))).toBe(true)
     expect(hasUniquePrints(buildBreakdown('t:creature ++'))).toBe(true)
+  })
+})
+
+describe('hasMyInQuery', () => {
+  it('returns false for null breakdown', () => {
+    expect(hasMyInQuery(null)).toBe(false)
+  })
+  it('returns false when my: is absent', () => {
+    expect(hasMyInQuery(buildBreakdown('t:creature'))).toBe(false)
+  })
+  it('returns true when my:list is present', () => {
+    expect(hasMyInQuery(buildBreakdown('my:list'))).toBe(true)
+  })
+  it('returns true when my:list is among other terms', () => {
+    expect(hasMyInQuery(buildBreakdown('my:list t:creature'))).toBe(true)
+  })
+  it('returns false when my: is negated', () => {
+    expect(hasMyInQuery(buildBreakdown('-my:list'))).toBe(false)
   })
 })
 

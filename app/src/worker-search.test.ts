@@ -411,6 +411,29 @@ describe('pinned my:list + live unique:prints override (Issue #96)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Spec 097: aggregation counts for card-level queries
+// ---------------------------------------------------------------------------
+
+describe('aggregation counts (Spec 097)', () => {
+  it('card-level query expands printings for aggregation count display', () => {
+    // t:instant is card-only; evaluator does not return printingIndices.
+    // Worker expands so display can show aggregation counts.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.hasPrintingConditions).toBe(false)
+    expect(result.uniqueMode).toBe('cards')
+    expect(result.printingIndices).toBeDefined()
+    // Bolt has 8 printings (0,1,2,5,6,8,9,10); others have none
+    expect(result.printingIndices!.length).toBe(8)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Spec 082: dual counts on breakdown nodes
 // ---------------------------------------------------------------------------
 

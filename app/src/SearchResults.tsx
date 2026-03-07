@@ -183,14 +183,20 @@ export default function SearchResults() {
                       if (idx === undefined || !pd) return null
                       return pd.set_codes[idx]
                     }
+                    const aggCount = () => ctx.showPrintingResults() ? ctx.aggregationCountForCard(ci) : undefined
                     return (
                       <Show when={ctx.viewMode() === 'full'} fallback={
                         <li class="group px-4 py-2 text-sm flex items-start gap-3">
-                          <ArtCrop
-                            scryfallId={artScryfallId()}
-                            colorIdentity={d()!.color_identity[ci]}
-                            thumbHash={d()!.art_crop_thumb_hashes[ci]}
-                          />
+                          <div class="shrink-0 flex flex-col items-start">
+                            <ArtCrop
+                              scryfallId={artScryfallId()}
+                              colorIdentity={d()!.color_identity[ci]}
+                              thumbHash={d()!.art_crop_thumb_hashes[ci]}
+                            />
+                            <Show when={(aggCount() ?? 0) > 1}>
+                              <span class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">({aggCount()})</span>
+                            </Show>
+                          </div>
                           <div class="min-w-0 flex-1">
                             <Show when={faces().length > 1} fallback={
                               <>
@@ -221,13 +227,18 @@ export default function SearchResults() {
                       }>
                         <li class="group px-4 py-3 text-sm">
                           <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
-                            <CardImage
-                              scryfallId={artScryfallId()}
-                              colorIdentity={d()!.color_identity[ci]}
-                              thumbHash={d()!.card_thumb_hashes[ci]}
-                              class="w-[336px] max-w-full shrink-0 cursor-pointer rounded-lg"
-                              onClick={() => ctx.navigateToCard(artScryfallId())}
-                            />
+                            <div class="shrink-0 flex flex-col items-start">
+                              <CardImage
+                                scryfallId={artScryfallId()}
+                                colorIdentity={d()!.color_identity[ci]}
+                                thumbHash={d()!.card_thumb_hashes[ci]}
+                                class="w-[336px] max-w-full cursor-pointer rounded-lg"
+                                onClick={() => ctx.navigateToCard(artScryfallId())}
+                              />
+                              <Show when={(aggCount() ?? 0) > 1}>
+                                <span class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">({aggCount()})</span>
+                              </Show>
+                            </div>
                             <div class="min-w-0 flex-1 w-full">
                               <Show when={faces().length > 1} fallback={
                                 <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} />
@@ -303,6 +314,10 @@ export default function SearchResults() {
                                   </div>
                                 </Show>
                                 <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                  <Show when={(ctx.aggregationCountForPrinting(pi) ?? 0) > 1}>
+                                    <dt class="font-medium text-gray-600 dark:text-gray-300">Printings</dt>
+                                    <dd>{ctx.aggregationCountForPrinting(pi)}</dd>
+                                  </Show>
                                   <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
                                   <dd>{pd.set_names[pi]} <span class="uppercase font-mono">({pd.set_codes[pi]})</span></dd>
                                   <dt class="font-medium text-gray-600 dark:text-gray-300">Collector #</dt>
@@ -401,6 +416,7 @@ export default function SearchResults() {
                           }
                           const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay' : ''
                           const metaClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-meta' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-meta' : ''
+                          const aggCount = ctx.aggregationCountForPrinting(pi)
                           return (
                             <div class={`bg-white dark:bg-gray-900 flex flex-col ${overlayClass()}`}>
                               <CardImage
@@ -411,12 +427,15 @@ export default function SearchResults() {
                                 onClick={() => ctx.navigateToCard(sid)}
                                 aria-label={name()}
                               />
-                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight truncate ${metaClass()}`}>
+                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words ${metaClass()}`}>
                                 <span class="uppercase">{setCode}</span>
                                 {' · '}
                                 {rarityLabel}
                                 <Show when={finishLabel()}>
                                   {(f) => <>{' · '}{f()}</>}
+                                </Show>
+                                <Show when={(aggCount ?? 0) > 1}>
+                                  {' · '}{aggCount} printings
                                 </Show>
                               </div>
                             </div>

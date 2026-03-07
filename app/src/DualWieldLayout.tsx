@@ -3,7 +3,7 @@ import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
 import { toScryfallQuery, parse } from '@frantic-search/shared'
 import { buildFacesOf } from './app-utils'
-import { dedupePrintingItems } from './dedup-printing-items'
+import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import { sealQuery } from './query-edit'
 import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
@@ -78,6 +78,8 @@ export type PaneState = {
   navigateToCard: (scryfallId: string) => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
+  /** When my:list is in query, list entry count per canonical face (Spec 097). */
+  listEntryCountPerCard?: () => Map<number, number> | null
 }
 
 function buildPaneContext(state: PaneState): SearchContextValue {
@@ -144,6 +146,17 @@ function buildPaneContext(state: PaneState): SearchContextValue {
     }
     return map
   })
+  const aggregationCountMaps = createMemo(() => {
+    const pi = state.printingIndices()
+    const pd = state.printingDisplay()
+    if (!pi || !pd) return { byCard: new Map<number, number>(), byPrinting: new Map<number, number>() }
+    return aggregationCounts(
+      Array.from(pi),
+      (idx) => pd.canonical_face_ref[idx],
+      state.uniqueMode(),
+      pd.illustration_id_index ? (idx) => pd.illustration_id_index![idx] : undefined,
+    )
+  })
   const printingExpanded = () =>
     showPrintingResults() && (viewMode() === 'images' || viewMode() === 'full')
   const totalDisplayItems = () => {
@@ -189,6 +202,18 @@ function buildPaneContext(state: PaneState): SearchContextValue {
     firstPrintingForCard,
     dedupedPrintingItems,
     finishGroupMap,
+    aggregationCountForCard: (ci: number) => {
+      const listCount = state.listEntryCountPerCard?.()?.get(ci)
+      if (listCount !== undefined) return listCount
+      return aggregationCountMaps().byCard.get(ci)
+    },
+    aggregationCountForPrinting: (pi: number) => {
+      const pd = state.printingDisplay()
+      const cf = pd?.canonical_face_ref[pi]
+      const listCount = cf !== undefined ? state.listEntryCountPerCard?.()?.get(cf) : undefined
+      if (listCount !== undefined) return listCount
+      return aggregationCountMaps().byPrinting.get(pi)
+    },
     totalCards,
     totalPrintingItems,
     totalDisplayItems,

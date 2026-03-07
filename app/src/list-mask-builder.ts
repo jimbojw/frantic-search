@@ -137,6 +137,29 @@ export function getMatchingCount(
 }
 
 /**
+ * Counts list entries per canonical face for aggregation display (Spec 097).
+ * When my:list is in the query, aggregation counts should reflect how many list entries
+ * match each card, not how many printings exist in the database.
+ */
+export function countListEntriesPerCard(
+  view: MaterializedView,
+  listId: string,
+  oracleToCanonicalFace: Map<string, number>,
+): Map<number, number> {
+  const result = new Map<number, number>()
+  const uuids = view.instancesByList.get(listId)
+  if (!uuids) return result
+  for (const uuid of uuids) {
+    const instance = view.instances.get(uuid)
+    if (!instance) continue
+    const cf = oracleToCanonicalFace.get(instance.oracle_id)
+    if (cf === undefined) continue
+    result.set(cf, (result.get(cf) ?? 0) + 1)
+  }
+  return result
+}
+
+/**
  * Returns true if any instance in the list has printing-level data (scryfall_id and finish set).
  */
 export function hasPrintingLevelEntries(view: MaterializedView, listId: string): boolean {

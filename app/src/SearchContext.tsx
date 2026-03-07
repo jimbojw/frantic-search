@@ -33,6 +33,8 @@ export interface SearchContextValue {
   firstPrintingForCard: Accessor<Map<number, number>>
   dedupedPrintingItems: Accessor<number[] | null>
   finishGroupMap: Accessor<Map<string, { finish: number; price: number }[]>>
+  aggregationCountForCard: (ci: number) => number | undefined
+  aggregationCountForPrinting: (pi: number) => number | undefined
   totalCards: () => number
   totalPrintingItems: () => number
   totalDisplayItems: () => number
