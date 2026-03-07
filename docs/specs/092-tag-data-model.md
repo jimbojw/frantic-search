@@ -1,6 +1,6 @@
 # Spec 092: Tag Data Model and Processing
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 091 (ETL Tag Download), Spec 003 (ETL Process), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation), Issue #99 (Epic: otag/atag Support)
 
@@ -282,3 +282,7 @@ Worker                                    Main Thread
 10. `--verbose` prints processing statistics: tag counts, reference counts, dropped tags, output sizes.
 11. The Vite plugin serves both tag files in dev and copies them (hashed + stable names) to `app/dist/` on build.
 12. The worker resolves `atags.json` pairs to printing row indices at load time using `PrintingIndex`, producing a `Map<string, Uint32Array>` for the evaluator.
+
+## Implementation Notes
+
+- 2026-03-07: Implemented per spec. ETL `processTags()` in `etl/src/process-tags.ts`; Vite plugin and worker loading; PWA cache rules. Tag data is stored in worker and passed to `runSearch` via `tagDataRef`; parser/evaluator support for `otag:` and `atag:` is a future spec (Issue #99).

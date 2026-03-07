@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ColumnarData, PrintingColumnarData, ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import type {
+  ColumnarData,
+  PrintingColumnarData,
+  ToWorker,
+  FromWorker,
+  DisplayColumns,
+  PrintingDisplayColumns,
+  OracleTagData,
+  IllustrationTagData,
+} from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -7,6 +16,8 @@ declare const self: DedicatedWorkerGlobalScope
 declare const __COLUMNS_FILENAME__: string
 declare const __COLUMNS_FILESIZE__: number
 declare const __PRINTINGS_FILENAME__: string
+declare const __OTAGS_FILENAME__: string
+declare const __ATAGS_FILENAME__: string
 
 function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   const len = data.names.length
@@ -94,6 +105,66 @@ async function fetchPrintings(): Promise<PrintingColumnarData | null> {
   }
 }
 
+async function fetchOtags(): Promise<OracleTagData | null> {
+  try {
+    const url = new URL(/* @vite-ignore */ `../${__OTAGS_FILENAME__}`, import.meta.url)
+    const response = await fetch(url)
+    if (!response.ok) return null
+    return (await response.json()) as OracleTagData
+  } catch {
+    return null
+  }
+}
+
+async function fetchAtags(): Promise<IllustrationTagData | null> {
+  try {
+    const url = new URL(/* @vite-ignore */ `../${__ATAGS_FILENAME__}`, import.meta.url)
+    const response = await fetch(url)
+    if (!response.ok) return null
+    return (await response.json()) as IllustrationTagData
+  } catch {
+    return null
+  }
+}
+
+/** Resolve strided (face, illust_idx) pairs to printing row indices using PrintingIndex data. */
+function resolveAtagsToPrintingRows(
+  atags: IllustrationTagData,
+  printingData: PrintingColumnarData,
+): Map<string, Uint32Array> {
+  const faceRef = printingData.canonical_face_ref
+  const illustIdx = printingData.illustration_id_index ?? []
+  const pairToRows = new Map<string, number[]>()
+  for (let i = 0; i < faceRef.length; i++) {
+    const face = faceRef[i]
+    const idx = illustIdx[i] ?? 0
+    const key = `${face},${idx}`
+    let arr = pairToRows.get(key)
+    if (!arr) {
+      arr = []
+      pairToRows.set(key, arr)
+    }
+    arr.push(i)
+  }
+
+  const result = new Map<string, Uint32Array>()
+  for (const [label, arr] of Object.entries(atags)) {
+    const rows: number[] = []
+    for (let i = 0; i < arr.length; i += 2) {
+      const face = arr[i]
+      const illust = arr[i + 1]
+      const key = `${face},${illust}`
+      const rowList = pairToRows.get(key)
+      if (rowList) rows.push(...rowList)
+    }
+    if (rows.length > 0) {
+      rows.sort((a, b) => a - b)
+      result.set(label, new Uint32Array(rows))
+    }
+  }
+  return result
+}
+
 type FetchResult =
   | { ok: true; response: Response }
   | { ok: false; cause: 'stale' | 'network' | 'unknown'; detail: string }
@@ -116,6 +187,7 @@ async function init(): Promise<void> {
   post({ type: 'status', status: 'loading' })
 
   const printingsPromise = fetchPrintings()
+  const otagsPromise = fetchOtags()
 
   let data: ColumnarData
   try {
@@ -155,6 +227,27 @@ async function init(): Promise<void> {
     post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })
   }
 
+  const tagDataRef = {
+    oracle: null as OracleTagData | null,
+    illustration: null as Map<string, Uint32Array> | null,
+  }
+
+  otagsPromise.then((otags) => {
+    if (otags) {
+      tagDataRef.oracle = otags
+      post({ type: 'status', status: 'otags-ready' })
+    }
+  })
+
+  printingsPromise.then(async (printingDataForAtags) => {
+    if (!printingDataForAtags) return
+    const atags = await fetchAtags()
+    if (atags) {
+      tagDataRef.illustration = resolveAtagsToPrintingRows(atags, printingDataForAtags)
+      post({ type: 'status', status: 'atags-ready' })
+    }
+  })
+
   self.onmessage = (e: MessageEvent<ToWorker>) => {
     const msg = e.data
     if (msg.type === 'list-update') {
@@ -178,6 +271,7 @@ async function init(): Promise<void> {
       index,
       printingIndex,
       sessionSalt,
+      tagData: tagDataRef,
     })
 
     const resultWithSide = msg.side !== undefined ? { ...resultMsg, side: msg.side } : resultMsg

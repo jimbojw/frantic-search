@@ -24,7 +24,13 @@ export {
   PROMO_TYPE_FLAGS,
 } from "./bits";
 
-export type { ColumnarData, PrintingColumnarData, SetLookupEntry } from "./data";
+export type {
+  ColumnarData,
+  PrintingColumnarData,
+  SetLookupEntry,
+  OracleTagData,
+  IllustrationTagData,
+} from "./data";
 
 export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";
 

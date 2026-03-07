@@ -428,6 +428,8 @@ function App() {
       case 'status':
         if (msg.status === 'progress') {
           setDataProgress(msg.fraction)
+        } else if (msg.status === 'otags-ready' || msg.status === 'atags-ready') {
+          // Tag data loaded in worker; no main-thread action needed (evaluator integration is future spec)
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()

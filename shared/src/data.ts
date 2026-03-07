@@ -53,3 +53,15 @@ export interface PrintingColumnarData {
   illustration_id_index?: number[];
   set_lookup: SetLookupEntry[];
 }
+
+/** Oracle tag inverted index: tag label → sorted canonical face indices. */
+export type OracleTagData = Record<string, number[]>;
+
+/**
+ * Illustration tag inverted index: tag label → strided (face, illust_idx) pairs.
+ *
+ * Each array has even length. Elements at even indices are canonical face indices;
+ * elements at odd indices are the corresponding illustration_id_index values.
+ * The worker resolves these to printing row indices at load time via PrintingIndex.
+ */
+export type IllustrationTagData = Record<string, number[]>;

@@ -18,9 +18,13 @@ function serveData(): Plugin {
   const columnsFile = path.resolve(__dirname, '..', 'data', 'dist', 'columns.json')
   const thumbsFile = path.resolve(__dirname, '..', 'data', 'dist', 'thumb-hashes.json')
   const printingsFile = path.resolve(__dirname, '..', 'data', 'dist', 'printings.json')
+  const otagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'otags.json')
+  const atagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'atags.json')
   let columnsFilename = 'columns.json'
   let thumbsFilename = 'thumb-hashes.json'
   let printingsFilename = 'printings.json'
+  let otagsFilename = 'otags.json'
+  let atagsFilename = 'atags.json'
 
   return {
     name: 'serve-data',
@@ -36,6 +40,12 @@ function serveData(): Plugin {
         if (fs.existsSync(printingsFile)) {
           printingsFilename = `printings.${contentHash(printingsFile)}.json`
         }
+        if (fs.existsSync(otagsFile)) {
+          otagsFilename = `otags.${contentHash(otagsFile)}.json`
+        }
+        if (fs.existsSync(atagsFile)) {
+          atagsFilename = `atags.${contentHash(atagsFile)}.json`
+        }
       }
       const columnsSize = fs.existsSync(columnsFile) ? fs.statSync(columnsFile).size : 0
       return {
@@ -44,6 +54,8 @@ function serveData(): Plugin {
           __COLUMNS_FILESIZE__: String(columnsSize),
           __THUMBS_FILENAME__: JSON.stringify(thumbsFilename),
           __PRINTINGS_FILENAME__: JSON.stringify(printingsFilename),
+          __OTAGS_FILENAME__: JSON.stringify(otagsFilename),
+          __ATAGS_FILENAME__: JSON.stringify(atagsFilename),
         },
       }
     },
@@ -53,6 +65,8 @@ function serveData(): Plugin {
         ['/columns.json', columnsFile],
         ['/thumb-hashes.json', thumbsFile],
         ['/printings.json', printingsFile],
+        ['/otags.json', otagsFile],
+        ['/atags.json', atagsFile],
       ] as const) {
         server.middlewares.use(route, (_req, res) => {
           if (!fs.existsSync(file)) {
@@ -79,6 +93,14 @@ function serveData(): Plugin {
       if (fs.existsSync(printingsFile)) {
         fs.copyFileSync(printingsFile, path.join(outDir, printingsFilename))
         fs.copyFileSync(printingsFile, path.join(outDir, 'printings.json'))
+      }
+      if (fs.existsSync(otagsFile)) {
+        fs.copyFileSync(otagsFile, path.join(outDir, otagsFilename))
+        fs.copyFileSync(otagsFile, path.join(outDir, 'otags.json'))
+      }
+      if (fs.existsSync(atagsFile)) {
+        fs.copyFileSync(atagsFile, path.join(outDir, atagsFilename))
+        fs.copyFileSync(atagsFile, path.join(outDir, 'atags.json'))
       }
     },
   }

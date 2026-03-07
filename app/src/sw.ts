@@ -23,6 +23,14 @@ registerRoute(
   new CacheFirst({ cacheName: 'card-data' })
 )
 registerRoute(
+  ({ url }) => /otags\.[a-f0-9]+\.json$/.test(url.pathname),
+  new CacheFirst({ cacheName: 'card-data' })
+)
+registerRoute(
+  ({ url }) => /atags\.[a-f0-9]+\.json$/.test(url.pathname),
+  new CacheFirst({ cacheName: 'card-data' })
+)
+registerRoute(
   ({ url }) => url.origin === 'https://cards.scryfall.io',
   new StaleWhileRevalidate({ cacheName: 'card-art' })
 )

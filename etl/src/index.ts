@@ -17,6 +17,7 @@ import {
 import { log } from "./log";
 import { processCards } from "./process";
 import { processPrintings } from "./process-printings";
+import { processTags } from "./process-tags";
 import { generateThumbHashes } from "./thumbhash";
 import { restoreManifest } from "./restore";
 import { runDownloadTags } from "./download-tags";
@@ -98,6 +99,7 @@ cli
     try {
       processCards(options.verbose);
       processPrintings(options.verbose);
+      processTags(options.verbose);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       process.stderr.write(`Error: ${msg}\n`);
