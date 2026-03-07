@@ -771,6 +771,7 @@ function App() {
     cancelPendingCommit()
     saveScrollPosition()
     history.pushState(null, '', location.pathname)
+    setDualWieldActive(false)
     setQuery('')
     setQuery2('')
     setView('search')
@@ -944,6 +945,7 @@ function App() {
             workerStatus={workerStatus}
             navigateToHelp={navigateToHelp}
             navigateToReport={navigateToReport}
+            onNavigateHome={navigateHome}
             onLeaveDualWield={leaveDualWield}
           />
         </Show>

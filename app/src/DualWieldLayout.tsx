@@ -288,6 +288,7 @@ export function DualWieldLayout(props: {
   workerStatus: () => 'loading' | 'ready' | 'error'
   navigateToHelp: () => void
   navigateToReport: () => void
+  onNavigateHome: () => void
   onLeaveDualWield: () => void
 }) {
   const [drawerOpen, setDrawerOpen] = createSignal<'left' | 'right' | null>(null)
@@ -371,6 +372,15 @@ export function DualWieldLayout(props: {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
+        </button>
+        <button
+          type="button"
+          onClick={props.onNavigateHome}
+          class="mt-2 flex h-8 min-w-8 items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="Go to home"
+          title="Frantic Search"
+        >
+          <img src="/pwa-192x192.png" alt="" class="size-6 rounded" />
         </button>
       </div>
 
