@@ -63,7 +63,7 @@ const FACE_FIELDS: FieldEntry[] = [
   { field: 'restricted', aliases: [], description: 'Restricted in format', example: 'restricted:vintage' },
   { field: 'is', aliases: [], description: 'Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
   { field: 'kw', aliases: ['keyword'], description: 'Keyword ability (Scryfall catalog)', example: 'kw:flying' },
-  { field: 'otag', aliases: [], description: 'Oracle tag (community-curated)', example: 'otag:ramp' },
+  { field: 'otag', aliases: ['function', 'oracletag'], description: 'Oracle tag (community-curated)', example: 'otag:ramp' },
   { field: 'atag', aliases: [], description: 'Illustration tag (community-curated)', example: 'atag:bolt' },
   { field: 'edhrec', aliases: ['edhrecrank'], description: 'EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular)', example: 'edhrec<100' },
   { field: 'salt', aliases: ['edhrecsalt', 'saltiness'], description: 'EDHREC saltiness; numeric and percentile (`>90%` = top 10% saltiest)', example: 'salt>2' },

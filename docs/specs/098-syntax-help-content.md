@@ -42,7 +42,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `restricted` | — | Restricted in format | `restricted:vintage` |
 | `is` | — | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.) | `is:commander` |
 | `kw` | `keyword` | Keyword ability (Scryfall catalog) | `kw:flying` |
-| `otag` | — | Oracle tag (community-curated) | `otag:ramp` |
+| `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
 | `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular) | `edhrec<100`, `edhrec>90%` |
 | `salt` | `edhrecsalt`, `saltiness` | EDHREC saltiness; numeric and percentile (`>90%` = top 10% saltiest) | `salt>2`, `salt>90%` |

@@ -38,6 +38,8 @@ export const FIELD_ALIASES: Record<string, string> = {
   in: "in",
   my: "my",
   otag: "otag",
+  function: "otag",
+  oracletag: "otag",
   atag: "atag",
   art: "atag",
   kw: "keyword",

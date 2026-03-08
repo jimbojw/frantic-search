@@ -75,6 +75,18 @@ describe("otag: evaluator", () => {
     // ramp = faces 0,3,4. creature = 0,4,6,7,8. Intersection = 0,4 (Birds, Tarmogoyf)
     expect(out.result.matchCount).toBe(2);
   });
+
+  test("function: and oracletag: are aliases for otag:", () => {
+    const cache = new NodeCache(index, null, null, tagDataRef);
+    const otagOut = cache.evaluate(parse("otag:ramp"));
+    const functionOut = cache.evaluate(parse("function:ramp"));
+    const oracletagOut = cache.evaluate(parse("oracletag:ramp"));
+    expect(otagOut.result.matchCount).toBe(3);
+    expect(functionOut.result.matchCount).toBe(otagOut.result.matchCount);
+    expect(oracletagOut.result.matchCount).toBe(otagOut.result.matchCount);
+    expect(functionOut.result.error).toBeUndefined();
+    expect(oracletagOut.result.error).toBeUndefined();
+  });
 });
 
 describe("atag: evaluator", () => {
