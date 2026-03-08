@@ -145,6 +145,26 @@ describe('computeSuggestion', () => {
     expect(computeSuggestion(ctx, tagData)).toBe('ramp')
   })
 
+  it('suggests display:full for display:f', () => {
+    const ctx = getCompletionContext('display:f', 9)! // cursor after "f"
+    expect(computeSuggestion(ctx, data)).toBe('full')
+  })
+
+  it('suggests view:images for v:i', () => {
+    const ctx = getCompletionContext('v:i', 3)!
+    expect(computeSuggestion(ctx, data)).toBe('images')
+  })
+
+  it('suggests order:name for order:n', () => {
+    const ctx = getCompletionContext('order:n', 7)!
+    expect(computeSuggestion(ctx, data)).toBe('name')
+  })
+
+  it('suggests sort:usd for sort:u', () => {
+    const ctx = getCompletionContext('sort:u', 6)!
+    expect(computeSuggestion(ctx, data)).toBe('usd')
+  })
+
   it('suggests illustration tag for atag:cha', () => {
     const tagData = makeData({ illustrationTagLabels: ['chair', 'champion', 'chaos'] })
     const ctx = getCompletionContext('atag:cha', 8)!

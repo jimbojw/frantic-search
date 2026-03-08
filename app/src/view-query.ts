@@ -6,20 +6,37 @@ import { VIEW_MODES } from './view-mode'
 
 const VALID_VIEW_VALUES = new Set<string>(VIEW_MODES)
 
+/** Scryfall display: values map to view modes (Spec 107). */
+const DISPLAY_TO_VIEW: Record<string, string> = {
+  checklist: 'slim',
+  text: 'detail',
+  grid: 'images',
+  full: 'full',
+}
+
 export function isValidViewValue(value: string): boolean {
   return VALID_VIEW_VALUES.has(value.toLowerCase())
 }
 
 /**
- * Walk the AST and collect view:/v: FIELD node values in document order.
- * Returns the last valid value, or undefined if none found.
+ * Map display: value to view value. Returns the view value or the original if not a display value.
+ */
+function displayToView(value: string): string {
+  return DISPLAY_TO_VIEW[value.toLowerCase()] ?? value
+}
+
+/**
+ * Walk the AST and collect view:/v:/display: FIELD node values in document order.
+ * For display:, values are mapped to view equivalents (Spec 107).
  */
 function collectViewValues(node: ASTNode): string[] {
   const values: string[] = []
   function walk(n: ASTNode) {
     if (n.type === 'FIELD') {
       const f = n.field.toLowerCase()
-      if (f === 'view' || f === 'v') values.push(n.value.toLowerCase())
+      const v = n.value.toLowerCase()
+      if (f === 'view' || f === 'v') values.push(v)
+      else if (f === 'display') values.push(displayToView(v))
     }
     if (n.type === 'NOT') walk(n.child)
     if (n.type === 'AND' || n.type === 'OR') {

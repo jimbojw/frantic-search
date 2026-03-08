@@ -2,12 +2,15 @@
 import type { ASTNode, SortDirective } from "./ast";
 import { parse } from "./parser";
 import { SORT_FIELDS } from "./sort-fields";
+import { resolveForField } from "./categorical-resolve";
 
 function findSortDirective(ast: ASTNode, negated = false): SortDirective | null {
   switch (ast.type) {
     case "FIELD": {
-      if (ast.field.toLowerCase() !== "sort") return null;
-      const entry = SORT_FIELDS[ast.value.toLowerCase()];
+      const f = ast.field.toLowerCase();
+      if (f !== "sort" && f !== "order") return null;
+      const sortVal = resolveForField(f, ast.value);
+      const entry = SORT_FIELDS[sortVal.toLowerCase()];
       if (!entry) return null;
       const direction = negated
         ? (entry.defaultDir === "asc" ? "desc" : "asc")

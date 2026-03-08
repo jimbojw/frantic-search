@@ -49,6 +49,19 @@ describe('extractViewMode', () => {
     expect(extractViewMode('f:commander view:images t:creature')).toBe('images')
     expect(extractViewMode('f:commander t:creature view:slim')).toBe('slim')
   })
+
+  it('maps display: to view (Spec 107)', () => {
+    expect(extractViewMode('display:full')).toBe('full')
+    expect(extractViewMode('display:grid')).toBe('images')
+    expect(extractViewMode('display:text')).toBe('detail')
+    expect(extractViewMode('display:checklist')).toBe('slim')
+    expect(extractViewMode('t:creature display:full')).toBe('full')
+  })
+
+  it('display: last wins over view:', () => {
+    expect(extractViewMode('view:images display:detail')).toBe('detail')
+    expect(extractViewMode('display:full view:slim')).toBe('slim')
+  })
 })
 
 describe('isValidViewValue', () => {

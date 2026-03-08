@@ -648,3 +648,7 @@ This spec follows ADR-019 (Scryfall parity by default) with one explicit, princi
 - Frantic Search keeps Spec 019's seeded/frantic ordering as the default when no explicit sort directive is present.
 - When a user specifies `sort:`, that explicit ordering is respected.
 - This avoids introducing a hidden always-on deterministic ranking (such as alphabetic default) that can bias discovery behavior.
+
+## Implementation Notes
+
+- 2026-03-08: Spec 107 adds `order:` as Scryfall alias for `sort:`. `findSortDirective`, evaluator, and `clearSortTerms` recognize `order:`; `SORT_CHIP_FIELDS` includes `order` for chip matching.

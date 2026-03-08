@@ -6,6 +6,14 @@ import { IS_KEYWORDS } from "./eval-is";
 /** Build-time view modes (Spec 058). */
 const VIEW_MODES = ["slim", "detail", "images", "full"] as const;
 
+/** Scryfall display: values map to view modes (Spec 107). */
+const DISPLAY_TO_VIEW: Record<string, string> = {
+  checklist: "slim",
+  text: "detail",
+  grid: "images",
+  full: "full",
+};
+
 const UNIQUE_MODES = ["cards", "prints", "art"] as const;
 const INCLUDE_VALUES = ["extras"] as const;
 
@@ -45,7 +53,7 @@ export function resolveCategoricalValue(
 }
 
 const CATEGORICAL_FIELDS = new Set([
-  "view", "unique", "sort", "include",
+  "view", "display", "unique", "sort", "order", "include",
   "legal", "f", "format", "banned", "restricted",
   "rarity", "r", "game", "frame", "is",
   "set", "in", "otag", "atag", "kw", "keyword",
@@ -58,10 +66,13 @@ function getCandidatesForField(
   switch (canonical) {
     case "view":
       return VIEW_MODES;
-    case "unique":
-      return UNIQUE_MODES;
+    case "display":
+      return ["checklist", "text", "grid", "full"];
+    case "order":
     case "sort":
       return Object.keys(SORT_FIELDS);
+    case "unique":
+      return UNIQUE_MODES;
     case "include":
       return INCLUDE_VALUES;
     case "legal":
@@ -114,6 +125,11 @@ export function resolveForField(
 ): string {
   const canonical = field.toLowerCase();
   if (canonical === "v") return resolveForField("view", value, context);
+  if (canonical === "display") {
+    const mapped = DISPLAY_TO_VIEW[value.toLowerCase()] ?? value;
+    return resolveForField("view", mapped, context);
+  }
+  if (canonical === "order") return resolveForField("sort", value, context);
 
   if (!CATEGORICAL_FIELDS.has(canonical)) return value;
 

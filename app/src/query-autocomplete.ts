@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lex, TokenType, FIELD_ALIASES, IS_KEYWORDS, RARITY_NAMES, FORMAT_NAMES, COLOR_NAMES } from '@frantic-search/shared'
+import { lex, TokenType, FIELD_ALIASES, IS_KEYWORDS, RARITY_NAMES, FORMAT_NAMES, COLOR_NAMES, SORT_FIELDS } from '@frantic-search/shared'
 import type { Token } from '@frantic-search/shared'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 
@@ -33,7 +33,7 @@ const OPERATORS = new Set<string>([
   TokenType.GTE,
 ])
 
-const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include', 'view', 'v', 'sort'])
+const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include', 'view', 'v', 'display', 'sort', 'order'])
 
 function isOperator(t: Token): boolean {
   return OPERATORS.has(t.type)
@@ -226,6 +226,26 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
       if (fn === 'kw' || fn === 'keyword') {
         if (!data.keywordLabels.length) return null
         const match = firstMatchByPrefix(data.keywordLabels, prefix)
+        return match
+      }
+      if (fn === 'view' || fn === 'v') {
+        const viewCandidates = ['slim', 'detail', 'images', 'full']
+        return firstMatchByPrefix(viewCandidates, prefix)
+      }
+      if (fn === 'display') {
+        const displayCandidates = ['checklist', 'text', 'grid', 'full']
+        return firstMatchByPrefix(displayCandidates, prefix)
+      }
+      if (fn === 'sort' || fn === 'order') {
+        const sortCandidates = Object.keys(SORT_FIELDS)
+        return firstMatchByPrefix(sortCandidates, prefix)
+      }
+      if (fn === 'unique') {
+        const match = firstMatchByPrefix(['cards', 'prints', 'art'], prefix)
+        return match
+      }
+      if (fn === 'include') {
+        const match = firstMatchByPrefix(['extras'], prefix)
         return match
       }
       if (fn === 'name' || fn === 'n') {

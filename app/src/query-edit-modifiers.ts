@@ -149,7 +149,7 @@ export function hasIncludeExtras(breakdown: BreakdownNode | null): boolean {
 // View mode term (Spec 058)
 // ---------------------------------------------------------------------------
 
-const VIEW_FIELDS = ['view', 'v']
+const VIEW_FIELDS = ['view', 'v', 'display']
 
 function isViewLabel(label: string): boolean {
   return isFieldLabel(label, VIEW_FIELDS, [':'])
@@ -172,7 +172,7 @@ export function setViewTerm(
 // Sort directive term (Spec 059)
 // ---------------------------------------------------------------------------
 
-const SORT_FIELDS_QE = ['sort']
+const SORT_FIELDS_QE = ['sort', 'order']
 
 function isSortLabel(label: string): boolean {
   return isFieldLabel(label, SORT_FIELDS_QE, [':'])

@@ -281,6 +281,12 @@ describe('setViewTerm', () => {
 })
 
 describe('clearViewTerms', () => {
+  it('removes display: term (Spec 107)', () => {
+    expect(clearViewTerms('display:full', buildBreakdown('display:full'))).toBe('')
+    expect(clearViewTerms('t:creature display:images', buildBreakdown('t:creature display:images')))
+      .toBe('t:creature')
+  })
+
   it('removes view: term', () => {
     expect(clearViewTerms('view:images', buildBreakdown('view:images'))).toBe('')
   })
@@ -366,6 +372,12 @@ describe('setUniqueTerm', () => {
 // ---------------------------------------------------------------------------
 
 describe('clearSortTerms', () => {
+  it('removes order: term (Spec 107)', () => {
+    expect(clearSortTerms('order:name', buildBreakdown('order:name'))).toBe('')
+    expect(clearSortTerms('t:creature order:usd', buildBreakdown('t:creature order:usd')))
+      .toBe('t:creature')
+  })
+
   it('removes sort: term', () => {
     expect(clearSortTerms('sort:name', buildBreakdown('sort:name'))).toBe('')
   })

@@ -75,6 +75,13 @@ describe("toScryfallQuery", () => {
     expect(canon("-sort:usd")).toBe("");
   });
 
+  it("strips display: and order: for Scryfall (Spec 107)", () => {
+    expect(canon("lightning display:full")).toBe("lightning");
+    expect(canon("display:grid t:creature")).toBe("t:creature");
+    expect(canon("t:creature order:name")).toBe("t:creature");
+    expect(canon("order:cmc c:r")).toBe("c:r");
+  });
+
   it("strips usd=null and usd!=null for Scryfall (Spec 080)", () => {
     expect(canon("usd=null")).toBe("");
     expect(canon("usd!=null")).toBe("");

@@ -480,9 +480,9 @@ export class NodeCache {
         }
 
         const viewField = ast.field.toLowerCase();
-        if (viewField === "view" || viewField === "v") {
+        if (viewField === "view" || viewField === "v" || viewField === "display") {
           // Display modifier only — does not filter. Valid or invalid, treat as
-          // match-all so view:/v: terms have no effect on results (Spec 058, Spec 083).
+          // match-all so view:/v:/display: terms have no effect on results (Spec 058, Spec 083, Spec 107).
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
@@ -490,11 +490,12 @@ export class NodeCache {
           break;
         }
 
-        if (ast.field.toLowerCase() === "sort") {
+        const sortField = ast.field.toLowerCase();
+        if (sortField === "sort" || sortField === "order") {
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           const mc = popcount(buf, n);
-          const sortVal = resolveForField("sort", ast.value);
+          const sortVal = resolveForField(sortField, ast.value);
           if (ast.value !== "" && !SORT_FIELDS[sortVal.toLowerCase()]) {
             interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0, error: `unknown sort field "${ast.value}"` };
           } else {
@@ -742,7 +743,8 @@ export class NodeCache {
 
         // Sort modifiers under NOT: preserve match-all (direction extracted separately).
         // Don't copy error — it belongs on the child node for breakdown display.
-        if (ast.child.type === "FIELD" && ast.child.field.toLowerCase() === "sort") {
+        const childFieldName = ast.child.type === "FIELD" ? ast.child.field.toLowerCase() : "";
+        if (ast.child.type === "FIELD" && (childFieldName === "sort" || childFieldName === "order")) {
           const cc = childInterned.computed!;
           interned.computed = { buf: cc.buf, domain: cc.domain, matchCount: cc.matchCount, productionMs: cc.productionMs };
           timings.set(interned.key, { cached: false, evalMs: 0 });
@@ -939,8 +941,9 @@ export class NodeCache {
   private _findSortDirective(ast: ASTNode, negated = false): SortDirective | null {
     switch (ast.type) {
       case "FIELD": {
-        if (ast.field.toLowerCase() !== "sort") return null;
-        const sortVal = resolveForField("sort", ast.value);
+        const f = ast.field.toLowerCase();
+        if (f !== "sort" && f !== "order") return null;
+        const sortVal = resolveForField(f, ast.value);
         const entry = SORT_FIELDS[sortVal.toLowerCase()];
         if (!entry) return null;
         const direction = negated

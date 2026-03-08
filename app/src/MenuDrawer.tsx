@@ -38,7 +38,7 @@ function usdChip(value: string): ChipDef {
   return { label: `$<${value}`, field: USD_FIELDS, operator: '<', value, term: `$<${value}` }
 }
 
-const SORT_CHIP_FIELDS = ['sort']
+const SORT_CHIP_FIELDS = ['sort', 'order']
 
 function sortChip(value: string): ChipDef {
   return { label: `sort:${value}`, field: SORT_CHIP_FIELDS, operator: ':', value, term: `sort:${value}` }

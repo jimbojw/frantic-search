@@ -78,10 +78,10 @@ function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionC
 
     case "FIELD": {
       if (node.value === "") return "";
-      // Frantic Search–specific display modifiers — strip for Scryfall
+      // Frantic Search–specific display modifiers — strip for Scryfall (Spec 107: display, order)
       const f = node.field.toLowerCase();
-      if (f === "view" || f === "v") return "";
-      if (node.field.toLowerCase() === "sort") return "";
+      if (f === "view" || f === "v" || f === "display") return "";
+      if (f === "sort" || f === "order") return "";
       const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
       // Spec 095: percentile queries have no Scryfall equivalent — strip (before date handling)
       if (canonical && PERCENTILE_CAPABLE_FIELDS.has(canonical) && PERCENTILE_RE.test(node.value)) return "";

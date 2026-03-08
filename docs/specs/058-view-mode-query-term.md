@@ -75,3 +75,7 @@ Because the live query is in the URL (`?q=`), sharing a link like `?q=lightning 
 9. Migration from `frantic-view-mode` in `localStorage` preserves existing preferences on first load.
 10. Scryfall outlinks (Spec 052) strip `view:` terms from the canonicalized query.
 11. The sort seed (Spec 019) omits `view:` terms so toggling view mode does not reshuffle results (Issue #62).
+
+## Implementation Notes
+
+- 2026-03-08: Spec 107 adds `display:` as Scryfall alias for `view:`. `VIEW_FIELDS` extended to include `display`; `extractViewMode` and `clearViewTerms` recognize `display:`. Scryfall outlinks add `&as=` URL param when view mode is non-slim.

@@ -36,6 +36,19 @@ describe('buildSpans', () => {
     ])
   })
 
+  it('classifies display: and order: as known fields (Spec 107)', () => {
+    expect(roles('display:full')).toEqual([
+      ['display', 'field'],
+      [':', 'operator'],
+      ['full', 'value'],
+    ])
+    expect(roles('order:name')).toEqual([
+      ['order', 'field'],
+      [':', 'operator'],
+      ['name', 'value'],
+    ])
+  })
+
   it('classifies operators', () => {
     expect(roles('pow>=3')).toEqual([
       ['pow', 'field'],

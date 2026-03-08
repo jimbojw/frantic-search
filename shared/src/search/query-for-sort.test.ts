@@ -17,6 +17,12 @@ describe("queryForSortSeed", () => {
     expect(queryForSortSeed("v:slim t:creature")).toBe("t:creature");
   });
 
+  it("strips display: and order: (Spec 107)", () => {
+    expect(queryForSortSeed("t:creature display:full")).toBe("t:creature");
+    expect(queryForSortSeed("lightning order:name")).toBe("lightning");
+    expect(queryForSortSeed("display:grid order:usd")).toBe("");
+  });
+
   it("view: variants produce same result", () => {
     const a = queryForSortSeed("t:creature view:detail");
     const b = queryForSortSeed("t:creature view:slim");

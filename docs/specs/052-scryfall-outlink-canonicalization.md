@@ -106,3 +106,4 @@ Tests drive the implementation (TDD). Each test parses a raw query string, feeds
 ## Implementation Notes
 
 - 2026-03-04: Clarified that outlinks canonicalize the effective query (pinned + live), not live query alone (issue [#82](https://github.com/jimbojw/frantic-search/issues/82)).
+- 2026-03-08: Spec 107 adds `display:` and `order:` aliases. `canonicalize.ts` strips both from the query. `buildScryfallSearchUrl` adds `&as=` when view mode is non-slim (slim→checklist, detail→text, images→grid, full→full).

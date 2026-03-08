@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import { Rarity, Finish, getSortByFromQuery } from '@frantic-search/shared'
+import { extractViewMode } from './view-query'
 
 /** Scryfall order= param for each sortable field (Spec 059). */
 const SCRYFALL_ORDER: Record<string, string> = {
@@ -15,10 +16,23 @@ const SCRYFALL_ORDER: Record<string, string> = {
   edhrec: 'edhrec',
 }
 
-/** Build Scryfall search URL with order/dir when sort: is active. */
+/** Frantic view mode → Scryfall as= param (Spec 107). Omit when slim (Scryfall default). */
+const VIEW_TO_AS: Record<string, string> = {
+  slim: 'checklist',
+  detail: 'text',
+  images: 'grid',
+  full: 'full',
+}
+
+/** Build Scryfall search URL with order/dir and as= when active. */
 export function buildScryfallSearchUrl(canonicalQuery: string, effectiveQuery: string): string {
   const q = canonicalQuery || '*'
   let url = `https://scryfall.com/search?q=${encodeURIComponent(q)}`
+  const viewMode = extractViewMode(effectiveQuery)
+  if (viewMode !== 'slim') {
+    const as = VIEW_TO_AS[viewMode]
+    if (as) url += `&as=${as}`
+  }
   const sortBy = getSortByFromQuery(effectiveQuery)
   if (sortBy) {
     const order = SCRYFALL_ORDER[sortBy.field]

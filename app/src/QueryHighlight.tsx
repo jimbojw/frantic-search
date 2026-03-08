@@ -20,8 +20,8 @@ type HighlightRole =
   | 'value-zero'
   | 'ghost'
 
-// Fields the evaluator handles directly, outside FIELD_ALIASES
-const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include', 'view', 'v', 'sort'])
+// Fields the evaluator handles directly, outside FIELD_ALIASES (Spec 107: display, order)
+const EXTRA_KNOWN_FIELDS = new Set(['unique', 'include', 'view', 'v', 'display', 'sort', 'order'])
 
 const OPERATORS = new Set<string>([
   TokenType.COLON,

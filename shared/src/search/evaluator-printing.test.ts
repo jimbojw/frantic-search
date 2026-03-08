@@ -1134,6 +1134,17 @@ describe("view:", () => {
     const with_ = evaluate("t:instant v:images");
     expect(with_.indices.length).toBe(without.indices.length);
   });
+
+  test("display:full alias works like view:full (Spec 107)", () => {
+    const output = evaluate("display:full");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("display:grid combined with filter does not affect card count", () => {
+    const without = evaluate("t:instant");
+    const with_ = evaluate("t:instant display:grid");
+    expect(with_.indices.length).toBe(without.indices.length);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1148,6 +1159,16 @@ describe("sort:", () => {
 
   test("-sort:name produces match-all (NOT does not invert)", () => {
     const output = evaluate("-sort:name");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("order:name alias works like sort:name (Spec 107)", () => {
+    const output = evaluate("order:name");
+    expect(output.indices.length).toBe(9);
+  });
+
+  test("-order:name produces match-all (Spec 107)", () => {
+    const output = evaluate("-order:name");
     expect(output.indices.length).toBe(9);
   });
 
