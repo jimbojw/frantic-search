@@ -223,8 +223,12 @@ describe("toScryfallQuery", () => {
     expect(canon("date=202")).toBe("date>=2020-01-01 date<2030-01-01");
   });
 
-  it("partial date>202 expands to date>=2030-01-01 (Spec 061)", () => {
-    expect(canon("date>202")).toBe("date>=2030-01-01");
+  it("partial date>202 expands to date>=2021-01-01 (floor semantics)", () => {
+    expect(canon("date>202")).toBe("date>=2021-01-01");
+  });
+
+  it("partial date<=202 expands to date<2021-01-01 (floor semantics)", () => {
+    expect(canon("date<=202")).toBe("date<2021-01-01");
   });
 
   it("pads a year-only date to YYYY-MM-DD for >= operator", () => {

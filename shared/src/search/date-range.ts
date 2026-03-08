@@ -15,6 +15,18 @@ function addDays(date: number, days: number): number {
   );
 }
 
+function addYears(date: number, years: number): number {
+  const y = Math.floor(date / 10000);
+  const m = Math.floor((date % 10000) / 100);
+  const d = date % 100;
+  const d2 = new Date(y + years, m - 1, d);
+  return (
+    d2.getFullYear() * 10000 +
+    (d2.getMonth() + 1) * 100 +
+    d2.getDate()
+  );
+}
+
 function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number | null {
   for (let i = 0; i < pIdx.printingCount; i++) {
     if (pIdx.setCodesLower[i] === codeLower) {
@@ -27,11 +39,13 @@ function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number | null {
 /**
  * Parse a date value into a half-open range [lo, hi) in YYYYMMDD format.
  * Used by both evaluator and canonicalizer. See Spec 061.
+ * For partial year values, floorNext is the first day after the floor (used for > and <=).
+ * For complete values, floorNext equals hi.
  */
 export function parseDateRange(
   val: string,
   pIdx?: PrintingIndex | null,
-): { lo: number; hi: number } | null {
+): { lo: number; hi: number; floorNext: number } | null {
   const trimmed = val.trim();
   if (trimmed.length === 0) return null;
 
@@ -41,14 +55,15 @@ export function parseDateRange(
     const d = new Date();
     const lo = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     const hi = addDays(lo, 1);
-    return { lo, hi };
+    return { lo, hi, floorNext: hi };
   }
 
   if (/^[a-z0-9]{3,}$/.test(lower) && /[a-z]/.test(lower)) {
     if (pIdx) {
       const released = resolveSetDate(lower, pIdx);
       if (released !== null) {
-        return { lo: released, hi: addDays(released, 1) };
+        const hi = addDays(released, 1);
+        return { lo: released, hi, floorNext: hi };
       }
     }
     return null;
@@ -121,5 +136,8 @@ export function parseDateRange(
     }
   }
 
-  return { lo, hi };
+  const floorNext =
+    parts.length === 1 && yearSpan > 1 ? addYears(lo, 1) : hi;
+
+  return { lo, hi, floorNext };
 }

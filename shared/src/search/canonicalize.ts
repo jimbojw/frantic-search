@@ -31,9 +31,10 @@ function serializeDateField(field: string, op: string, val: string): string {
   const range = parseDateRange(val, null);
   if (range === null) return `${field}${op}${val}`;
 
-  const { lo, hi } = range;
+  const { lo, hi, floorNext } = range;
   const loStr = formatYMD(lo);
   const hiStr = formatYMD(hi);
+  const floorNextStr = formatYMD(floorNext);
 
   if (isCompleteDate(val.trim())) {
     switch (op) {
@@ -50,10 +51,10 @@ function serializeDateField(field: string, op: string, val: string): string {
   switch (op) {
     case ":": case "=": return `${field}>=${loStr} ${field}<${hiStr}`;
     case "!=": return `-(${field}>=${loStr} ${field}<${hiStr})`;
-    case ">": return `${field}>=${hiStr}`;
+    case ">": return `${field}>=${floorNextStr}`;
     case ">=": return `${field}>=${loStr}`;
     case "<": return `${field}<${loStr}`;
-    case "<=": return `${field}<${hiStr}`;
+    case "<=": return `${field}<${floorNextStr}`;
     default: return `${field}${op}${val}`;
   }
 }

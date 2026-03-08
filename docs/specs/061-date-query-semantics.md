@@ -39,16 +39,18 @@ For partial values, each component is expanded to the full span it could represe
 
 ### Operator Semantics
 
-Given a range `[lo, hi)` for the date value:
+Given a range `[lo, hi)` for the date value, and `floorNext` = first day after the floor (for partial year: lo + 1 year; for complete values: hi):
 
-| Operator | Semantics                           | Equivalent         |
-| -------- | ------------------------------------ | ------------------ |
-| `=`, `:` | Card date in range                   | lo <= date < hi    |
-| `!=`     | Card date not in range               | !(lo <= date < hi) |
-| `>`      | Strictly after range                 | date >= hi         |
-| `>=`     | At or after range start              | date >= lo         |
-| `<`      | Strictly before range                | date < lo          |
-| `<=`     | Up to (but not including) range end  | date < hi          |
+| Operator | Semantics                           | Equivalent              |
+| -------- | ------------------------------------ | ----------------------- |
+| `=`, `:` | Card date in range                   | lo <= date < hi         |
+| `!=`     | Card date not in range               | !(lo <= date < hi)      |
+| `>`      | Strictly after floor                 | date >= floorNext       |
+| `>=`     | At or after range start              | date >= lo              |
+| `<`      | Strictly before range                | date < lo               |
+| `<=`     | Up to (and including) floor          | date < floorNext        |
+
+For **partial year** values (e.g. `202`, `20`, `2`), all comparison operators use floor semantics: the partial expands to its floor (e.g. 202 → 2020), and `>` / `<=` compare against the first day after that floor.
 
 ### Examples
 
@@ -64,10 +66,10 @@ Given a range `[lo, hi)` for the date value:
 | date>2025-02 | date >= 2025-03-01                          |
 | date<2025-02 | date < 2025-02-01                           |
 | date=202     | date >= 2020-01-01 AND date < 2030-01-01    |
-| date>202     | date >= 2030-01-01                          |
+| date>202     | date >= 2021-01-01 (floor: same as date>2020) |
 | date>=202    | date >= 2020-01-01                          |
 | date<202     | date < 2020-01-01                           |
-| date<=202    | date < 2030-01-01                           |
+| date<=202    | date < 2021-01-01 (floor: same as date<=2020) |
 | date=2025-0  | date >= 2025-01-01 AND date < 2025-10-01    |
 
 ## Scryfall Alignment
@@ -83,10 +85,12 @@ For complete values (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`), this model matches Scryfa
 
 ## Narrow-as-You-Type
 
-For partial input, the range expands to the full span of what the user might mean:
+For partial input, comparison operators use floor semantics so the user sees results as they type:
 
-- `date>202` → `date >= 2020-01-01` — user sees results as they type "202" (could become 2020, 2021, …)
-- `date<202` → `date < 2020-01-01` — boundary rounds so "before 202" is generous
+- `date>202` → `date >= 2021-01-01` — same as `date>2020`; user sees cards after 2020
+- `date>=202` → `date >= 2020-01-01` — at or after floor
+- `date<202` → `date < 2020-01-01` — before floor
+- `date<=202` → `date < 2021-01-01` — same as `date<=2020`; user sees cards through 2020
 - `date=202` → `[2020-01-01, 2030-01-01)` — equality uses the full decade range
 - `date=2025-0` → `[2025-01-01, 2025-10-01)` — Jan through Sept 2025
 
@@ -112,17 +116,17 @@ For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
 - **Complete values** — Emit as-is: `date=2025`, `date=2025-02`, `year=2025`. Scryfall supports these natively.
 - **Partial values** — Expand to explicit range syntax so Scryfall receives valid queries:
   - `date=202` → `date>=2020-01-01 date<2030-01-01`
-  - `date>202` → `date>=2030-01-01`
+  - `date>202` → `date>=2021-01-01`
   - `date>=202` → `date>=2020-01-01`
   - `date<202` → `date<2020-01-01`
-  - `date<=202` → `date<2030-01-01`
+  - `date<=202` → `date<2021-01-01`
   - `date!=202` → `-(date>=2020-01-01 date<2030-01-01)`
 - **Special values** — Pass through unchanged: `now`, `today`, set codes.
 
 ## Implementation Notes
 
-- Replace the current scalar `parseDateLiteral` / `resolveDateValue` with a `parseDateRange(val: string, pIdx?: PrintingIndex): { lo: number; hi: number } | null` that handles granularity and partial padding.
-- The evaluator receives `{ lo, hi }` and applies the operator per the table above.
+- `parseDateRange(val, pIdx?)` returns `{ lo, hi, floorNext }` in YYYYMMDD format. For partial year (yearSpan > 1), `floorNext = addYears(lo, 1)`; for complete values, `floorNext = hi`.
+- The evaluator uses `floorNext` for `>` and `<=` operators; `>=` and `<` use `lo`.
 - Canonicalization must use the same range logic so Scryfall outlinks match evaluated results.
 - Rows where `released_at === 0` (unknown) remain excluded from all date comparisons.
 
@@ -145,7 +149,7 @@ For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
 3. `date>2025` returns only cards with printings in 2026 or later.
 4. `date<2025` returns only cards with printings before 2025.
 5. `date=202` returns cards with printings in the 2020s (2020–2029).
-6. `date>202` returns cards with printings in 2030 or later.
+6. `date>202` returns cards with printings in 2021 or later (same as `date>2020`).
 7. `date<202` returns cards with printings before 2020.
 8. `date!=2015` is equivalent to `-date=2015`.
 9. Partial dates narrow the range as the user types (e.g. `date=2025-0` → Jan–Sept 2025).

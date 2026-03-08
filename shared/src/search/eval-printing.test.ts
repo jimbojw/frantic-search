@@ -587,10 +587,10 @@ describe("date field", () => {
     expect(marked(lt.buf)).toEqual([2]);
   });
 
-  test("partial year date>202 means date >= 2030", () => {
+  test("partial year date>202 means date >= 2021 (floor semantics)", () => {
     const gt = evalField("date", ">", "202");
     expect(gt.error).toBeNull();
-    expect(marked(gt.buf)).toEqual([]);
+    expect(marked(gt.buf)).toEqual([0, 1, 3, 4, 6]);
   });
 
   test("partial year date>=202 means date >= 2020", () => {
@@ -637,16 +637,38 @@ describe("date field", () => {
     expect(marked(buf).length).toBe(2);
   });
 
-  test("partial year date<=202 means before 2030", () => {
+  test("partial year date<=202 means before 2021 (floor semantics)", () => {
     const lte = evalField("date", "<=", "202");
     expect(lte.error).toBeNull();
-    expect(marked(lte.buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(lte.buf)).toEqual([2, 5]);
   });
 
   test("date>=2 matches all (2 -> 2000s)", () => {
     const gte = evalField("date", ">=", "2");
     expect(gte.error).toBeNull();
     expect(marked(gte.buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("partial year date>20 same as date>2000", () => {
+    const gt20 = evalField("date", ">", "20");
+    const gt2000 = evalField("date", ">", "2000");
+    expect(gt20.error).toBeNull();
+    expect(gt2000.error).toBeNull();
+    expect(marked(gt20.buf)).toEqual(marked(gt2000.buf));
+  });
+
+  test("partial year date>2 same as date>2000", () => {
+    const gt2 = evalField("date", ">", "2");
+    const gt2000 = evalField("date", ">", "2000");
+    expect(gt2.error).toBeNull();
+    expect(gt2000.error).toBeNull();
+    expect(marked(gt2.buf)).toEqual(marked(gt2000.buf));
+  });
+
+  test("partial year date<20 matches only pre-2000", () => {
+    const lt = evalField("date", "<", "20");
+    expect(lt.error).toBeNull();
+    expect(marked(lt.buf)).toEqual([]);
   });
 
   test("partial month range semantics", () => {

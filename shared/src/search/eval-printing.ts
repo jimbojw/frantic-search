@@ -199,7 +199,7 @@ export function evalPrintingField(
       }
       const range = parseDateRange(val, pIdx);
       if (range === null) return `invalid year "${val}"`;
-      const { lo, hi } = range;
+      const { lo, hi, floorNext } = range;
       for (let i = 0; i < n; i++) {
         const d = pIdx.releasedAt[i];
         if (d === 0) continue;
@@ -207,10 +207,10 @@ export function evalPrintingField(
         switch (op) {
           case ":": case "=": match = d >= lo && d < hi; break;
           case "!=": match = !(d >= lo && d < hi); break;
-          case ">":  match = d >= hi; break;
+          case ">":  match = d >= floorNext; break;
           case ">=": match = d >= lo; break;
           case "<":  match = d < lo; break;
-          case "<=": match = d < hi; break;
+          case "<=": match = d < floorNext; break;
         }
         if (match) buf[i] = 1;
       }
@@ -231,7 +231,7 @@ export function evalPrintingField(
       if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       const range = parseDateRange(val, pIdx);
       if (range === null) return `invalid date "${val}" (expected a date like YYYY-MM-DD, "now", or a set code)`;
-      const { lo, hi } = range;
+      const { lo, hi, floorNext } = range;
       for (let i = 0; i < n; i++) {
         const d = pIdx.releasedAt[i];
         if (d === 0) continue;
@@ -239,10 +239,10 @@ export function evalPrintingField(
         switch (op) {
           case ":": case "=": match = d >= lo && d < hi; break;
           case "!=": match = !(d >= lo && d < hi); break;
-          case ">":  match = d >= hi; break;
+          case ">":  match = d >= floorNext; break;
           case ">=": match = d >= lo; break;
           case "<":  match = d < lo; break;
-          case "<=": match = d < hi; break;
+          case "<=": match = d < floorNext; break;
         }
         if (match) buf[i] = 1;
       }

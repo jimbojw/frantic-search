@@ -78,6 +78,19 @@ describe("parseDateRange", () => {
       expect(toYMD(r!.hi)).toBe("2030-01-01");
     });
 
+    test("202 returns floorNext 2021-01-01 for > and <=", () => {
+      const r = parseDateRange("202");
+      expect(r).not.toBeNull();
+      expect(r!.floorNext).toBe(20210101);
+    });
+
+    test("2025 returns floorNext same as hi (complete year)", () => {
+      const r = parseDateRange("2025");
+      expect(r).not.toBeNull();
+      expect(r!.floorNext).toBe(r!.hi);
+      expect(toYMD(r!.floorNext)).toBe("2026-01-01");
+    });
+
     test("20 -> [2000-01-01, 2100-01-01)", () => {
       const r = parseDateRange("20");
       expect(r).not.toBeNull();
