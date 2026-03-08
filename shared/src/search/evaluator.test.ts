@@ -662,6 +662,12 @@ describe("name comparison operators (Spec 096)", () => {
     expect(result.matchCount).toBe(-1);
   });
 
+  test("name>50% returns latter half alphabetically (Spec 095)", () => {
+    // 10 faces; latter 50% = 5 faces
+    const count = matchCount("name>50%");
+    expect(count).toBe(5);
+  });
+
   test("name>=Thalia finds Thalia (quoted value normalized)", () => {
     expect(matchCount('name>="Thalia, Guardian"')).toBe(1);
   });

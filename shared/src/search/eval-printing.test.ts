@@ -246,6 +246,54 @@ describe("usd field", () => {
   test("usd>null returns error (Spec 080)", () => {
     expect(evalField("usd", ">", "null").error).toBe("null cannot be used with comparison operators");
   });
+
+  // -- Percentile (Spec 095) -------------------------------------------------
+
+  test("usd>90% returns top 10% most expensive (Spec 095)", () => {
+    // Prices: 50,75,100,200,300,500. Top 10% = 1 item = row 4 ($5)
+    expect(marked(evalField("usd", ">", "90%").buf)).toEqual([4]);
+  });
+
+  test("usd<17% returns bottom 17% cheapest (Spec 095)", () => {
+    // floor(6*0.17)=1 item = row 2 ($0.50)
+    expect(marked(evalField("usd", "<", "17%").buf)).toEqual([2]);
+  });
+
+  test("usd=90% returns band 89.5-90.5% (Spec 095)", () => {
+    // Band is 1 item at position 5
+    expect(marked(evalField("usd", "=", "90%").buf)).toEqual([4]);
+  });
+
+  test("usd=0% returns bottom 0.5% band (edge clamp, Spec 095)", () => {
+    // lo=0, hi=0.5; floor(6*0)=0 to ceil(6*0.005)=1 → index 0 = row 2 (cheapest)
+    expect(marked(evalField("usd", "=", "0%").buf)).toEqual([2]);
+  });
+
+  test("usd=100% returns top 0.5% (edge clamp, Spec 095)", () => {
+    // lo=99.5, hi=100; floor(5.97)=5 to floor(6)=6
+    expect(marked(evalField("usd", "=", "100%").buf)).toEqual([4]);
+  });
+
+  test("usd percentile excludes null-price rows (Spec 095)", () => {
+    const dataWithZero: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200],
+    };
+    const idx = new PrintingIndex(dataWithZero);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", ">", "80%", idx, buf);
+    // 5 non-null: 50,75,100,200,500. Top 20% = 1 item = row 4 ($5)
+    expect(marked(buf)).toEqual([4]);
+  });
+
+  test("invalid percentile returns error (Spec 095)", () => {
+    expect(evalField("usd", ">", "150%").error).toBe('invalid percentile "150"');
+    expect(evalField("usd", ">", "abc%").error).toBe('invalid percentile "abc"');
+  });
+
+  test("decimal percentiles work (Spec 095)", () => {
+    expect(marked(evalField("usd", ">", "99.5%").buf)).toEqual([4]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -542,6 +590,32 @@ describe("date field", () => {
     const lt = evalField("date", "<", "202");
     expect(lt.error).toBeNull();
     expect(marked(lt.buf)).toEqual([2]);
+  });
+
+  // -- Percentile (Spec 095) -------------------------------------------------
+
+  test("date>90% returns newest 10% (Spec 095)", () => {
+    // Dates: 2018-03-16, 2020-11-06, 2021-06-18×4. Newest 10% = 1 item
+    const result = marked(evalField("date", ">", "90%").buf);
+    expect(result.length).toBe(1);
+    expect(pIdx.releasedAt[result[0]]).toBe(20210618);
+  });
+
+  test("date<17% returns oldest 17% (Spec 095)", () => {
+    // floor(6*0.17)=1 item = oldest = row 2 (2018-03-16)
+    expect(marked(evalField("date", "<", "17%").buf)).toEqual([2]);
+  });
+
+  test("date percentile excludes null-date rows (Spec 095)", () => {
+    const dataWithZero: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      released_at: [20210618, 0, 20180316, 20210618, 20210618, 20201106],
+    };
+    const idx = new PrintingIndex(dataWithZero);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("date", ">", "80%", idx, buf);
+    // 5 non-null. Newest 20% = 1 item
+    expect(marked(buf).length).toBe(1);
   });
 
   test("partial year date<=202 means before 2030", () => {

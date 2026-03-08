@@ -4,6 +4,62 @@ import type { CardIndex } from "./card-index";
 import { RARITY_NAMES, RARITY_ORDER, Rarity, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 
+export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
+
+export function parsePercentile(val: string): number | null {
+  const m = val.match(PERCENTILE_RE);
+  if (!m) return null;
+  const p = parseFloat(m[1]);
+  if (isNaN(p) || p < 0 || p > 100) return null;
+  return p;
+}
+
+export function applyPercentileSlice(
+  sortedIndices: Uint32Array,
+  n: number,
+  op: string,
+  p: number,
+  buf: Uint8Array,
+): void {
+  if (n === 0) return;
+  const pFrac = p / 100;
+  let start: number;
+  let end: number;
+  switch (op) {
+    case ">":
+    case ">=":
+      start = Math.floor(n * pFrac);
+      end = n;
+      break;
+    case "<":
+      start = 0;
+      end = Math.floor(n * pFrac);
+      break;
+    case "<=":
+      start = 0;
+      end = Math.floor(n * pFrac) + 1;
+      break;
+    case "=":
+    case ":":
+      const lo = Math.max(0, p - 0.5);
+      const hi = Math.min(100, p + 0.5);
+      start = Math.floor(n * (lo / 100));
+      end = Math.ceil(n * (hi / 100));
+      break;
+    case "!=":
+      const loEq = Math.max(0, p - 0.5);
+      const hiEq = Math.min(100, p + 0.5);
+      const bandStart = Math.floor(n * (loEq / 100));
+      const bandEnd = Math.ceil(n * (hiEq / 100));
+      for (let i = 0; i < bandStart; i++) buf[sortedIndices[i]] = 1;
+      for (let i = bandEnd; i < n; i++) buf[sortedIndices[i]] = 1;
+      return;
+    default:
+      return;
+  }
+  for (let i = start; i < end; i++) buf[sortedIndices[i]] = 1;
+}
+
 /** Scryfall language codes we recognize but do not support (in: language is out of scope). */
 const KNOWN_LANGUAGES = new Set([
   "en", "es", "fr", "de", "it", "pt", "ja", "ko", "zhs", "zht", "ru", "pl",
@@ -86,6 +142,18 @@ export function evalPrintingField(
         }
         break;
       }
+      const usdPercentile = parsePercentile(val);
+      if (usdPercentile !== null) {
+        applyPercentileSlice(
+          pIdx.sortedUsdIndices,
+          pIdx.sortedUsdCount,
+          op,
+          usdPercentile,
+          buf,
+        );
+        break;
+      }
+      if (val.endsWith("%")) return `invalid percentile "${val.replace(/%$/, "")}"`;
       const queryDollars = parseFloat(val);
       if (isNaN(queryDollars)) return `invalid price "${val}"`;
       const queryCents = Math.round(queryDollars * 100);
@@ -143,6 +211,18 @@ export function evalPrintingField(
       break;
     }
     case "date": {
+      const datePercentile = parsePercentile(val);
+      if (datePercentile !== null) {
+        applyPercentileSlice(
+          pIdx.sortedDateIndices,
+          pIdx.sortedDateCount,
+          op,
+          datePercentile,
+          buf,
+        );
+        break;
+      }
+      if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       const range = parseDateRange(val, pIdx);
       if (range === null) return `invalid date "${val}" (expected a date like YYYY-MM-DD, "now", or a set code)`;
       const { lo, hi } = range;

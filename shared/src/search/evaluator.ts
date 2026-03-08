@@ -12,7 +12,14 @@ import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword 
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, promoteFaceToPrintingCanonicalNonfoil, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
-import { SORT_FIELDS } from "./sort-fields";
+import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
+import { PERCENTILE_RE } from "./eval-printing";
+
+function isPercentileQuery(canonical: string | undefined, value: string): boolean {
+  return canonical !== undefined
+    && PERCENTILE_CAPABLE_FIELDS.has(canonical)
+    && PERCENTILE_RE.test(value);
+}
 import { parse } from "./parser";
 import type { OracleTagData } from "../data";
 
@@ -699,20 +706,23 @@ export class NodeCache {
           break;
         }
         if (childInterned.computed!.domain === "printing" && this._printingIndex) {
-          // Spec 080: Negated usd with non-null value → operator inversion (excludes nulls).
-          // -usd>100 = usd<=100; -usd=null uses normal buffer invert.
+          // Spec 080/095: Negated usd with non-null value, or percentile-capable field with
+          // percentile value → operator inversion (excludes nulls).
           const childField = ast.child.type === "FIELD" ? ast.child : null;
-          const isUsdField = childField
-            && FIELD_ALIASES[childField.field.toLowerCase()] === "usd"
-            && childField.value.toLowerCase() !== "null";
-          if (isUsdField && childField) {
+          const canonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
+          const useOpInversion =
+            childField
+            && (canonical === "usd" && childField.value.toLowerCase() !== "null"
+                || isPercentileQuery(canonical, childField.value));
+          if (useOpInversion && childField) {
             const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
             const op = childField.operator;
             const invertedOp = invOp[op] ?? op;
+            const fieldCanonical = canonical ?? "usd";
             const pn = this._printingIndex.printingCount;
             const buf = new Uint8Array(pn);
             const t0 = performance.now();
-            const err = evalPrintingField("usd", invertedOp, childField.value, this._printingIndex, buf, this.index);
+            const err = evalPrintingField(fieldCanonical, invertedOp, childField.value, this._printingIndex, buf, this.index);
             const ms = performance.now() - t0;
             if (err) {
               interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
@@ -733,14 +743,15 @@ export class NodeCache {
           interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
           timings.set(interned.key, { cached: false, evalMs: ms });
         } else {
-          // Spec 096: Negated name with comparison op → operator inversion (-name>M = name<=M).
+          // Spec 096/095: Negated name with comparison op or percentile → operator inversion.
           const childField = ast.child.type === "FIELD" ? ast.child : null;
+          const nameCanonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
           const nameCmpOps = new Set([">", "<", ">=", "<="]);
           const isNameCmp = childField
-            && FIELD_ALIASES[childField.field.toLowerCase()] === "name"
-            && nameCmpOps.has(childField.operator);
+            && nameCanonical === "name"
+            && (nameCmpOps.has(childField.operator) || isPercentileQuery(nameCanonical, childField.value));
           if (isNameCmp && childField) {
-            const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">" };
+            const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
             const invertedNode = { ...childField, operator: invOp[childField.operator] };
             const buf = new Uint8Array(n);
             const t0 = performance.now();

@@ -1,6 +1,6 @@
 # Spec 095: Percentile Filters for Sortable Columns
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#104](https://github.com/jimbojw/frantic-search/issues/104)
 

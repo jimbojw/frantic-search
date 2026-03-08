@@ -8,6 +8,7 @@ import {
 import { parseManaSymbols, manaContains, manaEquals } from "./mana";
 import { parseStatValue } from "./stats";
 import { evalIsKeyword } from "./eval-is";
+import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 
 export const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -96,6 +97,19 @@ export function evalLeafField(
 
   switch (canonical) {
     case "name": {
+      const namePercentile = parsePercentile(val);
+      if (namePercentile !== null) {
+        if (!NAME_CMP_OPS.has(op) && op !== "=" && op !== ":" && op !== "!=") break;
+        applyPercentileSlice(
+          index.sortedNameIndices,
+          index.faceCount,
+          op,
+          namePercentile,
+          buf,
+        );
+        break;
+      }
+      if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       if (NAME_CMP_OPS.has(op)) {
         // Lexicographic comparison (Spec 096): same normalization as sort:name
         const valNorm = val.toLowerCase().replace(/[^a-z0-9]/g, "");

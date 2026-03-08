@@ -91,6 +91,14 @@ describe("toScryfallQuery", () => {
     expect(canon("name>M lightning")).toBe("lightning");
   });
 
+  it("strips percentile queries for Scryfall (Spec 095)", () => {
+    expect(canon("usd>90%")).toBe("");
+    expect(canon("date<10%")).toBe("");
+    expect(canon("name>50%")).toBe("");
+    expect(canon("t:creature usd>90%")).toBe("t:creature");
+    expect(canon("usd>90% lightning")).toBe("lightning");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {

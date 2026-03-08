@@ -1,6 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingColumnarData } from "../data";
 
+function buildPercentileArrays(
+  priceUsd: number[],
+  releasedAt: number[],
+  n: number,
+): {
+  sortedUsdIndices: Uint32Array;
+  sortedUsdCount: number;
+  sortedDateIndices: Uint32Array;
+  sortedDateCount: number;
+} {
+  let usdCount = 0;
+  let dateCount = 0;
+  for (let i = 0; i < n; i++) {
+    if (priceUsd[i] !== 0) usdCount++;
+    if (releasedAt[i] !== 0) dateCount++;
+  }
+
+  const sortedUsdIndices = new Uint32Array(usdCount);
+  const sortedDateIndices = new Uint32Array(dateCount);
+
+  let usdK = 0;
+  let dateK = 0;
+  for (let i = 0; i < n; i++) {
+    if (priceUsd[i] !== 0) sortedUsdIndices[usdK++] = i;
+    if (releasedAt[i] !== 0) sortedDateIndices[dateK++] = i;
+  }
+
+  sortedUsdIndices.sort((a, b) => priceUsd[a] - priceUsd[b]);
+  sortedDateIndices.sort((a, b) => releasedAt[a] - releasedAt[b]);
+
+  return {
+    sortedUsdIndices,
+    sortedUsdCount: usdCount,
+    sortedDateIndices,
+    sortedDateCount: dateCount,
+  };
+}
+
 export class PrintingIndex {
   readonly printingCount: number;
   readonly canonicalFaceRef: number[];
@@ -19,6 +57,12 @@ export class PrintingIndex {
   readonly promoTypesFlags1: number[];
   readonly setReleasedAt: number[];
   readonly knownSetCodes: Set<string>;
+
+  /** Sorted printing indices for percentile queries (non-null only). Ascending by value. */
+  readonly sortedUsdIndices: Uint32Array;
+  readonly sortedDateIndices: Uint32Array;
+  readonly sortedUsdCount: number;
+  readonly sortedDateCount: number;
 
   /** Reverse map: canonical face index -> printing row indices. */
   private readonly _printingsOf: Map<number, number[]>;
@@ -43,6 +87,13 @@ export class PrintingIndex {
     this.promoTypesFlags1 = data.promo_types_flags_1 ?? [];
     this.setReleasedAt = data.set_lookup.map(e => e.released_at);
     this.knownSetCodes = new Set(data.set_lookup.map(e => e.code.toLowerCase()));
+
+    const { sortedUsdIndices, sortedUsdCount, sortedDateIndices, sortedDateCount } =
+      buildPercentileArrays(data.price_usd, data.released_at, data.canonical_face_ref.length);
+    this.sortedUsdIndices = sortedUsdIndices;
+    this.sortedUsdCount = sortedUsdCount;
+    this.sortedDateIndices = sortedDateIndices;
+    this.sortedDateCount = sortedDateCount;
 
     this._printingsOf = new Map();
     for (let i = 0; i < this.printingCount; i++) {

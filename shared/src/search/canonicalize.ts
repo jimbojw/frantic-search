@@ -2,6 +2,8 @@
 import type { ASTNode } from "./ast";
 import { FIELD_ALIASES } from "./eval-leaves";
 import { parseDateRange } from "./date-range";
+import { PERCENTILE_RE } from "./eval-printing";
+import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 
 const DATE_FIELDS = new Set(["date", "year"]);
 
@@ -78,9 +80,11 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       const f = node.field.toLowerCase();
       if (f === "view" || f === "v") return "";
       if (node.field.toLowerCase() === "sort") return "";
+      const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
+      // Spec 095: percentile queries have no Scryfall equivalent — strip (before date handling)
+      if (canonical && PERCENTILE_CAPABLE_FIELDS.has(canonical) && PERCENTILE_RE.test(node.value)) return "";
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
-      const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
       if (canonical === "usd" && node.value.toLowerCase() === "null") return "";
       // Spec 096: name comparison operators have no Scryfall equivalent — strip
       const nameCmpOps = new Set([">", "<", ">=", "<="]);

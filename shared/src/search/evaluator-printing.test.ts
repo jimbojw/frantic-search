@@ -325,6 +325,38 @@ describe("Spec 080: usd null and negated price", () => {
     expect(indices).toContain(0);
     expect(indices).toContain(2);
   });
+
+  test("-usd>90% equals usd<=90%, nulls excluded (Spec 095)", () => {
+    const dataWithNull = {
+      ...TEST_PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200, 10, 50, 200, 150, 60],
+    };
+    const pIdx = new PrintingIndex(dataWithNull);
+    const cache = new NodeCache(index, pIdx);
+    const negated = cache.evaluate(parse("-usd>90%"));
+    const direct = cache.evaluate(parse("usd<=90%"));
+    expect(negated.printingIndices).toBeDefined();
+    expect(direct.printingIndices).toBeDefined();
+    expect(Array.from(negated.printingIndices!).sort()).toEqual(
+      Array.from(direct.printingIndices!).sort(),
+    );
+    expect(Array.from(negated.printingIndices!)).not.toContain(1);
+  });
+
+  test("-date<10% equals date>=10%, nulls excluded (Spec 095)", () => {
+    const dataWithNull = {
+      ...TEST_PRINTING_DATA,
+      released_at: [20210618, 0, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106, 20210618, 20180316],
+    };
+    const pIdx = new PrintingIndex(dataWithNull);
+    const cache = new NodeCache(index, pIdx);
+    const negated = cache.evaluate(parse("-date<10%"));
+    const direct = cache.evaluate(parse("date>=10%"));
+    expect(Array.from(negated.printingIndices!).sort()).toEqual(
+      Array.from(direct.printingIndices!).sort(),
+    );
+    expect(Array.from(negated.printingIndices!)).not.toContain(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

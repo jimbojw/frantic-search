@@ -11,6 +11,23 @@ function stripReminderText(text: string): string {
   return text.replace(REMINDER_TEXT_RE, "");
 }
 
+function buildSortedNameIndices(
+  faceCount: number,
+  combinedNamesNormalized: string[],
+  canonicalFace: number[],
+): Uint32Array {
+  const indices = new Uint32Array(faceCount);
+  for (let i = 0; i < faceCount; i++) indices[i] = i;
+  indices.sort((a, b) => {
+    const na = combinedNamesNormalized[canonicalFace[a]];
+    const nb = combinedNamesNormalized[canonicalFace[b]];
+    if (na < nb) return -1;
+    if (na > nb) return 1;
+    return 0;
+  });
+  return indices;
+}
+
 export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
@@ -44,6 +61,8 @@ export class CardIndex {
   readonly numericToughnessLookup: number[];
   readonly numericLoyaltyLookup: number[];
   readonly numericDefenseLookup: number[];
+  /** Sorted face indices for percentile queries. Ascending by combinedNamesNormalized. */
+  readonly sortedNameIndices: Uint32Array;
   private readonly _facesOf: Map<number, number[]>;
 
   constructor(data: ColumnarData) {
@@ -64,6 +83,11 @@ export class CardIndex {
     this.combinedNamesLower = combinedNames.map((n) => n.toLowerCase());
     this.combinedNamesNormalized = combinedNames.map((n) =>
       n.toLowerCase().replace(/[^a-z0-9]/g, ""),
+    );
+    this.sortedNameIndices = buildSortedNameIndices(
+      data.names.length,
+      this.combinedNamesNormalized,
+      data.canonical_face,
     );
     this.oracleTextsLower = data.oracle_texts.map((t) =>
       stripReminderText(t).toLowerCase(),
