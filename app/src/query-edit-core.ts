@@ -68,9 +68,12 @@ export function extractValue(label: string, operator: string): string {
 
 function nodeLabel(node: ASTNode): string {
   switch (node.type) {
-    case 'FIELD':
-      return (node as { sourceText?: string }).sourceText
-        ?? `${node.field}${node.operator}${node.value}`
+    case 'FIELD': {
+      const src = (node as { sourceText?: string }).sourceText
+      if (node.field.toLowerCase() === 'unique' && src) return src
+      if (node.field.toLowerCase() === 'include' && src) return src
+      return `${node.field}${node.operator}${src ?? node.value}`
+    }
     case 'BARE': return node.value
     case 'EXACT': return `!"${node.value}"`
     case 'REGEX_FIELD': return `${node.field}${node.operator}/${node.pattern}/`

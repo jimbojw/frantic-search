@@ -23,10 +23,12 @@ function compoundSpan(children: ASTNode[]): Span | undefined {
 
 class Parser {
   private tokens: Token[];
+  private input: string;
   private pos = 0;
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: Token[], input: string) {
     this.tokens = tokens;
+    this.input = input;
   }
 
   parse(): ASTNode {
@@ -122,10 +124,15 @@ class Parser {
         const op = this.advance();
         if (this.at(TokenType.WORD) || this.at(TokenType.QUOTED)) {
           const valueTok = this.advance();
+          const sourceText =
+            valueTok.type === TokenType.QUOTED
+              ? this.input.slice(valueTok.start, valueTok.end)
+              : undefined;
           return {
             type: "FIELD", field: word.value, operator: op.value, value: valueTok.value,
             span: { start: word.start, end: valueTok.end },
             valueSpan: { start: valueTok.start, end: valueTok.end },
+            ...(sourceText !== undefined && { sourceText }),
           };
         }
         if (this.at(TokenType.REGEX)) {
@@ -195,5 +202,5 @@ class Parser {
 
 export function parse(input: string): ASTNode {
   const tokens = lex(input);
-  return new Parser(tokens).parse();
+  return new Parser(tokens, input).parse();
 }

@@ -409,5 +409,23 @@ describe("parse", () => {
       expect(ast.span).toEqual({ start: 0, end: 22 });
       expect(ast.valueSpan).toEqual({ start: 2, end: 22 });
     });
+
+    test("FIELD with double-quoted value has sourceText including quotes (issue 133)", () => {
+      const ast = parse('o:"destroy all creatures"') as import("./ast").FieldNode;
+      expect(ast.sourceText).toBe('"destroy all creatures"');
+      expect(ast.value).toBe("destroy all creatures");
+    });
+
+    test("FIELD with single-quoted value has sourceText including quotes (issue 133)", () => {
+      const ast = parse("o:'destroy all creatures'") as import("./ast").FieldNode;
+      expect(ast.sourceText).toBe("'destroy all creatures'");
+      expect(ast.value).toBe("destroy all creatures");
+    });
+
+    test("FIELD with unquoted value has no sourceText", () => {
+      const ast = parse("o:destroy") as import("./ast").FieldNode;
+      expect(ast.sourceText).toBeUndefined();
+      expect(ast.value).toBe("destroy");
+    });
   });
 });

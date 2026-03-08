@@ -12,7 +12,7 @@ import {
   prependTerm,
   clearFieldTermsRecursive,
 } from './query-edit-core'
-import { reconstructQuery } from './InlineBreakdown'
+import { reconstructQuery, reconstructWithout } from './InlineBreakdown'
 
 function buildBreakdown(query: string): BreakdownNode {
   return parseBreakdown(query)!
@@ -241,6 +241,34 @@ describe('removeNode', () => {
     const orChild = bd.children!.find(c => reconstructQuery(c) === 'b OR c')
     expect(orChild).toBeDefined()
     expect(removeNode(q, orChild!, bd)).toBe('a d')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// reconstructWithout with quoted values (issue 133)
+// ---------------------------------------------------------------------------
+
+describe('reconstructWithout quoted values (issue 133)', () => {
+  it('deleting adjacent chip preserves quotes on multi-word oracle text', () => {
+    const q = 'o:"destroy all creatures" ci:white'
+    const bd = parseBreakdown(q)!
+    const ciChild = bd.children!.find(c => reconstructQuery(c) === 'ci:white')
+    expect(ciChild).toBeDefined()
+    expect(reconstructWithout(bd, ciChild!)).toBe('o:"destroy all creatures"')
+  })
+
+  it('deleting adjacent chip preserves single-quote oracle text', () => {
+    const q = "o:'destroy all creatures' ci:white"
+    const bd = parseBreakdown(q)!
+    const ciChild = bd.children!.find(c => reconstructQuery(c) === 'ci:white')
+    expect(ciChild).toBeDefined()
+    expect(reconstructWithout(bd, ciChild!)).toBe("o:'destroy all creatures'")
+  })
+
+  it('promoting quoted oracle chip yields single term in pinned query (issue 133)', () => {
+    const r = simPin('o:"destroy all creatures"', '', 'o:"destroy all creatures"')
+    expect(r.live).toBe('')
+    expect(r.pinned).toBe('o:"destroy all creatures"')
   })
 })
 

@@ -437,6 +437,24 @@ describe('aggregation counts (Spec 087)', () => {
 // Spec 082: dual counts on breakdown nodes
 // ---------------------------------------------------------------------------
 
+describe('quoted values in breakdown (issue 133)', () => {
+  it('toBreakdown preserves quotes in oracle field label', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'o:"destroy all creatures" ci:white' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.breakdown).toBeDefined()
+    const bd = result.breakdown!
+    expect(bd.children).toHaveLength(2)
+    const oracleChild = bd.children!.find(c => c.label.startsWith('o:'))
+    expect(oracleChild).toBeDefined()
+    expect(oracleChild!.label).toBe('o:"destroy all creatures"')
+  })
+})
+
 describe('dual counts (Spec 082)', () => {
   it('toBreakdown propagates matchCountCards and matchCountPrints to BreakdownNode', () => {
     const result = runSearch({

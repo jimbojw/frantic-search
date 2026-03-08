@@ -10,7 +10,7 @@ function leafLabel(qnr: QueryNodeResult): string {
     case 'FIELD':
       if (n.field.toLowerCase() === 'unique' && n.sourceText) return n.sourceText
       if (n.field.toLowerCase() === 'include' && n.sourceText) return n.sourceText
-      return `${n.field}${n.operator}${n.value}`
+      return `${n.field}${n.operator}${n.sourceText ?? n.value}`
     case 'BARE': return n.value
     case 'EXACT': return `!"${n.value}"`
     case 'REGEX_FIELD': return `${n.field}${n.operator}/${n.pattern}/`
