@@ -16,7 +16,7 @@ import { BATCH_SIZES, isViewMode } from './view-mode'
 import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
-  buildPrintingScryfallGroupIndex,
+  buildPrintingScryfallGroupIndex, buildScryfallSearchUrl,
   parseView, parseListTab, isDualWield, getPaneQueries,
 } from './app-utils'
 import type { View } from './app-utils'
@@ -369,7 +369,7 @@ function App() {
     const q = effectiveQuery().trim()
     if (!q) return ''
     const canonical = toScryfallQuery(parse(q))
-    return canonical ? `https://scryfall.com/search?q=${encodeURIComponent(canonical)}` : ''
+    return buildScryfallSearchUrl(canonical, q)
   }
 
   async function fetchThumbHashes(): Promise<void> {

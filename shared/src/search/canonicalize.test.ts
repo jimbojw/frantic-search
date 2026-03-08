@@ -95,8 +95,16 @@ describe("toScryfallQuery", () => {
     expect(canon("usd>90%")).toBe("");
     expect(canon("date<10%")).toBe("");
     expect(canon("name>50%")).toBe("");
+    expect(canon("edhrec>90%")).toBe("");
     expect(canon("t:creature usd>90%")).toBe("t:creature");
     expect(canon("usd>90% lightning")).toBe("lightning");
+  });
+
+  it("strips edhrec filter for Scryfall (Spec 099)", () => {
+    expect(canon("edhrec<100")).toBe("");
+    expect(canon("edhrec>=500")).toBe("");
+    expect(canon("t:creature edhrec<100")).toBe("t:creature");
+    expect(canon("edhrec<100 lightning")).toBe("lightning");
   });
 
   // --- Regex field nodes ---

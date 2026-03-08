@@ -31,6 +31,7 @@ export type DisplayColumns = {
   defense_lookup: string[]
   canonical_face: number[]
   oracle_ids: string[]
+  edhrec_rank: (number | null)[]
 }
 
 export type BreakdownNode = {

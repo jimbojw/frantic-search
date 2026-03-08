@@ -150,8 +150,8 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
-/** ColumnarData with oracle_ids guaranteed (used when building, not when reading legacy JSON). */
-type ColumnarDataBuilder = ColumnarData & { oracle_ids: string[] };
+/** ColumnarData with oracle_ids and edhrec_ranks guaranteed (used when building, not when reading legacy JSON). */
+type ColumnarDataBuilder = ColumnarData & { oracle_ids: string[]; edhrec_ranks: (number | null)[] };
 
 interface ThumbHashData {
   art_crop: string[];

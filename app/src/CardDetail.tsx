@@ -371,6 +371,19 @@ export default function CardDetail(props: {
                         <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
                         <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
+                        <Show when={d() && faces().length > 0}>
+                          {(() => {
+                            const r = d()!.edhrec_rank[faces()[0]]
+                            return (
+                              <>
+                                <dt class="font-medium text-gray-600 dark:text-gray-300">EDHREC Rank</dt>
+                                <dd class={r != null ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}>
+                                  {r != null ? `#${r}` : 'Not ranked'}
+                                </dd>
+                              </>
+                            )
+                          })()}
+                        </Show>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
                             {(pi) => {

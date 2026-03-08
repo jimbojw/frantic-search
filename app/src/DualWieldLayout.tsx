@@ -2,7 +2,7 @@
 import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
 import { toScryfallQuery, parse } from '@frantic-search/shared'
-import { buildFacesOf } from './app-utils'
+import { buildFacesOf, buildScryfallSearchUrl } from './app-utils'
 import {
   getCompletionContext,
   computeSuggestion,
@@ -185,7 +185,7 @@ function buildPaneContext(state: PaneState): SearchContextValue {
     const q = effectiveQuery().trim()
     if (!q) return ''
     const canonical = toScryfallQuery(parse(q))
-    return canonical ? `https://scryfall.com/search?q=${encodeURIComponent(canonical)}` : ''
+    return buildScryfallSearchUrl(canonical, q)
   }
 
   return {

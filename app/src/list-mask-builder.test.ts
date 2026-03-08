@@ -35,6 +35,7 @@ function makeDisplay(): DisplayColumns {
     defense_lookup: [],
     canonical_face: [0, 1, 2],
     oracle_ids: ['oid-bolt', 'oid-sol', 'oid-counterspell'],
+    edhrec_rank: [null, null, null],
   }
 }
 

@@ -123,6 +123,7 @@ const SECTION_CHIPS: Record<TermsSectionId, ChipDef[]> = {
     sortChip('color'),
     sortChip('power'),
     sortChip('toughness'),
+    sortChip('edhrec'),
     sortChip('$'),
     sortChip('date'),
     sortChip('rarity'),

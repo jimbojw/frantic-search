@@ -64,6 +64,7 @@ const FACE_FIELDS: FieldEntry[] = [
   { field: 'is', aliases: [], description: 'Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
   { field: 'otag', aliases: [], description: 'Oracle tag (community-curated)', example: 'otag:ramp' },
   { field: 'atag', aliases: [], description: 'Illustration tag (community-curated)', example: 'atag:bolt' },
+  { field: 'edhrec', aliases: ['edhrecrank'], description: 'EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular)', example: 'edhrec<100' },
   { field: 'my', aliases: [], description: 'Cards in a list', example: 'my:list' },
 ]
 
@@ -86,6 +87,7 @@ const EXCLUSIVES: ExclusiveEntry[] = [
   { feature: 'Name percentile', description: 'Filter by position in alphabetical distribution', example: 'name>50%' },
   { feature: 'Price percentile', description: 'Filter by position in price distribution', example: 'usd>90%' },
   { feature: 'Date percentile', description: 'Filter by position in release-date distribution', example: 'date>90%' },
+  { feature: 'EDHREC percentile', description: 'Filter by Commander popularity (rank inversion: higher % = more popular)', example: 'edhrec>90%' },
   { feature: 'usd=null', description: 'Find printings with no price data', example: 'usd=null' },
   { feature: '-sort:field', description: 'Reverse sort direction (NOT inverts)', example: '-sort:name' },
 ]
@@ -126,7 +128,7 @@ const DIVERGENCES: DivergenceEntry[] = [
   { behavior: 'Bare regex', scryfall: 'Not supported', franticSearch: '/pattern searches name, oracle text, and type line' },
   { behavior: 'Bare words', scryfall: 'Searches name (fuzzy matching)', franticSearch: 'Searches name (substring, no fuzzy)' },
   { behavior: 'Name comparison', scryfall: 'Not supported', franticSearch: 'name>M, name<=X (alphabetical)' },
-  { behavior: 'Percentile filters', scryfall: 'Not supported', franticSearch: 'usd>90%, date<10%, name>50%' },
+  { behavior: 'Percentile filters', scryfall: 'Not supported', franticSearch: 'usd>90%, date<10%, name>50%, edhrec>90%' },
   { behavior: 'usd=null', scryfall: 'Not supported', franticSearch: 'Matches printings with no price data' },
   { behavior: '$ alias', scryfall: 'Uses usd', franticSearch: '$ is alias for usd' },
   { behavior: 'Query speed', scryfall: 'Server round-trip', franticSearch: 'Instant (client-side, every keystroke)' },

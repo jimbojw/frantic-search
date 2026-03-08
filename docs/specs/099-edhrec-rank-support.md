@@ -1,6 +1,6 @@
 # Spec 099: EDHREC Rank Support
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#112](https://github.com/jimbojw/frantic-search/issues/112)
 

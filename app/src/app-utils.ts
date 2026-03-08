@@ -1,6 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
-import { Rarity, Finish } from '@frantic-search/shared'
+import { Rarity, Finish, getSortByFromQuery } from '@frantic-search/shared'
+
+/** Scryfall order= param for each sortable field (Spec 059). */
+const SCRYFALL_ORDER: Record<string, string> = {
+  name: 'name',
+  mv: 'cmc',
+  color: 'color',
+  power: 'power',
+  toughness: 'toughness',
+  usd: '$',
+  date: 'released',
+  rarity: 'rarity',
+  edhrec: 'edhrec',
+}
+
+/** Build Scryfall search URL with order/dir when sort: is active. */
+export function buildScryfallSearchUrl(canonicalQuery: string, effectiveQuery: string): string {
+  const q = canonicalQuery || '*'
+  let url = `https://scryfall.com/search?q=${encodeURIComponent(q)}`
+  const sortBy = getSortByFromQuery(effectiveQuery)
+  if (sortBy) {
+    const order = SCRYFALL_ORDER[sortBy.field]
+    if (order) url += `&order=${order}&dir=${sortBy.direction}`
+  }
+  return url
+}
 
 export function buildFacesOf(canonicalFace: number[]): Map<number, number[]> {
   const map = new Map<number, number[]>()

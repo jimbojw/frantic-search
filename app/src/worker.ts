@@ -44,6 +44,7 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     defense_lookup: data.defense_lookup,
     canonical_face: data.canonical_face,
     oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(''),
+    edhrec_rank: data.edhrec_ranks ?? new Array<number | null>(len).fill(null),
   }
 }
 
