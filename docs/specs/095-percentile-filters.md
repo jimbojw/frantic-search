@@ -4,7 +4,7 @@
 
 **GitHub Issue:** [#104](https://github.com/jimbojw/frantic-search/issues/104)
 
-**Depends on:** Spec 002 (Query Engine), Spec 059 (Sort Directives), Spec 080 (USD Null and Negated Price Semantics), ADR-009 (Bitmask-per-Node AST)
+**Depends on:** Spec 002 (Query Engine), Spec 059 (Sort Directives), Spec 080 (USD Null and Negated Price Semantics), Spec 096 (Name Comparison Operators — for `name` percentile support), ADR-009 (Bitmask-per-Node AST)
 
 ## Goal
 
@@ -39,7 +39,7 @@ A field receives percentile treatment if it satisfies:
 |-------|--------|-----------|
 | `usd` | Printing | Continuous price distribution; high diversity. |
 | `date` | Printing | Continuous release-date distribution; high diversity. |
-| `name` | Face | Alphabetical ordering; high diversity (30k+ distinct names). *Requires adding comparison-operator support for `name` first — currently `name` only supports substring match (`:`, `=`), not `>`, `<`, etc. Defer to a follow-up or implement name comparison as prerequisite.* |
+| `name` | Face | Alphabetical ordering; high diversity (30k+ distinct names). Requires Spec 096 (name comparison operators). |
 
 ### Excluded (low diversity)
 
@@ -153,7 +153,7 @@ O(1) bounds calculation on the pre-sorted array. No per-row comparison loop. Ins
 | `shared/src/search/printing-index.ts` | Add `sortedUsdIndices`, `sortedDateIndices` (or generic percentile arrays), built at construction |
 | `shared/src/search/card-index.ts` | Add `sortedNameIndices` for face-domain, built at construction |
 | `shared/src/search/eval-printing.ts` | Add percentile branch in `usd` and `date` cases; detect value via `/^\d+(\.\d+)?%$/` |
-| `shared/src/search/eval-leaves.ts` | Add percentile branch in `name` case only if/when name comparison operators are implemented (defer to follow-up) |
+| `shared/src/search/eval-leaves.ts` | Add percentile branch in `name` case (requires Spec 096) |
 | `shared/src/search/evaluator.ts` | Extend negation path: when child is percentile-capable field with percentile value, use operator inversion (same as Spec 080 for usd) |
 
 ## Error Handling
@@ -178,7 +178,7 @@ Percentile queries have no Scryfall equivalent. Strip them from Scryfall outlink
 8. `date<10%` returns oldest 10%.
 9. Invalid percentile (`usd>150%`) returns error.
 10. Decimal percentiles (`usd>99.5%`) work correctly.
-11. `name>50%` returns latter half alphabetically (deferred until name comparison operators exist).
+11. `name>50%` returns latter half alphabetically (requires Spec 096).
 
 ## Acceptance Criteria
 
@@ -190,4 +190,4 @@ Percentile queries have no Scryfall equivalent. Strip them from Scryfall outlink
 6. Null values are excluded from both the percentile distribution and the result set.
 7. Performance remains instant (O(1) bounds on pre-sorted array).
 8. The design allows for `invertPercentile` flag for future rank-based columns.
-9. `name` percentile support included if feasible; otherwise documented as future work.
+9. `name` percentile support enabled by Spec 096.
