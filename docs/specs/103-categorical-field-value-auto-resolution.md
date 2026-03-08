@@ -1,6 +1,6 @@
 # Spec 103: Categorical Field Value Auto-Resolution
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 058 (View Mode Query Term), Spec 072 (in: Query Qualifier), Spec 104 (Bonus Rarity Tier)
 

@@ -168,9 +168,9 @@ describe("non-destructive error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 
-  test("f:comma produces unknown format error", () => {
-    const { result } = getResult("f:comma");
-    expect(result.error).toBe('unknown format "comma"');
+  test("f:xyz produces unknown format error", () => {
+    const { result } = getResult("f:xyz");
+    expect(result.error).toBe('unknown format "xyz"');
     expect(result.matchCount).toBe(-1);
   });
 
@@ -195,7 +195,7 @@ describe("non-destructive error handling", () => {
   test("error nodes produce zero indices", () => {
     expect(getResult("foo:bar").indices.length).toBe(0);
     expect(getResult("o:/[/").indices.length).toBe(0);
-    expect(getResult("f:comma").indices.length).toBe(0);
+    expect(getResult("f:xyz").indices.length).toBe(0);
     expect(getResult("is:xyz").indices.length).toBe(0);
   });
 
@@ -237,9 +237,9 @@ describe("non-destructive error handling", () => {
     expect(matchCount("t:creature o:/[/")).toBe(creatureOnly);
   });
 
-  test("error child is skipped in AND — f:comma t:creature", () => {
+  test("error child is skipped in AND — f:xyz t:creature", () => {
     const creatureOnly = matchCount("t:creature");
-    expect(matchCount("f:comma t:creature")).toBe(creatureOnly);
+    expect(matchCount("f:xyz t:creature")).toBe(creatureOnly);
   });
 
   test("error child is skipped in AND — is:xyz t:creature", () => {
@@ -280,9 +280,9 @@ describe("non-destructive error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 
-  test("-f:comma propagates error", () => {
-    const { result } = getResult("-f:comma");
-    expect(result.error).toBe('unknown format "comma"');
+  test("-f:xyz propagates error", () => {
+    const { result } = getResult("-f:xyz");
+    expect(result.error).toBe('unknown format "xyz"');
     expect(result.matchCount).toBe(-1);
   });
 });

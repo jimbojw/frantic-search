@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode } from '@frantic-search/shared'
-import { parse } from '@frantic-search/shared'
+import { parse, resolveForField } from '@frantic-search/shared'
 import type { ViewMode } from './view-mode'
 import { VIEW_MODES } from './view-mode'
 
@@ -42,8 +42,9 @@ export function extractViewMode(effectiveQuery: string): ViewMode {
   const ast = parse(trimmed)
   const values = collectViewValues(ast)
   for (let i = values.length - 1; i >= 0; i--) {
-    if (isValidViewValue(values[i])) {
-      return values[i] as ViewMode
+    const resolved = resolveForField('view', values[i])
+    if (isValidViewValue(resolved)) {
+      return resolved as ViewMode
     }
   }
   return 'slim'

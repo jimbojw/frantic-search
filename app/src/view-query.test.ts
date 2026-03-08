@@ -21,6 +21,12 @@ describe('extractViewMode', () => {
     expect(extractViewMode('v:slim t:creature')).toBe('slim')
   })
 
+  it('resolves abbreviated view values (Spec 103)', () => {
+    expect(extractViewMode('view:i')).toBe('images')
+    expect(extractViewMode('v:i')).toBe('images')
+    expect(extractViewMode('view:s')).toBe('slim')
+  })
+
   it('returns the last valid view: when multiple exist', () => {
     expect(extractViewMode('a view:slim b view:images')).toBe('images')
     expect(extractViewMode('view:detail view:full')).toBe('full')

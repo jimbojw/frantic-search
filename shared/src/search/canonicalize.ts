@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode } from "./ast";
 import { FIELD_ALIASES } from "./eval-leaves";
+import { resolveForField, type ResolutionContext } from "./categorical-resolve";
 import { parseDateRange } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
@@ -66,7 +67,7 @@ function needsQuoting(value: string): boolean {
   return /\s/.test(value);
 }
 
-function serializeNode(node: ASTNode, parentType?: string): string {
+function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionContext): string {
   switch (node.type) {
     case "NOP":
       return "";
@@ -95,7 +96,9 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       if (canonical === "salt") return "";
       // Spec 074: $ is Frantic Search–only; Scryfall expects "usd" (https://scryfall.com/docs/syntax#prices)
       const fieldForScryfall = canonical === "usd" ? "usd" : node.field;
-      const quoted = needsQuoting(node.value) ? `"${node.value}"` : node.value;
+      // Spec 103: resolve categorical values for canonical Scryfall outlinks
+      const valToEmit = resolveForField(canonical ?? node.field.toLowerCase(), node.value, context);
+      const quoted = needsQuoting(valToEmit) ? `"${valToEmit}"` : valToEmit;
       return `${fieldForScryfall}${node.operator}${quoted}`;
     }
 
@@ -106,7 +109,7 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       return `!"${node.value}"`;
 
     case "NOT": {
-      const child = serializeNode(node.child, "NOT");
+      const child = serializeNode(node.child, "NOT", context);
       if (!child) return "";
       // OR already self-parenthesizes when parentType is "NOT", so only
       // AND needs an explicit wrapper here.
@@ -116,14 +119,14 @@ function serializeNode(node: ASTNode, parentType?: string): string {
 
     case "AND": {
       const parts = node.children
-        .map((c) => serializeNode(c, "AND"))
+        .map((c) => serializeNode(c, "AND", context))
         .filter(Boolean);
       return parts.join(" ");
     }
 
     case "OR": {
       const parts = node.children
-        .map((c) => serializeNode(c, "OR"))
+        .map((c) => serializeNode(c, "OR", context))
         .filter(Boolean);
       if (parts.length === 0) return "";
       if (parts.length === 1) return parts[0];
@@ -139,7 +142,9 @@ function serializeNode(node: ASTNode, parentType?: string): string {
  * Serialize an AST node to a Scryfall-compatible query string.
  * Handles all Frantic Search divergences: unclosed delimiters, bare regex
  * expansion, partial dates, NOP removal, and empty field values.
+ * Spec 103: optional context enables resolution of runtime categorical fields
+ * (set, in, otag, atag) for canonical outlinks; build-time fields resolve without context.
  */
-export function toScryfallQuery(node: ASTNode): string {
-  return serializeNode(node);
+export function toScryfallQuery(node: ASTNode, context?: ResolutionContext): string {
+  return serializeNode(node, undefined, context);
 }

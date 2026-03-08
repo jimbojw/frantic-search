@@ -3,6 +3,7 @@ import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
+import { resolveForField, type ResolutionContext } from "./categorical-resolve";
 
 export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
 
@@ -107,20 +108,24 @@ export function evalPrintingField(
   pIdx: PrintingIndex,
   buf: Uint8Array,
   cardIndex?: CardIndex,
+  context?: ResolutionContext,
 ): string | null {
   const n = pIdx.printingCount;
   const valLower = val.toLowerCase();
 
   switch (canonical) {
     case "set": {
-      if (!pIdx.knownSetCodes.has(valLower)) return `unknown set "${val}"`;
+      const setVal = resolveForField("set", val, context);
+      const setValLower = setVal.toLowerCase();
+      if (!pIdx.knownSetCodes.has(setValLower)) return `unknown set "${val}"`;
       for (let i = 0; i < n; i++) {
-        if (pIdx.setCodesLower[i] === valLower) buf[i] = 1;
+        if (pIdx.setCodesLower[i] === setValLower) buf[i] = 1;
       }
       break;
     }
     case "rarity": {
-      const targetBit = RARITY_NAMES[valLower];
+      const rarityVal = resolveForField("rarity", val, context);
+      const targetBit = RARITY_NAMES[rarityVal.toLowerCase()];
       if (targetBit === undefined) return `unknown rarity "${val}"`;
       const mask = buildRarityMask(op, targetBit);
       for (let i = 0; i < n; i++) {
@@ -180,7 +185,8 @@ export function evalPrintingField(
       break;
     }
     case "frame": {
-      const frameBit = FRAME_NAMES[valLower];
+      const frameVal = resolveForField("frame", val, context);
+      const frameBit = FRAME_NAMES[frameVal.toLowerCase()];
       if (frameBit === undefined) return `unknown frame "${val}"`;
       for (let i = 0; i < n; i++) {
         if (pIdx.frame[i] & frameBit) buf[i] = 1;
@@ -243,7 +249,8 @@ export function evalPrintingField(
       break;
     }
     case "game": {
-      const targetBit = GAME_NAMES[valLower];
+      const gameVal = resolveForField("game", val, context);
+      const targetBit = GAME_NAMES[gameVal.toLowerCase()];
       if (targetBit === undefined) return `unknown game "${val}"`;
       const games = pIdx.games;
       for (let i = 0; i < n; i++) {
@@ -262,8 +269,10 @@ export function evalPrintingField(
       if (op !== ":" && op !== "=" && op !== "!=") {
         return `in: does not support operator "${op}"`;
       }
+      const inVal = resolveForField("in", val, context);
+      const inValLower = inVal.toLowerCase();
       // Disambiguate by value: game → set → rarity → language (unsupported) → unknown
-      const targetGame = GAME_NAMES[valLower];
+      const targetGame = GAME_NAMES[inValLower];
       if (targetGame !== undefined) {
         const games = pIdx.games;
         for (let i = 0; i < n; i++) {
@@ -273,16 +282,16 @@ export function evalPrintingField(
         }
         break;
       }
-      if (pIdx.knownSetCodes.has(valLower)) {
+      if (pIdx.knownSetCodes.has(inValLower)) {
         for (let i = 0; i < n; i++) {
           const match = (op === ":" || op === "=")
-            ? pIdx.setCodesLower[i] === valLower
-            : pIdx.setCodesLower[i] !== valLower;
+            ? pIdx.setCodesLower[i] === inValLower
+            : pIdx.setCodesLower[i] !== inValLower;
           if (match) buf[i] = 1;
         }
         break;
       }
-      const rarityBit = RARITY_NAMES[valLower];
+      const rarityBit = RARITY_NAMES[inValLower];
       if (rarityBit !== undefined) {
         for (let i = 0; i < n; i++) {
           const match = (op === ":" || op === "=")
@@ -292,14 +301,15 @@ export function evalPrintingField(
         }
         break;
       }
-      if (KNOWN_LANGUAGES.has(valLower)) return `unsupported in value "${val}"`;
+      if (KNOWN_LANGUAGES.has(inValLower)) return `unsupported in value "${val}"`;
       return `unknown in value "${val}"`;
     }
     case "legal":
     case "banned":
     case "restricted": {
       if (!cardIndex) return `card index unavailable for legality check`;
-      const formatBit = FORMAT_NAMES[valLower];
+      const formatVal = resolveForField(canonical, val, context);
+      const formatBit = FORMAT_NAMES[formatVal.toLowerCase()];
       if (formatBit === undefined) return `unknown format "${val}"`;
       const col = canonical === "legal" ? cardIndex.legalitiesLegal
         : canonical === "banned" ? cardIndex.legalitiesBanned

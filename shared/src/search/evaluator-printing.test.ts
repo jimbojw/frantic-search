@@ -49,6 +49,10 @@ describe("printing-domain leaves", () => {
     expect(cardCount("rarity:rare")).toBe(1);
   });
 
+  test("rarity:r resolves to rare (Spec 103)", () => {
+    expect(cardCount("rarity:r")).toBe(cardCount("rarity:rare"));
+  });
+
   test("rarity:uncommon matches both Bolt (A25) and Sol Ring", () => {
     expect(cardCount("rarity:uncommon")).toBe(2);
   });
@@ -442,6 +446,12 @@ describe("face indices output", () => {
 // ---------------------------------------------------------------------------
 
 describe("printingIndices output", () => {
+  test("set:m resolves to mh2 (Spec 103)", () => {
+    const { printingIndices } = evaluate("set:m lightning");
+    expect(printingIndices).toBeDefined();
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
+  });
+
   test("set:mh2 returns printing rows 0,1,9 (all MH2 printings)", () => {
     const { printingIndices } = evaluate("set:mh2");
     expect(printingIndices).toBeDefined();

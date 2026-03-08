@@ -431,6 +431,11 @@ describe("evaluate", () => {
     expect(matchCount("f:edh")).toBe(matchCount("f:commander"));
   });
 
+  test("f:c and f:e resolve to commander (Spec 103)", () => {
+    expect(matchCount("f:c")).toBe(matchCount("f:commander"));
+    expect(matchCount("f:e")).toBe(matchCount("f:edh"));
+  });
+
   test("banned:legacy matches cards banned in legacy", () => {
     expect(matchCount("banned:legacy")).toBe(1);
   });

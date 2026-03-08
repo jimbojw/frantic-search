@@ -115,6 +115,12 @@ describe("toScryfallQuery", () => {
     expect(canon("salt>50 lightning")).toBe("lightning");
   });
 
+  it("resolves categorical field values for Scryfall outlinks (Spec 103)", () => {
+    expect(canon("f:c")).toBe("f:commander");
+    expect(canon("f:commander")).toBe("f:commander");
+    expect(canon("legal:e")).toBe("legal:edh");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {

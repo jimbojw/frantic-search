@@ -22,6 +22,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
 }
 import { parse } from "./parser";
 import type { OracleTagData } from "../data";
+import { resolveForField } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
 
@@ -32,8 +33,11 @@ export function getUniqueModeFromAst(ast: ASTNode): "cards" | "prints" | "art" {
   function walk(n: ASTNode): void {
     switch (n.type) {
       case "FIELD":
-        if (n.field.toLowerCase() === "unique" && LEGAL.has(n.value.toLowerCase())) {
-          collected.push(n.value.toLowerCase());
+        if (n.field.toLowerCase() === "unique") {
+          const resolved = resolveForField("unique", n.value);
+          if (LEGAL.has(resolved.toLowerCase())) {
+            collected.push(resolved.toLowerCase());
+          }
         }
         return;
       case "NOT":
@@ -153,6 +157,21 @@ export class NodeCache {
 
   get printingIndex(): PrintingIndex | null {
     return this._printingIndex;
+  }
+
+  private _getResolutionContext(): {
+    knownSetCodes?: Set<string>;
+    oracleTagLabels?: string[];
+    illustrationTagLabels?: string[];
+  } | undefined {
+    const pIdx = this._printingIndex;
+    const tagRef = this._tagDataRef;
+    if (!pIdx && !tagRef) return undefined;
+    const ctx: { knownSetCodes?: Set<string>; oracleTagLabels?: string[]; illustrationTagLabels?: string[] } = {};
+    if (pIdx) ctx.knownSetCodes = pIdx.knownSetCodes;
+    if (tagRef?.oracle) ctx.oracleTagLabels = Object.keys(tagRef.oracle);
+    if (tagRef?.illustration) ctx.illustrationTagLabels = Array.from(tagRef.illustration.keys());
+    return Object.keys(ctx).length > 0 ? ctx : undefined;
   }
 
   setPrintingIndex(pIdx: PrintingIndex): void {
@@ -437,8 +456,8 @@ export class NodeCache {
         }
 
         if (ast.field.toLowerCase() === "include") {
-          const val = ast.value.toLowerCase();
-          if (val === "extras") {
+          const resolved = resolveForField("include", ast.value);
+          if (resolved.toLowerCase() === "extras") {
             const buf = new Uint8Array(n);
             fillCanonical(buf, this.index.canonicalFace, n);
             interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: 0 };
@@ -464,8 +483,8 @@ export class NodeCache {
           const buf = new Uint8Array(n);
           fillCanonical(buf, this.index.canonicalFace, n);
           const mc = popcount(buf, n);
-          const val = ast.value.toLowerCase();
-          if (val !== "" && !SORT_FIELDS[val]) {
+          const sortVal = resolveForField("sort", ast.value);
+          if (ast.value !== "" && !SORT_FIELDS[sortVal.toLowerCase()]) {
             interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0, error: `unknown sort field "${ast.value}"` };
           } else {
             interned.computed = { buf, domain: "face", matchCount: mc, productionMs: 0 };
@@ -577,10 +596,11 @@ export class NodeCache {
             if (ast.operator !== ":" && ast.operator !== "=") {
               error = "atag: requires : or = operator";
             } else {
-              error = evalIllustrationTag(ast.value, this._tagDataRef?.illustration ?? null, buf);
+              const atagVal = resolveForField("atag", ast.value, this._getResolutionContext());
+              error = evalIllustrationTag(atagVal, this._tagDataRef?.illustration ?? null, buf);
             }
           } else if (canonical && ast.value !== "") {
-            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index);
+            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext());
           }
 
           const ms = performance.now() - t0;
@@ -624,7 +644,8 @@ export class NodeCache {
           if (ast.operator !== ":" && ast.operator !== "=") {
             err = "otag: requires : or = operator";
           } else {
-            err = evalOracleTag(ast.value, this._tagDataRef?.oracle ?? null, buf);
+            const otagVal = resolveForField("otag", ast.value, this._getResolutionContext());
+            err = evalOracleTag(otagVal, this._tagDataRef?.oracle ?? null, buf);
           }
           const ms = performance.now() - t0;
           if (err) {
@@ -639,7 +660,7 @@ export class NodeCache {
         // Face-domain evaluation (existing logic)
         const buf = new Uint8Array(n);
         const t0 = performance.now();
-        const error = evalLeafField(ast, this.index, buf);
+        const error = evalLeafField(ast, this.index, buf, this._getResolutionContext());
         const ms = performance.now() - t0;
         if (error) {
           interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error };
@@ -722,7 +743,7 @@ export class NodeCache {
             const pn = this._printingIndex.printingCount;
             const buf = new Uint8Array(pn);
             const t0 = performance.now();
-            const err = evalPrintingField(fieldCanonical, invertedOp, childField.value, this._printingIndex, buf, this.index);
+            const err = evalPrintingField(fieldCanonical, invertedOp, childField.value, this._printingIndex, buf, this.index, this._getResolutionContext());
             const ms = performance.now() - t0;
             if (err) {
               interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
@@ -755,7 +776,7 @@ export class NodeCache {
             const invertedNode = { ...childField, operator: invOp[childField.operator] };
             const buf = new Uint8Array(n);
             const t0 = performance.now();
-            const err = evalLeafField(invertedNode, this.index, buf);
+            const err = evalLeafField(invertedNode, this.index, buf, this._getResolutionContext());
             const ms = performance.now() - t0;
             if (err) {
               interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
@@ -888,7 +909,8 @@ export class NodeCache {
     switch (ast.type) {
       case "FIELD": {
         if (ast.field.toLowerCase() !== "sort") return null;
-        const entry = SORT_FIELDS[ast.value.toLowerCase()];
+        const sortVal = resolveForField("sort", ast.value);
+        const entry = SORT_FIELDS[sortVal.toLowerCase()];
         if (!entry) return null;
         const direction = negated
           ? (entry.defaultDir === "asc" ? "desc" : "asc")

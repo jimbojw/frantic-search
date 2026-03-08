@@ -9,6 +9,7 @@ import { parseManaSymbols, manaContains, manaEquals } from "./mana";
 import { parseStatValue } from "./stats";
 import { evalIsKeyword } from "./eval-is";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
+import { resolveForField, type ResolutionContext } from "./categorical-resolve";
 
 export const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -83,6 +84,7 @@ export function evalLeafField(
   node: FieldNode,
   index: CardIndex,
   buf: Uint8Array,
+  context?: ResolutionContext,
 ): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
@@ -375,7 +377,8 @@ export function evalLeafField(
     case "legal":
     case "banned":
     case "restricted": {
-      const formatBit = FORMAT_NAMES[valLower];
+      const formatVal = resolveForField(canonical, val, context);
+      const formatBit = FORMAT_NAMES[formatVal.toLowerCase()];
       if (formatBit === undefined) return `unknown format "${node.value}"`;
       const col = canonical === "legal" ? index.legalitiesLegal
         : canonical === "banned" ? index.legalitiesBanned
@@ -387,7 +390,8 @@ export function evalLeafField(
     }
     case "is": {
       if (op !== ":" && op !== "=") break;
-      const status = evalIsKeyword(valLower, index, buf, n);
+      const isVal = resolveForField("is", val, context);
+      const status = evalIsKeyword(isVal.toLowerCase(), index, buf, n);
       if (status === "unsupported") return `unsupported keyword "${node.value}"`;
       if (status === "unknown") return `unknown keyword "${node.value}"`;
       break;

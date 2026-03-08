@@ -61,6 +61,8 @@ export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 export { IS_KEYWORDS } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";
+export { resolveForField } from "./search/categorical-resolve";
+export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";
 export { getSortByFromQuery } from "./search/query-sort";
 export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./search/ordering";
