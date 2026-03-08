@@ -8,7 +8,7 @@ export interface SortFieldEntry {
   invertPercentile?: boolean;
 }
 
-export const PERCENTILE_CAPABLE_FIELDS = new Set(["usd", "date", "name"]);
+export const PERCENTILE_CAPABLE_FIELDS = new Set(["usd", "date", "name", "edhrec"]);
 
 export const SORT_FIELDS: Record<string, SortFieldEntry> = {
   // Face-domain fields
@@ -26,6 +26,8 @@ export const SORT_FIELDS: Record<string, SortFieldEntry> = {
     isPrintingDomain: false,
   },
   tou: { canonical: "toughness", defaultDir: "desc", isPrintingDomain: false },
+  edhrec: { canonical: "edhrec", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: true },
+  edhrecrank: { canonical: "edhrec", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: true },
 
   // Printing-domain fields
   usd: { canonical: "usd", defaultDir: "asc", isPrintingDomain: true, percentileCapable: true },

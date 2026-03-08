@@ -28,6 +28,25 @@ function buildSortedNameIndices(
   return indices;
 }
 
+/** Build sorted face indices for EDHREC percentile. Rank inversion: sort descending
+ * (highest rank first) so high-index end = most popular. Nulls excluded. */
+function buildSortedEdhrecIndices(
+  edhrecRank: (number | null)[],
+  faceCount: number,
+): { indices: Uint32Array; count: number } {
+  let count = 0;
+  for (let i = 0; i < faceCount; i++) {
+    if (edhrecRank[i] != null) count++;
+  }
+  const indices = new Uint32Array(count);
+  let k = 0;
+  for (let i = 0; i < faceCount; i++) {
+    if (edhrecRank[i] != null) indices[k++] = i;
+  }
+  indices.sort((a, b) => (edhrecRank[b] ?? 0) - (edhrecRank[a] ?? 0));
+  return { indices, count };
+}
+
 export class CardIndex {
   readonly faceCount: number;
   readonly namesLower: string[];
@@ -63,6 +82,11 @@ export class CardIndex {
   readonly numericDefenseLookup: number[];
   /** Sorted face indices for percentile queries. Ascending by combinedNamesNormalized. */
   readonly sortedNameIndices: Uint32Array;
+  /** EDHREC rank per face row (card-level, duplicated across faces). Null when unranked. */
+  readonly edhrecRank: (number | null)[];
+  /** Sorted face indices for EDHREC percentile. Descending by rank (high-index = most popular). */
+  readonly sortedEdhrecIndices: Uint32Array;
+  readonly sortedEdhrecCount: number;
   private readonly _facesOf: Map<number, number[]>;
 
   constructor(data: ColumnarData) {
@@ -89,6 +113,15 @@ export class CardIndex {
       this.combinedNamesNormalized,
       data.canonical_face,
     );
+    const edhrecRanks: (number | null)[] =
+      data.edhrec_ranks ?? (Array.from({ length: data.names.length }, () => null) as (number | null)[]);
+    this.edhrecRank = edhrecRanks;
+    const { indices: sortedEdhrec, count: sortedEdhrecCount } = buildSortedEdhrecIndices(
+      edhrecRanks,
+      data.names.length,
+    );
+    this.sortedEdhrecIndices = sortedEdhrec;
+    this.sortedEdhrecCount = sortedEdhrecCount;
     this.oracleTextsLower = data.oracle_texts.map((t) =>
       stripReminderText(t).toLowerCase(),
     );

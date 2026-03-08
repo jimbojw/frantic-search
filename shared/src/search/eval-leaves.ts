@@ -39,6 +39,8 @@ export const FIELD_ALIASES: Record<string, string> = {
   otag: "otag",
   atag: "atag",
   art: "atag",
+  edhrec: "edhrec",
+  edhrecrank: "edhrec",
 };
 
 function parseColorValue(value: string): number {
@@ -131,6 +133,39 @@ export function evalLeafField(
         for (let i = 0; i < n; i++) {
           if (col[cf[i]].includes(valLower)) buf[cf[i]] = 1;
         }
+      }
+      break;
+    }
+    case "edhrec": {
+      const edhrecPercentile = parsePercentile(val);
+      if (edhrecPercentile !== null) {
+        if (!NAME_CMP_OPS.has(op) && op !== "=" && op !== ":" && op !== "!=") break;
+        applyPercentileSlice(
+          index.sortedEdhrecIndices,
+          index.sortedEdhrecCount,
+          op,
+          edhrecPercentile,
+          buf,
+        );
+        break;
+      }
+      if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
+      const queryNum = Number(val);
+      if (isNaN(queryNum) || !Number.isInteger(queryNum)) break;
+      const col = index.edhrecRank;
+      for (let i = 0; i < n; i++) {
+        const r = col[i];
+        if (r == null) continue;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = r === queryNum; break;
+          case "!=": match = r !== queryNum; break;
+          case ">":  match = r > queryNum; break;
+          case "<":  match = r < queryNum; break;
+          case ">=": match = r >= queryNum; break;
+          case "<=": match = r <= queryNum; break;
+        }
+        if (match) buf[cf[i]] = 1;
       }
       break;
     }

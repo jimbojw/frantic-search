@@ -743,14 +743,14 @@ export class NodeCache {
           interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
           timings.set(interned.key, { cached: false, evalMs: ms });
         } else {
-          // Spec 096/095: Negated name with comparison op or percentile → operator inversion.
+          // Spec 096/095: Negated name or edhrec with comparison op or percentile → operator inversion.
           const childField = ast.child.type === "FIELD" ? ast.child : null;
-          const nameCanonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
+          const faceCanonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
           const nameCmpOps = new Set([">", "<", ">=", "<="]);
-          const isNameCmp = childField
-            && nameCanonical === "name"
-            && (nameCmpOps.has(childField.operator) || isPercentileQuery(nameCanonical, childField.value));
-          if (isNameCmp && childField) {
+          const isFaceCmpOrPercentile = childField
+            && (faceCanonical === "name" || faceCanonical === "edhrec")
+            && (nameCmpOps.has(childField.operator) || isPercentileQuery(faceCanonical, childField.value));
+          if (isFaceCmpOrPercentile && childField) {
             const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
             const invertedNode = { ...childField, operator: invOp[childField.operator] };
             const buf = new Uint8Array(n);

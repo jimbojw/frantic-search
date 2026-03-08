@@ -175,6 +175,15 @@ function compareColor(a: number, b: number, idx: CardIndex): number {
   return ca - cb;
 }
 
+function compareEdhrec(a: number, b: number, idx: CardIndex): number {
+  const ra = idx.edhrecRank[a];
+  const rb = idx.edhrecRank[b];
+  if (ra == null && rb == null) return 0;
+  if (ra == null) return 1;
+  if (rb == null) return -1;
+  return ra - rb;
+}
+
 function comparePrintingRarity(a: number, b: number, pIdx: PrintingIndex): number {
   const ra = RARITY_ORDER[pIdx.rarity[a]] ?? -1;
   const rb = RARITY_ORDER[pIdx.rarity[b]] ?? -1;
@@ -205,6 +214,7 @@ function compareFieldRaw(a: number, b: number, field: string, idx: CardIndex): {
       if (isNaN(vb)) return { cmp: -1, applyDir: false };
       return { cmp: va - vb, applyDir: true };
     }
+    case "edhrec": return { cmp: compareEdhrec(a, b, idx), applyDir: true };
     default: return { cmp: 0, applyDir: true };
   }
 }

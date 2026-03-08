@@ -41,6 +41,7 @@ interface Card {
   loyalty?: string;
   defense?: string;
   legalities?: Record<string, string>;
+  edhrec_rank?: number;
   reserved?: boolean;
   game_changer?: boolean;
   security_stamp?: string;
@@ -198,6 +199,7 @@ function pushFaceRow(
   thumbs.card.push(cardManifest[id] ?? "");
   data.layouts.push(card.layout ?? "normal");
   data.flags.push(encodeFlags(card, oracleIdsWithUB));
+  data.edhrec_ranks.push(card.edhrec_rank ?? null);
 }
 
 export function processCards(verbose: boolean): void {
@@ -252,6 +254,7 @@ export function processCards(verbose: boolean): void {
     oracle_ids: [],
     layouts: [],
     flags: [],
+    edhrec_ranks: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],
