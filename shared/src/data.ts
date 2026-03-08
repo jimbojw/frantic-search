@@ -25,6 +25,7 @@ export interface ColumnarData {
   layouts: string[];
   flags: number[];
   edhrec_ranks?: (number | null)[];
+  edhrec_salts?: (number | null)[];
   power_lookup: string[];
   toughness_lookup: string[];
   loyalty_lookup: string[];

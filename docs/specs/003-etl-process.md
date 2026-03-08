@@ -27,6 +27,7 @@ npm run etl -- process [options]
 | Path                         | Contents                          |
 |------------------------------|-----------------------------------|
 | `data/raw/oracle-cards.json` | Scryfall Oracle Cards JSON array  |
+| `data/raw/atomic-cards.json` | MTGJSON AtomicCards (optional; Spec 100). When present, used for `edhrec_salts`. When absent, salt column is all null. |
 
 ## Face Expansion
 
@@ -59,6 +60,7 @@ All other layouts (`normal`, `saga`, `class`, `mutate`, `leveler`, `meld`, `prot
 | `color_identity` | Card (duplicated across all faces of the same card) |
 | `legalities`     | Card (duplicated across all faces of the same card) |
 | `edhrec_rank`    | Card (duplicated across all faces of the same card) |
+| `edhrec_salt`    | Card (duplicated across all faces of the same card) |
 
 ## Column Encoding
 
@@ -111,6 +113,7 @@ Both columns are aligned with `scryfall_ids`. Values are populated from the Thum
 | `card_index`     | `number[]` | Position of this face's card in the original `oracle-cards.json` array |
 | `canonical_face` | `number[]` | Face-row index of this card's primary (front) face  |
 | `edhrec_ranks`   | `(number \| null)[]` | EDHREC Commander popularity rank per face. Lower = more popular. `null` when Scryfall has no rank. Same value for all faces of a multi-face card (Spec 099). |
+| `edhrec_salts`   | `(number \| null)[]` | EDHREC saltiness score per face. Higher = saltier. `null` when MTGJSON has no salt or atomic-cards.json is absent. Same value for all faces of a multi-face card (Spec 101). |
 
 For single-face cards, both equal the row's own index. For multi-face cards, `canonical_face` points all faces to the first-emitted face row. `card_index` is shared across all faces of the same card.
 
@@ -168,3 +171,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   `edhrec_rank` (Integer, nullable) in oracle-cards.json. One value per face row;
   all faces of a card share the same rank. Enables EDHREC Commander popularity
   filtering and sorting.
+- 2026-03-08: Added `edhrec_salts` column (Spec 101). Extracted from MTGJSON
+  AtomicCards.json via `identifiers.scryfallOracleId` join. One value per face row;
+  all faces of a card share the same salt score. When atomic-cards.json is absent,
+  all values are null. Enables EDHREC saltiness filtering and sorting.

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
-import { ORACLE_CARDS_PATH, DEFAULT_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
+import { ORACLE_CARDS_PATH, DEFAULT_CARDS_PATH, ATOMIC_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
 import { log } from "./log";
 import { loadArtCropManifest, loadCardManifest } from "./thumbhash";
 import {
@@ -49,6 +49,18 @@ interface Card {
   set_type?: string;
   promo_types?: string[];
   card_faces?: CardFace[];
+}
+
+// ---------------------------------------------------------------------------
+// MTGJSON AtomicCards shape (fields we use for salt)
+// ---------------------------------------------------------------------------
+
+interface CardAtomic {
+  identifiers?: { scryfallOracleId?: string };
+  edhrecSaltiness?: number;
+}
+interface AtomicCardsJson {
+  data?: Record<string, CardAtomic[]>;
 }
 
 const MULTI_FACE_LAYOUTS = new Set([
@@ -150,8 +162,33 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
-/** ColumnarData with oracle_ids and edhrec_ranks guaranteed (used when building, not when reading legacy JSON). */
-type ColumnarDataBuilder = ColumnarData & { oracle_ids: string[]; edhrec_ranks: (number | null)[] };
+function loadSaltMap(verbose: boolean): Map<string, number> {
+  if (!fs.existsSync(ATOMIC_CARDS_PATH)) {
+    log("atomic-cards.json not found; salt column will be all null", verbose);
+    return new Map();
+  }
+  const raw = fs.readFileSync(ATOMIC_CARDS_PATH, "utf-8");
+  const parsed: AtomicCardsJson = JSON.parse(raw);
+  const map = new Map<string, number>();
+  for (const cardAtomics of Object.values(parsed.data ?? {})) {
+    for (const atomic of cardAtomics) {
+      const oracleId = atomic.identifiers?.scryfallOracleId;
+      const salt = atomic.edhrecSaltiness;
+      if (oracleId != null && salt != null) {
+        map.set(oracleId, salt);
+      }
+    }
+  }
+  log(`EDHREC salt: ${map.size} oracle_ids from atomic-cards.json`, verbose);
+  return map;
+}
+
+/** ColumnarData with oracle_ids, edhrec_ranks, and edhrec_salts guaranteed (used when building, not when reading legacy JSON). */
+type ColumnarDataBuilder = ColumnarData & {
+  oracle_ids: string[];
+  edhrec_ranks: (number | null)[];
+  edhrec_salts: (number | null)[];
+};
 
 interface ThumbHashData {
   art_crop: string[];
@@ -173,6 +210,7 @@ function pushFaceRow(
   toughnessDict: DictEncoder,
   loyaltyDict: DictEncoder,
   defenseDict: DictEncoder,
+  saltMap: Map<string, number>,
 ): void {
   data.names.push(face.name ?? "");
   data.mana_costs.push(face.mana_cost ?? "");
@@ -200,6 +238,7 @@ function pushFaceRow(
   data.layouts.push(card.layout ?? "normal");
   data.flags.push(encodeFlags(card, oracleIdsWithUB));
   data.edhrec_ranks.push(card.edhrec_rank ?? null);
+  data.edhrec_salts.push(saltMap.get(card.oracle_id ?? "") ?? null);
 }
 
 export function processCards(verbose: boolean): void {
@@ -223,6 +262,8 @@ export function processCards(verbose: boolean): void {
   const cards: Card[] = JSON.parse(raw);
 
   log(`Processing ${cards.length} cards…`, verbose);
+
+  const saltMap = loadSaltMap(verbose);
 
   const artCropManifest = loadArtCropManifest();
   const cardManifest = loadCardManifest();
@@ -255,6 +296,7 @@ export function processCards(verbose: boolean): void {
     layouts: [],
     flags: [],
     edhrec_ranks: [],
+    edhrec_salts: [],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],
@@ -273,11 +315,11 @@ export function processCards(verbose: boolean): void {
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
         pushFaceRow(data, thumbs, face, card, cardIdx, faceRowStart, leg, oracleIdsWithUB, artCropManifest,
-          cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
+          cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict, saltMap);
       }
     } else {
       pushFaceRow(data, thumbs, card, card, cardIdx, faceRowStart, leg, oracleIdsWithUB, artCropManifest,
-        cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict);
+        cardManifest, powerDict, toughnessDict, loyaltyDict, defenseDict, saltMap);
     }
   }
 

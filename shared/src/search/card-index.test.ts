@@ -196,3 +196,55 @@ describe("CardIndex.facesOf", () => {
     expect(index.facesOf(1)).toEqual([]);
   });
 });
+
+describe("CardIndex.edhrecSalt", () => {
+  it("populates edhrecSalt and sortedSaltIndices when edhrec_salts is provided", () => {
+    const data = makeData({
+      names: ["A", "B", "C"],
+      mana_costs: ["{1}", "{2}", "{3}"],
+      oracle_texts: ["", "", ""],
+      colors: [0, 0, 0],
+      color_identity: [0, 0, 0],
+      type_lines: ["Creature", "Creature", "Creature"],
+      powers: [0, 0, 0],
+      toughnesses: [0, 0, 0],
+      loyalties: [0, 0, 0],
+      defenses: [0, 0, 0],
+      legalities_legal: [0, 0, 0],
+      legalities_banned: [0, 0, 0],
+      legalities_restricted: [0, 0, 0],
+      card_index: [0, 1, 2],
+      canonical_face: [0, 1, 2],
+      edhrec_salts: [10, 50, 30],
+    });
+    const index = new CardIndex(data);
+    expect(index.edhrecSalt).toEqual([10, 50, 30]);
+    expect(index.sortedSaltCount).toBe(3);
+    // Ascending: face 0 (10), face 2 (30), face 1 (50)
+    expect(Array.from(index.sortedSaltIndices)).toEqual([0, 2, 1]);
+  });
+
+  it("uses all-null and sortedSaltCount 0 when edhrec_salts is absent", () => {
+    const data = makeData({
+      names: ["A", "B"],
+      mana_costs: ["{1}", "{2}"],
+      oracle_texts: ["", ""],
+      colors: [0, 0],
+      color_identity: [0, 0],
+      type_lines: ["Creature", "Creature"],
+      powers: [0, 0],
+      toughnesses: [0, 0],
+      loyalties: [0, 0],
+      defenses: [0, 0],
+      legalities_legal: [0, 0],
+      legalities_banned: [0, 0],
+      legalities_restricted: [0, 0],
+      card_index: [0, 1],
+      canonical_face: [0, 1],
+    });
+    const index = new CardIndex(data);
+    expect(index.edhrecSalt).toEqual([null, null]);
+    expect(index.sortedSaltCount).toBe(0);
+    expect(index.sortedSaltIndices.length).toBe(0);
+  });
+});
