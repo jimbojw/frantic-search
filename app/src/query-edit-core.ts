@@ -303,3 +303,60 @@ export function clearFieldTerms(
   }
   return result.replace(/  +/g, ' ').trim()
 }
+
+// ---------------------------------------------------------------------------
+// Recursive clear (Spec 102 — nested structures)
+// ---------------------------------------------------------------------------
+
+function collectNodesByPredicate(
+  node: BreakdownNode,
+  predicate: (label: string) => boolean,
+  out: BreakdownNode[],
+): void {
+  if (node.type === 'FIELD' && predicate(node.label)) {
+    out.push(node)
+    return
+  }
+  if (node.type === 'NOT' && !node.children && predicate(node.label)) {
+    out.push(node)
+    return
+  }
+  if (node.children) {
+    for (const c of node.children) {
+      collectNodesByPredicate(c, predicate, out)
+    }
+  }
+}
+
+/**
+ * Recursively remove all nodes whose label matches the predicate.
+ * Handles nested structures (e.g. edhrec terms inside OR children).
+ */
+export function clearFieldTermsRecursive(
+  query: string,
+  breakdown: BreakdownNode | null,
+  predicate: (label: string) => boolean,
+): string {
+  if (!breakdown || !query.trim()) return query
+  const nodes: BreakdownNode[] = []
+  collectNodesByPredicate(breakdown, predicate, nodes)
+  if (nodes.length === 0) return query
+  if (nodes.length === 1 && breakdown === nodes[0]) return ''
+  nodes.sort((a, b) => (b.span?.end ?? 0) - (a.span?.end ?? 0))
+  let result = query
+  for (const n of nodes) {
+    if (n.span) {
+      let span = n.span
+      if (
+        span.start > 0 &&
+        span.end < result.length &&
+        result[span.start - 1] === '(' &&
+        result[span.end] === ')'
+      ) {
+        span = { start: span.start - 1, end: span.end + 1 }
+      }
+      result = spliceQuery(result, span, '')
+    }
+  }
+  return result.replace(/  +/g, ' ').trim()
+}

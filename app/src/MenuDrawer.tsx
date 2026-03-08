@@ -3,7 +3,7 @@ import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-j
 import { IconBug, IconInfoCircle } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import { Outlink } from './Outlink'
@@ -20,6 +20,7 @@ const RARITY_FIELDS = ['r', 'rarity']
 const USD_FIELDS = ['usd', '$']
 
 type ChipDef = { label: string; field: string[]; operator: string; value: string; term: string }
+type PercentileChipDef = ChipDef & { clearPredicate: (label: string) => boolean }
 
 function fmtChip(value: string): ChipDef {
   return { label: `f:${value}`, field: FORMAT_FIELDS, operator: ':', value, term: `f:${value}` }
@@ -43,13 +44,38 @@ function sortChip(value: string): ChipDef {
   return { label: `sort:${value}`, field: SORT_CHIP_FIELDS, operator: ':', value, term: `sort:${value}` }
 }
 
-const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'sort'] as const
+const POPULARITY_FIELDS = ['edhrec', 'edhrecrank']
+const SALT_FIELDS = ['salt', 'edhrecsalt', 'saltiness']
+
+function popularityPercentileChip(value: string): PercentileChipDef {
+  return {
+    label: `edhrec>${value}`,
+    field: POPULARITY_FIELDS,
+    operator: '>',
+    value,
+    term: `edhrec>${value}`,
+    clearPredicate: popularityClearPredicate,
+  }
+}
+
+function saltPercentileChip(value: string): PercentileChipDef {
+  return {
+    label: `salt>${value}`,
+    field: SALT_FIELDS,
+    operator: '>',
+    value,
+    term: `salt>${value}`,
+    clearPredicate: saltClearPredicate,
+  }
+}
+
+const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
 const ALL_SECTIONS = ['views', 'tools', ...TERMS_SECTIONS] as const
 type SectionId = (typeof ALL_SECTIONS)[number]
 
-const SECTION_CHIPS: Record<TermsSectionId, ChipDef[]> = {
+const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
   formats: [
     fmtChip('commander'),
     fmtChip('modern'),
@@ -117,6 +143,16 @@ const SECTION_CHIPS: Record<TermsSectionId, ChipDef[]> = {
     usdChip('50'),
     usdChip('100'),
   ],
+  popularity: [
+    popularityPercentileChip('90%'),
+    popularityPercentileChip('95%'),
+    popularityPercentileChip('99%'),
+  ],
+  salt: [
+    saltPercentileChip('90%'),
+    saltPercentileChip('95%'),
+    saltPercentileChip('99%'),
+  ],
   sort: [
     sortChip('name'),
     sortChip('mv'),
@@ -141,6 +177,8 @@ const SECTION_LABELS: Record<SectionId, string> = {
   rarities: 'Rarities',
   printings: 'Printings',
   prices: 'Prices',
+  popularity: 'Popularity',
+  salt: 'Salt',
   sort: 'Sort',
 }
 
@@ -319,6 +357,34 @@ function sortArrow(chipValue: string, state: ChipState): string {
   const isDefaultAsc = entry.defaultDir === 'asc'
   if (state === 'positive') return isDefaultAsc ? ' ↑' : ' ↓'
   return isDefaultAsc ? ' ↓' : ' ↑'
+}
+
+function PercentileTermChip(props: {
+  chip: PercentileChipDef
+  state: ChipState
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(cyclePercentileChip(props.query, props.breakdown, props.chip))}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
+    >
+      {props.state === 'neutral' ? (
+        <For each={buildSpans(props.chip.label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      ) : (
+        props.chip.label
+      )}
+    </button>
+  )
 }
 
 function SortTermChip(props: {
@@ -564,23 +630,35 @@ export default function MenuDrawer(props: {
                   <div class="flex flex-wrap gap-1.5 content-start">
                     <For each={SECTION_CHIPS[section]}>
                       {(chip) => (
-                        <Show when={section === 'sort'} fallback={
-                          <TermChip
-                            chip={chip}
-                            state={getChipState(bd(), chip)}
-                            query={props.query}
-                            breakdown={bd()}
-                            onSetQuery={props.onSetQuery}
-                          />
-                        }>
-                          <SortTermChip
-                            chip={chip}
-                            state={getChipState(bd(), chip)}
-                            query={props.query}
-                            breakdown={bd()}
-                            onSetQuery={props.onSetQuery}
-                          />
-                        </Show>
+                        <>
+                          <Show when={section === 'sort'}>
+                            <SortTermChip
+                              chip={chip as ChipDef}
+                              state={getChipState(bd(), chip)}
+                              query={props.query}
+                              breakdown={bd()}
+                              onSetQuery={props.onSetQuery}
+                            />
+                          </Show>
+                          <Show when={section === 'popularity' || section === 'salt'}>
+                            <PercentileTermChip
+                              chip={chip as PercentileChipDef}
+                              state={getChipState(bd(), chip)}
+                              query={props.query}
+                              breakdown={bd()}
+                              onSetQuery={props.onSetQuery}
+                            />
+                          </Show>
+                          <Show when={section !== 'sort' && section !== 'popularity' && section !== 'salt'}>
+                            <TermChip
+                              chip={chip as ChipDef}
+                              state={getChipState(bd(), chip)}
+                              query={props.query}
+                              breakdown={bd()}
+                              onSetQuery={props.onSetQuery}
+                            />
+                          </Show>
+                        </>
                       )}
                     </For>
                   </div>

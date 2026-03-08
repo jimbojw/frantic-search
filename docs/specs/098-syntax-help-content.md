@@ -101,6 +101,7 @@ A new section that lists features Scryfall does not support. Each entry has a br
 | Date percentile | Filter by position in release-date distribution | `date>90%`, `date<10%` |
 | EDHREC percentile | Filter by Commander popularity (rank inversion: higher % = more popular) | `edhrec>90%`, `edhrec<10%` |
 | Salt percentile | Filter by EDHREC saltiness (higher % = saltier) | `salt>90%`, `salt<10%` |
+| Percentile chips in Menu | Popularity and Salt sections offer one-tap chips (>90%, >95%, >99%) | Open Menu → Popularity or Salt |
 | `usd=null` | Find printings with no price data | `usd=null` |
 | `-sort:field` | Reverse sort direction (NOT inverts) | `-sort:name` |
 

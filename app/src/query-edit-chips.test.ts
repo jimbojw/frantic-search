@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { parseBreakdown } from './query-edit-core'
-import { toggleSimple, cycleChip } from './query-edit-chips'
+import { toggleSimple, cycleChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit-chips'
 
 function buildBreakdown(query: string): BreakdownNode {
   return parseBreakdown(query)!
@@ -311,5 +311,86 @@ describe('cycleChip — multi-chip sequences', () => {
     expect(q).toBe('f:commander -is:dfc')
     q = cycleFormat(q, 'commander')
     expect(q).toBe('-is:dfc -f:commander')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// cyclePercentileChip (Spec 102)
+// ---------------------------------------------------------------------------
+
+const POPULARITY_FIELDS = ['edhrec', 'edhrecrank']
+
+function cyclePopularity(query: string, value: string): string {
+  return cyclePercentileChip(query, parseBreakdown(query), {
+    field: POPULARITY_FIELDS,
+    operator: '>',
+    value,
+    term: `edhrec>${value}`,
+    clearPredicate: popularityClearPredicate,
+  })
+}
+
+function cycleSalt(query: string, value: string): string {
+  return cyclePercentileChip(query, parseBreakdown(query), {
+    field: ['salt', 'edhrecsalt', 'saltiness'],
+    operator: '>',
+    value,
+    term: `salt>${value}`,
+    clearPredicate: saltClearPredicate,
+  })
+}
+
+describe('cyclePercentileChip — popularity', () => {
+  it('neutral → positive: appends edhrec>90%', () => {
+    expect(cyclePopularity('', '90%')).toBe('edhrec>90%')
+  })
+
+  it('positive → negated: replaces edhrec>90% with -edhrec>90%', () => {
+    expect(cyclePopularity('edhrec>90%', '90%')).toBe('-edhrec>90%')
+  })
+
+  it('negated → neutral: clears term', () => {
+    expect(cyclePopularity('-edhrec>90%', '90%')).toBe('')
+  })
+
+  it('tapping different chip clears previous and adds new', () => {
+    expect(cyclePopularity('edhrec>90%', '95%')).toBe('edhrec>95%')
+  })
+
+  it('clears manually typed edhrec<10% when tapping >90%', () => {
+    expect(cyclePopularity('edhrec<10%', '90%')).toBe('edhrec>90%')
+  })
+
+  it('does not clear edhrecsalt when tapping popularity chip', () => {
+    const q = 'edhrecsalt>90%'
+    expect(cyclePopularity(q, '90%')).toBe('edhrecsalt>90% edhrec>90%')
+  })
+
+  it('empty query: clearing yields empty, append returns term', () => {
+    expect(cyclePopularity('', '90%')).toBe('edhrec>90%')
+  })
+
+  it('preserves surrounding terms', () => {
+    expect(cyclePopularity('t:creature edhrec>90%', '95%')).toBe('t:creature edhrec>95%')
+  })
+})
+
+describe('cyclePercentileChip — salt', () => {
+  it('neutral → positive: appends salt>90%', () => {
+    expect(cycleSalt('', '90%')).toBe('salt>90%')
+  })
+
+  it('positive → negated: replaces salt>90% with -salt>90%', () => {
+    expect(cycleSalt('salt>90%', '90%')).toBe('-salt>90%')
+  })
+
+  it('negated → neutral: clears term', () => {
+    expect(cycleSalt('-salt>90%', '90%')).toBe('')
+  })
+
+  it('popularity and salt sections operate independently', () => {
+    let q = 'edhrec>90%'
+    q = cycleSalt(q, '95%')
+    expect(q).toBe('edhrec>90% salt>95%')
   })
 })

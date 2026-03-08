@@ -10,6 +10,7 @@ import {
   parseBreakdown,
   appendTerm,
   prependTerm,
+  clearFieldTermsRecursive,
 } from './query-edit-core'
 import { reconstructQuery } from './InlineBreakdown'
 
@@ -399,5 +400,59 @@ describe('prependTerm', () => {
 
   it('wraps OR term in parens when prepending to leaf (issue 81)', () => {
     expect(prependTerm('c', 'a OR b', parseBreakdown('c'))).toBe('(a OR b) c')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// clearFieldTermsRecursive (Spec 102)
+// ---------------------------------------------------------------------------
+
+describe('clearFieldTermsRecursive', () => {
+  const popularityPredicate = (label: string) => {
+    const raw = label.startsWith('-') ? label.slice(1) : label
+    const lower = raw.toLowerCase()
+    return lower.startsWith('edhrecrank') || (lower.startsWith('edhrec') && !lower.startsWith('edhrecsalt'))
+  }
+
+  it('returns query unchanged when no nodes match', () => {
+    const q = 't:creature f:commander'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe(q)
+  })
+
+  it('clears edhrec term from flat query, leaves other terms', () => {
+    const q = 't:creature edhrec>90%'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe('t:creature')
+  })
+
+  it('returns empty string when root is the only match', () => {
+    const q = 'edhrec>90%'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe('')
+  })
+
+  it('clears edhrec from nested structure', () => {
+    const q = '(t:creature edhrec>90% OR t:instant)'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe('(t:creature OR t:instant)')
+  })
+
+  it('clears edhrecrank alias', () => {
+    const q = 't:creature edhrecrank>95%'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe('t:creature')
+  })
+
+  it('does not clear edhrecsalt (salt field)', () => {
+    const q = 't:creature edhrecsalt>90%'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe(q)
+  })
+
+  it('clears negated edhrec term', () => {
+    const q = 't:creature -edhrec>90%'
+    const bd = parseBreakdown(q)!
+    expect(clearFieldTermsRecursive(q, bd, popularityPredicate)).toBe('t:creature')
   })
 })

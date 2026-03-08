@@ -90,6 +90,7 @@ const EXCLUSIVES: ExclusiveEntry[] = [
   { feature: 'Date percentile', description: 'Filter by position in release-date distribution', example: 'date>90%' },
   { feature: 'EDHREC percentile', description: 'Filter by Commander popularity (rank inversion: higher % = more popular)', example: 'edhrec>90%' },
   { feature: 'Salt percentile', description: 'Filter by EDHREC saltiness (higher % = saltier)', example: 'salt>90%' },
+  { feature: 'Percentile chips in Menu', description: 'Popularity and Salt sections offer one-tap chips (>90%, >95%, >99%)', example: 'Open Menu → Popularity or Salt' },
   { feature: 'usd=null', description: 'Find printings with no price data', example: 'usd=null' },
   { feature: '-sort:field', description: 'Reverse sort direction (NOT inverts)', example: '-sort:name' },
 ]

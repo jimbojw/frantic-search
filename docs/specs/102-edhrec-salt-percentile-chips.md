@@ -1,6 +1,6 @@
 # Spec 102: EDHREC and Salt Percentile Chips in MenuDrawer
 
-**Status:** Draft
+**Status:** Implemented 
 
 **Depends on:** Spec 083 (MenuDrawer), Spec 044 (Terms Drawer Redesign), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 095 (Percentile Filters)
 

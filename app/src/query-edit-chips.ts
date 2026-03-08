@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BreakdownNode } from '@frantic-search/shared'
-import { findFieldNode, removeNode, appendTerm, parseBreakdown } from './query-edit-core'
+import { findFieldNode, removeNode, appendTerm, parseBreakdown, clearFieldTermsRecursive } from './query-edit-core'
 
 // ---------------------------------------------------------------------------
 // Graduated: Simple (independent node-level "more / less")
@@ -64,4 +64,51 @@ export function cycleChip(
   }
 
   return appendTerm(query, opts.term, breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Percentile chips: mutually exclusive per section (Spec 102)
+// ---------------------------------------------------------------------------
+
+const SALT_FIELDS = ['salt', 'edhrecsalt', 'saltiness']
+
+export function popularityClearPredicate(label: string): boolean {
+  const raw = label.startsWith('-') ? label.slice(1) : label
+  const lower = raw.toLowerCase()
+  return lower.startsWith('edhrecrank') || (lower.startsWith('edhrec') && !lower.startsWith('edhrecsalt'))
+}
+
+export function saltClearPredicate(label: string): boolean {
+  const raw = label.startsWith('-') ? label.slice(1) : label
+  return SALT_FIELDS.some(f => raw.toLowerCase().startsWith(f))
+}
+
+export function cyclePercentileChip(
+  query: string,
+  breakdown: BreakdownNode | null,
+  opts: {
+    field: string[]
+    operator: string
+    value: string
+    term: string
+    clearPredicate: (label: string) => boolean
+  },
+): string {
+  const positive = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, false, v => v === opts.value)
+    : null
+  const negative = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, true, v => v === opts.value)
+    : null
+
+  const cleared = clearFieldTermsRecursive(query, breakdown, opts.clearPredicate)
+  const freshBd = parseBreakdown(cleared)
+
+  if (positive) {
+    return appendTerm(cleared, `-${opts.term}`, freshBd)
+  }
+  if (negative) {
+    return cleared
+  }
+  return appendTerm(cleared, opts.term, freshBd)
 }
