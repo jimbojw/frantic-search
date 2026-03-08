@@ -298,6 +298,8 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     0, 0,
   ],
+  edhrec_ranks: Array(43).fill(null) as (number | null)[],
+  edhrec_salts: Array(43).fill(null) as (number | null)[],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
   loyalty_lookup: [""],

@@ -4,7 +4,7 @@ import type { ColumnarData } from "../data";
 import { CardIndex } from "./card-index";
 
 function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
-  const defaults: ColumnarData = {
+  const merged = {
     names: [],
     mana_costs: [],
     oracle_texts: [],
@@ -26,12 +26,22 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     oracle_ids: [],
     layouts: [],
     flags: [],
+    edhrec_ranks: [] as (number | null)[],
+    edhrec_salts: [] as (number | null)[],
     power_lookup: [],
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
+    ...overrides,
   };
-  return { ...defaults, ...overrides };
+  const len = merged.names.length;
+  if (merged.edhrec_ranks.length !== len) {
+    merged.edhrec_ranks = Array.from({ length: len }, () => null);
+  }
+  if (merged.edhrec_salts.length !== len) {
+    merged.edhrec_salts = Array.from({ length: len }, () => null);
+  }
+  return merged;
 }
 
 describe("CardIndex.facesOf", () => {
@@ -224,7 +234,7 @@ describe("CardIndex.edhrecSalt", () => {
     expect(Array.from(index.sortedSaltIndices)).toEqual([0, 2, 1]);
   });
 
-  it("uses all-null and sortedSaltCount 0 when edhrec_salts is absent", () => {
+  it("handles all-null edhrec_salts with sortedSaltCount 0", () => {
     const data = makeData({
       names: ["A", "B"],
       mana_costs: ["{1}", "{2}"],
@@ -241,6 +251,7 @@ describe("CardIndex.edhrecSalt", () => {
       legalities_restricted: [0, 0],
       card_index: [0, 1],
       canonical_face: [0, 1],
+      edhrec_salts: [null, null],
     });
     const index = new CardIndex(data);
     expect(index.edhrecSalt).toEqual([null, null]);

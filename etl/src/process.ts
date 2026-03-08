@@ -183,12 +183,8 @@ function loadSaltMap(verbose: boolean): Map<string, number> {
   return map;
 }
 
-/** ColumnarData with oracle_ids, edhrec_ranks, and edhrec_salts guaranteed (used when building, not when reading legacy JSON). */
-type ColumnarDataBuilder = ColumnarData & {
-  oracle_ids: string[];
-  edhrec_ranks: (number | null)[];
-  edhrec_salts: (number | null)[];
-};
+/** ColumnarData with oracle_ids guaranteed (used when building). */
+type ColumnarDataBuilder = ColumnarData & { oracle_ids: string[] };
 
 interface ThumbHashData {
   art_crop: string[];

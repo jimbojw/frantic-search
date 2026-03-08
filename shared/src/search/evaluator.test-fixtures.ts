@@ -88,6 +88,8 @@ export const TEST_DATA: ColumnarData = {
   card_thumb_hashes:      ["", "", "", "", "", "", "", "", "", ""],
   layouts:        ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "transform", "transform", "normal"],
   flags:          [0, 0, 0, 0, 0, 0, 0, 0, 0, CardFlag.UniversesBeyond], // #9 Dismember has UB for face-fallback test
+  edhrec_ranks:   [null, null, null, null, null, null, null, null, null, null],
+  edhrec_salts:   [null, null, null, null, null, null, null, null, null, null],
   power_lookup:    powerDict,
   toughness_lookup: toughnessDict,
   loyalty_lookup:  [""],

@@ -24,8 +24,8 @@ export interface ColumnarData {
   card_thumb_hashes?: string[];
   layouts: string[];
   flags: number[];
-  edhrec_ranks?: (number | null)[];
-  edhrec_salts?: (number | null)[];
+  edhrec_ranks: (number | null)[];
+  edhrec_salts: (number | null)[];
   power_lookup: string[];
   toughness_lookup: string[];
   loyalty_lookup: string[];

@@ -137,8 +137,7 @@ export class CardIndex {
       this.combinedNamesNormalized,
       data.canonical_face,
     );
-    const edhrecRanks: (number | null)[] =
-      data.edhrec_ranks ?? (Array.from({ length: data.names.length }, () => null) as (number | null)[]);
+    const edhrecRanks = data.edhrec_ranks;
     this.edhrecRank = edhrecRanks;
     const { indices: sortedEdhrec, count: sortedEdhrecCount } = buildSortedEdhrecIndices(
       edhrecRanks,
@@ -146,8 +145,7 @@ export class CardIndex {
     );
     this.sortedEdhrecIndices = sortedEdhrec;
     this.sortedEdhrecCount = sortedEdhrecCount;
-    const edhrecSalts: (number | null)[] =
-      data.edhrec_salts ?? (Array.from({ length: data.names.length }, () => null) as (number | null)[]);
+    const edhrecSalts = data.edhrec_salts;
     this.edhrecSalt = edhrecSalts;
     const { indices: sortedSalt, count: sortedSaltCount } = buildSortedSaltIndices(
       edhrecSalts,
