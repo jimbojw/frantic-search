@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search)
 
 **Referenced by:** Spec 014 (Syntax Help Overlay)
 
@@ -41,6 +41,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `banned` | — | Banned in format | `banned:legacy` |
 | `restricted` | — | Restricted in format | `restricted:vintage` |
 | `is` | — | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.) | `is:commander` |
+| `kw` | `keyword` | Keyword ability (Scryfall catalog) | `kw:flying` |
 | `otag` | — | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
 | `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular) | `edhrec<100`, `edhrec>90%` |

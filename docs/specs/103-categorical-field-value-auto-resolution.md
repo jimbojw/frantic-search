@@ -54,6 +54,7 @@ function normalizeForResolution(s: string): string {
 | `in` | **Union** of game names, set codes, and rarity names (see §4) | Runtime |
 | `otag` | Oracle tag vocabulary (when loaded) | Runtime |
 | `atag`, `art` | Illustration tag vocabulary (when loaded) | Runtime |
+| `kw`, `keyword` | Keys of `keywords_index` (when loaded) | Runtime |
 
 ### 4. Special case: `in:`
 

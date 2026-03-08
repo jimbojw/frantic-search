@@ -298,6 +298,7 @@ export function processCards(verbose: boolean): void {
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
+    keywords_index: {},
   };
 
   const thumbs: ThumbHashData = { art_crop: [], card: [] };

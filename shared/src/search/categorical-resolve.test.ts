@@ -158,6 +158,26 @@ describe("resolveForField", () => {
       };
       expect(resolveForField("atag", "f", ctx)).toBe("fantasy");
     });
+
+    it("resolves kw when context has keywordLabels and exactly one match", () => {
+      const ctx: ResolutionContext = {
+        keywordLabels: ["flying", "deathtouch", "haste"],
+      };
+      expect(resolveForField("kw", "f", ctx)).toBe("flying");
+      expect(resolveForField("kw", "de", ctx)).toBe("deathtouch");
+      expect(resolveForField("keyword", "haste", ctx)).toBe("haste");
+    });
+
+    it("passes through typed value for kw when multiple matches", () => {
+      const ctx: ResolutionContext = {
+        keywordLabels: ["prowess", "protection", "plainswalk"],
+      };
+      expect(resolveForField("kw", "p", ctx)).toBe("p");
+    });
+
+    it("skips kw resolution when context absent", () => {
+      expect(resolveForField("kw", "flying")).toBe("flying");
+    });
   });
 
   describe("non-categorical fields", () => {

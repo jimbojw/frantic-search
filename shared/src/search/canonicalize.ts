@@ -144,7 +144,7 @@ function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionC
  * Handles all Frantic Search divergences: unclosed delimiters, bare regex
  * expansion, partial dates, NOP removal, and empty field values.
  * Spec 103: optional context enables resolution of runtime categorical fields
- * (set, in, otag, atag) for canonical outlinks; build-time fields resolve without context.
+ * (set, in, otag, atag, kw, keyword) for canonical outlinks; build-time fields resolve without context.
  */
 export function toScryfallQuery(node: ASTNode, context?: ResolutionContext): string {
   return serializeNode(node, undefined, context);

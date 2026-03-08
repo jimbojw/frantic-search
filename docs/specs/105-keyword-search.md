@@ -1,6 +1,6 @@
 # Spec 105: Keyword Search (kw: / keyword:)
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#114](https://github.com/jimbojw/frantic-search/issues/114)
 

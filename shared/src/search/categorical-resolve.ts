@@ -9,11 +9,12 @@ const VIEW_MODES = ["slim", "detail", "images", "full"] as const;
 const UNIQUE_MODES = ["cards", "prints", "art"] as const;
 const INCLUDE_VALUES = ["extras"] as const;
 
-/** Runtime data needed for set, in, otag, atag resolution. */
+/** Runtime data needed for set, in, otag, atag, kw/keyword resolution. */
 export interface ResolutionContext {
   knownSetCodes?: Set<string>;
   oracleTagLabels?: string[];
   illustrationTagLabels?: string[];
+  keywordLabels?: string[];
 }
 
 /**
@@ -47,7 +48,7 @@ const CATEGORICAL_FIELDS = new Set([
   "view", "unique", "sort", "include",
   "legal", "f", "format", "banned", "restricted",
   "rarity", "r", "game", "frame", "is",
-  "set", "in", "otag", "atag",
+  "set", "in", "otag", "atag", "kw", "keyword",
 ]);
 
 function getCandidatesForField(
@@ -91,6 +92,9 @@ function getCandidatesForField(
       return context?.oracleTagLabels ?? null;
     case "atag":
       return context?.illustrationTagLabels ?? null;
+    case "kw":
+    case "keyword":
+      return context?.keywordLabels ?? null;
     default:
       return null;
   }
@@ -98,7 +102,7 @@ function getCandidatesForField(
 
 /**
  * Resolve a categorical field value. For build-time fields, context is optional.
- * For runtime fields (set, in, otag, atag), context is required; when absent,
+ * For runtime fields (set, in, otag, atag, kw, keyword), context is required; when absent,
  * returns the typed value as-is (no resolution).
  *
  * For non-categorical fields, returns the value unchanged.

@@ -4,7 +4,7 @@ import { getCompletionContext, computeSuggestion, applyCompletion, type Autocomp
 
 function makeData(overrides: Partial<AutocompleteData> = {}): AutocompleteData {
   return {
-    fieldAliases: { u: 'unique', unique: 'unique', set: 'set', s: 'set', t: 'type', type: 'type', c: 'color', r: 'rarity', f: 'legal' },
+    fieldAliases: { u: 'unique', unique: 'unique', set: 'set', s: 'set', t: 'type', type: 'type', c: 'color', r: 'rarity', f: 'legal', kw: 'keyword', keyword: 'keyword' },
     names: ['Griselbrand', 'Llanowar Elves', 'Lightning Bolt', 'Llanowar Wastes'],
     typeLines: ['Legendary Creature — Demon', 'Creature — Elf Druid', 'Instant', 'Land'],
     setCodes: ['usg', 'ulg', 'uma', '2xm'],
@@ -12,6 +12,9 @@ function makeData(overrides: Partial<AutocompleteData> = {}): AutocompleteData {
     formatNames: { commander: 2048, modern: 64 },
     colorNames: { w: 1, u: 2, b: 4, r: 8, g: 16, white: 1, blue: 2 },
     isKeywords: ['foil', 'dfc', 'creature', 'vanilla'],
+    oracleTagLabels: [],
+    illustrationTagLabels: [],
+    keywordLabels: [],
     ...overrides,
   }
 }
@@ -156,6 +159,24 @@ describe('computeSuggestion', () => {
 
   it('returns null for otag: when oracle tags not loaded', () => {
     const ctx = getCompletionContext('otag:ramp', 8)!
+    expect(computeSuggestion(ctx, data)).toBeNull()
+  })
+
+  it('suggests keyword for kw:fly', () => {
+    const tagData = makeData({ keywordLabels: ['flying', 'first strike', 'flash'] })
+    const ctx = getCompletionContext('kw:fly', 6)
+    expect(ctx).not.toBeNull()
+    expect(computeSuggestion(ctx!, tagData)).toBe('flying')
+  })
+
+  it('suggests keyword for keyword:dea', () => {
+    const tagData = makeData({ keywordLabels: ['deathtouch', 'defender', 'double strike'] })
+    const ctx = getCompletionContext('keyword:dea', 11)!
+    expect(computeSuggestion(ctx, tagData)).toBe('deathtouch')
+  })
+
+  it('returns null for kw: when keywords not loaded', () => {
+    const ctx = getCompletionContext('kw:flying', 8)!
     expect(computeSuggestion(ctx, data)).toBeNull()
   })
 

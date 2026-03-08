@@ -224,10 +224,12 @@ async function init(): Promise<void> {
     oracle: null as OracleTagData | null,
     illustration: null as Map<string, Uint32Array> | null,
   }
-  const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef)
+  const keywordsIndex = data.keywords_index ?? {}
+  const keywordDataRef = { keywords: keywordsIndex }
+  const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef, keywordDataRef)
   const display = extractDisplayColumns(data)
 
-  post({ type: 'status', status: 'ready', display })
+  post({ type: 'status', status: 'ready', display, keywordLabels: Object.keys(keywordsIndex) })
 
   if (printingData) {
     post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })

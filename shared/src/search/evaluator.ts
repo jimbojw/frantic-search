@@ -12,6 +12,7 @@ import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword 
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, promoteFaceToPrintingCanonicalNonfoil, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
+import { evalKeyword } from "./eval-keywords";
 import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { PERCENTILE_RE } from "./eval-printing";
 
@@ -21,7 +22,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
     && PERCENTILE_RE.test(value);
 }
 import { parse } from "./parser";
-import type { OracleTagData } from "../data";
+import type { OracleTagData, KeywordData } from "../data";
 import { resolveForField } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
@@ -127,12 +128,17 @@ export type TagDataRef = {
   illustration: Map<string, Uint32Array> | null;
 };
 
+export type KeywordDataRef = {
+  keywords: KeywordData | null;
+};
+
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
   readonly index: CardIndex;
   private _printingIndex: PrintingIndex | null = null;
   private _getListMask: GetListMask | null = null;
   private _tagDataRef: TagDataRef | null = null;
+  private _keywordDataRef: KeywordDataRef | null = null;
   /** Root AST during evaluate(); used for my: + unique:prints override. */
   private _rootAstForOverride: ASTNode | undefined = undefined;
 
@@ -141,11 +147,13 @@ export class NodeCache {
     printingIndex?: PrintingIndex | null,
     getListMask?: GetListMask | null,
     tagDataRef?: TagDataRef | null,
+    keywordDataRef?: KeywordDataRef | null,
   ) {
     this.index = index;
     this._printingIndex = printingIndex ?? null;
     this._getListMask = getListMask ?? null;
     this._tagDataRef = tagDataRef ?? null;
+    this._keywordDataRef = keywordDataRef ?? null;
   }
 
   /** Maps query value to protocol listId. MVP: "list", "default", "" → "default". */
@@ -163,14 +171,17 @@ export class NodeCache {
     knownSetCodes?: Set<string>;
     oracleTagLabels?: string[];
     illustrationTagLabels?: string[];
+    keywordLabels?: string[];
   } | undefined {
     const pIdx = this._printingIndex;
     const tagRef = this._tagDataRef;
-    if (!pIdx && !tagRef) return undefined;
-    const ctx: { knownSetCodes?: Set<string>; oracleTagLabels?: string[]; illustrationTagLabels?: string[] } = {};
+    const kwRef = this._keywordDataRef;
+    if (!pIdx && !tagRef && !kwRef) return undefined;
+    const ctx: { knownSetCodes?: Set<string>; oracleTagLabels?: string[]; illustrationTagLabels?: string[]; keywordLabels?: string[] } = {};
     if (pIdx) ctx.knownSetCodes = pIdx.knownSetCodes;
     if (tagRef?.oracle) ctx.oracleTagLabels = Object.keys(tagRef.oracle);
     if (tagRef?.illustration) ctx.illustrationTagLabels = Array.from(tagRef.illustration.keys());
+    if (kwRef?.keywords) ctx.keywordLabels = Object.keys(kwRef.keywords);
     return Object.keys(ctx).length > 0 ? ctx : undefined;
   }
 
@@ -635,6 +646,26 @@ export class NodeCache {
             timings.set(interned.key, { cached: false, evalMs: 0 });
             break;
           }
+        }
+
+        if (canonical === "keyword") {
+          const buf = new Uint8Array(n);
+          const t0 = performance.now();
+          let err: string | null = null;
+          if (ast.operator !== ":" && ast.operator !== "=") {
+            err = "kw: requires : or = operator";
+          } else {
+            const kwVal = resolveForField("keyword", ast.value, this._getResolutionContext());
+            err = evalKeyword(kwVal, this._keywordDataRef?.keywords ?? null, buf);
+          }
+          const ms = performance.now() - t0;
+          if (err) {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
+          } else {
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          }
+          timings.set(interned.key, { cached: false, evalMs: err ? 0 : ms });
+          break;
         }
 
         if (canonical === "otag") {

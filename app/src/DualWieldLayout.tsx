@@ -70,6 +70,7 @@ export type PaneState = {
   printingDisplay: () => PrintingDisplayColumns | null
   oracleTagLabels: () => string[]
   illustrationTagLabels: () => string[]
+  keywordLabels: () => string[]
   breakdownExpanded: () => boolean
   toggleBreakdown: () => void
   histogramsExpanded: () => boolean
@@ -264,8 +265,9 @@ export function SearchPane(props: {
   }
   const autocompleteData = createMemo(() =>
     buildAutocompleteData(props.state.display(), props.state.printingDisplay(), {
-      oracle: props.state.oracleTagLabels().length ? props.state.oracleTagLabels() : undefined,
-      illustration: props.state.illustrationTagLabels().length ? props.state.illustrationTagLabels() : undefined,
+      oracle: props.state.oracleTagLabels(),
+      illustration: props.state.illustrationTagLabels(),
+      keyword: props.state.keywordLabels(),
     })
   )
   const ghostText = createMemo(() => {

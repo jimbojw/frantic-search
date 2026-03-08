@@ -30,6 +30,7 @@ export type {
   SetLookupEntry,
   OracleTagData,
   IllustrationTagData,
+  KeywordData,
 } from "./data";
 
 export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";

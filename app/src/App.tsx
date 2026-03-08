@@ -92,6 +92,7 @@ function App() {
   const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
   const [oracleTagLabels, setOracleTagLabels] = createSignal<string[]>([])
   const [illustrationTagLabels, setIllustrationTagLabels] = createSignal<string[]>([])
+  const [keywordLabels, setKeywordLabels] = createSignal<string[]>([])
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
@@ -173,8 +174,9 @@ function App() {
 
   const autocompleteData = createMemo(() =>
     buildAutocompleteData(display(), printingDisplay(), {
-      oracle: oracleTagLabels().length ? oracleTagLabels() : undefined,
-      illustration: illustrationTagLabels().length ? illustrationTagLabels() : undefined,
+      oracle: oracleTagLabels(),
+      illustration: illustrationTagLabels(),
+      keyword: keywordLabels(),
     })
   )
   const ghostText = createMemo(() => {
@@ -469,6 +471,7 @@ function App() {
           if (msg.status === 'ready') {
             setDataProgress(1)
             setDisplay(msg.display)
+            setKeywordLabels(msg.keywordLabels ?? [])
             fetchThumbHashes()
             cardListStore
               .init()
@@ -972,6 +975,7 @@ function App() {
     printingDisplay,
     oracleTagLabels,
     illustrationTagLabels,
+    keywordLabels,
     breakdownExpanded,
     setBreakdownExpanded,
     histogramsExpanded,
@@ -1005,6 +1009,7 @@ function App() {
     printingDisplay,
     oracleTagLabels,
     illustrationTagLabels,
+    keywordLabels,
     breakdownExpanded: breakdownExpanded2,
     setBreakdownExpanded: setBreakdownExpanded2,
     histogramsExpanded: histogramsExpanded2,

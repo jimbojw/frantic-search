@@ -211,6 +211,7 @@ These fields map to columns available in the current ETL output.
 | `legal`, `f`, `format` | `legalities_legal`      | Card is legal in the given format      | —                                          |
 | `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
+| `kw`, `keyword`    | `keywords_index`            | Card has the given keyword ability (Scryfall catalog) | `:` and `=` only (Spec 105) |
 | (bare word)        | `names`                     | Case-insensitive substring             | —                                          |
 
 ### Color value parsing

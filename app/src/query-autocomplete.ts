@@ -18,8 +18,9 @@ export type AutocompleteData = {
   formatNames: Record<string, number>
   colorNames: Record<string, number>
   isKeywords: string[]
-  oracleTagLabels?: string[]
-  illustrationTagLabels?: string[]
+  oracleTagLabels: string[]
+  illustrationTagLabels: string[]
+  keywordLabels: string[]
 }
 
 const OPERATORS = new Set<string>([
@@ -213,13 +214,18 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
         return match
       }
       if (fn === 'otag') {
-        if (!data.oracleTagLabels?.length) return null
+        if (!data.oracleTagLabels.length) return null
         const match = firstMatchByPrefix(data.oracleTagLabels, prefix)
         return match
       }
       if (fn === 'atag' || fn === 'art') {
-        if (!data.illustrationTagLabels?.length) return null
+        if (!data.illustrationTagLabels.length) return null
         const match = firstMatchByPrefix(data.illustrationTagLabels, prefix)
+        return match
+      }
+      if (fn === 'kw' || fn === 'keyword') {
+        if (!data.keywordLabels.length) return null
+        const match = firstMatchByPrefix(data.keywordLabels, prefix)
         return match
       }
       if (fn === 'name' || fn === 'n') {
@@ -255,7 +261,7 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
 export function buildAutocompleteData(
   display: DisplayColumns | null,
   printingDisplay: PrintingDisplayColumns | null,
-  tagLabels?: { oracle?: string[]; illustration?: string[] }
+  tagLabels?: { oracle?: string[]; illustration?: string[]; keyword?: string[] }
 ): AutocompleteData | null {
   if (!display) return null
   const setCodes = printingDisplay?.set_codes
@@ -270,8 +276,9 @@ export function buildAutocompleteData(
     formatNames: FORMAT_NAMES,
     colorNames: COLOR_NAMES,
     isKeywords: IS_KEYWORDS,
-    oracleTagLabels: tagLabels?.oracle,
-    illustrationTagLabels: tagLabels?.illustration,
+    oracleTagLabels: tagLabels?.oracle ?? [],
+    illustrationTagLabels: tagLabels?.illustration ?? [],
+    keywordLabels: tagLabels?.keyword ?? [],
   }
 }
 
