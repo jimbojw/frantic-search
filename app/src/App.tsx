@@ -92,6 +92,10 @@ function App() {
   const [printingDisplay, setPrintingDisplay] = createSignal<PrintingDisplayColumns | null>(null)
   const [oracleTagLabels, setOracleTagLabels] = createSignal<string[]>([])
   const [illustrationTagLabels, setIllustrationTagLabels] = createSignal<string[]>([])
+  const [cardTags, setCardTags] = createSignal<{
+    otags: { label: string; cards: number }[]
+    atags: { label: string; prints: number }[]
+  } | null>(null)
   const [keywordLabels, setKeywordLabels] = createSignal<string[]>([])
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
@@ -437,6 +441,36 @@ function App() {
     })
   })
 
+  createEffect(() => {
+    if (view() !== 'card') {
+      setCardTags(null)
+      return
+    }
+    const cid = cardId()
+    if (!cid) return
+    const pd = printingDisplay()
+    if (!display()) return
+    const scry = scryfallIndex()
+    const pscry = printingScryfallIndex()
+    const pscryGroup = printingScryfallGroupIndex()
+    const oracleCI = scry.get(cid)
+    const printingPI = pscry.get(cid)
+    const printingPIs = pscryGroup.get(cid)
+    const resolvedCI =
+      oracleCI !== undefined
+        ? oracleCI
+        : printingPI !== undefined && pd
+          ? pd.canonical_face_ref[printingPI]
+          : undefined
+    if (resolvedCI === undefined) return
+    const primaryPI = printingPIs && printingPIs.length > 0 ? printingPIs[0] : undefined
+    worker.postMessage({
+      type: 'get-tags-for-card',
+      canonicalIndex: resolvedCI,
+      primaryPrintingIndex: primaryPI,
+    })
+  })
+
   worker.onmessage = (e: MessageEvent<FromWorker>) => {
     const msg = e.data
     switch (msg.type) {
@@ -511,6 +545,9 @@ function App() {
             setErrorCause(msg.cause)
           }
         }
+        break
+      case 'card-tags':
+        setCardTags({ otags: msg.otags, atags: msg.atags })
         break
       case 'result': {
         const side = msg.side
@@ -1099,6 +1136,8 @@ function App() {
               facesOf={facesOf()}
               printingIndices={printingPIs()}
               printingDisplay={printingDisplay()}
+              otags={cardTags()?.otags}
+              atags={cardTags()?.atags}
               onNavigateToQuery={navigateToQuery}
               cardListStore={cardListStore}
               listVersion={listVersion()}

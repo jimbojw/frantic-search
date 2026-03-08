@@ -129,6 +129,39 @@ async function fetchAtags(): Promise<IllustrationTagData | null> {
   }
 }
 
+/** Build reverse index: face index → otag labels. */
+function buildFaceToOtags(otags: OracleTagData): Map<number, string[]> {
+  const map = new Map<number, string[]>()
+  for (const [label, faceIndices] of Object.entries(otags)) {
+    for (const fi of faceIndices) {
+      let arr = map.get(fi)
+      if (!arr) {
+        arr = []
+        map.set(fi, arr)
+      }
+      arr.push(label)
+    }
+  }
+  return map
+}
+
+/** Build reverse index: printing row index → atag labels. */
+function buildPrintingToAtags(illustration: Map<string, Uint32Array>): Map<number, string[]> {
+  const map = new Map<number, string[]>()
+  for (const [label, printingIndices] of illustration) {
+    for (let i = 0; i < printingIndices.length; i++) {
+      const pi = printingIndices[i]
+      let arr = map.get(pi)
+      if (!arr) {
+        arr = []
+        map.set(pi, arr)
+      }
+      arr.push(label)
+    }
+  }
+  return map
+}
+
 /** Resolve strided (face, illust_idx) pairs to printing row indices using PrintingIndex data. */
 function resolveAtagsToPrintingRows(
   atags: IllustrationTagData,
@@ -220,6 +253,8 @@ async function init(): Promise<void> {
     : null
   const listMaskCache = new Map<string, { faceMask: Uint8Array; printingMask?: Uint8Array }>()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
+  let faceToOtags: Map<number, string[]> | null = null
+  let printingToAtags: Map<number, string[]> | null = null
   const tagDataRef = {
     oracle: null as OracleTagData | null,
     illustration: null as Map<string, Uint32Array> | null,
@@ -238,6 +273,7 @@ async function init(): Promise<void> {
   otagsPromise.then((otags) => {
     if (otags) {
       tagDataRef.oracle = otags
+      faceToOtags = buildFaceToOtags(otags)
       post({ type: 'status', status: 'otags-ready', tagLabels: Object.keys(otags) })
     }
   })
@@ -248,6 +284,7 @@ async function init(): Promise<void> {
     if (atags) {
       const resolved = resolveAtagsToPrintingRows(atags, printingDataForAtags)
       tagDataRef.illustration = resolved
+      printingToAtags = buildPrintingToAtags(resolved)
       post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
     }
   })
@@ -260,6 +297,23 @@ async function init(): Promise<void> {
         printingMask: msg.printingMask,
       })
       cache.clearAllComputed()
+      return
+    }
+    if (msg.type === 'get-tags-for-card') {
+      const otagLabels = faceToOtags?.get(msg.canonicalIndex) ?? []
+      const atagLabels =
+        msg.primaryPrintingIndex !== undefined
+          ? printingToAtags?.get(msg.primaryPrintingIndex) ?? []
+          : []
+      const otags = otagLabels.map((label) => ({
+        label,
+        cards: tagDataRef.oracle?.[label]?.length ?? 0,
+      }))
+      const atags = atagLabels.map((label) => ({
+        label,
+        prints: tagDataRef.illustration?.get(label)?.length ?? 0,
+      }))
+      post({ type: 'card-tags', otags, atags })
       return
     }
     if (msg.type !== 'search') return

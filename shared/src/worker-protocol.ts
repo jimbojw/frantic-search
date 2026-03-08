@@ -7,6 +7,7 @@ export type DualWieldSide = 'left' | 'right'
 export type ToWorker =
   | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode; side?: DualWieldSide }
   | { type: 'list-update'; listId: string; faceMask: Uint8Array; printingMask?: Uint8Array }
+  | { type: 'get-tags-for-card'; canonicalIndex: number; primaryPrintingIndex?: number }
 
 export type DisplayColumns = {
   names: string[]
@@ -77,4 +78,5 @@ export type FromWorker =
   | { type: 'status'; status: 'otags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'atags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
+  | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide }

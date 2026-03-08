@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
 import { getMatchingCount } from './list-mask-builder'
@@ -194,6 +195,85 @@ function ListControls(props: {
   )
 }
 
+function formatTagCount(cards?: number, prints?: number): string {
+  const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString())
+  if (cards !== undefined) return `${fmt(cards)} cards`
+  if (prints !== undefined) return `${fmt(prints)} prints`
+  return ''
+}
+
+function TagChip(props: {
+  label: string
+  prefix: 'otag' | 'atag'
+  cards?: number
+  prints?: number
+  onNavigate?: (q: string) => void
+}) {
+  const query = () => `${props.prefix}:${props.label}`
+  const [copied, setCopied] = createSignal(false)
+  const copyQuery = () => {
+    navigator.clipboard.writeText(query()).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+  const countDisplay = () => formatTagCount(props.cards, props.prints)
+  const chipBase =
+    'inline-flex flex-col min-w-0 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  return (
+    <span class={chipBase}>
+      <div class="flex items-center gap-1 pl-2 pt-1 pb-0.5 pr-1 min-h-[2.25rem]">
+        <Show
+          when={props.onNavigate}
+          fallback={
+            <For each={buildSpans(query())}>
+              {(span) =>
+                span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+              }
+            </For>
+          }
+        >
+          <button
+            type="button"
+            onClick={() => props.onNavigate!(query())}
+            class="flex items-center gap-0.5 text-left cursor-pointer flex-1 min-w-0 truncate"
+          >
+            <For each={buildSpans(query())}>
+              {(span) =>
+                span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+              }
+            </For>
+          </button>
+        </Show>
+        <button
+          type="button"
+          onClick={copyQuery}
+          class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
+          aria-label={`Copy ${query()} to clipboard`}
+        >
+          <Show
+            when={copied()}
+            fallback={
+              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+              </svg>
+            }
+          >
+            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+          </Show>
+        </button>
+      </div>
+      <div class="flex justify-center items-center px-1.5 pt-0.5 pb-1">
+        <span class="text-[10px] tabular-nums opacity-60" title={countDisplay()}>
+          {countDisplay()}
+        </span>
+      </div>
+    </span>
+  )
+}
+
 function LegalityGrid(props: { legalities: { legal: number; banned: number; restricted: number } }) {
   return (
     <div class="grid grid-cols-2 gap-1.5">
@@ -219,6 +299,8 @@ export default function CardDetail(props: {
   facesOf: Map<number, number[]>
   printingIndices?: number[]
   printingDisplay?: PrintingDisplayColumns | null
+  otags?: { label: string; cards: number }[]
+  atags?: { label: string; prints: number }[]
   onNavigateToQuery?: (q: string) => void
   cardListStore?: CardListStore
   listVersion?: number
@@ -521,6 +603,31 @@ export default function CardDetail(props: {
                 <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Format Legality</h2>
                 <LegalityGrid legalities={legalities()} />
               </section>
+
+              <Show when={(props.otags?.length ?? 0) > 0}>
+                <section class="mt-6">
+                  <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Function Tags</h2>
+                  <div class="flex flex-wrap gap-1.5 content-start">
+                    <For each={props.otags ?? []}>
+                      {(item) => (
+                        <TagChip label={item.label} prefix="otag" cards={item.cards} onNavigate={props.onNavigateToQuery} />
+                      )}
+                    </For>
+                  </div>
+                </section>
+              </Show>
+              <Show when={(props.atags?.length ?? 0) > 0}>
+                <section class="mt-6">
+                  <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Illustration Tags</h2>
+                  <div class="flex flex-wrap gap-1.5 content-start">
+                    <For each={props.atags ?? []}>
+                      {(item) => (
+                        <TagChip label={item.label} prefix="atag" prints={item.prints} onNavigate={props.onNavigateToQuery} />
+                      )}
+                    </For>
+                  </div>
+                </section>
+              </Show>
             </>
           )
         }}
