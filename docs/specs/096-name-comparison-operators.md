@@ -1,6 +1,6 @@
 # Spec 096: Name Comparison Operators
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 059 (Sort Directives)
 

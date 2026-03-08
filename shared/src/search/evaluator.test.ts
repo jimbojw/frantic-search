@@ -614,6 +614,60 @@ describe("evaluate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 096: Name comparison operators
+// ---------------------------------------------------------------------------
+
+describe("name comparison operators (Spec 096)", () => {
+  test("name>M returns cards whose normalized name is after m", () => {
+    // Sol Ring, Tarmogoyf, Thalia (s,t,t > m)
+    expect(matchCount("name>M")).toBe(3);
+  });
+
+  test("name>=M includes cards at or after m", () => {
+    expect(matchCount("name>=M")).toBe(3);
+  });
+
+  test("name<M returns cards before m", () => {
+    // Azorius, Ayara, Birds, Counterspell, Dismember, Lightning Bolt
+    expect(matchCount("name<M")).toBe(6);
+  });
+
+  test("name<=M includes cards at or before m", () => {
+    expect(matchCount("name<=M")).toBe(6);
+  });
+
+  test("name:bolt and name=bolt unchanged (substring match)", () => {
+    expect(matchCount("name:bolt")).toBe(1);
+    expect(matchCount("name=bolt")).toBe(1);
+  });
+
+  test("-name>M equals name<=M (operator inversion)", () => {
+    expect(matchCount("-name>M")).toBe(matchCount("name<=M"));
+    expect(matchCount("-name>M")).toBe(6);
+  });
+
+  test("name>Lightning returns Lightning Bolt and names after (full string comparison)", () => {
+    // lightningbolt > lightning; Sol Ring, Tarmogoyf, Thalia
+    expect(matchCount("name>Lightning")).toBe(4);
+  });
+
+  test("name>=Lightning includes Lightning Bolt (equal) and names after", () => {
+    expect(matchCount("name>=Lightning")).toBe(4);
+  });
+
+  test("name>/foo/ returns error (regex does not support comparison operators)", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("name>/foo/"));
+    expect(result.error).toContain("name field does not support comparison operators with regex");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("name>=Thalia finds Thalia (quoted value normalized)", () => {
+    expect(matchCount('name>="Thalia, Guardian"')).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // CMC / mana value
 // ---------------------------------------------------------------------------
 // Row CMC: #0=1, #1=1, #2=2, #3=1, #4=2, #5=2, #6=2, #7=3, #8=0, #9=3

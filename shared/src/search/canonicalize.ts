@@ -82,6 +82,9 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
       const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
       if (canonical === "usd" && node.value.toLowerCase() === "null") return "";
+      // Spec 096: name comparison operators have no Scryfall equivalent — strip
+      const nameCmpOps = new Set([">", "<", ">=", "<="]);
+      if (canonical === "name" && nameCmpOps.has(node.operator)) return "";
       // Spec 074: $ is Frantic Search–only; Scryfall expects "usd" (https://scryfall.com/docs/syntax#prices)
       const fieldForScryfall = canonical === "usd" ? "usd" : node.field;
       const quoted = needsQuoting(node.value) ? `"${node.value}"` : node.value;

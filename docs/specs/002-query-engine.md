@@ -198,7 +198,7 @@ These fields map to columns available in the current ETL output.
 
 | Field aliases      | Column(s)                   | `:` semantics                          | Comparison semantics (`=`, `<`, `>`, etc.) |
 |--------------------|-----------------------------|----------------------------------------|--------------------------------------------|
-| `name`, `n`        | `names`                     | Case-insensitive substring             | Exact match (case-insensitive)             |
+| `name`, `n`        | `names`                     | Case-insensitive substring             | Substring (`:`, `=`); lexicographic comparison (`>`, `<`, `>=`, `<=`) |
 | `oracle`, `o`      | `oracle_texts`              | Case-insensitive substring             | —                                          |
 | `color`, `c`       | `colors`                    | Card has at least these colors (⊇)     | `=` exact, `<=` subset, `>=` superset      |
 | `identity`, `id`   | `color_identity`            | Same as `color`                        | Same as `color`                            |

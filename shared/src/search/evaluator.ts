@@ -733,15 +733,36 @@ export class NodeCache {
           interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
           timings.set(interned.key, { cached: false, evalMs: ms });
         } else {
-          // Face-domain NOT: promote if needed, then invert at card level.
-          const childFaceBuf = this._faceBuf(childInterned);
-          const buf = new Uint8Array(n);
-          const cf = this.index.canonicalFace;
-          const t0 = performance.now();
-          for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childFaceBuf[i] ^ 1) : 0;
-          const ms = performance.now() - t0;
-          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
-          timings.set(interned.key, { cached: false, evalMs: ms });
+          // Spec 096: Negated name with comparison op → operator inversion (-name>M = name<=M).
+          const childField = ast.child.type === "FIELD" ? ast.child : null;
+          const nameCmpOps = new Set([">", "<", ">=", "<="]);
+          const isNameCmp = childField
+            && FIELD_ALIASES[childField.field.toLowerCase()] === "name"
+            && nameCmpOps.has(childField.operator);
+          if (isNameCmp && childField) {
+            const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">" };
+            const invertedNode = { ...childField, operator: invOp[childField.operator] };
+            const buf = new Uint8Array(n);
+            const t0 = performance.now();
+            const err = evalLeafField(invertedNode, this.index, buf);
+            const ms = performance.now() - t0;
+            if (err) {
+              interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
+            } else {
+              interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+            }
+            timings.set(interned.key, { cached: false, evalMs: ms });
+          } else {
+            // Face-domain NOT: promote if needed, then invert at card level.
+            const childFaceBuf = this._faceBuf(childInterned);
+            const buf = new Uint8Array(n);
+            const cf = this.index.canonicalFace;
+            const t0 = performance.now();
+            for (let i = 0; i < n; i++) buf[i] = (cf[i] === i) ? (childFaceBuf[i] ^ 1) : 0;
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+          }
         }
         break;
       }

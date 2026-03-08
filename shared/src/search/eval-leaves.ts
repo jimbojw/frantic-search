@@ -58,6 +58,8 @@ function parseColorValue(value: string): number {
   return mask;
 }
 
+const NAME_CMP_OPS = new Set([">", "<", ">=", "<="]);
+
 function getStringColumn(canonical: string, index: CardIndex): string[] | null {
   switch (canonical) {
     case "name": return index.combinedNamesLower;
@@ -93,7 +95,31 @@ export function evalLeafField(
   const valLower = val.toLowerCase();
 
   switch (canonical) {
-    case "name":
+    case "name": {
+      if (NAME_CMP_OPS.has(op)) {
+        // Lexicographic comparison (Spec 096): same normalization as sort:name
+        const valNorm = val.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const col = index.combinedNamesNormalized;
+        for (let i = 0; i < n; i++) {
+          const cardNorm = col[cf[i]];
+          const cmp = cardNorm.localeCompare(valNorm);
+          const match =
+            op === ">" ? cmp > 0
+            : op === ">=" ? cmp >= 0
+            : op === "<" ? cmp < 0
+            : op === "<=" ? cmp <= 0
+            : false;
+          if (match) buf[cf[i]] = 1;
+        }
+      } else {
+        // Substring match (:, =, !=)
+        const col = index.combinedNamesLower;
+        for (let i = 0; i < n; i++) {
+          if (col[cf[i]].includes(valLower)) buf[cf[i]] = 1;
+        }
+      }
+      break;
+    }
     case "type": {
       const col = getStringColumn(canonical, index)!;
       for (let i = 0; i < n; i++) {
@@ -294,6 +320,10 @@ export function evalLeafRegex(
 ): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   if (!canonical) return `unknown field "${node.field}"`;
+
+  if (canonical === "name" && NAME_CMP_OPS.has(node.operator)) {
+    return "name field does not support comparison operators with regex; use a literal value (e.g. name>M)";
+  }
 
   const n = index.faceCount;
   const cf = index.canonicalFace;

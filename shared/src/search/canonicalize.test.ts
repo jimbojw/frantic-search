@@ -82,6 +82,15 @@ describe("toScryfallQuery", () => {
     expect(canon("usd!=null lightning")).toBe("lightning");
   });
 
+  it("strips name comparison operators for Scryfall (Spec 096)", () => {
+    expect(canon("name>M")).toBe("");
+    expect(canon("name<M")).toBe("");
+    expect(canon("name>=Lightning")).toBe("");
+    expect(canon("name<=Lightning")).toBe("");
+    expect(canon("t:creature name>M")).toBe("t:creature");
+    expect(canon("name>M lightning")).toBe("lightning");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {
