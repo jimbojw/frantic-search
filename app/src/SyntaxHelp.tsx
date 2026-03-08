@@ -34,14 +34,20 @@ interface RegexEntry {
   example: string
 }
 
+interface ExclusiveEntry {
+  feature: string
+  description: string
+  example: string
+}
+
 interface DivergenceEntry {
   behavior: string
   scryfall: string
   franticSearch: string
 }
 
-const FIELDS: FieldEntry[] = [
-  { field: 'name', aliases: ['n'], description: 'Card name (substring)', example: 'n:bolt' },
+const FACE_FIELDS: FieldEntry[] = [
+  { field: 'name', aliases: ['n'], description: 'Card name: substring (`:`, `=`), alphabetical range (`>`, `<`, `>=`, `<=`), percentile (`>50%`)', example: 'n:bolt' },
   { field: 'oracle', aliases: ['o'], description: 'Rules text (substring)', example: 'o:trample' },
   { field: 'type', aliases: ['t'], description: 'Type line (substring)', example: 't:creature' },
   { field: 'color', aliases: ['c'], description: 'Card colors', example: 'c:rg' },
@@ -55,9 +61,33 @@ const FIELDS: FieldEntry[] = [
   { field: 'legal', aliases: ['f', 'format'], description: 'Format legality', example: 'f:modern' },
   { field: 'banned', aliases: [], description: 'Banned in format', example: 'banned:legacy' },
   { field: 'restricted', aliases: [], description: 'Restricted in format', example: 'restricted:vintage' },
-  { field: 'is', aliases: [], description: 'Mechanics, layouts, roles (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
-  { field: 'rarity', aliases: ['r'], description: 'Rarity', example: 'r:mythic' },
-  { field: 'usd', aliases: ['$'], description: 'Price in USD', example: 'usd<5' },
+  { field: 'is', aliases: [], description: 'Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.)', example: 'is:commander' },
+  { field: 'otag', aliases: [], description: 'Oracle tag (community-curated)', example: 'otag:ramp' },
+  { field: 'atag', aliases: [], description: 'Illustration tag (community-curated)', example: 'atag:bolt' },
+  { field: 'my', aliases: [], description: 'Cards in a list', example: 'my:list' },
+]
+
+const PRINTING_FIELDS: FieldEntry[] = [
+  { field: 'set', aliases: ['s', 'e', 'edition'], description: 'Set code', example: 'set:mh2' },
+  { field: 'rarity', aliases: ['r'], description: 'Rarity (exact or comparison)', example: 'r:mythic' },
+  { field: 'usd', aliases: ['$'], description: 'Price in USD; `=null` for no price data; percentile (`>90%`)', example: 'usd<5' },
+  { field: 'collectornumber', aliases: ['cn', 'number'], description: 'Collector number', example: 'cn:261' },
+  { field: 'frame', aliases: [], description: 'Frame version (1993, 1997, 2003, 2015, future)', example: 'frame:2015' },
+  { field: 'year', aliases: [], description: 'Release year (YYYY or partial)', example: 'year:2021' },
+  { field: 'date', aliases: ['released'], description: 'Release date (YYYY, YYYY-MM, YYYY-MM-DD, set code, now); percentile (`>90%`)', example: 'date:2021' },
+  { field: 'game', aliases: [], description: 'Paper, Arena, MTGO availability', example: 'game:arena' },
+  { field: 'in', aliases: [], description: 'Game, set, or rarity (disambiguated by value)', example: 'in:mh2' },
+]
+
+const EXCLUSIVES: ExclusiveEntry[] = [
+  { feature: 'Bare regex', description: '/pattern searches name, oracle text, and type line', example: '/bolt/' },
+  { feature: '** (include:extras)', description: 'Include non-playable cards (acorn, silver-border, etc.)', example: 't:bolt **' },
+  { feature: 'Name range', description: 'Alphabetical comparison on card name', example: 'name>M' },
+  { feature: 'Name percentile', description: 'Filter by position in alphabetical distribution', example: 'name>50%' },
+  { feature: 'Price percentile', description: 'Filter by position in price distribution', example: 'usd>90%' },
+  { feature: 'Date percentile', description: 'Filter by position in release-date distribution', example: 'date>90%' },
+  { feature: 'usd=null', description: 'Find printings with no price data', example: 'usd=null' },
+  { feature: '-sort:field', description: 'Reverse sort direction (NOT inverts)', example: '-sort:name' },
 ]
 
 const OPERATORS: OperatorEntry[] = [
@@ -94,6 +124,12 @@ const REGEX: RegexEntry[] = [
 const DIVERGENCES: DivergenceEntry[] = [
   { behavior: 'Default format filter', scryfall: 'Excludes cards not legal in any format', franticSearch: 'Shows all cards. Use f:standard (etc.) to filter.' },
   { behavior: 'Bare regex', scryfall: 'Not supported', franticSearch: '/pattern searches name, oracle text, and type line' },
+  { behavior: 'Bare words', scryfall: 'Searches name (fuzzy matching)', franticSearch: 'Searches name (substring, no fuzzy)' },
+  { behavior: 'Name comparison', scryfall: 'Not supported', franticSearch: 'name>M, name<=X (alphabetical)' },
+  { behavior: 'Percentile filters', scryfall: 'Not supported', franticSearch: 'usd>90%, date<10%, name>50%' },
+  { behavior: 'usd=null', scryfall: 'Not supported', franticSearch: 'Matches printings with no price data' },
+  { behavior: '$ alias', scryfall: 'Uses usd', franticSearch: '$ is alias for usd' },
+  { behavior: 'Query speed', scryfall: 'Server round-trip', franticSearch: 'Instant (client-side, every keystroke)' },
 ]
 
 function ExampleButton(props: { example: string; onSelect: (q: string) => void }) {
@@ -132,23 +168,54 @@ export default function SyntaxHelp(props: { onSelectExample: (q: string) => void
           class="text-blue-600 dark:text-blue-400 hover:underline"
         >
           Scryfall syntax
-        </Outlink>.
+        </Outlink>{' '}
+        with extensions and some differences.
       </p>
 
       <section class="mb-8">
         <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Fields</h2>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Face-domain fields</h3>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden mb-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <th class="px-4 py-2 font-medium">Field</th>
+                <th class="px-4 py-2 font-medium hidden sm:table-cell">Aliases</th>
+                <th class="px-4 py-2 font-medium">Description</th>
+                <th class="px-4 py-2 font-medium">Example</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <For each={FACE_FIELDS}>
+                {(entry) => (
+                  <tr>
+                    <td class="px-4 py-1.5 font-mono text-xs">{entry.field}</td>
+                    <td class="px-4 py-1.5 font-mono text-xs text-gray-400 dark:text-gray-500 hidden sm:table-cell">
+                      {entry.aliases.length > 0 ? entry.aliases.join(', ') : '\u2014'}
+                    </td>
+                    <td class="px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">{entry.description}</td>
+                    <td class="px-4 py-1.5 text-xs">
+                      <ExampleButton example={entry.example} onSelect={props.onSelectExample} />
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Printing-domain fields</h3>
         <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-gray-200 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 <th class="px-4 py-2 font-medium">Field</th>
                 <th class="px-4 py-2 font-medium hidden sm:table-cell">Aliases</th>
-                <th class="px-4 py-2 font-medium">Searches</th>
+                <th class="px-4 py-2 font-medium">Description</th>
                 <th class="px-4 py-2 font-medium">Example</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-              <For each={FIELDS}>
+              <For each={PRINTING_FIELDS}>
                 {(entry) => (
                   <tr>
                     <td class="px-4 py-1.5 font-mono text-xs">{entry.field}</td>
@@ -265,8 +332,36 @@ export default function SyntaxHelp(props: { onSelectExample: (q: string) => void
           </For>
         </div>
         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 px-1">
-          Regex is case-insensitive. The trailing <code class="font-mono">/</code> is optional.
+          Regex is case-insensitive. The trailing <code class="font-mono">/</code> is optional. Bare regex is Frantic Search–exclusive (Scryfall does not support it).
         </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Frantic Search Exclusives</h2>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800 text-left text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <th class="px-4 py-2 font-medium">Feature</th>
+                <th class="px-4 py-2 font-medium">Description</th>
+                <th class="px-4 py-2 font-medium">Example</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <For each={EXCLUSIVES}>
+                {(entry) => (
+                  <tr>
+                    <td class="px-4 py-1.5 font-mono text-xs">{entry.feature}</td>
+                    <td class="px-4 py-1.5 text-xs text-gray-600 dark:text-gray-300">{entry.description}</td>
+                    <td class="px-4 py-1.5 text-xs">
+                      <ExampleButton example={entry.example} onSelect={props.onSelectExample} />
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section class="mb-8">
