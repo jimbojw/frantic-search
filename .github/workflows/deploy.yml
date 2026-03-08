@@ -56,6 +56,9 @@ jobs:
       - name: Download Scryfall tags
         run: npm run etl -- download-tags --verbose
 
+      - name: Download MTGJSON AtomicCards
+        run: npm run etl -- download-mtgjson --verbose
+
       - name: Restore ThumbHash cache
         uses: actions/cache@v4
         with:

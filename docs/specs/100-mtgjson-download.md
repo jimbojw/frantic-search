@@ -1,6 +1,6 @@
 # Spec 100: ETL MTGJSON Download
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#113](https://github.com/jimbojw/frantic-search/issues/113)
 
