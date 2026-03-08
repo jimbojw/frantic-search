@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 013 (URL State & History)
+**Depends on:** Spec 013 (URL State & History), Spec 098 (Syntax Help Content)
 
 ## Goal
 
@@ -44,26 +44,7 @@ The help content is organized into scannable sections. On mobile, users will not
 
 #### Section 1: Quick Reference Table
 
-A table of all supported fields with their shorthand aliases, what they search, and a clickable example.
-
-| Field | Aliases | Searches | Example |
-|---|---|---|---|
-| `name` | `n` | Card name (substring) | `n:bolt` |
-| `oracle` | `o` | Rules text (substring) | `o:trample` |
-| `type` | `t` | Type line (substring) | `t:creature` |
-| `color` | `c` | Card colors | `c:rg` |
-| `identity` | `id`, `ci`, `cmd` | Color identity | `id:wubrg` |
-| `power` | `pow` | Power (numeric) | `pow>=4` |
-| `toughness` | `tou` | Toughness (numeric) | `tou>5` |
-| `loyalty` | `loy` | Loyalty (numeric) | `loy>=3` |
-| `defense` | `def` | Defense (numeric) | `def>3` |
-| `mana value` | `mv`, `cmc` | Mana value (numeric) | `mv<=2` |
-| `mana` | `m` | Mana cost (symbols) | `m:rrg` |
-| `legal` | `f`, `format` | Format legality | `f:modern` |
-| `banned` | — | Banned in format | `banned:legacy` |
-| `restricted` | — | Restricted in format | `restricted:vintage` |
-
-Each example in the rightmost column is a tappable link that calls `navigateToQuery()` (Spec 013), populating the search bar and showing results.
+A table of all supported fields with their shorthand aliases, what they search, and a clickable example. **Content is defined in Spec 098** — the field list, descriptions, and examples must match that spec.
 
 #### Section 2: Operators
 
@@ -99,18 +80,13 @@ Explanation of regex syntax with examples:
 - **Bare regex.** `/bolt` — searches name, oracle text, and type line simultaneously (Spec 012).
 - Regex is case-insensitive. The trailing `/` is optional.
 
-#### Section 5: Differences from Scryfall
+#### Section 5: Frantic Search Exclusives
 
-A short callout section with a distinct visual treatment (e.g., a bordered box or different background) that lists known behavioral divergences:
+A section listing features Scryfall does not support (bare regex, `**`, name range, percentile filters, `usd=null`, etc.). **Content defined in Spec 098 § "Frantic Search Exclusives".**
 
-| Behavior | Scryfall | Frantic Search |
-|---|---|---|
-| Default format filter | Excludes cards not legal in any format | Shows all cards. Use `f:standard` (etc.) to filter by format. |
-| Bare regex | Not supported | `/pattern` searches name, oracle text, and type line |
-| Bare words | Searches name (with fuzzy matching) | Searches name (substring, no fuzzy matching) |
-| Query speed | Server round-trip | Instant (client-side, every keystroke) |
+#### Section 6: Differences from Scryfall
 
-This section sets honest expectations and helps Scryfall users adapt.
+A short callout section with a distinct visual treatment (e.g., a bordered box or different background) that lists known behavioral divergences. **Content defined in Spec 098 § "Differences from Scryfall".** This section sets honest expectations and helps Scryfall users adapt.
 
 ### Content as Structured Data
 
@@ -190,7 +166,7 @@ The help content is part of the app bundle (static data constants in the JS). It
 ## Acceptance Criteria
 
 1. A `?` icon is visible on the right side of the search input. Tapping it shows the help view.
-2. The help view is a full-page scrollable view with field reference, operators, combinators, regex, and Scryfall divergences.
+2. The help view is a full-page scrollable view with field reference, operators, combinators, regex, Frantic Search exclusives, and Scryfall divergences. Content must match Spec 098.
 3. Every example in the help content is tappable. Tapping an example populates the search bar and shows results.
 4. Browser back from a tapped example returns to the help view. Browser back from help returns to the search view with the previous query.
 5. The "Syntax guide ↗" external link is removed from the QueryBreakdown header.
@@ -198,3 +174,7 @@ The help content is part of the app bundle (static data constants in the JS). It
 7. The help view works fully offline (no network requests).
 8. All content supports dark mode.
 9. Help content is defined as structured data constants, not inline JSX.
+
+## Implementation Notes
+
+- 2026-03-08: Content had drifted out of date (missing fields, outdated descriptions, incomplete divergences). Spec 098 (Syntax Help Content) was created as the canonical content definition. Spec 014 now depends on Spec 098; the SyntaxHelp component's FIELDS, DIVERGENCES, and related constants must be updated to match Spec 098. A new "Frantic Search Exclusives" section was added to the content structure.
