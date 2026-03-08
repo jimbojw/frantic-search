@@ -75,6 +75,21 @@ describe('getCompletionContext', () => {
     expect(ctx?.type).toBe('field')
     expect(ctx?.prefix).toBe('set')
   })
+
+  it('returns value context for name>M (Spec 097)', () => {
+    const ctx = getCompletionContext('name>M', 6)
+    expect(ctx?.type).toBe('value')
+    expect(ctx?.fieldName).toBe('name')
+    expect(ctx?.prefix).toBe('M')
+  })
+
+  it('returns value context for name>=Lightning (Spec 097)', () => {
+    // Cursor at end of "Lightning" (position 15)
+    const ctx = getCompletionContext('name>=Lightning', 15)
+    expect(ctx?.type).toBe('value')
+    expect(ctx?.fieldName).toBe('name')
+    expect(ctx?.prefix).toBe('Lightning')
+  })
 })
 
 describe('computeSuggestion', () => {
@@ -147,6 +162,46 @@ describe('computeSuggestion', () => {
   it('returns null for empty data names', () => {
     const ctx = getCompletionContext('!"gris', 6)!
     expect(computeSuggestion(ctx, makeData({ names: [] }))).toBeNull()
+  })
+
+  it('suggests card name for name>M, not manavalue (Spec 097)', () => {
+    const dataWithM = makeData({ names: ['Griselbrand', 'Llanowar Elves', 'Lightning Bolt', 'Mountain', 'Llanowar Wastes'] })
+    const ctx = getCompletionContext('name>M', 6)!
+    expect(ctx.type).toBe('value')
+    expect(ctx.fieldName).toBe('name')
+    const s = computeSuggestion(ctx, dataWithM)
+    expect(s).toBe('Mountain')
+    expect(s).not.toBe('manavalue')
+  })
+
+  it('suggests card name for name:bolt (Spec 097)', () => {
+    const dataWithBolt = makeData({ names: ['Bolt', 'Lightning Bolt', 'Griselbrand'] })
+    const ctx = getCompletionContext('name:bolt', 9)!
+    expect(ctx.type).toBe('value')
+    const s = computeSuggestion(ctx, dataWithBolt)
+    expect(s).toBe('Bolt')
+  })
+
+  it('suggests card name for name:L (Spec 097)', () => {
+    const ctx = getCompletionContext('name:L', 6)!
+    expect(ctx.type).toBe('value')
+    const s = computeSuggestion(ctx, data)
+    // Stops at first space: "Llanowar Elves" → "Llanowar"
+    expect(s).toBe('Llanowar')
+  })
+
+  it('suggests card name for name:Light prefix (Spec 097)', () => {
+    const ctx = getCompletionContext('name:Light', 10)!
+    // Stops at first space: "Lightning Bolt" → "Lightning"
+    expect(computeSuggestion(ctx, data)).toBe('Lightning')
+  })
+
+  it('stops name suggestion at first whitespace (avoids bare word)', () => {
+    const dataWithMulti = makeData({ names: ['Mine Security', 'Mountain', 'Mox Diamond'] })
+    const ctx = getCompletionContext('name>M', 6)!
+    const s = computeSuggestion(ctx, dataWithMulti)
+    expect(s).toBe('Mine')
+    expect(s).not.toBe('Mine Security')
   })
 })
 

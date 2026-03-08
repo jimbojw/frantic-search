@@ -83,6 +83,14 @@ export function getCompletionContext(query: string, cursorOffset: number): Compl
     if (next && (next.type === TokenType.COLON || isOperator(next))) {
       return { type: 'field', prefix: query.slice(tok.start, cursorOffset), tokenStart: tok.start, tokenEnd: tok.end }
     }
+    // Spec 097: value context when prev is any operator (not just COLON) and field 2 back is known
+    if (prev && isOperator(prev)) {
+      const fieldTok = i >= 2 ? tokens[i - 2] : undefined
+      const fieldName = fieldTok?.type === TokenType.WORD ? getCanonicalField(fieldTok.value) : undefined
+      if (fieldName) {
+        return { type: 'value', prefix: query.slice(tok.start, cursorOffset), tokenStart: tok.start, tokenEnd: tok.end, fieldName }
+      }
+    }
     const prefix = query.slice(tok.start, cursorOffset)
     if (prefix) {
       const p = prefix.toLowerCase()
@@ -212,6 +220,15 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
       if (fn === 'atag' || fn === 'art') {
         if (!data.illustrationTagLabels?.length) return null
         const match = firstMatchByPrefix(data.illustrationTagLabels, prefix)
+        return match
+      }
+      if (fn === 'name' || fn === 'n') {
+        if (!data.names?.length) return null
+        const match = firstMatchByPrefix(data.names, prefix)
+        if (!match) return null
+        // Stop at first whitespace so "Mine Security" → "Mine" (avoids bare word "Security")
+        const spaceIdx = match.indexOf(' ')
+        if (spaceIdx >= 0) return match.slice(0, spaceIdx)
         return match
       }
       return null

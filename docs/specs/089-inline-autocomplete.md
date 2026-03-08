@@ -46,7 +46,7 @@ Extreme vertical space constraints on mobile. Once the virtual keyboard and brow
 | Context | Trigger | Example | Data source |
 |---------|---------|---------|-------------|
 | Field name | Cursor in or after a WORD that precedes `:` or an operator | `u` → `unique`, `set` → `set` | FIELD_ALIASES |
-| Field value | Cursor in or after a value token (WORD or QUOTED) following a field operator | `set:u` → `usg`, `t:cre` → `creature` | set_codes, type_lines, bits.ts (field-specific) |
+| Field value | Cursor in or after a value token (WORD or QUOTED) following a field operator | `set:u` → `usg`, `t:cre` → `creature`, `name:bolt`, `name>M` → card names | set_codes, type_lines, bits.ts, names (field-specific) |
 | Exact name | Cursor inside `!"...` (BANG + QUOTED) | `!"gris` → `Griselbrand"` | names (prefix match, case-insensitive) |
 | Bare word | Cursor in a standalone WORD (not field, not value) | `llan` → `Llanowar` | names (substring match) |
 
@@ -65,7 +65,7 @@ No completion is offered for: regex patterns, quoted strings that are not exact-
 ### Suggestion logic
 
 - **Field name:** Filter FIELD_ALIASES keys (and canonical values) by prefix; return first match alphabetically. Prefer shorter aliases when multiple match (e.g. `s` over `set` when both match).
-- **Field value:** Depends on field. `set:` → unique set codes, prefix match. `t:` → type line substrings (first word or full line), prefix match. `r:` → RARITY_NAMES. `f:` / `legal:` → FORMAT_NAMES. `c:` / `identity:` → COLOR_NAMES. `is:` → known keywords (foil, dfc, etc.). Return first match; tie-break by relevance (e.g. most recent set for `set:`).
+- **Field value:** Depends on field. `set:` → unique set codes, prefix match. `t:` → type line substrings (first word or full line), prefix match. `r:` → RARITY_NAMES. `f:` / `legal:` → FORMAT_NAMES. `c:` / `identity:` → COLOR_NAMES. `is:` → known keywords (foil, dfc, etc.). `name:` / `name>` etc. → card names (prefix match). Return first match; tie-break by relevance (e.g. most recent set for `set:`).
 - **Exact name:** Prefix match on `names` (case-insensitive). Return first match; append closing `"` to suggestion.
 - **Bare word:** Substring match on `names`; prefer prefix matches. Return first match.
 
@@ -166,3 +166,4 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 - 2026-03-06: Set codes for autocomplete are deduped from `PrintingDisplayColumns.set_codes` on the main thread; no worker protocol change needed.
 - 2026-03-06: Tap target uses Option B (right-half overlay) rather than measuring ghost span bounds; simpler and sufficient for v1.
 - 2026-03-06: `applyCompletion` for exact names: `computeSuggestion` returns `"CardName"` (with both quotes); the prefix starts after `!` at the opening quote, so replacement includes the full quoted name.
+- 2026-03-08: Spec 097: Name field autocomplete. Value context now detected when previous token is any operator (not just COLON), so `name>M` and `name:bolt` suggest card names instead of field aliases. `computeSuggestion` adds `name`/`n` branch with prefix match on `names`.
