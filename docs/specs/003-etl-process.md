@@ -58,6 +58,7 @@ All other layouts (`normal`, `saga`, `class`, `mutate`, `leveler`, `meld`, `prot
 | `defense`        | Face                                                |
 | `color_identity` | Card (duplicated across all faces of the same card) |
 | `legalities`     | Card (duplicated across all faces of the same card) |
+| `edhrec_rank`    | Card (duplicated across all faces of the same card) |
 
 ## Column Encoding
 
@@ -109,6 +110,7 @@ Both columns are aligned with `scryfall_ids`. Values are populated from the Thum
 |------------------|------------|-----------------------------------------------------|
 | `card_index`     | `number[]` | Position of this face's card in the original `oracle-cards.json` array |
 | `canonical_face` | `number[]` | Face-row index of this card's primary (front) face  |
+| `edhrec_ranks`   | `(number \| null)[]` | EDHREC Commander popularity rank per face. Lower = more popular. `null` when Scryfall has no rank. Same value for all faces of a multi-face card (Spec 099). |
 
 For single-face cards, both equal the row's own index. For multi-face cards, `canonical_face` points all faces to the first-emitted face row. `card_index` is shared across all faces of the same card.
 
@@ -162,3 +164,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
 - 2026-03-04: Added `oracle_ids` column (Issue #84). One entry per face row; all faces
   of a multi-face card share the same Scryfall oracle_id. Prerequisite for client-side
   card list support (Data Model, Worker Protocol, Query My List specs).
+- 2026-03-08: Added `edhrec_ranks` column (Spec 099). Extracted from Scryfall
+  `edhrec_rank` (Integer, nullable) in oracle-cards.json. One value per face row;
+  all faces of a card share the same rank. Enables EDHREC Commander popularity
+  filtering and sorting.

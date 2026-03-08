@@ -50,6 +50,7 @@ sort_field = "name" | "mv" | "cmc" | "manavalue"
            | "color" | "c"
            | "power" | "pow"
            | "toughness" | "tou"
+           | "edhrec" | "edhrecrank"
 ```
 
 Direction is controlled entirely by the NOT operator:
@@ -87,6 +88,7 @@ These fields sort over deduplicated cards (face indices). They work with or with
 | `color` | `c` | `colors` bitmask | asc | By popcount (number of colors), then WUBRG bitmask value for stability. Colorless (0) sorts first. |
 | `power` | `pow` | `numericPowerLookup` | desc | Numeric (highest first). Non-numeric values (`*`, `1+*`) sort last. |
 | `toughness` | `tou` | `numericToughnessLookup` | desc | Same as power. |
+| `edhrec` | `edhrecrank` | `edhrecRank` | asc | EDHREC Commander popularity rank. Lower rank = more popular; rank 1 sorts first. Null/missing sorts last (Spec 099). |
 
 ### Printing-domain fields
 
@@ -106,6 +108,7 @@ Across all fields, null or missing values sort **last** regardless of sort direc
 - Printing with `priceUsd === 0` (no price data) → sorts after all priced printings
 - Printing with `releasedAt === 0` (unknown date) → sorts after all dated printings
 - Non-numeric stat values (`*`, `1+*`, `X`) in power/toughness → sort after all numeric values
+- Card with no EDHREC rank (`edhrecRank === null`) → sorts after all ranked cards
 
 ## Architecture
 
@@ -408,6 +411,7 @@ const SORT_CHIPS: ChipDef[] = [
   { label: 'sort:color', field: SORT_FIELDS, operator: ':', value: 'color', term: 'sort:color' },
   { label: 'sort:power', field: SORT_FIELDS, operator: ':', value: 'power', term: 'sort:power' },
   { label: 'sort:toughness', field: SORT_FIELDS, operator: ':', value: 'toughness', term: 'sort:toughness' },
+  { label: 'sort:edhrec', field: SORT_FIELDS, operator: ':', value: 'edhrec', term: 'sort:edhrec' },
   // Printing-domain
   { label: 'sort:$', field: SORT_FIELDS, operator: ':', value: '$', term: 'sort:$' },
   { label: 'sort:date', field: SORT_FIELDS, operator: ':', value: 'date', term: 'sort:date' },
@@ -443,6 +447,7 @@ The field name mapping from Frantic Search to Scryfall:
 | `usd` | `$` | `asc` / `desc` |
 | `date` | `released` | `asc` / `desc` |
 | `rarity` | `rarity` | `asc` / `desc` |
+| `edhrec` | `edhrec` | `asc` / `desc` |
 
 ## Error Handling
 

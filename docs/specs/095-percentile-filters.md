@@ -40,14 +40,11 @@ A field receives percentile treatment if it satisfies:
 | `usd` | Printing | Continuous price distribution; high diversity. |
 | `date` | Printing | Continuous release-date distribution; high diversity. |
 | `name` | Face | Alphabetical ordering; high diversity (30k+ distinct names). Requires Spec 096 (name comparison operators). |
+| `edhrec` | Face | EDHREC Commander popularity rank; lower numeric value = more popular. Requires rank inversion (see § "Rank Inversion"). Spec 099. |
 
 ### Excluded (low diversity)
 
 - `mv`, `power`, `toughness`, `color`, `rarity` — few tens of distinct values at most; percentile queries like `mv<50%` are not meaningfully useful.
-
-### Future
-
-- `edhrec` (rank-based): lower numeric value = more popular. Requires rank inversion (see § "Rank Inversion").
 
 ## Semantics
 
@@ -62,6 +59,8 @@ Percentile is interpreted as position in the sorted distribution of non-null val
 | `date>90%` | Newest 10% (top 10% by release date, desc) |
 | `date<10%` | Oldest 10% |
 | `name>50%` | Latter half of the alphabet (names from 50th percentile onward) |
+| `edhrec>90%` | Top 10% most popular (lowest 10% of rank values; rank inversion) |
+| `edhrec<10%` | Bottom 10% least popular |
 
 **Implementation:** For `field>p%` and `field>=p%`, the result set is indices from `floor(n * p/100)` to `n-1` in the pre-sorted array. For `field<p%`, indices from `0` to `floor(n * p/100) - 1`. For `field<=p%`, indices from `0` to `floor(n * p/100)` (inclusive of boundary).
 
@@ -108,11 +107,11 @@ So `-usd>90%` yields the exact same result as `usd<=90%`. It must **not** includ
 
 **Implementation:** Extend the existing Spec 080 negation path in the evaluator. Currently it checks for `usd` and `value !== "null"`. Generalize to all percentile-capable fields: when the child FIELD has a percentile value (e.g. `/^\d+(\.\d+)?%$/`) and the field is percentile-capable, apply operator inversion instead of buffer inversion. This covers `-usd>90%`, `-date<10%`, and future fields.
 
-### Rank inversion (future)
+### Rank inversion
 
-For rank-based metrics (e.g. EDHREC rank), a **lower** numeric value means "better" (more popular). Therefore `edhrec>90%` should yield the 10% *most popular* cards — the lowest 10% of numeric rank values.
+For rank-based metrics (e.g. EDHREC rank), a **lower** numeric value means "better" (more popular). Therefore `edhrec>90%` yields the 10% *most popular* cards — the lowest 10% of numeric rank values.
 
-**Mechanism:** Add an `invertPercentile?: boolean` flag to the sort-field definition. When true, the pre-sorted array is built in descending order so the "best" values are at the end. The slice logic remains universal; only the sort direction changes.
+**Mechanism:** The `invertPercentile?: boolean` flag on the sort-field definition. When true, the pre-sorted array is built in **descending** order by rank (highest rank first, lowest rank last), so the "best" values are at the high-index end. The slice logic remains universal; `edhrec>90%` takes indices from `floor(n * 0.9)` to `n-1`, which are the top 10% most popular.
 
 ## Technical Approach
 
@@ -151,9 +150,9 @@ O(1) bounds calculation on the pre-sorted array. No per-row comparison loop. Ins
 |------|---------|
 | `shared/src/search/sort-fields.ts` | Add `percentileCapable?: boolean` and `invertPercentile?: boolean` to `SortFieldEntry` |
 | `shared/src/search/printing-index.ts` | Add `sortedUsdIndices`, `sortedDateIndices` (or generic percentile arrays), built at construction |
-| `shared/src/search/card-index.ts` | Add `sortedNameIndices` for face-domain, built at construction |
+| `shared/src/search/card-index.ts` | Add `sortedNameIndices`, `sortedEdhrecIndices` for face-domain, built at construction |
 | `shared/src/search/eval-printing.ts` | Add percentile branch in `usd` and `date` cases; detect value via `/^\d+(\.\d+)?%$/` |
-| `shared/src/search/eval-leaves.ts` | Add percentile branch in `name` case (requires Spec 096) |
+| `shared/src/search/eval-leaves.ts` | Add percentile branch in `name` and `edhrec` cases (Spec 096, Spec 099) |
 | `shared/src/search/evaluator.ts` | Extend negation path: when child is percentile-capable field with percentile value, use operator inversion (same as Spec 080 for usd) |
 
 ## Error Handling
@@ -179,6 +178,8 @@ Percentile queries have no Scryfall equivalent. Strip them from Scryfall outlink
 9. Invalid percentile (`usd>150%`) returns error.
 10. Decimal percentiles (`usd>99.5%`) work correctly.
 11. `name>50%` returns latter half alphabetically (requires Spec 096).
+12. `edhrec>90%` returns top 10% most popular; nulls excluded (Spec 099).
+13. `edhrec<10%` returns bottom 10% least popular (Spec 099).
 
 ## Acceptance Criteria
 
@@ -189,5 +190,6 @@ Percentile queries have no Scryfall equivalent. Strip them from Scryfall outlink
 5. Negated percentile queries (`-usd>90%`) evaluate as opposite operator (`usd<=90%`).
 6. Null values are excluded from both the percentile distribution and the result set.
 7. Performance remains instant (O(1) bounds on pre-sorted array).
-8. The design allows for `invertPercentile` flag for future rank-based columns.
+8. The `invertPercentile` flag supports rank-based columns (`edhrec` per Spec 099).
 9. `name` percentile support enabled by Spec 096.
+10. `edhrec` percentile support enabled by Spec 099.

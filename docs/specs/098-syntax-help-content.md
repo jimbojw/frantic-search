@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support)
 
 **Referenced by:** Spec 014 (Syntax Help Overlay)
 
@@ -43,6 +43,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `is` | — | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.) | `is:commander` |
 | `otag` | — | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
+| `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular) | `edhrec<100`, `edhrec>90%` |
 | `my` | — | Cards in a list | `my:list` |
 
 #### Printing-domain fields
@@ -97,6 +98,7 @@ A new section that lists features Scryfall does not support. Each entry has a br
 | Name percentile | Filter by position in alphabetical distribution | `name>50%` |
 | Price percentile | Filter by position in price distribution | `usd>90%`, `usd<10%` |
 | Date percentile | Filter by position in release-date distribution | `date>90%`, `date<10%` |
+| EDHREC percentile | Filter by Commander popularity (rank inversion: higher % = more popular) | `edhrec>90%`, `edhrec<10%` |
 | `usd=null` | Find printings with no price data | `usd=null` |
 | `-sort:field` | Reverse sort direction (NOT inverts) | `-sort:name` |
 
@@ -110,7 +112,7 @@ Behavioral divergences where Frantic Search intentionally differs from Scryfall.
 | Bare regex | Not supported | `/pattern` searches name, oracle text, and type line |
 | Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy) |
 | Name comparison | Not supported | `name>M`, `name<=X` (alphabetical) |
-| Percentile filters | Not supported | `usd>90%`, `date<10%`, `name>50%` |
+| Percentile filters | Not supported | `usd>90%`, `date<10%`, `name>50%`, `edhrec>90%` |
 | `usd=null` | Not supported | Matches printings with no price data |
 | `$` alias | Uses `usd` | `$` is alias for `usd` |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
