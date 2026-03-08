@@ -51,6 +51,7 @@ sort_field = "name" | "mv" | "cmc" | "manavalue"
            | "power" | "pow"
            | "toughness" | "tou"
            | "edhrec" | "edhrecrank"
+           | "salt" | "edhrecsalt" | "saltiness"
 ```
 
 Direction is controlled entirely by the NOT operator:
@@ -89,6 +90,7 @@ These fields sort over deduplicated cards (face indices). They work with or with
 | `power` | `pow` | `numericPowerLookup` | desc | Numeric (highest first). Non-numeric values (`*`, `1+*`) sort last. |
 | `toughness` | `tou` | `numericToughnessLookup` | desc | Same as power. |
 | `edhrec` | `edhrecrank` | `edhrecRank` | asc | EDHREC Commander popularity rank. Lower rank = more popular; rank 1 sorts first. Null/missing sorts last (Spec 099). |
+| `salt` | `edhrecsalt`, `saltiness` | `edhrecSalt` | desc | EDHREC saltiness. Higher value = saltier; saltiest first by default. Null/missing sorts last (Spec 101). |
 
 ### Printing-domain fields
 

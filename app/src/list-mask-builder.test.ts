@@ -36,6 +36,7 @@ function makeDisplay(): DisplayColumns {
     canonical_face: [0, 1, 2],
     oracle_ids: ['oid-bolt', 'oid-sol', 'oid-counterspell'],
     edhrec_rank: [null, null, null],
+    edhrec_salt: [null, null, null],
   }
 }
 

@@ -384,6 +384,19 @@ export default function CardDetail(props: {
                             )
                           })()}
                         </Show>
+                        <Show when={d() && faces().length > 0}>
+                          {(() => {
+                            const s = d()!.edhrec_salt[faces()[0]]
+                            return (
+                              <>
+                                <dt class="font-medium text-gray-600 dark:text-gray-300">EDHREC Salt</dt>
+                                <dd class={s != null ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}>
+                                  {s != null ? String(s) : 'Not rated'}
+                                </dd>
+                              </>
+                            )
+                          })()}
+                        </Show>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
                             {(pi) => {

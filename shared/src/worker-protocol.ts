@@ -32,6 +32,7 @@ export type DisplayColumns = {
   canonical_face: number[]
   oracle_ids: string[]
   edhrec_rank: (number | null)[]
+  edhrec_salt: (number | null)[]
 }
 
 export type BreakdownNode = {

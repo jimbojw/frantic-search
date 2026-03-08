@@ -1,6 +1,6 @@
 # Spec 101: EDHREC Salt Support
 
-**Status:** In Progress
+**Status:** Implemented
 
 **GitHub Issue:** [#113](https://github.com/jimbojw/frantic-search/issues/113)
 

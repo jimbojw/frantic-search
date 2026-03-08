@@ -28,9 +28,9 @@ export const SORT_FIELDS: Record<string, SortFieldEntry> = {
   tou: { canonical: "toughness", defaultDir: "desc", isPrintingDomain: false },
   edhrec: { canonical: "edhrec", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: true },
   edhrecrank: { canonical: "edhrec", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: true },
-  salt: { canonical: "salt", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
-  edhrecsalt: { canonical: "salt", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
-  saltiness: { canonical: "salt", defaultDir: "asc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
+  salt: { canonical: "salt", defaultDir: "desc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
+  edhrecsalt: { canonical: "salt", defaultDir: "desc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
+  saltiness: { canonical: "salt", defaultDir: "desc", isPrintingDomain: false, percentileCapable: true, invertPercentile: false },
 
   // Printing-domain fields
   usd: { canonical: "usd", defaultDir: "asc", isPrintingDomain: true, percentileCapable: true },

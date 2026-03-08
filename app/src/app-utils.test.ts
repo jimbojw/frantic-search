@@ -192,6 +192,7 @@ function stubDisplay(overrides: Partial<DisplayColumns> = {}): DisplayColumns {
     canonical_face: [],
     oracle_ids: [],
     edhrec_rank: [],
+    edhrec_salt: [],
     ...overrides,
   }
 }

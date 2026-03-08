@@ -41,6 +41,7 @@ A field receives percentile treatment if it satisfies:
 | `date` | Printing | Continuous release-date distribution; high diversity. |
 | `name` | Face | Alphabetical ordering; high diversity (30k+ distinct names). Requires Spec 096 (name comparison operators). |
 | `edhrec` | Face | EDHREC Commander popularity rank; lower numeric value = more popular. Requires rank inversion (see § "Rank Inversion"). Spec 099. |
+| `salt` | Face | EDHREC saltiness; higher numeric value = saltier. No inversion. Spec 101. |
 
 ### Excluded (low diversity)
 
