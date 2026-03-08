@@ -748,7 +748,7 @@ export class NodeCache {
           const faceCanonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
           const nameCmpOps = new Set([">", "<", ">=", "<="]);
           const isFaceCmpOrPercentile = childField
-            && (faceCanonical === "name" || faceCanonical === "edhrec")
+            && (faceCanonical === "name" || faceCanonical === "edhrec" || faceCanonical === "salt")
             && (nameCmpOps.has(childField.operator) || isPercentileQuery(faceCanonical, childField.value));
           if (isFaceCmpOrPercentile && childField) {
             const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };

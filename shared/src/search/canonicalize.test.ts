@@ -107,6 +107,14 @@ describe("toScryfallQuery", () => {
     expect(canon("edhrec<100 lightning")).toBe("lightning");
   });
 
+  it("strips salt filter for Scryfall (Spec 101)", () => {
+    expect(canon("salt>50")).toBe("");
+    expect(canon("salt<=100")).toBe("");
+    expect(canon("salt>90%")).toBe("");
+    expect(canon("t:creature salt>50")).toBe("t:creature");
+    expect(canon("salt>50 lightning")).toBe("lightning");
+  });
+
   // --- Regex field nodes ---
 
   it("serializes a regex field query", () => {

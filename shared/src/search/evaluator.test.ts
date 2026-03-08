@@ -2,7 +2,7 @@
 import { describe, test, expect } from "vitest";
 import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
-import { index, matchCount } from "./evaluator.test-fixtures";
+import { index, matchCount, saltIndex, saltMatchCount } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Node key uniqueness
@@ -670,6 +670,44 @@ describe("name comparison operators (Spec 096)", () => {
 
   test("name>=Thalia finds Thalia (quoted value normalized)", () => {
     expect(matchCount('name>="Thalia, Guardian"')).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Salt (Spec 101) — uses SALT_TEST_DATA with salts [10,50,30,20,40,60,70,80,80,90]
+// ---------------------------------------------------------------------------
+
+describe("salt (Spec 101)", () => {
+  test("salt>50 matches faces with salt greater than 50", () => {
+    // Salts [10,50,30,20,40,60,70,80,80,90]; >50: 60,70,80,80,90 = 5 face rows, 4 canonical faces (Ayara 7+8 share)
+    expect(saltMatchCount("salt>50")).toBe(4);
+  });
+
+  test("salt<=100 matches all faces with salt", () => {
+    // 10 face rows, 9 canonical faces (Ayara 7+8 share)
+    expect(saltMatchCount("salt<=100")).toBe(9);
+  });
+
+  test("salt>90% returns top 10% saltiest (1 face)", () => {
+    expect(saltMatchCount("salt>90%")).toBe(1);
+  });
+
+  test("salt<10% returns bottom 10% least salty (1 face)", () => {
+    expect(saltMatchCount("salt<10%")).toBe(1);
+  });
+
+  test("-salt>90% becomes salt<=90% (negation path)", () => {
+    // salt<=90% includes all 10 face rows in bottom-90% slice
+    expect(saltMatchCount("-salt>90%")).toBe(10);
+  });
+
+  test("salt with all-null data matches nothing", () => {
+    expect(matchCount("salt>50")).toBe(0);
+  });
+
+  test("saltiness and edhrecsalt aliases work", () => {
+    expect(saltMatchCount("saltiness>50")).toBe(saltMatchCount("salt>50"));
+    expect(saltMatchCount("edhrecsalt>50")).toBe(saltMatchCount("salt>50"));
   });
 });
 

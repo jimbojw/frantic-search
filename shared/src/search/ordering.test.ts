@@ -363,7 +363,7 @@ describe("seededSortPrintings", () => {
 // ---------------------------------------------------------------------------
 import { sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./ordering";
 import type { SortDirective } from "./ast";
-import { index, printingIndex, TEST_DATA } from "./evaluator.test-fixtures";
+import { index, printingIndex, TEST_DATA, saltIndex } from "./evaluator.test-fixtures";
 import { RARITY_ORDER } from "../../src/bits";
 
 describe("sortByField — face-domain sort", () => {
@@ -450,6 +450,34 @@ describe("sortByField — face-domain sort", () => {
     const d: SortDirective = { field: "name", direction: "asc", isPrintingDomain: false };
     sortByField(indices, d, index, 0);
     expect(indices).toEqual([]);
+  });
+
+  test("sort:salt sorts by salt ascending (Spec 101)", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "salt", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, saltIndex, 0);
+    const salts = indices.map(i => saltIndex.edhrecSalt[i]);
+    for (let i = 1; i < salts.length; i++) {
+      const a = salts[i - 1];
+      const b = salts[i];
+      if (a != null && b != null) {
+        expect(b).toBeGreaterThanOrEqual(a);
+      }
+    }
+  });
+
+  test("-sort:salt sorts by salt descending (Spec 101)", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "salt", direction: "desc", isPrintingDomain: false };
+    sortByField(indices, d, saltIndex, 0);
+    const salts = indices.map(i => saltIndex.edhrecSalt[i]);
+    for (let i = 1; i < salts.length; i++) {
+      const a = salts[i - 1];
+      const b = salts[i];
+      if (a != null && b != null) {
+        expect(b).toBeLessThanOrEqual(a);
+      }
+    }
   });
 
   test("single element is a no-op", () => {

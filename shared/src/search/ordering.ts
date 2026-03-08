@@ -184,6 +184,15 @@ function compareEdhrec(a: number, b: number, idx: CardIndex): number {
   return ra - rb;
 }
 
+function compareSalt(a: number, b: number, idx: CardIndex): number {
+  const sa = idx.edhrecSalt[a];
+  const sb = idx.edhrecSalt[b];
+  if (sa == null && sb == null) return 0;
+  if (sa == null) return 1;
+  if (sb == null) return -1;
+  return sa - sb;
+}
+
 function comparePrintingRarity(a: number, b: number, pIdx: PrintingIndex): number {
   const ra = RARITY_ORDER[pIdx.rarity[a]] ?? -1;
   const rb = RARITY_ORDER[pIdx.rarity[b]] ?? -1;
@@ -215,6 +224,7 @@ function compareFieldRaw(a: number, b: number, field: string, idx: CardIndex): {
       return { cmp: va - vb, applyDir: true };
     }
     case "edhrec": return { cmp: compareEdhrec(a, b, idx), applyDir: true };
+    case "salt": return { cmp: compareSalt(a, b, idx), applyDir: true };
     default: return { cmp: 0, applyDir: true };
   }
 }

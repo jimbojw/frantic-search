@@ -171,3 +171,17 @@ export function matchCountWithPrintings(query: string): number {
   const cache = new NodeCache(index, printingIndex);
   return cache.evaluate(parse(query)).result.matchCount;
 }
+
+// Salt test fixture: 10 faces with salts [10, 50, 30, 20, 40, 60, 70, 80, 80, 90]
+// (Ayara rows 7+8 share 80). Used for Spec 101 salt tests.
+export const SALT_TEST_DATA: ColumnarData = {
+  ...TEST_DATA,
+  edhrec_salts: [10, 50, 30, 20, 40, 60, 70, 80, 80, 90],
+};
+
+export const saltIndex = new CardIndex(SALT_TEST_DATA);
+
+export function saltMatchCount(query: string): number {
+  const cache = new NodeCache(saltIndex);
+  return cache.evaluate(parse(query)).result.matchCount;
+}

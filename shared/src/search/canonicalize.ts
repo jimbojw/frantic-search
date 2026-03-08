@@ -91,6 +91,8 @@ function serializeNode(node: ASTNode, parentType?: string): string {
       if (canonical === "name" && nameCmpOps.has(node.operator)) return "";
       // Spec 099: edhrec filter (absolute or percentile) has no Scryfall equivalent — strip
       if (canonical === "edhrec") return "";
+      // Spec 101: salt filter (absolute or percentile) has no Scryfall equivalent — strip
+      if (canonical === "salt") return "";
       // Spec 074: $ is Frantic Search–only; Scryfall expects "usd" (https://scryfall.com/docs/syntax#prices)
       const fieldForScryfall = canonical === "usd" ? "usd" : node.field;
       const quoted = needsQuoting(node.value) ? `"${node.value}"` : node.value;

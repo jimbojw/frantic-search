@@ -41,6 +41,9 @@ export const FIELD_ALIASES: Record<string, string> = {
   art: "atag",
   edhrec: "edhrec",
   edhrecrank: "edhrec",
+  salt: "salt",
+  edhrecsalt: "salt",
+  saltiness: "salt",
 };
 
 function parseColorValue(value: string): number {
@@ -164,6 +167,39 @@ export function evalLeafField(
           case "<":  match = r < queryNum; break;
           case ">=": match = r >= queryNum; break;
           case "<=": match = r <= queryNum; break;
+        }
+        if (match) buf[cf[i]] = 1;
+      }
+      break;
+    }
+    case "salt": {
+      const saltPercentile = parsePercentile(val);
+      if (saltPercentile !== null) {
+        if (!NAME_CMP_OPS.has(op) && op !== "=" && op !== ":" && op !== "!=") break;
+        applyPercentileSlice(
+          index.sortedSaltIndices,
+          index.sortedSaltCount,
+          op,
+          saltPercentile,
+          buf,
+        );
+        break;
+      }
+      if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
+      const queryNum = parseFloat(val);
+      if (isNaN(queryNum)) break;
+      const col = index.edhrecSalt;
+      for (let i = 0; i < n; i++) {
+        const s = col[i];
+        if (s == null) continue;
+        let match = false;
+        switch (op) {
+          case ":": case "=": match = s === queryNum; break;
+          case "!=": match = s !== queryNum; break;
+          case ">":  match = s > queryNum; break;
+          case "<":  match = s < queryNum; break;
+          case ">=": match = s >= queryNum; break;
+          case "<=": match = s <= queryNum; break;
         }
         if (match) buf[cf[i]] = 1;
       }
