@@ -140,13 +140,14 @@ export const CardFlag = {
   GameChanger: 1 << 3,
 } as const;
 
-// --- Rarity (bitmask, 5 bits: common through mythic + special) ---
+// --- Rarity (bitmask, 6 bits: common through mythic + special + bonus) ---
 export const Rarity = {
   Common: 1 << 0,
   Uncommon: 1 << 1,
   Rare: 1 << 2,
   Mythic: 1 << 3,
   Special: 1 << 4,
+  Bonus: 1 << 5,
 } as const;
 
 export const RARITY_FROM_STRING: Record<string, number> = {
@@ -155,6 +156,7 @@ export const RARITY_FROM_STRING: Record<string, number> = {
   rare: Rarity.Rare,
   mythic: Rarity.Mythic,
   special: Rarity.Special,
+  bonus: Rarity.Bonus,
 };
 
 export const RARITY_NAMES: Record<string, number> = {
@@ -163,6 +165,7 @@ export const RARITY_NAMES: Record<string, number> = {
   rare: Rarity.Rare, r: Rarity.Rare,
   mythic: Rarity.Mythic, m: Rarity.Mythic,
   special: Rarity.Special, s: Rarity.Special,
+  bonus: Rarity.Bonus, b: Rarity.Bonus,
 };
 
 export const RARITY_ORDER: Record<number, number> = {
@@ -171,6 +174,7 @@ export const RARITY_ORDER: Record<number, number> = {
   [Rarity.Rare]: 2,
   [Rarity.Special]: 3,
   [Rarity.Mythic]: 4,
+  [Rarity.Bonus]: 5,
 };
 
 // --- Finish (enum, not bitmask — each printing row has exactly one) ---

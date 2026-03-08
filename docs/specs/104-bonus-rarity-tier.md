@@ -1,6 +1,6 @@
 # Spec 104: Bonus Rarity Tier
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), Spec 072 (in: Query Qualifier)
 

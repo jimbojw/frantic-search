@@ -95,6 +95,7 @@ describe('RARITY_LABELS', () => {
     expect(RARITY_LABELS[Rarity.Rare]).toBe('Rare')
     expect(RARITY_LABELS[Rarity.Mythic]).toBe('Mythic')
     expect(RARITY_LABELS[Rarity.Special]).toBe('Special')
+    expect(RARITY_LABELS[Rarity.Bonus]).toBe('Bonus')
   })
 })
 

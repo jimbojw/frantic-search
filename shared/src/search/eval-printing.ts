@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
-import { RARITY_NAMES, RARITY_ORDER, Rarity, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
+import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 
 export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
@@ -282,7 +282,7 @@ export function evalPrintingField(
         }
         break;
       }
-      const rarityBit = RARITY_NAMES[valLower] ?? (valLower === "bonus" ? Rarity.Special : undefined);
+      const rarityBit = RARITY_NAMES[valLower];
       if (rarityBit !== undefined) {
         for (let i = 0; i < n; i++) {
           const match = (op === ":" || op === "=")

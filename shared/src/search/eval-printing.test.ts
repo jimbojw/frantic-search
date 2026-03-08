@@ -11,7 +11,7 @@ import type { PrintingColumnarData } from "../data";
 import { Rarity, Finish, Frame, Game } from "../bits";
 
 // ---------------------------------------------------------------------------
-// Synthetic printing data (6 rows, 2 canonical faces)
+// Synthetic printing data (7 rows, 2 canonical faces)
 // ---------------------------------------------------------------------------
 //
 // Row #0  Lightning Bolt  | MH2  | rare     | nonfoil | $1.00 | 2015 | 2021-06-18
@@ -20,20 +20,21 @@ import { Rarity, Finish, Frame, Game } from "../bits";
 // Row #3  Sol Ring        | C21  | uncommon | nonfoil | $0.75 | 2015 | 2021-06-18
 // Row #4  Sol Ring        | C21  | uncommon | foil    | $5.00 | 2015 | 2021-06-18
 // Row #5  Lightning Bolt  | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06
+// Row #6  Lightning Bolt  | SLB  | bonus    | nonfoil | $1.50 | 2015 | 2021-05-15
 //
 // canonical_face_ref maps: Bolt → face 1, Sol Ring → face 3
 
 const PRINTING_DATA: PrintingColumnarData = {
-  canonical_face_ref: [1, 1, 1, 3, 3, 1],
-  scryfall_ids: ["a", "b", "c", "d", "e", "f"],
-  collector_numbers: ["261", "261", "113", "280", "280", "1"],
-  set_indices: [0, 0, 1, 2, 2, 3],
-  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Special],
-  printing_flags: [0, 0, 0, 0, 0, 0],
-  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Nonfoil],
-  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
-  price_usd: [100, 300, 50, 75, 500, 200],
-  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201106],
+  canonical_face_ref: [1, 1, 1, 3, 3, 1, 1],
+  scryfall_ids: ["a", "b", "c", "d", "e", "f", "g"],
+  collector_numbers: ["261", "261", "113", "280", "280", "1", "1b"],
+  set_indices: [0, 0, 1, 2, 2, 3, 4],
+  rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Special, Rarity.Bonus],
+  printing_flags: [0, 0, 0, 0, 0, 0, 0],
+  finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil],
+  frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
+  price_usd: [100, 300, 50, 75, 500, 200, 150],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201106, 20210515],
   games: [
     Game.Paper | Game.Arena,  // 0,1 MH2
     Game.Paper | Game.Arena,
@@ -41,12 +42,14 @@ const PRINTING_DATA: PrintingColumnarData = {
     Game.Paper | Game.Mtgo,   // 3,4 C21
     Game.Paper | Game.Mtgo,
     Game.Paper | Game.Arena,  // 5 SLD
+    Game.Paper | Game.Arena,  // 6 SLB bonus
   ],
   set_lookup: [
     { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
     { code: "A25", name: "Masters 25", released_at: 20180316 },
     { code: "C21", name: "Commander 2021", released_at: 20210618 },
     { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106 },
+    { code: "SLB", name: "Secret Lair Bonus", released_at: 20210515 },
   ],
 };
 
@@ -122,13 +125,13 @@ describe("rarity field", () => {
   });
 
   test(">= comparison includes higher rarities", () => {
-    expect(marked(evalField("rarity", ">=", "rare").buf)).toEqual([0, 1, 5]);
-    expect(marked(evalField("rarity", ">=", "uncommon").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(evalField("rarity", ">=", "rare").buf)).toEqual([0, 1, 5, 6]);
+    expect(marked(evalField("rarity", ">=", "uncommon").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("> comparison is strictly greater", () => {
-    expect(marked(evalField("rarity", ">", "uncommon").buf)).toEqual([0, 1, 5]);
-    expect(marked(evalField("rarity", ">", "rare").buf)).toEqual([5]);
+    expect(marked(evalField("rarity", ">", "uncommon").buf)).toEqual([0, 1, 5, 6]);
+    expect(marked(evalField("rarity", ">", "rare").buf)).toEqual([5, 6]);
   });
 
   test("<= comparison includes lower rarities", () => {
@@ -146,8 +149,8 @@ describe("rarity field", () => {
   });
 
   test("!= comparison", () => {
-    expect(marked(evalField("rarity", "!=", "rare").buf)).toEqual([2, 3, 4, 5]);
-    expect(marked(evalField("rarity", "!=", "uncommon").buf)).toEqual([0, 1, 5]);
+    expect(marked(evalField("rarity", "!=", "rare").buf)).toEqual([2, 3, 4, 5, 6]);
+    expect(marked(evalField("rarity", "!=", "uncommon").buf)).toEqual([0, 1, 5, 6]);
   });
 
   test("special matches special-rarity row", () => {
@@ -163,7 +166,23 @@ describe("rarity field", () => {
   });
 
   test(">=common matches everything", () => {
-    expect(marked(evalField("rarity", ">=", "common").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(evalField("rarity", ">=", "common").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("rarity:bonus matches bonus-rarity row", () => {
+    expect(marked(evalField("rarity", ":", "bonus").buf)).toEqual([6]);
+  });
+
+  test("r:bonus abbreviation works", () => {
+    expect(marked(evalField("rarity", ":", "b").buf)).toEqual([6]);
+  });
+
+  test("rarity>mythic includes bonus", () => {
+    expect(marked(evalField("rarity", ">", "mythic").buf)).toEqual([6]);
+  });
+
+  test("rarity<bonus excludes bonus", () => {
+    expect(marked(evalField("rarity", "<", "bonus").buf)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   test("unknown rarity returns error", () => {
@@ -191,7 +210,7 @@ describe("usd field", () => {
   });
 
   test(">= comparison", () => {
-    expect(marked(evalField("usd", ">=", "1").buf)).toEqual([0, 1, 4, 5]);
+    expect(marked(evalField("usd", ">=", "1").buf)).toEqual([0, 1, 4, 5, 6]);
   });
 
   test("<= comparison", () => {
@@ -200,18 +219,18 @@ describe("usd field", () => {
 
   test("!= comparison", () => {
     const result = marked(evalField("usd", "!=", "1").buf);
-    expect(result).toEqual([1, 2, 3, 4, 5]);
+    expect(result).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   test("zero-price rows are excluded from all comparisons", () => {
     const dataWithZero: PrintingColumnarData = {
       ...PRINTING_DATA,
-      price_usd: [100, 0, 50, 75, 500, 200],
+      price_usd: [100, 0, 50, 75, 500, 200, 150],
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
     evalPrintingField("usd", ">=", "0", idx, buf);
-    expect(marked(buf)).toEqual([0, 2, 3, 4, 5]);
+    expect(marked(buf)).toEqual([0, 2, 3, 4, 5, 6]);
   });
 
   test("invalid price returns error", () => {
@@ -221,7 +240,7 @@ describe("usd field", () => {
   test("usd=null matches printings with no price data (Spec 080)", () => {
     const dataWithZero: PrintingColumnarData = {
       ...PRINTING_DATA,
-      price_usd: [100, 0, 50, 75, 500, 200],
+      price_usd: [100, 0, 50, 75, 500, 200, 150],
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
@@ -235,12 +254,12 @@ describe("usd field", () => {
   test("usd!=null matches printings with price data (Spec 080)", () => {
     const dataWithZero: PrintingColumnarData = {
       ...PRINTING_DATA,
-      price_usd: [100, 0, 50, 75, 500, 200],
+      price_usd: [100, 0, 50, 75, 500, 200, 150],
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
     evalPrintingField("usd", "!=", "null", idx, buf);
-    expect(marked(buf)).toEqual([0, 2, 3, 4, 5]);
+    expect(marked(buf)).toEqual([0, 2, 3, 4, 5, 6]);
   });
 
   test("usd>null returns error (Spec 080)", () => {
@@ -277,7 +296,7 @@ describe("usd field", () => {
   test("usd percentile excludes null-price rows (Spec 095)", () => {
     const dataWithZero: PrintingColumnarData = {
       ...PRINTING_DATA,
-      price_usd: [100, 0, 50, 75, 500, 200],
+      price_usd: [100, 0, 50, 75, 500, 200, 0],
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
@@ -318,7 +337,7 @@ describe("collectornumber field", () => {
 
 describe("frame field", () => {
   test("2015 matches all rows", () => {
-    expect(marked(evalField("frame", ":", "2015").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(evalField("frame", ":", "2015").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("future matches none in this dataset", () => {
@@ -347,11 +366,11 @@ describe("frame field", () => {
 
 describe("game field", () => {
   test("game:arena matches rows with Arena availability", () => {
-    expect(marked(evalField("game", ":", "arena").buf)).toEqual([0, 1, 2, 5]);
+    expect(marked(evalField("game", ":", "arena").buf)).toEqual([0, 1, 2, 5, 6]);
   });
 
   test("game:paper matches rows with paper availability", () => {
-    expect(marked(evalField("game", ":", "paper").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(evalField("game", ":", "paper").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("game:mtgo matches rows with MTGO availability", () => {
@@ -359,7 +378,7 @@ describe("game field", () => {
   });
 
   test("game:arena is case-insensitive", () => {
-    expect(marked(evalField("game", ":", "ARENA").buf)).toEqual([0, 1, 2, 5]);
+    expect(marked(evalField("game", ":", "ARENA").buf)).toEqual([0, 1, 2, 5, 6]);
   });
 
   test("game!=arena matches rows without Arena", () => {
@@ -383,7 +402,7 @@ describe("game field", () => {
 
 describe("in field", () => {
   test("in:arena matches rows with Arena availability (game disambiguation)", () => {
-    expect(marked(evalField("in", ":", "arena").buf)).toEqual([0, 1, 2, 5]);
+    expect(marked(evalField("in", ":", "arena").buf)).toEqual([0, 1, 2, 5, 6]);
   });
 
   test("in:mtgo matches rows with MTGO availability", () => {
@@ -406,12 +425,12 @@ describe("in field", () => {
     expect(marked(evalField("in", ":", "special").buf)).toEqual([5]);
   });
 
-  test("in:bonus maps to special", () => {
-    expect(marked(evalField("in", ":", "bonus").buf)).toEqual([5]);
+  test("in:bonus matches rows with bonus rarity", () => {
+    expect(marked(evalField("in", ":", "bonus").buf)).toEqual([6]);
   });
 
   test("in!=mh2 matches rows not in MH2", () => {
-    expect(marked(evalField("in", "!=", "mh2").buf)).toEqual([2, 3, 4, 5]);
+    expect(marked(evalField("in", "!=", "mh2").buf)).toEqual([2, 3, 4, 5, 6]);
   });
 
   test("in:ru returns unsupported (language out of scope)", () => {
@@ -441,7 +460,7 @@ describe("in field", () => {
 
 describe("year field", () => {
   test("exact year match", () => {
-    expect(marked(evalField("year", ":", "2021").buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(evalField("year", ":", "2021").buf)).toEqual([0, 1, 3, 4, 6]);
     expect(marked(evalField("year", ":", "2018").buf)).toEqual([2]);
   });
 
@@ -450,7 +469,7 @@ describe("year field", () => {
   });
 
   test("> comparison", () => {
-    expect(marked(evalField("year", ">", "2018").buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(evalField("year", ">", "2018").buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("< comparison", () => {
@@ -458,7 +477,7 @@ describe("year field", () => {
   });
 
   test(">= comparison", () => {
-    expect(marked(evalField("year", ">=", "2021").buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(evalField("year", ">=", "2021").buf)).toEqual([0, 1, 3, 4, 6]);
   });
 
   test("<= comparison", () => {
@@ -489,7 +508,7 @@ describe("year field", () => {
   });
 
   test("year=202 uses range semantics (2020s)", () => {
-    expect(marked(evalField("year", ":", "202").buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(evalField("year", ":", "202").buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 });
 
@@ -504,7 +523,7 @@ describe("date field", () => {
   });
 
   test("> comparison", () => {
-    expect(marked(evalField("date", ">", "2020-01-01").buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(evalField("date", ">", "2020-01-01").buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("< comparison", () => {
@@ -512,7 +531,7 @@ describe("date field", () => {
   });
 
   test(">= comparison", () => {
-    expect(marked(evalField("date", ">=", "2018-03-16").buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(evalField("date", ">=", "2018-03-16").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("<= comparison (date < hi for single-day range)", () => {
@@ -520,7 +539,7 @@ describe("date field", () => {
   });
 
   test("!= comparison", () => {
-    expect(marked(evalField("date", "!=", "2021-06-18").buf)).toEqual([2, 5]);
+    expect(marked(evalField("date", "!=", "2021-06-18").buf)).toEqual([2, 5, 6]);
   });
 
   test("rows with released_at=0 are excluded", () => {
@@ -547,7 +566,7 @@ describe("date field", () => {
   test("year-only date=2021 uses full year range", () => {
     const exact = evalField("date", ":", "2021");
     expect(exact.error).toBeNull();
-    expect(marked(exact.buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(exact.buf)).toEqual([0, 1, 3, 4, 6]);
   });
 
   test("year-month date=2021-06 uses full month range", () => {
@@ -559,7 +578,7 @@ describe("date field", () => {
   test("date>=2021 matches rows in 2021", () => {
     const gte = evalField("date", ">=", "2021");
     expect(gte.error).toBeNull();
-    expect(marked(gte.buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4, 6]);
   });
 
   test("year-month date<2018-04", () => {
@@ -577,13 +596,13 @@ describe("date field", () => {
   test("partial year date>=202 means date >= 2020", () => {
     const gte = evalField("date", ">=", "202");
     expect(gte.error).toBeNull();
-    expect(marked(gte.buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(gte.buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("partial year date=202 means 2020s range", () => {
     const eq = evalField("date", ":", "202");
     expect(eq.error).toBeNull();
-    expect(marked(eq.buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(eq.buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("partial year date<202 means before 2020", () => {
@@ -602,32 +621,32 @@ describe("date field", () => {
   });
 
   test("date<17% returns oldest 17% (Spec 095)", () => {
-    // floor(6*0.17)=1 item = oldest = row 2 (2018-03-16)
+    // floor(7*0.17)=1 item = oldest = row 2 (2018-03-16)
     expect(marked(evalField("date", "<", "17%").buf)).toEqual([2]);
   });
 
   test("date percentile excludes null-date rows (Spec 095)", () => {
     const dataWithZero: PrintingColumnarData = {
       ...PRINTING_DATA,
-      released_at: [20210618, 0, 20180316, 20210618, 20210618, 20201106],
+      released_at: [20210618, 0, 20180316, 20210618, 20210618, 20201106, 20210515],
     };
     const idx = new PrintingIndex(dataWithZero);
     const buf = new Uint8Array(idx.printingCount);
     evalPrintingField("date", ">", "80%", idx, buf);
-    // 5 non-null. Newest 20% = 1 item
-    expect(marked(buf).length).toBe(1);
+    // 6 non-null. Newest 20% = 2 items
+    expect(marked(buf).length).toBe(2);
   });
 
   test("partial year date<=202 means before 2030", () => {
     const lte = evalField("date", "<=", "202");
     expect(lte.error).toBeNull();
-    expect(marked(lte.buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(lte.buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("date>=2 matches all (2 -> 2000s)", () => {
     const gte = evalField("date", ">=", "2");
     expect(gte.error).toBeNull();
-    expect(marked(gte.buf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(marked(gte.buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("partial month range semantics", () => {
@@ -658,7 +677,7 @@ describe("date field", () => {
     // "2021-" → month empty → 01, day → 01 → 20210101
     const r1 = evalField("date", ">=", "2021-");
     expect(r1.error).toBeNull();
-    expect(marked(r1.buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(r1.buf)).toEqual([0, 1, 3, 4, 6]);
 
     // "2021-06-" → day empty → 01 → 20210601
     const r2 = evalField("date", ">=", "2021-06-");
@@ -670,7 +689,7 @@ describe("date field", () => {
     // "2021-00" → month 0 clamped to 1 → 20210101
     const r1 = evalField("date", ">=", "2021-00");
     expect(r1.error).toBeNull();
-    expect(marked(r1.buf)).toEqual([0, 1, 3, 4]);
+    expect(marked(r1.buf)).toEqual([0, 1, 3, 4, 6]);
 
     // "2021-99" → month 99 clamped to 12 → 20211201
     const r2 = evalField("date", ">", "2021-99");
@@ -707,14 +726,14 @@ describe("date field", () => {
     // date>a25 means date > 20180316
     const { buf, error } = evalField("date", ">", "a25");
     expect(error).toBeNull();
-    // Rows 0,1,3,4 (2021-06-18) and 5 (2020-11-06) are > 2018-03-16
-    expect(marked(buf)).toEqual([0, 1, 3, 4, 5]);
+    // Rows 0,1,3,4 (2021-06-18), 5 (2020-11-06), 6 (2021-05-15) are > 2018-03-16
+    expect(marked(buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("set code resolution is case-insensitive", () => {
     const { buf, error } = evalField("date", ">", "A25");
     expect(error).toBeNull();
-    expect(marked(buf)).toEqual([0, 1, 3, 4, 5]);
+    expect(marked(buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
 
   test("date=mh2 matches printings released on MH2's date", () => {
@@ -782,7 +801,7 @@ describe("promoteFaceToPrinting", () => {
     faceBuf[1] = 1;
     const printingBuf = new Uint8Array(pIdx.printingCount);
     promoteFaceToPrinting(faceBuf, printingBuf, pIdx);
-    expect(marked(printingBuf)).toEqual([0, 1, 2, 5]);
+    expect(marked(printingBuf)).toEqual([0, 1, 2, 5, 6]);
   });
 
   test("empty face buf produces empty printing buf", () => {

@@ -41,7 +41,7 @@ Check in order: **game** → **set** → **rarity** → **language** (unsupporte
 
 1. **Game**: `paper`, `mtgo`, `arena`, `astral`, `sega` (via `GAME_NAMES`)
 2. **Set code**: value is in `knownSetCodes` (case-insensitive)
-3. **Rarity**: `common`, `uncommon`, `rare`, `mythic`, `special`, `bonus` (via `RARITY_NAMES`; `bonus` maps to `special` if present)
+3. **Rarity**: `common`, `uncommon`, `rare`, `mythic`, `special`, `bonus` (via `RARITY_NAMES`; `bonus` is a distinct tier above mythic, not an alias for `special`)
 4. **Language**: known but unsupported (e.g. `ru`, `zhs`, `japanese`) → return `unsupported in value "ru"`
 5. **Unknown**: none of the above → return `unknown in value "foo"`
 
@@ -82,8 +82,8 @@ case "in": {
     }
     break;
   }
-  // 3. Rarity (including bonus → special)
-  const rarityBit = RARITY_NAMES[val] ?? (val === "bonus" ? Rarity.Special : undefined);
+  // 3. Rarity (bonus is distinct tier, in RARITY_NAMES)
+  const rarityBit = RARITY_NAMES[val];
   if (rarityBit !== undefined) {
     for (let i = 0; i < n; i++) {
       const match = (op === ":" || op === "=") ? (pIdx.rarity[i] & rarityBit) !== 0

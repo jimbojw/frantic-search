@@ -74,7 +74,7 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 
 ### Bitmask columns
 
-- `rarity: number[]` — uint8 bitmask. `common=1, uncommon=2, rare=4, mythic=8, special=16`. One bit set per row. Bitmask encoding (rather than enum) enables fast bitwise evaluation for comparisons like `r>=rare` (test against `rare | special | mythic = 0b11100`).
+- `rarity: number[]` — uint8 bitmask. `common=1, uncommon=2, rare=4, mythic=8, special=16, bonus=32`. One bit set per row. Bitmask encoding (rather than enum) enables fast bitwise evaluation for comparisons like `r>=rare` (test against `rare | special | mythic | bonus = 0b111100`).
 - `printing_flags: number[]` — uint32 bitmask for boolean printing attributes (up to 32 bits):
 
 | Bit | Flag |

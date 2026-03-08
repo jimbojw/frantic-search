@@ -79,6 +79,7 @@ export const RARITY_LABELS: Record<number, string> = {
   [Rarity.Rare]: 'Rare',
   [Rarity.Mythic]: 'Mythic',
   [Rarity.Special]: 'Special',
+  [Rarity.Bonus]: 'Bonus',
 }
 
 export const FINISH_LABELS: Record<number, string> = {

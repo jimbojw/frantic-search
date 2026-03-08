@@ -35,11 +35,11 @@ The value is matched against the `code` field of `set_lookup[set_indices[i]]`. E
 | `:`, `=` | Printing has this exact rarity |
 | `>`, `>=`, `<`, `<=` | Ordinal rarity comparison |
 
-Rarity values: `common`, `uncommon`, `rare`, `special`, `mythic` (plus abbreviations `c`, `u`, `r`, `s`, `m`).
+Rarity values: `common`, `uncommon`, `rare`, `special`, `mythic`, `bonus` (plus abbreviations `c`, `u`, `r`, `s`, `m`, `b`).
 
-Ordinal ordering for comparison operators: common(0) < uncommon(1) < rare(2) < special(3) < mythic(4).
+Ordinal ordering for comparison operators: common(0) < uncommon(1) < rare(2) < special(3) < mythic(4) < bonus(5).
 
-Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8, special=16`). For `:` and `=`, test `rarity[i] & targetBit`. For comparisons like `r>=rare`, build a mask of all qualifying rarities (`rare | special | mythic = 0b11100`) and test `rarity[i] & mask`.
+Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8, special=16, bonus=32`). For `:` and `=`, test `rarity[i] & targetBit`. For comparisons like `r>=rare`, build a mask of all qualifying rarities (`rare | special | mythic | bonus = 0b111100`) and test `rarity[i] & mask`.
 
 Examples: `r:mythic`, `rarity>=rare`, `r:special`, `r:c`
 
