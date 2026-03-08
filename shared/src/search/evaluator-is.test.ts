@@ -304,6 +304,7 @@ const IS_TEST_DATA: ColumnarData = {
   toughness_lookup: isExtToughnessDict,
   loyalty_lookup: [""],
   defense_lookup: [""],
+  keywords_index: {},
 };
 
 const isIndex = new CardIndex(IS_TEST_DATA);

@@ -30,6 +30,8 @@ export interface ColumnarData {
   toughness_lookup: string[];
   loyalty_lookup: string[];
   defense_lookup: string[];
+  /** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. Spec 105. */
+  keywords_index: Record<string, number[]>;
 }
 
 export interface SetLookupEntry {
@@ -67,3 +69,6 @@ export type OracleTagData = Record<string, number[]>;
  * The worker resolves these to printing row indices at load time via PrintingIndex.
  */
 export type IllustrationTagData = Record<string, number[]>;
+
+/** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. */
+export type KeywordData = Record<string, number[]>;

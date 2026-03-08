@@ -32,6 +32,7 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     toughness_lookup: [],
     loyalty_lookup: [],
     defense_lookup: [],
+    keywords_index: {},
     ...overrides,
   };
   const len = merged.names.length;

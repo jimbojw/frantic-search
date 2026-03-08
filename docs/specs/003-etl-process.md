@@ -125,6 +125,10 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 
 The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` from `default-cards.json`.
 
+### Keywords (`keywords_index` in columns.json)
+
+The `keywords_index` property is an inverted index mapping lowercase keyword strings to sorted arrays of canonical face indices. Same shape as `otags.json` (Spec 092). Extracted from the `keywords` array in oracle-cards.json during the face-expansion pass. Keywords are card-level in Scryfall; for multi-face cards, the same `keywords` array applies to all faces, and the index stores one canonical face index per card per keyword. Bundled with columns.json as core face-level data (Spec 105).
+
 With the current Scryfall dataset (~37k raw oracle cards), the process expands ~800 multi-face cards into ~1,600 face rows and emits ~37,500 total face rows (all layouts indexed).
 
 ## Error Handling
@@ -175,3 +179,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   AtomicCards.json via `identifiers.scryfallOracleId` join. One value per face row;
   all faces of a card share the same salt score. When atomic-cards.json is absent,
   all values are null. Enables EDHREC saltiness filtering and sorting.
+- 2026-03-08: Added `keywords_index` to columns.json (Spec 105). Inverted index
+  built during processCards from the `keywords` array in oracle-cards.json.
+  Bundled with columns.json as core face-level data. Enables `kw:` and `keyword:`
+  query support in later phases.

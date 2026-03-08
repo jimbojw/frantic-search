@@ -49,6 +49,7 @@ interface Card {
   set_type?: string;
   promo_types?: string[];
   card_faces?: CardFace[];
+  keywords?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +301,7 @@ export function processCards(verbose: boolean): void {
   };
 
   const thumbs: ThumbHashData = { art_crop: [], card: [] };
+  const keywordsIndex: Record<string, number[]> = {};
 
   for (let cardIdx = 0; cardIdx < cards.length; cardIdx++) {
     const card = cards[cardIdx];
@@ -307,6 +309,10 @@ export function processCards(verbose: boolean): void {
 
     const leg = encodeLegalities(card.legalities);
     const faceRowStart = data.names.length;
+
+    for (const kw of new Set((card.keywords ?? []).map((k) => k.toLowerCase().trim()))) {
+      if (kw) (keywordsIndex[kw] ??= []).push(faceRowStart);
+    }
 
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
@@ -319,10 +325,15 @@ export function processCards(verbose: boolean): void {
     }
   }
 
+  for (const arr of Object.values(keywordsIndex)) {
+    arr.sort((a, b) => a - b);
+  }
+
   data.power_lookup = powerDict.lookup();
   data.toughness_lookup = toughnessDict.lookup();
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
+  data.keywords_index = keywordsIndex;
 
   log(`Emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);

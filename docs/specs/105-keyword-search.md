@@ -29,7 +29,7 @@ This epic requires updates to the following specs:
 
 | Spec | Update |
 |------|--------|
-| 003 | Add `keywords.json` output; document extraction and inverted index build |
+| 003 | Add `keywords_index` to columns.json; document extraction and inverted index build |
 | 002 | Add `kw`, `keyword` to Supported Fields table |
 | 098 | Add `kw`, `keyword` to Fields table |
 | 103 | Add `kw`, `keyword` to categorical resolution registry (candidate source: keys of loaded keywords.json) |
@@ -42,12 +42,12 @@ This epic requires updates to the following specs:
 - During the face expansion pass, for each card: collect `card.keywords ?? []` and the card's canonical face index (first-emitted face row index)
 - Build `Record<string, number[]>`: for each keyword (lowercased), append the canonical face index. Dedupe per card (multi-face cards share one canonical face)
 - Sort each array for gzip compression and consistent iteration
-- Write `data/dist/keywords.json` — same shape as `otags.json` (Spec 092)
+- Add `keywords_index` to columns.json — same shape as `otags.json` (Spec 092)
 - Keys are lowercase keyword strings; values are sorted canonical face indices
 
 ### 2. Worker: Load and expose keywords
 
-- Add `keywords.json` to the worker's load sequence (alongside `columns.json` or with other supplemental data)
+- Extract `keywords_index` from columns.json when loading (already bundled)
 - Store in a ref (e.g. `keywordDataRef`) passed to the evaluator — same pattern as `tagDataRef` for tags (Spec 093)
 - Type: `KeywordData = Record<string, number[]>` (or reuse `OracleTagData` from `shared/src/data.ts`)
 
@@ -68,14 +68,18 @@ This epic requires updates to the following specs:
 - Add `kw` and `keyword` to syntax highlighting field set
 - Add `kw` and `keyword` to autocomplete field suggestions (prefix match on keyword vocabulary, same pattern as `otag`/`atag` in Spec 094)
 
-## Data Format: `keywords.json`
+## Data Format: `keywords_index` (in columns.json)
+
+The `keywords_index` property in columns.json has the shape:
 
 ```json
 {
-  "flying": [0, 5, 12, 47, 89, ...],
-  "deathtouch": [3, 18, 44, ...],
-  "haste": [1, 2, 7, 9, ...],
-  ...
+  "keywords_index": {
+    "flying": [0, 5, 12, 47, 89, ...],
+    "deathtouch": [3, 18, 44, ...],
+    "haste": [1, 2, 7, 9, ...],
+    ...
+  }
 }
 ```
 
@@ -84,21 +88,20 @@ This epic requires updates to the following specs:
 - Keywords with zero matching cards are omitted
 - Keys are lowercase (Scryfall keywords normalized at write time)
 
-**Size estimate:** ~74k total entries (face × keyword pairs) × 4 bytes ≈ 300 KB raw; gzip compresses sorted arrays well.
+**Size estimate:** ~74k total entries (face × keyword pairs) × 4 bytes ≈ 300 KB raw; gzip compresses sorted arrays well. Bundled with columns.json as core face-level data.
 
 ## Files to Touch
 
 | File | Changes |
 |------|---------|
-| `etl/src/process.ts` | Card interface, extract keywords, build inverted index, write keywords.json |
-| `etl/src/paths.ts` | Add KEYWORDS_PATH for `data/dist/keywords.json` |
+| `etl/src/process.ts` | Card interface, extract keywords, build inverted index, add to columns.json |
 | `shared/src/data.ts` | Add `KeywordData` type (or document reuse of `OracleTagData`) |
 | `shared/src/search/eval-leaves.ts` | Add kw/keyword aliases |
 | `shared/src/search/eval-keywords.ts` | New: `evalKeyword` (mirrors `evalOracleTag`) |
 | `shared/src/search/categorical-resolve.ts` | Add `kw`, `keyword` to `resolveForField` registry (candidate source: keyword keys from context) |
 | `shared/src/search/evaluator.ts` | Accept keywordDataRef, branch to keyword eval in computeTree |
-| `app/src/worker.ts` | Load keywords.json, pass keywordDataRef to NodeCache; add keyword keys to ResolutionContext for categorical resolution |
-| `docs/specs/003-etl-process.md` | Document keywords.json output |
+| `app/src/worker.ts` | Extract keywords_index from columns.json, pass keywordDataRef to NodeCache; add keyword keys to ResolutionContext for categorical resolution |
+| `docs/specs/003-etl-process.md` | Document keywords_index in columns.json |
 | `docs/specs/002-query-engine.md` | Add kw, keyword to Supported Fields |
 | `docs/specs/098-syntax-help-content.md` | Add kw, keyword to Fields table |
 | `app/` | Syntax highlighting, autocomplete |
@@ -121,7 +124,7 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 
 ## Acceptance Criteria
 
-1. `keywords.json` is present in `data/dist/` after `npm run etl -- process`
+1. `keywords_index` is present in `data/dist/columns.json` after `npm run etl -- process`
 2. `kw:flying` and `keyword:flying` match cards with the Flying keyword
 3. `kw:deathtouch` matches cards with Deathtouch
 4. `-kw:flying` excludes cards with Flying
