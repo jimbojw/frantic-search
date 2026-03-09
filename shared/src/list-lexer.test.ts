@@ -148,6 +148,24 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("card line with Moxfield etched marker", () => {
+    const tokens = lexDeckList("1 Brimaz, Blight of Oreskos (MOC) 135 *E*");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Brimaz, Blight of Oreskos", start: 2, end: 27 },
+      { type: "SET_CODE", value: "MOC", start: 29, end: 32 },
+      { type: "COLLECTOR_NUMBER", value: "135", start: 34, end: 37 },
+      { type: "ETCHED_MARKER", value: "*E*", start: 38, end: 41 },
+    ]);
+  });
+
+  test("Arena section header with colon SIDEBOARD:", () => {
+    const tokens = lexDeckList("SIDEBOARD:");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "SIDEBOARD:", start: 0, end: 10 },
+    ]);
+  });
+
   test("card line with foil marker and category", () => {
     const tokens = lexDeckList("1 Card (SET) 123 *F* [Land]");
     expect(tokens).toMatchObject([
@@ -246,6 +264,13 @@ describe("buildListSpans", () => {
     const categorySpan = spans.find((s) => s.text === "[Land]");
     expect(categorySpan).toBeDefined();
     expect(categorySpan?.role).toBe("category");
+  });
+
+  test("card line with etched marker produces etched-marker span", () => {
+    const spans = buildListSpans("1 Brimaz (MOC) 135 *E*");
+    const etchedSpan = spans.find((s) => s.text === "*E*");
+    expect(etchedSpan).toBeDefined();
+    expect(etchedSpan?.role).toBe("etched-marker");
   });
 
   test("card line with foil marker produces foil-marker span", () => {

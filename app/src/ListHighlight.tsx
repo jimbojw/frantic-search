@@ -10,6 +10,7 @@ export const LIST_ROLE_CLASSES: Record<string, string> = {
   "collector-number": "text-blue-600 dark:text-blue-400",
   "foil-marker": "text-violet-600 dark:text-violet-400",
   "alter-marker": "text-violet-600 dark:text-violet-400",
+  "etched-marker": "text-violet-600 dark:text-violet-400",
   category: "text-emerald-600 dark:text-emerald-400",
   "category-tag": "text-slate-600 dark:text-slate-400",
   "section-header": "text-sky-600 dark:text-sky-400 font-semibold",

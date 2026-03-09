@@ -7,6 +7,7 @@ export const ListTokenType = {
   COLLECTOR_NUMBER: "COLLECTOR_NUMBER",
   FOIL_MARKER: "FOIL_MARKER",
   ALTER_MARKER: "ALTER_MARKER",
+  ETCHED_MARKER: "ETCHED_MARKER",
   CATEGORY: "CATEGORY",
   CATEGORY_TAG: "CATEGORY_TAG",
   SECTION_HEADER: "SECTION_HEADER",
@@ -32,6 +33,7 @@ export type ListHighlightRole =
   | "collector-number"
   | "foil-marker"
   | "alter-marker"
+  | "etched-marker"
   | "category"
   | "category-tag"
   | "section-header"
@@ -60,8 +62,8 @@ export interface ListValidationResult {
 }
 
 const CARD_LINE_RE =
-  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+\[([^\]]*)\])?\s*$/;
-const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*$/i;
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?\s*$/;
+const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;
@@ -109,7 +111,7 @@ function parseLine(line: string, lineStart: number): ListToken[] {
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
   if (cardMatch) {
-    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, categoryContent] = cardMatch;
+    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, etchedMarker, categoryContent] = cardMatch;
     const qtyStart = lineStart + trimmed.search(/\d/);
     tokens.push({
       type: ListTokenType.QUANTITY,
@@ -160,6 +162,15 @@ function parseLine(line: string, lineStart: number): ListToken[] {
       tokens.push({
         type: ListTokenType.ALTER_MARKER,
         value: "*A*",
+        start: lineStart + pos,
+        end: lineStart + pos + 3,
+      });
+    }
+    if (etchedMarker) {
+      const pos = trimmed.indexOf("*E*");
+      tokens.push({
+        type: ListTokenType.ETCHED_MARKER,
+        value: "*E*",
         start: lineStart + pos,
         end: lineStart + pos + 3,
       });
@@ -242,6 +253,7 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.COLLECTOR_NUMBER]: "collector-number",
   [ListTokenType.FOIL_MARKER]: "foil-marker",
   [ListTokenType.ALTER_MARKER]: "alter-marker",
+  [ListTokenType.ETCHED_MARKER]: "etched-marker",
   [ListTokenType.CATEGORY]: "category",
   [ListTokenType.CATEGORY_TAG]: "category-tag",
   [ListTokenType.SECTION_HEADER]: "section-header",
