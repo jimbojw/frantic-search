@@ -48,6 +48,8 @@ Reuse the Spec 053 overlay technique:
 | `ALTER_MARKER` | `*A*` | Optional; Moxfield alter indicator |
 | `CATEGORY` | `Land`, `Commander` | Main label; excludes brackets and optional `{tag}` |
 | `CATEGORY_TAG` | `{top}`, `{bottom}` | Optional `{tag}` suffix within `[Category{tag}]` |
+| `SECTION_HEADER` | `About`, `Deck`, `Sideboard`, `Commander` | Standalone line; Arena/Moxfield structure |
+| `METADATA` | `Name The Birds (are rebels)` | Key-value under About; full line as one token |
 | `COMMENT` | `// Sideboard`, `# notes` | Full line when starts with `//` or `#` |
 | `SECTION` | `// Creatures` | Same as COMMENT for MVP; can distinguish later |
 | `WHITESPACE` | spaces, newlines | Between tokens, preserved for span reconstruction |
@@ -55,6 +57,8 @@ Reuse the Spec 053 overlay technique:
 **Line patterns:**
 
 - **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `[Category]` or `[Category{tag}]`
+- **Section header:** `^\s*(About|Deck|Sideboard|Commander)\s*$` — case-insensitive
+- **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
 - **Empty line:** No tokens (or single WHITESPACE)
 - **Malformed:** e.g. `4x` with no name, `1` alone — produce tokens but mark for validation error
@@ -71,6 +75,8 @@ Reuse the Spec 053 overlay technique:
 | alter-marker | `*A*` | `text-violet-600 dark:text-violet-400` |
 | category | `[Land]`, `Commander` | `text-emerald-600 dark:text-emerald-400` |
 | category-tag | `{top}` | `text-slate-600 dark:text-slate-400` |
+| section-header | `Deck` | `text-sky-600 dark:text-sky-400 font-semibold` |
+| metadata | `Name The Birds...` | `text-slate-600 dark:text-slate-400 italic` |
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
 | error | invalid spans | `text-red-600 dark:text-red-400 underline decoration-wavy` |
 
@@ -117,6 +123,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-08: Added CATEGORY token type and category highlight role. Lexer now emits CATEGORY tokens for bracketed labels including `[Commander{top}]` format.
 - 2026-03-08: Added CATEGORY_TAG token for `{position}` subfield within category labels; tag highlighted separately in slate.
 - 2026-03-08: Added FOIL_MARKER and ALTER_MARKER tokens for Moxfield `*F*` and `*A*`; both highlighted in violet.
+- 2026-03-08: Added SECTION_HEADER and METADATA tokens for Moxfield "Export for Arena" format; section headers (About, Deck, Sideboard, Commander) and Name metadata highlighted.
 
 ## Acceptance Criteria
 

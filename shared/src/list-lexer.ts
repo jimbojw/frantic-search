@@ -9,6 +9,8 @@ export const ListTokenType = {
   ALTER_MARKER: "ALTER_MARKER",
   CATEGORY: "CATEGORY",
   CATEGORY_TAG: "CATEGORY_TAG",
+  SECTION_HEADER: "SECTION_HEADER",
+  METADATA: "METADATA",
   COMMENT: "COMMENT",
   SECTION: "SECTION",
   WHITESPACE: "WHITESPACE",
@@ -32,6 +34,8 @@ export type ListHighlightRole =
   | "alter-marker"
   | "category"
   | "category-tag"
+  | "section-header"
+  | "metadata"
   | "comment"
   | "error";
 
@@ -57,6 +61,8 @@ export interface ListValidationResult {
 
 const CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+\[([^\]]*)\])?\s*$/;
+const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*$/i;
+const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;
 
@@ -73,6 +79,28 @@ function parseLine(line: string, lineStart: number): ListToken[] {
     tokens.push({
       type: ListTokenType.COMMENT,
       value: line.slice(0, trimmed.length),
+      start: lineStart,
+      end: lineStart + trimmed.length,
+    });
+    return tokens;
+  }
+
+  const sectionMatch = trimmed.match(ARENA_SECTION_HEADER_RE);
+  if (sectionMatch) {
+    tokens.push({
+      type: ListTokenType.SECTION_HEADER,
+      value: trimmed.trim(),
+      start: lineStart,
+      end: lineStart + trimmed.length,
+    });
+    return tokens;
+  }
+
+  const metadataMatch = trimmed.match(ARENA_METADATA_RE);
+  if (metadataMatch) {
+    tokens.push({
+      type: ListTokenType.METADATA,
+      value: trimmed,
       start: lineStart,
       end: lineStart + trimmed.length,
     });
@@ -216,6 +244,8 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.ALTER_MARKER]: "alter-marker",
   [ListTokenType.CATEGORY]: "category",
   [ListTokenType.CATEGORY_TAG]: "category-tag",
+  [ListTokenType.SECTION_HEADER]: "section-header",
+  [ListTokenType.METADATA]: "metadata",
   [ListTokenType.COMMENT]: "comment",
   [ListTokenType.SECTION]: "comment",
   [ListTokenType.WHITESPACE]: null,

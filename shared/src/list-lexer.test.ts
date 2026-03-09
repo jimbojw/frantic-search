@@ -160,6 +160,42 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("Arena section header About produces SECTION_HEADER token", () => {
+    const tokens = lexDeckList("About");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "About", start: 0, end: 5 },
+    ]);
+  });
+
+  test("Arena section header Deck produces SECTION_HEADER token", () => {
+    const tokens = lexDeckList("Deck");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "Deck", start: 0, end: 4 },
+    ]);
+  });
+
+  test("Arena section header case insensitive", () => {
+    const tokens = lexDeckList("SIDEBOARD");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "SIDEBOARD", start: 0, end: 9 },
+    ]);
+  });
+
+  test("Arena metadata Name produces METADATA token", () => {
+    const tokens = lexDeckList("Name The Birds (are rebels)");
+    expect(tokens).toMatchObject([
+      { type: "METADATA", value: "Name The Birds (are rebels)", start: 0, end: 27 },
+    ]);
+  });
+
+  test("1 About produces card tokens not section header", () => {
+    const tokens = lexDeckList("1 About");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "About", start: 2, end: 7 },
+    ]);
+  });
+
   test("card name with parentheses in it", () => {
     const tokens = lexDeckList("1 Lightning Bolt (M21) 159");
     expect(tokens).toMatchObject([
@@ -217,6 +253,17 @@ describe("buildListSpans", () => {
     const foilSpan = spans.find((s) => s.text === "*F*");
     expect(foilSpan).toBeDefined();
     expect(foilSpan?.role).toBe("foil-marker");
+  });
+
+  test("Arena format paste produces section-header and metadata spans", () => {
+    const text = "About\nName The Birds (are rebels)\n\nDeck\n1 Anim Pakal, Thousandth Moon";
+    const spans = buildListSpans(text);
+    const aboutSpan = spans.find((s) => s.text === "About");
+    const nameSpan = spans.find((s) => s.text === "Name The Birds (are rebels)");
+    const deckSpan = spans.find((s) => s.text === "Deck");
+    expect(aboutSpan?.role).toBe("section-header");
+    expect(nameSpan?.role).toBe("metadata");
+    expect(deckSpan?.role).toBe("section-header");
   });
 
   test("card line with category tag produces category-tag span", () => {
