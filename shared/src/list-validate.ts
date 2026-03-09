@@ -126,7 +126,7 @@ export function validateDeckList(
         lineStart,
         lineEnd,
         kind: "error",
-        span: { start: nameTok.start, end: nameTok.end },
+        span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
         message: "Unknown card",
       });
       offset = lineEnd + (lineIndex < lineStrings.length - 1 ? 1 : 0);
@@ -153,19 +153,19 @@ export function validateDeckList(
       );
       if (!setExists) {
         hasPrintingError = true;
-        errorSpan = { start: setTok.start, end: setTok.end };
+        errorSpan = { start: lineStart + setTok.start, end: lineStart + setTok.end };
         errorMessage = "Unknown set";
       } else {
         const pi = findPrintingRow(setCode, collectorNumber, printingDisplay);
         if (pi < 0) {
           hasPrintingError = true;
-          errorSpan = { start: collectorTok.start, end: collectorTok.end };
+          errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
           errorMessage = "Collector number doesn't match";
         } else {
           const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
           if (printingCanonicalFace !== card.canonicalFace) {
             hasPrintingError = true;
-            errorSpan = { start: collectorTok.start, end: collectorTok.end };
+            errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
             errorMessage = "Collector number doesn't match";
           } else {
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;

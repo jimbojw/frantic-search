@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
 import { validateDeckList } from "./list-validate";
+import { buildListSpans } from "./list-lexer";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
 function makeDisplay(
@@ -127,5 +128,16 @@ describe("validateDeckList", () => {
     const result = validateDeckList("// Sideboard\n1 Lightning Bolt", display, null);
     const errorLines = result.lines.filter((l) => l.kind === "error");
     expect(errorLines.length).toBe(0);
+  });
+
+  test("error spans use document-global offsets so About/Name are not highlighted as error", () => {
+    const text = "About\nName Simic Rhythm\n\nDeck\n1 UnknownCard";
+    const display = makeDisplay();
+    const result = validateDeckList(text, display, null);
+    const spans = buildListSpans(text, result);
+    const aboutSpan = spans.find((s) => s.text === "About");
+    const nameSpan = spans.find((s) => s.text === "Name Simic Rhythm");
+    expect(aboutSpan?.role).toBe("section-header");
+    expect(nameSpan?.role).toBe("metadata");
   });
 });
