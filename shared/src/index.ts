@@ -74,3 +74,6 @@ export { lexDeckList, buildListSpans } from "./list-lexer";
 export type { ListToken, ListTokenType, ListHighlightSpan, ListHighlightRole, LineValidation, ListValidationResult } from "./list-lexer";
 export { validateDeckList } from "./list-validate";
 export type { ParsedEntry } from "./list-validate";
+export { detectDeckFormat } from "./list-format";
+export type { DeckFormat } from "./list-format";
+export { serializeArena, serializeMoxfield } from "./list-serialize";

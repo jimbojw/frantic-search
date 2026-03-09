@@ -1,6 +1,6 @@
 # Spec 110: Hybrid Import/Export Deck Editor
 
-**Status:** Draft
+**Status:** In Progress
 
 **Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea), Spec 109 (Deck Instance Model)
 
@@ -234,3 +234,9 @@ interface DeckEditorProps {
 16. While in Edit mode, add/remove actions for the active list are disabled. Init and Display modes do not gate mutations.
 17. Syntax highlighting (Spec 108) works in Display and Edit modes.
 18. Removing the last instance via external - action transitions Display → Init.
+
+## Implementation Notes
+
+- 2026-03-09: Initial implementation of the three-mode state machine, toolbar, format chips, draft persistence, cross-tab sync, and mutation gating signal. Apply shows a placeholder popover ("Apply is not yet supported") and on OK discards the draft, returning to Display or Init. The DeckEditor component replaces ListImportTextarea and the Lists page was stripped to back button + title + DeckEditor.
+- 2026-03-09: Format detection (`shared/src/list-format.ts`) examines token stream for format-discriminating tokens per the spec's heuristic table. Serializers (`shared/src/list-serialize.ts`) implement Arena (quantity + name) and Moxfield (quantity + name + set/collector + finish markers). Other format chips are visible but fall back to Arena when selected. The serializer interface takes `(instances, display, printingDisplay)` rather than the spec's `(instances, metadata)` since card name and printing resolution require display columns.
+- 2026-03-09: On Apply → OK, the detected format (if any) becomes the selected Display mode format per spec § 4, preserving the user's format context even though the actual apply/commit is stubbed.
