@@ -5,6 +5,8 @@ export const ListTokenType = {
   CARD_NAME: "CARD_NAME",
   SET_CODE: "SET_CODE",
   COLLECTOR_NUMBER: "COLLECTOR_NUMBER",
+  FOIL_MARKER: "FOIL_MARKER",
+  ALTER_MARKER: "ALTER_MARKER",
   CATEGORY: "CATEGORY",
   CATEGORY_TAG: "CATEGORY_TAG",
   COMMENT: "COMMENT",
@@ -26,6 +28,8 @@ export type ListHighlightRole =
   | "card-name"
   | "set-code"
   | "collector-number"
+  | "foil-marker"
+  | "alter-marker"
   | "category"
   | "category-tag"
   | "comment"
@@ -52,7 +56,7 @@ export interface ListValidationResult {
 }
 
 const CARD_LINE_RE =
-  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+\[([^\]]*)\])?\s*$/;
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+\[([^\]]*)\])?\s*$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;
 
@@ -77,7 +81,7 @@ function parseLine(line: string, lineStart: number): ListToken[] {
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
   if (cardMatch) {
-    const [, qty, name, setCode, collectorNum, categoryContent] = cardMatch;
+    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, categoryContent] = cardMatch;
     const qtyStart = lineStart + trimmed.search(/\d/);
     tokens.push({
       type: ListTokenType.QUANTITY,
@@ -111,6 +115,25 @@ function parseLine(line: string, lineStart: number): ListToken[] {
         value: collectorNum,
         start: lineStart + numStart,
         end: lineStart + numStart + collectorNum.length,
+      });
+    }
+
+    if (foilMarker) {
+      const pos = trimmed.indexOf("*F*");
+      tokens.push({
+        type: ListTokenType.FOIL_MARKER,
+        value: "*F*",
+        start: lineStart + pos,
+        end: lineStart + pos + 3,
+      });
+    }
+    if (alterMarker) {
+      const pos = trimmed.indexOf("*A*");
+      tokens.push({
+        type: ListTokenType.ALTER_MARKER,
+        value: "*A*",
+        start: lineStart + pos,
+        end: lineStart + pos + 3,
       });
     }
 
@@ -189,6 +212,8 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.CARD_NAME]: "card-name",
   [ListTokenType.SET_CODE]: "set-code",
   [ListTokenType.COLLECTOR_NUMBER]: "collector-number",
+  [ListTokenType.FOIL_MARKER]: "foil-marker",
+  [ListTokenType.ALTER_MARKER]: "alter-marker",
   [ListTokenType.CATEGORY]: "category",
   [ListTokenType.CATEGORY_TAG]: "category-tag",
   [ListTokenType.COMMENT]: "comment",

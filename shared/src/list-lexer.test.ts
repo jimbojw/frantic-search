@@ -125,6 +125,41 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("card line with Moxfield foil marker", () => {
+    const tokens = lexDeckList("1 Anim Pakal (LCI) 223 *F*");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Anim Pakal", start: 2, end: 12 },
+      { type: "SET_CODE", value: "LCI", start: 14, end: 17 },
+      { type: "COLLECTOR_NUMBER", value: "223", start: 19, end: 22 },
+      { type: "FOIL_MARKER", value: "*F*", start: 23, end: 26 },
+    ]);
+  });
+
+  test("card line with both foil and alter markers", () => {
+    const tokens = lexDeckList("1 Card Name (SET) 42 *F* *A*");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Card Name", start: 2, end: 11 },
+      { type: "SET_CODE", value: "SET", start: 13, end: 16 },
+      { type: "COLLECTOR_NUMBER", value: "42", start: 18, end: 20 },
+      { type: "FOIL_MARKER", value: "*F*", start: 21, end: 24 },
+      { type: "ALTER_MARKER", value: "*A*", start: 25, end: 28 },
+    ]);
+  });
+
+  test("card line with foil marker and category", () => {
+    const tokens = lexDeckList("1 Card (SET) 123 *F* [Land]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Card", start: 2, end: 6 },
+      { type: "SET_CODE", value: "SET", start: 8, end: 11 },
+      { type: "COLLECTOR_NUMBER", value: "123", start: 13, end: 16 },
+      { type: "FOIL_MARKER", value: "*F*", start: 17, end: 20 },
+      { type: "CATEGORY", value: "Land", start: 21, end: 27 },
+    ]);
+  });
+
   test("card name with parentheses in it", () => {
     const tokens = lexDeckList("1 Lightning Bolt (M21) 159");
     expect(tokens).toMatchObject([
@@ -175,6 +210,13 @@ describe("buildListSpans", () => {
     const categorySpan = spans.find((s) => s.text === "[Land]");
     expect(categorySpan).toBeDefined();
     expect(categorySpan?.role).toBe("category");
+  });
+
+  test("card line with foil marker produces foil-marker span", () => {
+    const spans = buildListSpans("1 Anim Pakal (LCI) 223 *F*");
+    const foilSpan = spans.find((s) => s.text === "*F*");
+    expect(foilSpan).toBeDefined();
+    expect(foilSpan?.role).toBe("foil-marker");
   });
 
   test("card line with category tag produces category-tag span", () => {

@@ -44,6 +44,8 @@ Reuse the Spec 053 overlay technique:
 | `CARD_NAME` | `Lightning Bolt`, `Birds of Paradise` | Text between quantity and optional `(SET)` |
 | `SET_CODE` | `M21`, `DMU` | Inside parentheses |
 | `COLLECTOR_NUMBER` | `159`, `273` | After closing paren, before EOL |
+| `FOIL_MARKER` | `*F*` | Optional; Moxfield foil indicator |
+| `ALTER_MARKER` | `*A*` | Optional; Moxfield alter indicator |
 | `CATEGORY` | `Land`, `Commander` | Main label; excludes brackets and optional `{tag}` |
 | `CATEGORY_TAG` | `{top}`, `{bottom}` | Optional `{tag}` suffix within `[Category{tag}]` |
 | `COMMENT` | `// Sideboard`, `# notes` | Full line when starts with `//` or `#` |
@@ -52,7 +54,7 @@ Reuse the Spec 053 overlay technique:
 
 **Line patterns:**
 
-- **Card line:** quantity, name, optional `(SET) number`, optional `[Category]` or `[Category{tag}]`
+- **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `[Category]` or `[Category{tag}]`
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
 - **Empty line:** No tokens (or single WHITESPACE)
 - **Malformed:** e.g. `4x` with no name, `1` alone — produce tokens but mark for validation error
@@ -65,6 +67,8 @@ Reuse the Spec 053 overlay technique:
 | card-name | `Lightning Bolt` | `text-gray-900 dark:text-gray-100` |
 | set-code | `M21` | `text-blue-600 dark:text-blue-400` |
 | collector-number | `159` | `text-blue-600 dark:text-blue-400` |
+| foil-marker | `*F*` | `text-violet-600 dark:text-violet-400` |
+| alter-marker | `*A*` | `text-violet-600 dark:text-violet-400` |
 | category | `[Land]`, `Commander` | `text-emerald-600 dark:text-emerald-400` |
 | category-tag | `{top}` | `text-slate-600 dark:text-slate-400` |
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
@@ -112,6 +116,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-08: Extended CARD_LINE_RE to allow optional trailing `[Category]` (e.g. `[Land]`, `[Removal]`) for Moxfield/Archidekt-style exports.
 - 2026-03-08: Added CATEGORY token type and category highlight role. Lexer now emits CATEGORY tokens for bracketed labels including `[Commander{top}]` format.
 - 2026-03-08: Added CATEGORY_TAG token for `{position}` subfield within category labels; tag highlighted separately in slate.
+- 2026-03-08: Added FOIL_MARKER and ALTER_MARKER tokens for Moxfield `*F*` and `*A*`; both highlighted in violet.
 
 ## Acceptance Criteria
 
