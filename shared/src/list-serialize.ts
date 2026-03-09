@@ -94,7 +94,7 @@ function aggregateInstances(
     if (g.scryfallId && printingDisplay) {
       const row = findPrintingRow(g.scryfallId, printingDisplay);
       if (row >= 0) {
-        setCode = printingDisplay.set_codes[row]!.toUpperCase();
+        setCode = printingDisplay.set_codes[row]!;
         collectorNumber = printingDisplay.collector_numbers[row]!;
       }
     }
@@ -141,10 +141,58 @@ export function serializeMoxfield(
     .map((e) => {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
-        line += ` (${e.setCode}) ${e.collectorNumber}`;
+        line += ` (${e.setCode.toUpperCase()}) ${e.collectorNumber}`;
       }
       if (e.finish === "foil") line += " *F*";
       else if (e.finish === "etched") line += " *E*";
+      return line;
+    })
+    .join("\n");
+}
+
+/**
+ * Serialize instances in Archidekt format: `quantityx cardname (set) collector`
+ * Lowercase set codes, x suffix on quantity, no finish markers.
+ */
+export function serializeArchidekt(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): string {
+  if (instances.length === 0) return "";
+
+  const entries = aggregateInstances(instances, display, printingDisplay);
+  return entries
+    .map((e) => {
+      let line = `${e.quantity}x ${e.name}`;
+      if (e.setCode && e.collectorNumber) {
+        line += ` (${e.setCode.toLowerCase()}) ${e.collectorNumber}`;
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+/**
+ * Serialize instances in MTGGoldfish format: `quantity cardname <collector> [SET] (F|E)?`
+ * Uses collector number as variant. Uppercase set codes in square brackets.
+ */
+export function serializeMtggoldfish(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): string {
+  if (instances.length === 0) return "";
+
+  const entries = aggregateInstances(instances, display, printingDisplay);
+  return entries
+    .map((e) => {
+      let line = `${e.quantity} ${e.name}`;
+      if (e.setCode && e.collectorNumber) {
+        line += ` <${e.collectorNumber}> [${e.setCode.toUpperCase()}]`;
+      }
+      if (e.finish === "foil") line += " (F)";
+      else if (e.finish === "etched") line += " (E)";
       return line;
     })
     .join("\n");

@@ -6,6 +6,8 @@ import {
   detectDeckFormat,
   serializeArena,
   serializeMoxfield,
+  serializeArchidekt,
+  serializeMtggoldfish,
 } from '@frantic-search/shared'
 import type {
   DisplayColumns,
@@ -92,6 +94,10 @@ function serialize(
   switch (format) {
     case 'moxfield':
       return serializeMoxfield(instances, display, printingDisplay)
+    case 'archidekt':
+      return serializeArchidekt(instances, display, printingDisplay)
+    case 'mtggoldfish':
+      return serializeMtggoldfish(instances, display, printingDisplay)
     case 'arena':
     default:
       return serializeArena(instances, display)

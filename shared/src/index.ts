@@ -76,4 +76,4 @@ export { validateDeckList } from "./list-validate";
 export type { ParsedEntry } from "./list-validate";
 export { detectDeckFormat } from "./list-format";
 export type { DeckFormat } from "./list-format";
-export { serializeArena, serializeMoxfield } from "./list-serialize";
+export { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish } from "./list-serialize";

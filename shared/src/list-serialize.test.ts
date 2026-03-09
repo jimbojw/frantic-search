@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -182,5 +182,126 @@ describe("serializeMoxfield", () => {
     const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
     const result = serializeMoxfield([i], display, printingDisplay);
     expect(result).toBe("1 Delver of Secrets // Insectile Aberration (ISD) 51");
+  });
+});
+
+describe("serializeArchidekt", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeArchidekt([], display, null)).toBe("");
+  });
+
+  it("uses x suffix on quantity for generic instances", () => {
+    const result = serializeArchidekt([inst("bolt-oracle")], display, null);
+    expect(result).toBe("1x Lightning Bolt");
+  });
+
+  it("uses lowercase set code and collector number", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeArchidekt([i], display, printingDisplay);
+    expect(result).toBe("1x Lightning Bolt (m21) 141");
+  });
+
+  it("omits finish markers for foil", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-b", "foil");
+    const result = serializeArchidekt([i], display, printingDisplay);
+    expect(result).toBe("1x Lightning Bolt (2xm) 141");
+  });
+
+  it("omits finish markers for etched", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "etched");
+    const result = serializeArchidekt([i], display, printingDisplay);
+    expect(result).toBe("1x Lightning Bolt (m21) 141");
+  });
+
+  it("aggregates same-printing instances with x suffix", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeArchidekt(instances, display, printingDisplay);
+    expect(result).toBe("3x Lightning Bolt (m21) 141");
+  });
+
+  it("handles double-faced cards with printing info", () => {
+    const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
+    const result = serializeArchidekt([i], display, printingDisplay);
+    expect(result).toBe("1x Delver of Secrets // Insectile Aberration (isd) 51");
+  });
+
+  it("separates lines for different printings of the same card", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-b", "foil"),
+    ];
+    const result = serializeArchidekt(instances, display, printingDisplay);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1x Lightning Bolt (m21) 141");
+    expect(lines).toContainEqual("1x Lightning Bolt (2xm) 141");
+  });
+});
+
+describe("serializeMtggoldfish", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeMtggoldfish([], display, null)).toBe("");
+  });
+
+  it("falls back to name-only for generic instances", () => {
+    const result = serializeMtggoldfish([inst("bolt-oracle")], display, null);
+    expect(result).toBe("1 Lightning Bolt");
+  });
+
+  it("uses angle brackets and square brackets for printing info", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeMtggoldfish([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt <141> [M21]");
+  });
+
+  it("appends (F) for foil finish", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-b", "foil");
+    const result = serializeMtggoldfish([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt <141> [2XM] (F)");
+  });
+
+  it("appends (E) for etched finish", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "etched");
+    const result = serializeMtggoldfish([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt <141> [M21] (E)");
+  });
+
+  it("no marker for nonfoil finish", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeMtggoldfish([i], display, printingDisplay);
+    expect(result).not.toContain("(F)");
+    expect(result).not.toContain("(E)");
+  });
+
+  it("aggregates same-printing instances", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeMtggoldfish(instances, display, printingDisplay);
+    expect(result).toBe("3 Lightning Bolt <141> [M21]");
+  });
+
+  it("handles double-faced cards with printing info", () => {
+    const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
+    const result = serializeMtggoldfish([i], display, printingDisplay);
+    expect(result).toBe("1 Delver of Secrets // Insectile Aberration <51> [ISD]");
+  });
+
+  it("handles mix of generic and printing-level instances", () => {
+    const instances = [
+      inst("bolt-oracle"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeMtggoldfish(instances, display, printingDisplay);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1 Lightning Bolt");
+    expect(lines).toContainEqual("1 Lightning Bolt <141> [M21]");
   });
 });
