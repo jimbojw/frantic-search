@@ -5,6 +5,7 @@ import type { InstanceStateEntry, ListMetadataEntry } from '@frantic-search/shar
 import {
   openCardListDb,
   appendInstanceEntry,
+  appendInstanceEntries,
   appendListMetadataEntry,
   replayInstanceLog,
   replayListMetadataLog,
@@ -28,6 +29,24 @@ describe('card-list-db', () => {
 
   afterEach(() => {
     db.close()
+  })
+
+  describe('appendInstanceEntries', () => {
+    it('appends multiple entries in a single transaction', async () => {
+      const entries = [
+        entry({ uuid: 'batch-1', oracle_id: 'o1', scryfall_id: null, finish: null, list_id: 'default', timestamp: 1000 }),
+        entry({ uuid: 'batch-2', oracle_id: 'o2', scryfall_id: null, finish: null, list_id: 'default', timestamp: 1000 }),
+      ]
+      await appendInstanceEntries(db, entries)
+      const result = await replayInstanceLog(db)
+      expect(result.size).toBe(2)
+      expect(result.get('batch-1')?.oracle_id).toBe('o1')
+      expect(result.get('batch-2')?.oracle_id).toBe('o2')
+    })
+
+    it('resolves when given empty array', async () => {
+      await expect(appendInstanceEntries(db, [])).resolves.toBeUndefined()
+    })
   })
 
   describe('appendInstanceEntry', () => {

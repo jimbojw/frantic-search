@@ -2,6 +2,7 @@
 import type {
   InstanceState,
   InstanceStateEntry,
+  ImportCandidate,
   ListMetadata,
   ListMetadataEntry,
   MaterializedView,
@@ -15,6 +16,7 @@ import {
 import {
   openCardListDb,
   appendInstanceEntry,
+  appendInstanceEntries,
   appendListMetadataEntry,
   replayInstanceLog,
   replayListMetadataLog,
@@ -129,6 +131,17 @@ export class CardListStore {
   }
 
   private applyInstanceDelta(instance: InstanceState, previous: Pick<InstanceState, 'list_id'> | null): void {
+    const affected = this.applyInstanceDeltaToView(instance, previous)
+    this.onChange?.([...new Set(affected)])
+  }
+
+  /**
+   * Apply instance delta to the materialized view only. Returns affected list IDs.
+   */
+  private applyInstanceDeltaToView(
+    instance: InstanceState,
+    previous: Pick<InstanceState, 'list_id'> | null
+  ): string[] {
     if (previous?.list_id) {
       const prevSet = this.view.instancesByList.get(previous.list_id)
       if (prevSet) {
@@ -143,8 +156,7 @@ export class CardListStore {
     }
     set.add(instance.uuid)
     this.view.instances.set(instance.uuid, instance)
-    const affected = [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
-    this.onChange?.([...new Set(affected)])
+    return [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
   }
 
   getView(): MaterializedView {
@@ -248,6 +260,68 @@ export class CardListStore {
    */
   async removeToTrash(uuid: string): Promise<InstanceState | null> {
     return this.transferInstance(uuid, TRASH_LIST_ID)
+  }
+
+  /**
+   * Apply a diff in batch: removals go to trash, additions go to the target list.
+   * Uses a single IndexedDB transaction and calls onChange once at the end.
+   */
+  async applyDiff(
+    listId: string,
+    removals: InstanceState[],
+    additions: ImportCandidate[]
+  ): Promise<void> {
+    if (!this.db) throw new Error('CardListStore not initialized')
+    if (removals.length === 0 && additions.length === 0) return
+
+    const entries: InstanceStateEntry[] = []
+    const newInstances: InstanceState[] = []
+    const timestamp = Date.now()
+
+    for (const inst of removals) {
+      entries.push({
+        ...inst,
+        list_id: TRASH_LIST_ID,
+        timestamp,
+      })
+    }
+
+    for (const cand of additions) {
+      const uuid = crypto.randomUUID()
+      const instance: InstanceState = {
+        uuid,
+        oracle_id: cand.oracle_id,
+        scryfall_id: cand.scryfall_id ?? null,
+        finish: cand.finish ?? null,
+        list_id: listId,
+        zone: cand.zone ?? null,
+        tags: cand.tags ?? [],
+        collection_status: cand.collection_status ?? null,
+        variant: cand.variant ?? null,
+      }
+      entries.push({ ...instance, timestamp })
+      newInstances.push(instance)
+    }
+
+    await appendInstanceEntries(this.db, entries)
+
+    const affected = new Set<string>()
+    for (const inst of removals) {
+      const transfer: InstanceState = { ...inst, list_id: TRASH_LIST_ID }
+      for (const id of this.applyInstanceDeltaToView(transfer, { list_id: inst.list_id })) {
+        affected.add(id)
+      }
+      this.broadcastInstance(transfer, { list_id: inst.list_id })
+    }
+
+    for (const instance of newInstances) {
+      for (const id of this.applyInstanceDeltaToView(instance, null)) {
+        affected.add(id)
+      }
+      this.broadcastInstance(instance, null)
+    }
+
+    this.onChange?.([...affected])
   }
 
   /**

@@ -41,20 +41,7 @@ export default function ListsPage(props: {
     const currentInstances = instances()
     const diff = diffDeckList(result.candidates, currentInstances)
 
-    for (const inst of diff.removals) {
-      await props.cardListStore.removeToTrash(inst.uuid)
-    }
-
-    for (const cand of diff.additions) {
-      await props.cardListStore.addInstance(cand.oracle_id, listId(), {
-        scryfallId: cand.scryfall_id,
-        finish: cand.finish,
-        zone: cand.zone,
-        tags: cand.tags,
-        collection_status: cand.collection_status,
-        variant: cand.variant,
-      })
-    }
+    await props.cardListStore.applyDiff(listId(), diff.removals, diff.additions)
 
     if (result.deckName || Object.keys(result.tagColors).length > 0) {
       const meta = metadata()
