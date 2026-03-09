@@ -49,6 +49,8 @@ Reuse the Spec 053 overlay technique:
 | `ETCHED_MARKER` | `*E*` | Optional; Moxfield etched indicator |
 | `CATEGORY` | `Land`, `Commander` | Main label; excludes brackets and optional `{tag}` |
 | `CATEGORY_TAG` | `{top}`, `{bottom}` | Optional `{tag}` suffix within `[Category{tag}]` |
+| `COLLECTION_STATUS_TEXT` | `Have`, `Getting` | Status text from Archidekt `^Status,#hex^` marker |
+| `COLLECTION_STATUS_COLOR` | `#37d67a` | Hex color from Archidekt `^Status,#hex^` marker |
 | `SECTION_HEADER` | `About`, `Deck`, `Sideboard`, `Commander` | Standalone line; Arena/Moxfield structure |
 | `METADATA` | `Name The Birds (are rebels)` | Key-value under About; full line as one token |
 | `COMMENT` | `// Sideboard`, `# notes` | Full line when starts with `//` or `#` |
@@ -57,7 +59,7 @@ Reuse the Spec 053 overlay technique:
 
 **Line patterns:**
 
-- **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`
+- **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`, optional `^Status,#hex^` (Archidekt collection marker)
 - **Section header:** `^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon
 - **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
@@ -77,6 +79,8 @@ Reuse the Spec 053 overlay technique:
 | etched-marker | `*E*` | `text-violet-600 dark:text-violet-400` |
 | category | `[Land]`, `Commander` | `text-emerald-600 dark:text-emerald-400` |
 | category-tag | `{top}` | `text-slate-600 dark:text-slate-400` |
+| collection-status-text | `Have` | `text-slate-600 dark:text-slate-400` |
+| collection-status-color | `#37d67a` | `text-slate-500 dark:text-slate-500` |
 | section-header | `Deck` | `text-sky-600 dark:text-sky-400 font-semibold` |
 | metadata | `Name The Birds...` | `text-slate-600 dark:text-slate-400 italic` |
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
@@ -127,6 +131,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-08: Added FOIL_MARKER and ALTER_MARKER tokens for Moxfield `*F*` and `*A*`; both highlighted in violet.
 - 2026-03-08: Added ETCHED_MARKER for Moxfield `*E*` (etched); section headers allow optional trailing colon (e.g. `SIDEBOARD:`).
 - 2026-03-08: Added SECTION_HEADER and METADATA tokens for Moxfield "Export for Arena" format; section headers (About, Deck, Sideboard, Commander) and Name metadata highlighted.
+- 2026-03-08: Added COLLECTION_STATUS_TEXT and COLLECTION_STATUS_COLOR tokens for Archidekt `^Status,#hex^` collection markers; status text and hex color highlighted in slate.
 
 ## Acceptance Criteria
 

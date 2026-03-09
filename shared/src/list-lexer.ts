@@ -10,6 +10,8 @@ export const ListTokenType = {
   ETCHED_MARKER: "ETCHED_MARKER",
   CATEGORY: "CATEGORY",
   CATEGORY_TAG: "CATEGORY_TAG",
+  COLLECTION_STATUS_TEXT: "COLLECTION_STATUS_TEXT",
+  COLLECTION_STATUS_COLOR: "COLLECTION_STATUS_COLOR",
   SECTION_HEADER: "SECTION_HEADER",
   METADATA: "METADATA",
   COMMENT: "COMMENT",
@@ -36,6 +38,8 @@ export type ListHighlightRole =
   | "etched-marker"
   | "category"
   | "category-tag"
+  | "collection-status-text"
+  | "collection-status-color"
   | "section-header"
   | "metadata"
   | "comment"
@@ -62,7 +66,7 @@ export interface ListValidationResult {
 }
 
 const CARD_LINE_RE =
-  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?\s*$/;
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
 const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
@@ -111,7 +115,8 @@ function parseLine(line: string, lineStart: number): ListToken[] {
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
   if (cardMatch) {
-    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, etchedMarker, categoryContent] = cardMatch;
+    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, etchedMarker, categoryContent, collectionMarkerContent] =
+      cardMatch;
     const qtyStart = lineStart + trimmed.search(/\d/);
     tokens.push({
       type: ListTokenType.QUANTITY,
@@ -209,6 +214,31 @@ function parseLine(line: string, lineStart: number): ListToken[] {
         });
       }
     }
+
+    if (collectionMarkerContent) {
+      const commaIdx = collectionMarkerContent.indexOf(",");
+      const statusText = commaIdx >= 0 ? collectionMarkerContent.slice(0, commaIdx) : collectionMarkerContent;
+      const color = commaIdx >= 0 ? collectionMarkerContent.slice(commaIdx + 1) : "";
+      const markerStart = trimmed.indexOf("^");
+      const contentStart = lineStart + markerStart + 1;
+      if (statusText) {
+        tokens.push({
+          type: ListTokenType.COLLECTION_STATUS_TEXT,
+          value: statusText,
+          start: contentStart,
+          end: contentStart + statusText.length,
+        });
+      }
+      if (color) {
+        const colorStart = contentStart + statusText.length + (commaIdx >= 0 ? 1 : 0);
+        tokens.push({
+          type: ListTokenType.COLLECTION_STATUS_COLOR,
+          value: color,
+          start: colorStart,
+          end: colorStart + color.length,
+        });
+      }
+    }
     return tokens;
   }
 
@@ -256,6 +286,8 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.ETCHED_MARKER]: "etched-marker",
   [ListTokenType.CATEGORY]: "category",
   [ListTokenType.CATEGORY_TAG]: "category-tag",
+  [ListTokenType.COLLECTION_STATUS_TEXT]: "collection-status-text",
+  [ListTokenType.COLLECTION_STATUS_COLOR]: "collection-status-color",
   [ListTokenType.SECTION_HEADER]: "section-header",
   [ListTokenType.METADATA]: "metadata",
   [ListTokenType.COMMENT]: "comment",

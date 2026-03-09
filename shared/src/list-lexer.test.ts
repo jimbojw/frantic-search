@@ -223,6 +223,41 @@ describe("lexDeckList", () => {
       { type: "COLLECTOR_NUMBER", value: "159", start: 23, end: 26 },
     ]);
   });
+
+  test("card line with Archidekt collection marker produces COLLECTION_STATUS_TEXT and COLLECTION_STATUS_COLOR", () => {
+    const tokens = lexDeckList("1 Arcane Signet (ecc) 55 [Ramp] ^Have,#37d67a^");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Arcane Signet", start: 2, end: 15 },
+      { type: "SET_CODE", value: "ecc", start: 17, end: 20 },
+      { type: "COLLECTOR_NUMBER", value: "55", start: 22, end: 24 },
+      { type: "CATEGORY", value: "Ramp", start: 25, end: 31 },
+      { type: "COLLECTION_STATUS_TEXT", value: "Have", start: 33, end: 37 },
+      { type: "COLLECTION_STATUS_COLOR", value: "#37d67a", start: 38, end: 45 },
+    ]);
+  });
+
+  test("card line with collection marker status text containing space", () => {
+    const tokens = lexDeckList("1 Deadly Rollick (cmm) 147 ^Don't Have,#f47373^");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Deadly Rollick", start: 2, end: 16 },
+      { type: "SET_CODE", value: "cmm", start: 18, end: 21 },
+      { type: "COLLECTOR_NUMBER", value: "147", start: 23, end: 26 },
+      { type: "COLLECTION_STATUS_TEXT", value: "Don't Have", start: 28, end: 38 },
+      { type: "COLLECTION_STATUS_COLOR", value: "#f47373", start: 39, end: 46 },
+    ]);
+  });
+
+  test("card line without collection marker still parses", () => {
+    const tokens = lexDeckList("1 Lightning Bolt");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1", start: 0, end: 1 },
+      { type: "CARD_NAME", value: "Lightning Bolt", start: 2, end: 16 },
+    ]);
+    expect(tokens.some((t) => t.type === "COLLECTION_STATUS_TEXT")).toBe(false);
+    expect(tokens.some((t) => t.type === "COLLECTION_STATUS_COLOR")).toBe(false);
+  });
 });
 
 describe("buildListSpans", () => {
@@ -296,6 +331,14 @@ describe("buildListSpans", () => {
     const tagSpan = spans.find((s) => s.text === "{top}");
     expect(tagSpan).toBeDefined();
     expect(tagSpan?.role).toBe("category-tag");
+  });
+
+  test("card line with collection marker produces collection-status-text and collection-status-color spans", () => {
+    const spans = buildListSpans("1 Arcane Signet (ecc) 55 [Ramp] ^Have,#37d67a^");
+    const statusTextSpan = spans.find((s) => s.text === "Have");
+    const colorSpan = spans.find((s) => s.text === "#37d67a");
+    expect(statusTextSpan?.role).toBe("collection-status-text");
+    expect(colorSpan?.role).toBe("collection-status-color");
   });
 
   test("validation error overrides role for overlapping span", () => {
