@@ -67,7 +67,7 @@ Reuse the Spec 053 overlay technique:
 - **MTGGoldfish card line:** quantity, name, `<variant>`, `[SET]`, optional `(F)` or `(E)` — e.g. `6 Island <251> [THB]`, `4 Spirebluff Canal <prerelease> [OTJ] (F)`
 - **MTGGoldfish MTGO / no-variant:** quantity, name, `[SET]`, optional `(F)` or `(E)` — no `<variant>`; e.g. `2 Disdainful Stroke [KTK] (F)`, `1 Flashfreeze [M10]`
 - **MTGGoldfish card line:** try before Moxfield pattern
-- **Section header:** `^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon
+- **Section header:** `^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon. `MainDeck` and `Main Deck` are recognized for Melee.gg format.
 - **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
 - **Empty line:** No tokens (or single WHITESPACE)
@@ -145,6 +145,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-09: Added MTGGoldfish "Exact Card Versions (Tabletop)" support. New tokens: VARIANT (content of `<...>`), SET_CODE_BRACKET (`[SET]`), FOIL_PAREN (`(F)`). Lexer tries MTGGoldfish pattern before Moxfield. Validator resolves variant as collector number (numeric) or by printing_flags/promo_types_flags (extended, borderless, prerelease, etc.). PrintingDisplayColumns extended with printing_flags, promo_types_flags_0, promo_types_flags_1 for variant resolution.
 - 2026-03-09: Added MTGGoldfish MTGO / no-variant format: `quantity name [SET] (F|E)?` without `<variant>`. New token ETCHED_PAREN (`(E)`). Modifiers (F)=foil, (E)=etched per MTGGoldfish CSV (FOIL, FOIL_ETCHED). Lexer only matches no-variant when line lacks Moxfield `(SET) number` pattern to avoid misparsing `[Category]` as `[SET]`.
 - 2026-03-09: Added MTGGoldfish variant fallback. Known MTGGoldfish variations (14 values from [help page](https://www.mtggoldfish.com/help/import_formats)) that cannot resolve to a distinct Scryfall printing now fall back to best-match-in-set (prefer foil when `(F)` present) instead of erroring. `LineValidation.kind` extended with `"warning"`; new `variant-approx` highlight role with amber wavy underline (mirrors query highlighter `value-zero` style). Variant string preserved on `ParsedEntry.variant` for round-trip fidelity. `findPrintingBySetAndVariant` now returns -1 when `variantToFlags` cannot interpret the variant, preventing unrecognized variants from silently matching all printings.
+- 2026-03-09: Added Melee.gg support. Section header regex now recognizes `MainDeck` and `Main Deck` (with optional space) as synonyms for `Deck`. Token value is the verbatim matched text; zone normalization (`MainDeck` → `Deck`) is handled by the importer (Spec 109).
 
 ## Acceptance Criteria
 

@@ -199,6 +199,20 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("Melee.gg MainDeck produces SECTION_HEADER token", () => {
+    const tokens = lexDeckList("MainDeck");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "MainDeck", start: 0, end: 8 },
+    ]);
+  });
+
+  test("Main Deck with space produces SECTION_HEADER token", () => {
+    const tokens = lexDeckList("Main Deck");
+    expect(tokens).toMatchObject([
+      { type: "SECTION_HEADER", value: "Main Deck", start: 0, end: 9 },
+    ]);
+  });
+
   test("Arena metadata Name produces METADATA token", () => {
     const tokens = lexDeckList("Name The Birds (are rebels)");
     expect(tokens).toMatchObject([
@@ -407,6 +421,15 @@ describe("buildListSpans", () => {
     expect(aboutSpan?.role).toBe("section-header");
     expect(nameSpan?.role).toBe("metadata");
     expect(deckSpan?.role).toBe("section-header");
+  });
+
+  test("Melee.gg MainDeck produces section-header span", () => {
+    const text = "MainDeck\n3 Blooming Marsh\n\nSideboard\n4 Leyline of Sanctity";
+    const spans = buildListSpans(text);
+    const mainDeckSpan = spans.find((s) => s.text === "MainDeck");
+    const sideboardSpan = spans.find((s) => s.text === "Sideboard");
+    expect(mainDeckSpan?.role).toBe("section-header");
+    expect(sideboardSpan?.role).toBe("section-header");
   });
 
   test("card line with category tag produces category-tag span", () => {

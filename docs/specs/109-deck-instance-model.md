@@ -16,6 +16,7 @@ Spec 075 defines an append-only log of `InstanceStateEntry` records. Each Instan
 - **Moxfield** exports use `SIDEBOARD:` headers and foil/alter/etched markers (`*F*`, `*A*`, `*E*`).
 - **Archidekt** exports use bracket categories (`[Ramp]`, `[Commander{top}]`, `[Maybeboard{noDeck}{noPrice},Proliferate]`) and collection status markers (`^Have,#37d67a^`).
 - **MTGGoldfish** "Exact Card Versions" exports use `<variant>` angle brackets (e.g. `<prerelease>`, `<extended>`, `<251>`), `[SET]` square brackets, and `(F)` / `(E)` finish markers. The variant string identifies a specific product variant that may or may not correspond to a distinct Scryfall printing.
+- **Melee.gg** exports use `MainDeck` (no space) and `Sideboard` as section headers, with plain `quantity name` card lines. The lexer recognizes `MainDeck` / `Main Deck` as a section header; the importer normalizes it to the `"Deck"` zone.
 
 Spec 108 implemented a lexer and validator that tokenize all of these formats, including variant fallback resolution for known MTGGoldfish variants that lack distinct Scryfall printings (see Spec 108 § "Validation rules" rule 5). This spec defines what happens after parsing: how tokens map to Instance fields and how the data model accommodates them.
 
@@ -75,10 +76,10 @@ const KNOWN_ZONES = ["Deck", "Sideboard", "Commander", "Companion", "Maybeboard"
 ```
 
 Used during import to:
-1. Set `zone` from section headers (Arena/Moxfield: `Deck`, `Sideboard`, `Commander`, `SIDEBOARD:`).
+1. Set `zone` from section headers (Arena/Moxfield: `Deck`, `Sideboard`, `Commander`, `SIDEBOARD:`; Melee.gg: `MainDeck` → `Deck`).
 2. Infer `zone` from the primary bracket category (Archidekt: `[Commander{top}]` → zone = `"Commander"`).
 
-Matching is case-insensitive. The stored value uses the canonical casing from `KNOWN_ZONES`.
+Matching is case-insensitive. Header synonyms are normalized before matching: `MainDeck` / `Main Deck` → `Deck`. The stored value uses the canonical casing from `KNOWN_ZONES`.
 
 ### 4. Import Procedure
 
@@ -96,7 +97,8 @@ The importer walks lines top-to-bottom, maintaining a `currentZone: string | nul
 ```
 for each line:
   if SECTION_HEADER token:
-    if value matches KNOWN_ZONES (case-insensitive):
+    normalize header synonyms: "MainDeck" / "Main Deck" → "Deck" (Melee.gg format)
+    if normalized value matches KNOWN_ZONES (case-insensitive):
       currentZone = canonical zone name
     else:
       currentZone = null  (unknown section, treat as main deck)

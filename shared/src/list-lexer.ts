@@ -83,7 +83,7 @@ const MTGGOLDFISH_CARD_LINE_RE =
 /** MTGGoldfish MTGO / no-variant: Qty Name [SET] (F|E)? — no <variant> angle brackets */
 const MTGGOLDFISH_NO_VARIANT_RE =
   /^(\d+x?)\s+(.+?)\s+\[([A-Za-z0-9_-]+)\]\s*(?:\((F|E)\))?\s*$/;
-const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$/i;
+const SECTION_HEADER_RE = /^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;
@@ -107,7 +107,7 @@ function parseLine(line: string, lineStart: number): ListToken[] {
     return tokens;
   }
 
-  const sectionMatch = trimmed.match(ARENA_SECTION_HEADER_RE);
+  const sectionMatch = trimmed.match(SECTION_HEADER_RE);
   if (sectionMatch) {
     tokens.push({
       type: ListTokenType.SECTION_HEADER,
