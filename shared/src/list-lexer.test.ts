@@ -125,6 +125,17 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("collector number 1 does not match 1 in quantity 1x", () => {
+    const tokens = lexDeckList("1x Arena Rector (j20) 1 *F* [Maybeboard{noDeck}{noPrice},Tutor]");
+    const qty = tokens.find((t) => t.type === "QUANTITY");
+    const collector = tokens.find((t) => t.type === "COLLECTOR_NUMBER");
+    expect(qty?.value).toBe("1x");
+    expect(qty?.start).toBe(0);
+    expect(collector?.value).toBe("1");
+    expect(collector?.start).toBe(22);
+    expect(collector?.end).toBe(23);
+  });
+
   test("card line with Moxfield foil marker", () => {
     const tokens = lexDeckList("1 Anim Pakal (LCI) 223 *F*");
     expect(tokens).toMatchObject([
@@ -445,6 +456,13 @@ describe("buildListSpans", () => {
     const colorSpan = spans.find((s) => s.text === "#37d67a");
     expect(statusTextSpan?.role).toBe("collection-status-text");
     expect(colorSpan?.role).toBe("collection-status-color");
+  });
+
+  test("collector number 1 with quantity 1x produces correct spans without duplication", () => {
+    const spans = buildListSpans("1x Arena Rector (j20) 1 *F* [Maybeboard{noDeck}{noPrice},Tutor]");
+    const fullText = spans.map((s) => s.text).join("");
+    expect(fullText).toBe("1x Arena Rector (j20) 1 *F* [Maybeboard{noDeck}{noPrice},Tutor]");
+    expect(spans.some((s) => s.text === "x Arena Rector (j20) 1")).toBe(false);
   });
 
   test("MTGGoldfish line produces variant and set-code spans", () => {

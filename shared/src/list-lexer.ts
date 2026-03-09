@@ -261,7 +261,8 @@ function parseLine(line: string, lineStart: number): ListToken[] {
         end: setCodeStart + setCode.length,
       });
 
-      const numStart = trimmed.indexOf(collectorNum);
+      const afterSetParen = setParenStart + 1 + setCode.length + 1;
+      const numStart = trimmed.indexOf(collectorNum, afterSetParen);
       tokens.push({
         type: ListTokenType.COLLECTOR_NUMBER,
         value: collectorNum,
