@@ -109,6 +109,19 @@ describe("lexDeckList", () => {
       { type: "CARD_NAME", value: "Access Tunnel", start: 3, end: 16 },
       { type: "SET_CODE", value: "tdc", start: 18, end: 21 },
       { type: "COLLECTOR_NUMBER", value: "337", start: 23, end: 26 },
+      { type: "CATEGORY", value: "Land", start: 27, end: 33 },
+    ]);
+  });
+
+  test("card line with category including tag (Archidekt Commander)", () => {
+    const tokens = lexDeckList("1x Frodo, Adventurous Hobbit (ltc) 2 [Commander{top}]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1x", start: 0, end: 2 },
+      { type: "CARD_NAME", value: "Frodo, Adventurous Hobbit", start: 3, end: 28 },
+      { type: "SET_CODE", value: "ltc", start: 30, end: 33 },
+      { type: "COLLECTOR_NUMBER", value: "2", start: 35, end: 36 },
+      { type: "CATEGORY", value: "Commander", start: 38, end: 47 },
+      { type: "CATEGORY_TAG", value: "top", start: 47, end: 52 },
     ]);
   });
 
@@ -155,6 +168,20 @@ describe("buildListSpans", () => {
     expect(spans).toMatchObject([
       { text: "// Sideboard", role: "comment", start: 0, end: 12 },
     ]);
+  });
+
+  test("card line with category produces category span", () => {
+    const spans = buildListSpans("1x Access Tunnel (tdc) 337 [Land]");
+    const categorySpan = spans.find((s) => s.text === "[Land]");
+    expect(categorySpan).toBeDefined();
+    expect(categorySpan?.role).toBe("category");
+  });
+
+  test("card line with category tag produces category-tag span", () => {
+    const spans = buildListSpans("1x Frodo (ltc) 2 [Commander{top}]");
+    const tagSpan = spans.find((s) => s.text === "{top}");
+    expect(tagSpan).toBeDefined();
+    expect(tagSpan?.role).toBe("category-tag");
   });
 
   test("validation error overrides role for overlapping span", () => {

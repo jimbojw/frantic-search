@@ -8,6 +8,8 @@ export const LIST_ROLE_CLASSES: Record<string, string> = {
   "card-name": "text-gray-900 dark:text-gray-100",
   "set-code": "text-blue-600 dark:text-blue-400",
   "collector-number": "text-blue-600 dark:text-blue-400",
+  category: "text-emerald-600 dark:text-emerald-400",
+  "category-tag": "text-slate-600 dark:text-slate-400",
   comment: "text-gray-500 dark:text-gray-400 italic",
   error:
     "text-red-600 dark:text-red-400 underline decoration-wavy decoration-red-400 dark:decoration-red-500",

@@ -5,6 +5,8 @@ export const ListTokenType = {
   CARD_NAME: "CARD_NAME",
   SET_CODE: "SET_CODE",
   COLLECTOR_NUMBER: "COLLECTOR_NUMBER",
+  CATEGORY: "CATEGORY",
+  CATEGORY_TAG: "CATEGORY_TAG",
   COMMENT: "COMMENT",
   SECTION: "SECTION",
   WHITESPACE: "WHITESPACE",
@@ -24,6 +26,8 @@ export type ListHighlightRole =
   | "card-name"
   | "set-code"
   | "collector-number"
+  | "category"
+  | "category-tag"
   | "comment"
   | "error";
 
@@ -48,7 +52,7 @@ export interface ListValidationResult {
 }
 
 const CARD_LINE_RE =
-  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+\[[^\]]*\])?\s*$/;
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+\[([^\]]*)\])?\s*$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;
 
@@ -73,7 +77,7 @@ function parseLine(line: string, lineStart: number): ListToken[] {
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
   if (cardMatch) {
-    const [, qty, name, setCode, collectorNum] = cardMatch;
+    const [, qty, name, setCode, collectorNum, categoryContent] = cardMatch;
     const qtyStart = lineStart + trimmed.search(/\d/);
     tokens.push({
       type: ListTokenType.QUANTITY,
@@ -108,6 +112,40 @@ function parseLine(line: string, lineStart: number): ListToken[] {
         start: lineStart + numStart,
         end: lineStart + numStart + collectorNum.length,
       });
+    }
+
+    if (categoryContent !== undefined && categoryContent.length > 0) {
+      const bracketStart = trimmed.indexOf("[");
+      const base = lineStart + bracketStart;
+      const tagMatch = categoryContent.match(/^(.+?)\{([^}]+)\}$/);
+      if (tagMatch) {
+        const [, categoryName, tagContent] = tagMatch;
+        const catStart = base + 1;
+        const catEnd = catStart + categoryName!.length;
+        tokens.push({
+          type: ListTokenType.CATEGORY,
+          value: categoryName!,
+          start: catStart,
+          end: catEnd,
+        });
+        const tagStart = catEnd;
+        const tagEnd = tagStart + 1 + tagContent!.length + 1; // { + content + }
+        tokens.push({
+          type: ListTokenType.CATEGORY_TAG,
+          value: tagContent!,
+          start: tagStart,
+          end: tagEnd,
+        });
+      } else {
+        const categoryStart = base;
+        const categoryEnd = base + 1 + categoryContent.length + 1;
+        tokens.push({
+          type: ListTokenType.CATEGORY,
+          value: categoryContent,
+          start: categoryStart,
+          end: categoryEnd,
+        });
+      }
     }
     return tokens;
   }
@@ -151,6 +189,8 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.CARD_NAME]: "card-name",
   [ListTokenType.SET_CODE]: "set-code",
   [ListTokenType.COLLECTOR_NUMBER]: "collector-number",
+  [ListTokenType.CATEGORY]: "category",
+  [ListTokenType.CATEGORY_TAG]: "category-tag",
   [ListTokenType.COMMENT]: "comment",
   [ListTokenType.SECTION]: "comment",
   [ListTokenType.WHITESPACE]: null,
