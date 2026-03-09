@@ -1149,6 +1149,7 @@ function App() {
           cardListStore={cardListStore}
           listVersion={listVersion()}
           display={display()}
+          printingDisplay={printingDisplay()}
           onBack={() => history.back()}
         />
       </Show>

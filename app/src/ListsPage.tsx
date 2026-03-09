@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
-import type { DisplayColumns, InstanceState, ListMetadata, MaterializedView } from '@frantic-search/shared'
+import type { DisplayColumns, InstanceState, ListMetadata, MaterializedView, PrintingDisplayColumns } from '@frantic-search/shared'
 import { DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
 import { buildOracleToCanonicalFaceMap } from './list-mask-builder'
 import { buildFacesOf, fullCardName } from './app-utils'
+import ListImportTextarea from './ListImportTextarea'
 
 const FINISH_LABELS: Record<string, string> = {
   nonfoil: 'Nonfoil',
@@ -213,6 +214,7 @@ export default function ListsPage(props: {
   cardListStore: CardListStore
   listVersion: number
   display: DisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null
   onBack: () => void
 }) {
   const listId = () => (props.listTab === 'trash' ? TRASH_LIST_ID : DEFAULT_LIST_ID)
@@ -310,6 +312,21 @@ export default function ListsPage(props: {
             }
           />
         )}
+      </Show>
+
+      {/* Import section (default list only) */}
+      <Show when={props.listTab === 'default'}>
+        <section class="mb-6 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <h2 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Import</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            Paste or type a deck list. Use formats like <code class="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-xs">1 Card Name</code> or <code class="px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-xs">4x Card Name (SET) 123</code>.
+          </p>
+          <ListImportTextarea
+            display={props.display}
+            printingDisplay={props.printingDisplay}
+            class="rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 overflow-hidden"
+          />
+        </section>
       </Show>
 
       {/* Loading state */}

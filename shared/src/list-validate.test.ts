@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, test, expect } from "vitest";
+import { validateDeckList } from "./list-validate";
+import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+
+function makeDisplay(
+  overrides?: Partial<DisplayColumns>
+): DisplayColumns {
+  return {
+    names: [
+      "Birds of Paradise",
+      "Lightning Bolt",
+      "Counterspell",
+      "Sol Ring",
+      "Shock",
+      "Forest",
+    ],
+    mana_costs: ["{G}", "{R}", "{U}{U}", "{1}", "{R}", "{G}"],
+    type_lines: ["Creature", "Instant", "Instant", "Artifact", "Instant", "Land"],
+    oracle_texts: ["", "", "", "", "", ""],
+    powers: [0, 0, 0, 0, 0, 0],
+    toughnesses: [0, 0, 0, 0, 0, 0],
+    loyalties: [0, 0, 0, 0, 0, 0],
+    defenses: [0, 0, 0, 0, 0, 0],
+    color_identity: [0, 0, 0, 0, 0, 0],
+    scryfall_ids: ["", "", "", "", "", ""],
+    art_crop_thumb_hashes: ["", "", "", "", "", ""],
+    card_thumb_hashes: ["", "", "", "", "", ""],
+    layouts: ["normal", "normal", "normal", "normal", "normal", "normal"],
+    legalities_legal: [0, 0, 0, 0, 0, 0],
+    legalities_banned: [0, 0, 0, 0, 0, 0],
+    legalities_restricted: [0, 0, 0, 0, 0, 0],
+    power_lookup: [],
+    toughness_lookup: [],
+    loyalty_lookup: [],
+    defense_lookup: [],
+    canonical_face: [0, 1, 2, 3, 4, 5],
+    oracle_ids: ["oid0", "oid1", "oid2", "oid3", "oid4", "oid5"],
+    edhrec_rank: [null, null, null, null, null, null],
+    edhrec_salt: [null, null, null, null, null, null],
+    ...overrides,
+  };
+}
+
+function makePrintingDisplay(
+  overrides?: Partial<PrintingDisplayColumns>
+): PrintingDisplayColumns {
+  return {
+    scryfall_ids: ["p1", "p2", "p3"],
+    collector_numbers: ["159", "273", "1"],
+    set_codes: ["M21", "DMU", "MH2"],
+    set_names: ["Core Set 2021", "Dominaria United", "Modern Horizons 2"],
+    rarity: [0, 0, 0],
+    finish: [0, 0, 0],
+    price_usd: [0, 0, 0],
+    canonical_face_ref: [4, 5, 1],
+    ...overrides,
+  };
+}
+
+describe("validateDeckList", () => {
+  test("returns empty when display is null", () => {
+    const result = validateDeckList("1 Lightning Bolt", null, null);
+    expect(result.lines).toEqual([]);
+  });
+
+  test("returns empty when printingDisplay is null but display exists - no validation of set/collector", () => {
+    const display = makeDisplay();
+    const result = validateDeckList("1 Shock (M21) 159", display, null);
+    expect(result.lines.length).toBeGreaterThan(0);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+  });
+
+  test("valid card name passes", () => {
+    const display = makeDisplay();
+    const result = validateDeckList("1 Lightning Bolt", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+  });
+
+  test("invalid card name produces error", () => {
+    const display = makeDisplay();
+    const result = validateDeckList("1 UnknownCard", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Unknown card");
+    expect(errorLine?.span).toBeDefined();
+  });
+
+  test("malformed line - quantity only produces error", () => {
+    const display = makeDisplay();
+    const result = validateDeckList("4x", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Missing card name");
+  });
+
+  test("unknown set produces error when printing data available", () => {
+    const display = makeDisplay();
+    const printing = makePrintingDisplay();
+    const result = validateDeckList("1 Shock (XXX) 1", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Unknown set");
+  });
+
+  test("valid set and collector number passes", () => {
+    const display = makeDisplay();
+    const printing = makePrintingDisplay();
+    const result = validateDeckList("1 Shock (M21) 159", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+  });
+
+  test("mismatched collector number produces error", () => {
+    const display = makeDisplay();
+    const printing = makePrintingDisplay();
+    const result = validateDeckList("1 Shock (M21) 999", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Collector number");
+  });
+
+  test("comment lines are ok", () => {
+    const display = makeDisplay();
+    const result = validateDeckList("// Sideboard\n1 Lightning Bolt", display, null);
+    const errorLines = result.lines.filter((l) => l.kind === "error");
+    expect(errorLines.length).toBe(0);
+  });
+});
