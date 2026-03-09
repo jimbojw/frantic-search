@@ -52,7 +52,8 @@ export type ListHighlightRole =
   | "metadata"
   | "comment"
   | "error"
-  | "variant";
+  | "variant"
+  | "variant-approx";
 
 export interface ListHighlightSpan {
   text: string;
@@ -65,7 +66,7 @@ export interface LineValidation {
   lineIndex: number;
   lineStart: number;
   lineEnd: number;
-  kind: "ok" | "error";
+  kind: "ok" | "error" | "warning";
   span?: { start: number; end: number };
   message?: string;
 }
@@ -415,13 +416,14 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.ETCHED_PAREN]: "etched-marker",
 };
 
-function spanOverlapsError(
+function spanOverlapsValidation(
   spanStart: number,
   spanEnd: number,
-  validation: ListValidationResult
+  validation: ListValidationResult,
+  kind: "error" | "warning"
 ): boolean {
   for (const line of validation.lines) {
-    if (line.kind !== "error" || !line.span) continue;
+    if (line.kind !== kind || !line.span) continue;
     const { start, end } = line.span;
     if (spanStart < end && spanEnd > start) return true;
   }
@@ -449,14 +451,18 @@ export function buildListSpans(
     }
 
     const role = ROLE_FOR_TYPE[tok.type];
-    const isError =
-      validation &&
-      role != null &&
-      spanOverlapsError(tok.start, tok.end, validation);
+    let effectiveRole = role;
+    if (validation && role != null) {
+      if (spanOverlapsValidation(tok.start, tok.end, validation, "error")) {
+        effectiveRole = "error";
+      } else if (spanOverlapsValidation(tok.start, tok.end, validation, "warning")) {
+        effectiveRole = "variant-approx";
+      }
+    }
 
     spans.push({
       text: text.slice(tok.start, tok.end),
-      role: isError ? "error" : role,
+      role: effectiveRole,
       start: tok.start,
       end: tok.end,
     });

@@ -21,6 +21,8 @@ export const LIST_ROLE_CLASSES: Record<string, string> = {
   comment: "text-gray-500 dark:text-gray-400 italic",
   error:
     "text-red-600 dark:text-red-400 underline decoration-wavy decoration-red-400 dark:decoration-red-500",
+  "variant-approx":
+    "text-amber-600 dark:text-amber-400 underline decoration-wavy decoration-amber-400 dark:decoration-amber-500",
 };
 
 export default function ListHighlight(props: {

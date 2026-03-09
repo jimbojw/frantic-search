@@ -167,4 +167,75 @@ describe("validateDeckList", () => {
     expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
     expect(result.resolved).toMatchObject([{ scryfall_id: "monument-ext", variant: "extended" }]);
   });
+
+  test("MTGGoldfish: known variant (prerelease) with no exact match falls back to foil in set, warning not error", () => {
+    const display = makeDisplay({ names: ["Spirebluff Canal", "Shock", "Lightning Bolt", "Sol Ring", "Forest", "Island"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["canal-otj-nf", "canal-otj-foil"],
+      collector_numbers: ["270", "270"],
+      set_codes: ["OTJ", "OTJ"],
+      canonical_face_ref: [0, 0],
+      finish: [0, 1],
+    });
+    const result = validateDeckList("4 Spirebluff Canal <prerelease> [OTJ] (F)", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    const warning = result.lines.find((l) => l.kind === "warning");
+    expect(warning).toBeDefined();
+    expect(warning?.span).toBeDefined();
+    expect(warning?.message).toContain("approximate");
+    expect(result.resolved).toMatchObject([{
+      oracle_id: "oid0",
+      scryfall_id: "canal-otj-foil",
+      quantity: 4,
+      variant: "prerelease",
+      finish: "foil",
+    }]);
+  });
+
+  test("MTGGoldfish: known variant (prerelease) without (F) falls back to any printing in set", () => {
+    const display = makeDisplay({ names: ["Spirebluff Canal", "Shock", "Lightning Bolt", "Sol Ring", "Forest", "Island"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["canal-otj-nf", "canal-otj-foil"],
+      collector_numbers: ["270", "270"],
+      set_codes: ["OTJ", "OTJ"],
+      canonical_face_ref: [0, 0],
+      finish: [0, 1],
+    });
+    const result = validateDeckList("4 Spirebluff Canal <prerelease> [OTJ]", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.lines.find((l) => l.kind === "warning")).toBeDefined();
+    expect(result.resolved).toMatchObject([{
+      oracle_id: "oid0",
+      scryfall_id: "canal-otj-nf",
+      quantity: 4,
+      variant: "prerelease",
+    }]);
+  });
+
+  test("MTGGoldfish: unknown variant still produces error", () => {
+    const display = makeDisplay({ names: ["Spirebluff Canal", "Shock", "Lightning Bolt", "Sol Ring", "Forest", "Island"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["canal-otj"],
+      collector_numbers: ["270"],
+      set_codes: ["OTJ"],
+      canonical_face_ref: [0],
+    });
+    const result = validateDeckList("4 Spirebluff Canal <gobbledygook> [OTJ]", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("No matching printing");
+  });
+
+  test("MTGGoldfish: known variant with SetName dash prefix falls back gracefully", () => {
+    const display = makeDisplay({ names: ["Steam Vents", "Shock", "Lightning Bolt", "Sol Ring", "Forest", "Island"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["vents-ecl"],
+      collector_numbers: ["1"],
+      set_codes: ["ECL"],
+      canonical_face_ref: [0],
+      finish: [0],
+    });
+    const result = validateDeckList("4 Steam Vents <Shadowmoor - borderless> [ECL]", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+  });
 });

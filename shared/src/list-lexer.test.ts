@@ -456,4 +456,24 @@ describe("buildListSpans", () => {
     const cardNameSpan = spans.find((s) => s.start === 2 && s.text === "UnknownCard");
     expect(cardNameSpan?.role).toBe("error");
   });
+
+  test("validation warning produces variant-approx role for overlapping span", () => {
+    const text = "4 Spirebluff Canal <prerelease> [OTJ] (F)";
+    const preStart = text.indexOf("prerelease");
+    const preEnd = preStart + "prerelease".length;
+    const spans = buildListSpans(text, {
+      lines: [
+        {
+          lineIndex: 0,
+          lineStart: 0,
+          lineEnd: text.length,
+          kind: "warning",
+          span: { start: preStart, end: preEnd },
+          message: "Variant resolved approximately",
+        },
+      ],
+    });
+    const variantSpan = spans.find((s) => s.text === "prerelease");
+    expect(variantSpan?.role).toBe("variant-approx");
+  });
 });

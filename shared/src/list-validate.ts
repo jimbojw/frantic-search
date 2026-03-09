@@ -97,6 +97,21 @@ function variantToFlags(variant: string): { printingFlag?: number; promoCol?: 0 
   }
 }
 
+/** Canonical MTGGoldfish variation strings (lowercased, after "SetName - " stripping). */
+const KNOWN_GOLDFISH_VARIANTS = new Set([
+  "showcase", "extended", "borderless", "japanese",
+  "planeswalker stamp", "precon", "prerelease",
+  "pw_deck", "brawl_deck", "buy-a-box",
+  "promo pack", "bundle", "sealed", "timeshifted",
+]);
+
+function isKnownGoldfishVariant(variant: string): boolean {
+  const v = variant.toLowerCase().trim();
+  const dashIdx = v.indexOf(" - ");
+  const flagPart = dashIdx >= 0 ? v.slice(dashIdx + 3) : v;
+  return KNOWN_GOLDFISH_VARIANTS.has(flagPart);
+}
+
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
 }
@@ -110,6 +125,7 @@ function findPrintingBySetAndVariant(
 ): number {
   const setLower = setCode.toLowerCase();
   const flags = variantToFlags(variant);
+  if (!flags) return -1;
   const pf = printing.printing_flags ?? [];
   const pt0 = printing.promo_types_flags_0 ?? [];
   const pt1 = printing.promo_types_flags_1 ?? [];
@@ -119,14 +135,12 @@ function findPrintingBySetAndVariant(
     if (printing.set_codes[i]!.toLowerCase() !== setLower) continue;
     if (printing.canonical_face_ref[i] !== canonicalFace) continue;
 
-    if (flags?.printingFlag) {
+    if (flags.printingFlag) {
       if ((pf[i] ?? 0) & flags.printingFlag) candidates.push(i);
-    } else if (flags?.promoCol !== undefined && flags?.promoBit !== undefined) {
+    } else if (flags.promoCol !== undefined && flags.promoBit !== undefined) {
       const bit = 1 << flags.promoBit;
       const col = flags.promoCol === 0 ? (pt0[i] ?? 0) : (pt1[i] ?? 0);
       if (col & bit) candidates.push(i);
-    } else {
-      candidates.push(i);
     }
   }
 
@@ -138,6 +152,23 @@ function findPrintingBySetAndVariant(
     if (foil !== undefined) return foil;
   }
   return candidates[0]!;
+}
+
+function findAnyPrintingInSet(
+  setCode: string,
+  canonicalFace: number,
+  printing: PrintingDisplayColumns,
+  preferFoil: boolean
+): number {
+  const setLower = setCode.toLowerCase();
+  let first = -1;
+  for (let i = 0; i < printing.set_codes.length; i++) {
+    if (printing.set_codes[i]!.toLowerCase() !== setLower) continue;
+    if (printing.canonical_face_ref[i] !== canonicalFace) continue;
+    if (first < 0) first = i;
+    if (preferFoil && printing.finish[i] === 1) return i;
+  }
+  return first;
 }
 
 export function validateDeckList(
@@ -236,6 +267,9 @@ export function validateDeckList(
     let hasPrintingError = false;
     let errorSpan: { start: number; end: number } | undefined;
     let errorMessage: string | undefined;
+    let hasVariantWarning = false;
+    let warningSpan: { start: number; end: number } | undefined;
+    let warningMessage: string | undefined;
     const preferFoil = !!(foilParenTok || foilMarkerTok);
     let finish: "foil" | "etched" | null = null;
     if (etchedMarkerTok || etchedParenTok) finish = "etched";
@@ -276,12 +310,26 @@ export function validateDeckList(
             printingDisplay,
             preferFoil
           );
-          if (pi < 0) {
+          if (pi >= 0) {
+            scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
+          } else if (isKnownGoldfishVariant(variant)) {
+            const fallbackPi = findAnyPrintingInSet(
+              setCode, card.canonicalFace, printingDisplay, preferFoil
+            );
+            if (fallbackPi >= 0) {
+              scryfallId = printingDisplay.scryfall_ids[fallbackPi] ?? null;
+              hasVariantWarning = true;
+              warningSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
+              warningMessage = "Variant resolved approximately";
+            } else {
+              hasPrintingError = true;
+              errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
+              errorMessage = "No matching printing";
+            }
+          } else {
             hasPrintingError = true;
             errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
             errorMessage = "No matching printing";
-          } else {
-            scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
           }
         }
       } else if (collectorTok) {
@@ -314,14 +362,25 @@ export function validateDeckList(
         message: errorMessage,
       });
     } else {
-      lines.push({
-        lineIndex,
-        lineStart,
-        lineEnd,
-        kind: "ok",
-      });
       const qtyStr = quantityTok.value.replace(/x$/i, "");
       const quantity = parseInt(qtyStr, 10) || 1;
+      if (hasVariantWarning && warningSpan && warningMessage) {
+        lines.push({
+          lineIndex,
+          lineStart,
+          lineEnd,
+          kind: "warning",
+          span: warningSpan,
+          message: warningMessage,
+        });
+      } else {
+        lines.push({
+          lineIndex,
+          lineStart,
+          lineEnd,
+          kind: "ok",
+        });
+      }
       resolved.push({
         oracle_id: card.oracleId,
         scryfall_id: scryfallId,

@@ -92,9 +92,10 @@ Reuse the Spec 053 overlay technique:
 | metadata | `Name The Birds...` | `text-slate-600 dark:text-slate-400 italic` |
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
 | variant | `251`, `extended` | `text-slate-600 dark:text-slate-400` |
+| variant-approx | `prerelease` (known but no exact match) | `text-amber-600 dark:text-amber-400 underline decoration-wavy` |
 | error | invalid spans | `text-red-600 dark:text-red-400 underline decoration-wavy` |
 
-**Output:** `ListHighlightSpan[]` with `{ text, role, start, end }`. A `buildListSpans(text, validationResult?)` function produces spans; when validation is provided, error spans override the default role.
+**Output:** `ListHighlightSpan[]` with `{ text, role, start, end }`. A `buildListSpans(text, validationResult?)` function produces spans; when validation is provided, error spans override the default role. Warning spans (from approximate variant resolution) override the default role with `variant-approx`.
 
 ### 3. Validation Against Resident Data
 
@@ -110,6 +111,7 @@ Reuse the Spec 053 overlay technique:
 2. **Set code:** When `(SET)` present, check `printingDisplay.set_codes` includes it (case-insensitive). Unknown set → error span on set code, message `"Unknown set"`.
 3. **Collector number:** When both set and number present, find printing row where `set_codes[i] === set` and `collector_numbers[i] === number`. Verify `canonical_face_ref[i]` matches the oracle for the resolved card name. Mismatch → error span on number, message `"Collector number doesn't match"`.
 4. **Malformed line:** `4x` with no name, `1` with no name → error span on line, message `"Missing card name"`.
+5. **MTGGoldfish variant fallback:** When a non-numeric variant (e.g. `prerelease`, `promo pack`) cannot be resolved to a distinct Scryfall printing via `printing_flags` or `promo_types_flags`, check if the variant is in the known MTGGoldfish variations set (`showcase`, `extended`, `borderless`, `japanese`, `planeswalker stamp`, `precon`, `prerelease`, `pw_deck`, `brawl_deck`, `buy-a-box`, `promo pack`, `bundle`, `sealed`, `timeshifted`). If known: fall back to any printing in set matching the card, prefer foil if `(F)` present. Emit `kind: "warning"` with `"Variant resolved approximately"`. The variant string is preserved on `ParsedEntry.variant` for round-trip fidelity. If unknown: error as usual. Scryfall often does not model prerelease/promo-pack foils as separate printings, so this fallback avoids false errors.
 
 **Data availability:** When `display` or `printingDisplay` is null (worker not ready), skip validation and show no error spans. Highlighting still works (syntax only).
 
@@ -142,6 +144,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-08: Added COLLECTION_STATUS_TEXT and COLLECTION_STATUS_COLOR tokens for Archidekt `^Status,#hex^` collection markers; status text and hex color highlighted in slate.
 - 2026-03-09: Added MTGGoldfish "Exact Card Versions (Tabletop)" support. New tokens: VARIANT (content of `<...>`), SET_CODE_BRACKET (`[SET]`), FOIL_PAREN (`(F)`). Lexer tries MTGGoldfish pattern before Moxfield. Validator resolves variant as collector number (numeric) or by printing_flags/promo_types_flags (extended, borderless, prerelease, etc.). PrintingDisplayColumns extended with printing_flags, promo_types_flags_0, promo_types_flags_1 for variant resolution.
 - 2026-03-09: Added MTGGoldfish MTGO / no-variant format: `quantity name [SET] (F|E)?` without `<variant>`. New token ETCHED_PAREN (`(E)`). Modifiers (F)=foil, (E)=etched per MTGGoldfish CSV (FOIL, FOIL_ETCHED). Lexer only matches no-variant when line lacks Moxfield `(SET) number` pattern to avoid misparsing `[Category]` as `[SET]`.
+- 2026-03-09: Added MTGGoldfish variant fallback. Known MTGGoldfish variations (14 values from [help page](https://www.mtggoldfish.com/help/import_formats)) that cannot resolve to a distinct Scryfall printing now fall back to best-match-in-set (prefer foil when `(F)` present) instead of erroring. `LineValidation.kind` extended with `"warning"`; new `variant-approx` highlight role with amber wavy underline (mirrors query highlighter `value-zero` style). Variant string preserved on `ParsedEntry.variant` for round-trip fidelity. `findPrintingBySetAndVariant` now returns -1 when `variantToFlags` cannot interpret the variant, preventing unrecognized variants from silently matching all printings.
 
 ## Acceptance Criteria
 
