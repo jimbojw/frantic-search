@@ -21,7 +21,7 @@ import {
 } from './app-utils'
 import type { View } from './app-utils'
 import {
-  saveScrollPosition, pushIfNeeded, scheduleDebouncedCommit,
+  saveScrollPosition, pushIfNeeded, scheduleReplaceState,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
 import { appendTerm, parseBreakdown, sealQuery, getMyListIdFromBreakdown } from './query-edit'
@@ -45,6 +45,7 @@ import {
   buildAutocompleteData,
   applyCompletion,
 } from './query-autocomplete'
+import { useDebouncedGhostText } from './useDebouncedGhostText'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -183,18 +184,7 @@ function App() {
       keyword: keywordLabels(),
     })
   )
-  const ghostText = createMemo(() => {
-    if (isComposing() || !autocompleteData()) return null
-    if (cursorOffset() !== selectionEnd()) return null // has selection
-    const q = query()
-    const cursor = cursorOffset()
-    const ctx = getCompletionContext(q, cursor)
-    if (!ctx) return null
-    if (cursor < ctx.tokenEnd) return null
-    const suggestion = computeSuggestion(ctx, autocompleteData()!)
-    if (!suggestion) return null
-    return suggestion.slice(cursor - ctx.tokenStart)
-  })
+  const ghostText = useDebouncedGhostText(query, cursorOffset, selectionEnd, isComposing, autocompleteData)
 
   function acceptGhostCompletion() {
     const ctx = getCompletionContext(query(), cursorOffset())
@@ -723,8 +713,7 @@ function App() {
     }
     const url = params.toString() ? `?${params}` : location.pathname
     pushIfNeeded()
-    history.replaceState(history.state, '', url)
-    scheduleDebouncedCommit()
+    scheduleReplaceState(url)
   })
 
   window.addEventListener('popstate', () => {

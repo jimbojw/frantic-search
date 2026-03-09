@@ -9,6 +9,7 @@ import {
   buildAutocompleteData,
   applyCompletion,
 } from './query-autocomplete'
+import { useDebouncedGhostText } from './useDebouncedGhostText'
 import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import { sealQuery } from './query-edit'
 import { extractViewMode } from './view-query'
@@ -270,18 +271,13 @@ export function SearchPane(props: {
       keyword: props.state.keywordLabels(),
     })
   )
-  const ghostText = createMemo(() => {
-    if (isComposing() || !autocompleteData()) return null
-    if (cursorOffset() !== selectionEnd()) return null // has selection
-    const q = props.state.query()
-    const cursor = cursorOffset()
-    const completionCtx = getCompletionContext(q, cursor)
-    if (!completionCtx) return null
-    if (cursor < completionCtx.tokenEnd) return null
-    const suggestion = computeSuggestion(completionCtx, autocompleteData()!)
-    if (!suggestion) return null
-    return suggestion.slice(cursor - completionCtx.tokenStart)
-  })
+  const ghostText = useDebouncedGhostText(
+    () => props.state.query(),
+    cursorOffset,
+    selectionEnd,
+    isComposing,
+    autocompleteData,
+  )
   const handleInput = (e: Event) => {
     const el = e.target as HTMLTextAreaElement
     updateSelection(el)
