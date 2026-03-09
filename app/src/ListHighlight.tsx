@@ -3,6 +3,16 @@ import { createMemo, For } from "solid-js";
 import { buildListSpans } from "@frantic-search/shared";
 import type { ListValidationResult } from "@frantic-search/shared";
 
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+function contrastColorForHex(hex: string): "#000000" | "#ffffff" {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}
+
 export const LIST_ROLE_CLASSES: Record<string, string> = {
   quantity: "text-amber-600 dark:text-amber-400",
   "card-name": "text-gray-900 dark:text-gray-100",
@@ -42,7 +52,20 @@ export default function ListHighlight(props: {
       <For each={spans()}>
         {(span) =>
           span.role ? (
-            <span class={LIST_ROLE_CLASSES[span.role] ?? ""}>{span.text}</span>
+            span.role === "collection-status-color" &&
+            HEX_RE.test(span.text) ? (
+              <span
+                class="px-1.5 py-0.5 rounded"
+                style={{
+                  "background-color": span.text,
+                  color: contrastColorForHex(span.text),
+                }}
+              >
+                {span.text}
+              </span>
+            ) : (
+              <span class={LIST_ROLE_CLASSES[span.role] ?? ""}>{span.text}</span>
+            )
           ) : (
             <>{span.text}</>
           )
