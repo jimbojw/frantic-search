@@ -1,12 +1,12 @@
-# Spec 109: Deck-Aware Instance Model and Import Procedure
+# Spec 109: Deck-Aware Instance Model and Import/Apply Pipeline
 
 **Status:** Draft
 
-**Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea)
+**Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea), Spec 110 (Hybrid Deck Editor)
 
 ## Goal
 
-Extend the Spec 075 Instance data model with `zone`, `tags`, `collection_status`, and `variant` fields so that imported deck lists from Arena, Moxfield, Archidekt, and MTGGoldfish can be represented without information loss. Define the import procedure that maps Spec 108 lexer/validator output into Instances.
+Extend the Spec 075 Instance data model with `zone`, `tags`, `collection_status`, and `variant` fields so that imported deck lists from Arena, Moxfield, Archidekt, and MTGGoldfish can be represented without information loss. Define the full Apply pipeline: import (parsing draft text into candidate Instances), diff (comparing candidates to the current list), confirmation UX, and write operations.
 
 ## Background
 
@@ -18,7 +18,7 @@ Spec 075 defines an append-only log of `InstanceStateEntry` records. Each Instan
 - **MTGGoldfish** "Exact Card Versions" exports use `<variant>` angle brackets (e.g. `<prerelease>`, `<extended>`, `<251>`), `[SET]` square brackets, and `(F)` / `(E)` finish markers. The variant string identifies a specific product variant that may or may not correspond to a distinct Scryfall printing.
 - **Melee.gg** exports use `MainDeck` (no space) and `Sideboard` as section headers, with plain `quantity name` card lines. The lexer recognizes `MainDeck` / `Main Deck` as a section header; the importer normalizes it to the `"Deck"` zone.
 
-Spec 108 implemented a lexer and validator that tokenize all of these formats, including variant fallback resolution for known MTGGoldfish variants that lack distinct Scryfall printings (see Spec 108 § "Validation rules" rule 5). This spec defines what happens after parsing: how tokens map to Instance fields and how the data model accommodates them.
+Spec 108 implemented a lexer and validator that tokenize all of these formats, including variant fallback resolution for known MTGGoldfish variants that lack distinct Scryfall printings (see Spec 108 § "Validation rules" rule 5). Spec 110 implemented a three-mode deck editor with a placeholder Apply button. This spec defines the real Apply pipeline that replaces that placeholder: how draft text becomes candidate Instances, how candidates are diffed against the current list, and how the result is committed.
 
 ## Design
 
@@ -213,7 +213,89 @@ tag_colors: {
 }
 ```
 
-### 5. Tag Query Semantics (Forward-Looking)
+### 5. Diff Algorithm (Dumb Diff)
+
+The Apply pipeline compares candidate Instances (produced by the import procedure) against the current Instances in the active list. The initial implementation uses a "dumb diff" — exact matching on identity fields, no fuzzy or partial matching.
+
+#### Identity fields for comparison
+
+Two Instances are considered identical when all of the following match:
+
+| Field | Comparison |
+|-------|------------|
+| `oracle_id` | exact string match |
+| `scryfall_id` | exact string match (null == null) |
+| `finish` | exact string match (null == null) |
+| `zone` | exact string match (null == null) |
+| `tags` | same entries in same order |
+| `collection_status` | exact string match (null == null) |
+| `variant` | exact string match (null == null) |
+
+UUID is excluded — it is assigned on creation and is not part of the card's identity. `list_id` is excluded — all Instances in the comparison belong to the same list.
+
+#### Procedure
+
+1. **Import:** Run the import procedure (§ 4) on the draft text to produce a list of candidate Instances (without UUIDs).
+2. **Expand quantities:** Each candidate with `quantity > 1` becomes N separate candidate records (one per unit), matching the import procedure's per-unit expansion.
+3. **Match and prune:** For each candidate, search the current Instance set for an entry with identical identity fields. If found, remove both from their respective sets (they cancel out — no change needed). This is a greedy one-to-one match: each current Instance can match at most one candidate.
+4. **Compute remainders:**
+   - Remaining candidates = additions (+N cards)
+   - Remaining current Instances = removals (-M cards)
+   - There are no "modified" entries in dumb diff. A generic Instance and a printing-level Instance of the same card are completely separate objects.
+
+#### Edge cases
+
+- **Generic vs. printing-level:** A candidate with `scryfall_id: null` does NOT match a current Instance with `scryfall_id: "abc-123"`, even if they share the same `oracle_id`. These are distinct objects. A future "smart diff" may handle partial matches (e.g., treating a printing change as a modification rather than remove + add).
+- **Duplicate cards:** If the list has 4x Lightning Bolt and the draft has 3x Lightning Bolt (same printing), the diff produces 0 additions and 1 removal. The greedy match consumes 3 pairs, leaving 1 current Instance unmatched.
+- **Empty draft:** All current Instances appear as removals. On accept, the list is emptied (all moved to trash). The editor transitions to Init mode.
+- **Empty list + non-empty draft:** All candidates appear as additions. This is the initial import case.
+
+### 6. Confirmation UX
+
+When the user clicks Apply in the Spec 110 editor, the diff is computed and presented in a confirmation popover or modal before any writes occur.
+
+#### Minimal confirmation (initial implementation)
+
+The confirmation shows a summary:
+
+- "+N cards" (additions) — if N > 0
+- "-M cards" (removals) — if M > 0
+- "No changes" — if both N and M are 0
+
+Two buttons: **Accept** and **Cancel**.
+
+- **Accept:** Executes the write operations (§ 7), clears the draft, transitions the editor to Display or Init mode.
+- **Cancel:** Returns to Edit mode with the draft intact. No writes occur.
+
+If both N and M are 0 (draft is equivalent to current state), Accept still clears the draft and returns to Display mode. This is a no-op write but a valid user intent ("I'm done editing").
+
+#### Future enhancements (out of scope)
+
+A richer confirmation view could show a green/red diff of individual card lines, sorted by zone. This opens questions about sort order and zone grouping that are deferred.
+
+### 7. Write Operations
+
+On Accept, the diff remainders are committed using existing `CardListStore` methods:
+
+1. **Removals:** For each remaining current Instance, call `CardListStore.removeToTrash(uuid)`. This appends a log entry with `list_id = trash` per Spec 075.
+2. **Additions:** For each remaining candidate, call `CardListStore.addInstance(...)` with the candidate's `oracle_id`, `scryfall_id`, `finish`, and the target `list_id`. This assigns a UUID via `crypto.randomUUID()` and appends a log entry. The new Spec 109 fields (`zone`, `tags`, `collection_status`, `variant`) are included in the log entry.
+3. **Metadata updates:** If the import procedure extracted a deck name (from METADATA tokens) or tag_colors (from collection status markers), update `ListMetadata` via `CardListStore.updateListMetadata(...)`.
+
+Write order: removals first, then additions. This is not strictly necessary for correctness (the append-only log is order-independent for materialization), but it keeps the log readable.
+
+#### Integration with Spec 110
+
+The Spec 110 `DeckEditor` component calls `onApply(draftText)`. The parent (`ListsPage`) implements this callback by:
+
+1. Running the import procedure on the draft text.
+2. Computing the dumb diff against current Instances for the active list.
+3. If the diff has changes (N > 0 or M > 0), showing the confirmation UX.
+4. On Accept, executing the write operations and returning `true`.
+5. On Cancel, returning `false` (the editor stays in Edit mode).
+
+The `onApply` callback returns `Promise<boolean>` — `true` means the draft should be cleared, `false` means keep editing.
+
+### 8. Tag Query Semantics (Forward-Looking)
 
 This spec does not implement tag queries, but the model is designed with the following in mind:
 
@@ -225,26 +307,34 @@ A future `#value` query syntax will match against all three Instance metadata fi
 
 Matching is substring-based: `#value` succeeds if the search string appears anywhere in the zone, any tag entry, or the collection status string. This unified search means users don't need to know which field a label came from.
 
-### 6. Relationship to Existing Specs
+### 9. Relationship to Existing Specs
 
-- **Spec 075** remains the authority on append-only log mechanics, IndexedDB storage, BroadcastChannel protocol, and materialized view derivation. This spec extends the `InstanceState` and `ListMetadata` types with additive fields. Spec 075's statement "Only `list_id` mutates" is broadened: `zone`, `tags`, and `collection_status` are also mutable via log appends.
+- **Spec 075** remains the authority on append-only log mechanics, IndexedDB storage, BroadcastChannel protocol, and materialized view derivation. This spec extends the `InstanceState` and `ListMetadata` types with additive fields. Spec 075's statement "Only `list_id` mutates" is broadened: `zone`, `tags`, and `collection_status` are also mutable via log appends. Write operations (§ 7) use the existing `CardListStore` methods defined by Spec 075.
 - **Spec 108** remains the authority on deck list parsing (lexer, validator, syntax highlighting), including MTGGoldfish variant resolution and fallback. This spec consumes the lexer/validator output (including `ParsedEntry.variant` and `ParsedEntry.finish`) and defines what happens after parsing. The `variant` field on `InstanceState` preserves the verbatim MTGGoldfish variant string for round-trip fidelity.
+- **Spec 110** defines the three-mode deck editor (Init / Display / Edit), toolbar, format chips, and draft persistence. This spec implements the `onApply` callback that Spec 110 defers. When the user clicks Apply, Spec 110 invokes the pipeline defined here (import → diff → confirm → write). Spec 110's "Out of Scope" items for diff calculation, apply/commit procedure, and confirmation modal are covered by §§ 5–7 of this spec.
 - **Spec 076** (Worker Protocol List Cache) will need to be aware of the new fields when building bitmasks for `my:` queries. No changes required until tag query support is implemented.
 
 ## Out of Scope
 
-- Export (text generation from Instances).
+- Export (text generation from Instances) — covered by Spec 110 serializers.
 - `#tag` query engine implementation.
 - Tag editing UX (toggle chips, bulk edit).
 - Zone modification UX (drag between zones).
 - Multi-list import (importing a deck as a new list vs. into an existing list).
+- Smart diff (partial matching, e.g. treating a printing change as a modification).
+- Rich diff view (green/red per-line diff in the confirmation UI).
 
 ## Acceptance Criteria
+
+### Data model
 
 1. `InstanceState` in `shared/src/card-list.ts` includes `zone`, `tags`, `collection_status`, and `variant` fields.
 2. `ListMetadata` in `shared/src/card-list.ts` includes optional `tag_colors` field.
 3. `KNOWN_ZONES` constant is defined in shared.
 4. Old `InstanceStateEntry` rows without the new fields are handled gracefully during materialized view replay (default to null/empty).
+
+### Import procedure
+
 5. Import procedure maps section headers to `zone` on subsequent card lines.
 6. Import procedure infers `zone` from primary bracket categories that match known zones.
 7. Import procedure stores full bracket content in `tags[]`, split on commas.
@@ -254,3 +344,18 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 11. Import procedure stores `ParsedEntry.variant` in `InstanceState.variant` for MTGGoldfish lines; null for other formats.
 12. Import procedure uses `ParsedEntry.finish` for both Moxfield (`*F*`, `*E*`) and MTGGoldfish (`(F)`, `(E)`) finish markers.
 13. Lines with `kind: "warning"` (approximate variant resolution) produce valid Instances with best-effort `scryfall_id` and preserved `variant`.
+
+### Diff
+
+14. Dumb diff matches candidates to current Instances on all identity fields (oracle_id, scryfall_id, finish, zone, tags, collection_status, variant), excluding UUID and list_id.
+15. Matched pairs are pruned from both sets. Remaining candidates are additions; remaining current Instances are removals.
+16. A generic Instance (`scryfall_id: null`) does not match a printing-level Instance of the same card.
+17. Duplicate quantities are handled correctly: 4x current minus 3x candidate = 1 removal.
+
+### Confirmation and write
+
+18. Clicking Apply in the Spec 110 editor shows a confirmation with "+N cards" / "-M cards" summary.
+19. Accept executes removals (to trash) then additions, clears the draft, and transitions the editor to Display or Init.
+20. Cancel returns to Edit mode with the draft intact.
+21. When diff produces zero changes, Accept still clears the draft (no-op write, valid user intent).
+22. `CardListStore.addInstance` accepts the new Spec 109 fields (zone, tags, collection_status, variant) in the log entry.

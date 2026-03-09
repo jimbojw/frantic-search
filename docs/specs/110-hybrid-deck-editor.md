@@ -77,7 +77,7 @@ Mode is derived from two inputs — whether a draft exists and whether the inter
  Init Display    Init Display
 ```
 
-(*) Apply triggers the diff/commit procedure defined in a follow-on spec. From this spec's perspective, Apply is a callback that receives the current draft text. On success, the draft is cleared. The resulting mode depends on whether the list now has instances.
+(*) Apply triggers the import/diff/commit pipeline defined in Spec 109. From this spec's perspective, Apply is a callback that receives the current draft text. On success, the draft is cleared. The resulting mode depends on whether the list now has instances.
 
 **Init → Edit:** The user types or pastes into the empty textarea. A draft is created, `localStorage` caching begins, and the toolbar shows Apply/Revert. The placeholder text disappears.
 
@@ -207,9 +207,9 @@ interface DeckEditorProps {
 
 ## Out of Scope
 
-- **Diff calculation** (+M cards, -N cards, ~K modified) — follow-on spec.
-- **Apply/commit procedure** (parsing draft, computing delta, writing to IndexedDB) — follow-on spec.
-- **Confirmation modal** — part of the apply flow, follow-on spec.
+- **Diff calculation** (+M cards, -N cards, ~K modified) — Spec 109 § 5.
+- **Apply/commit procedure** (parsing draft, computing delta, writing to IndexedDB) — Spec 109 §§ 4, 7.
+- **Confirmation modal** — Spec 109 § 6.
 - **Fuzzy matching / auto-correction** for card names.
 - **Serializer implementations** — this spec defines the interface; individual format serializers are implemented separately.
 - **Tag editing UX**, zone drag-and-drop, or structural editing beyond text.
