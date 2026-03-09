@@ -126,7 +126,7 @@ export default function DeckEditor(props: {
   const [debouncedDraft, setDebouncedDraft] = createSignal<string>('')
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-  let hlRef: HTMLDivElement | null = null
+  let textareaRef: HTMLTextAreaElement | null = null
 
   // Restore draft from localStorage on mount
   onMount(() => {
@@ -170,6 +170,21 @@ export default function DeckEditor(props: {
   // Notify parent when draft active state changes
   createEffect(() => {
     props.onDraftActiveChange?.(draftText() !== null)
+  })
+
+  // Auto-grow textarea to fit content so it never scrolls (keeps overlay in sync)
+  createEffect(() => {
+    textareaValue()
+    const el = textareaRef
+    if (!el) return
+    const resize = () => {
+      el.style.minHeight = '0'
+      el.style.height = '0'
+      el.style.height = `${Math.max(200, el.scrollHeight)}px`
+      el.style.minHeight = '200px'
+    }
+    resize()
+    requestAnimationFrame(resize)
   })
 
   // Derived mode
@@ -228,13 +243,6 @@ export default function DeckEditor(props: {
     return null
   })
 
-  function syncScroll(el: HTMLTextAreaElement) {
-    if (hlRef) {
-      hlRef.scrollTop = el.scrollTop
-      hlRef.scrollLeft = el.scrollLeft
-    }
-  }
-
   function handleInput(e: Event) {
     const el = e.currentTarget as HTMLTextAreaElement
     const value = el.value
@@ -245,11 +253,6 @@ export default function DeckEditor(props: {
       setDebouncedDraft(value)
       debounceTimer = undefined
     }, VALIDATION_DEBOUNCE_MS)
-    syncScroll(el)
-  }
-
-  function handleScroll(e: Event) {
-    syncScroll(e.currentTarget as HTMLTextAreaElement)
   }
 
   function handleEdit() {
@@ -467,12 +470,9 @@ export default function DeckEditor(props: {
         </Show>
       </div>
 
-      {/* Textarea with syntax-highlighting overlay */}
-      <div class="grid overflow-hidden relative rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900">
-        <div
-          ref={(el) => { hlRef = el }}
-          class="hl-layer overflow-auto whitespace-pre-wrap break-words p-3 min-h-[200px]"
-        >
+      {/* Textarea with syntax-highlighting overlay — auto-grows to avoid scroll (keeps overlay in sync) */}
+      <div class="grid overflow-hidden relative rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 overscroll-contain">
+        <div class="hl-layer overflow-hidden whitespace-pre-wrap break-words p-3 min-h-[200px]">
           <ListHighlight
             text={highlightText()}
             validation={highlightValidation()}
@@ -480,9 +480,9 @@ export default function DeckEditor(props: {
           />
         </div>
         <textarea
+          ref={(el) => { textareaRef = el }}
           value={textareaValue()}
           onInput={handleInput}
-          onScroll={handleScroll}
           readOnly={mode() === 'display'}
           placeholder={mode() === 'init' ? 'Paste or type a deck list…\n\n1 Lightning Bolt\n4x Birds of Paradise\n1 Shock (M21) 159' : undefined}
           autocapitalize="none"
@@ -490,7 +490,7 @@ export default function DeckEditor(props: {
           autocorrect="off"
           spellcheck={false}
           rows={10}
-          class={`hl-input w-full bg-transparent p-3 text-sm leading-relaxed font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none resize-y min-h-[200px] ${
+          class={`hl-input w-full bg-transparent p-3 text-sm leading-relaxed font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none overflow-hidden overscroll-contain resize-none min-h-[200px] ${
             mode() === 'display' ? 'cursor-default' : ''
           }`}
         />
