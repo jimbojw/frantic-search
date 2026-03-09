@@ -8,6 +8,8 @@ import {
   serializeMoxfield,
   serializeArchidekt,
   serializeMtggoldfish,
+  importDeckList,
+  diffDeckList,
 } from '@frantic-search/shared'
 import type {
   DisplayColumns,
@@ -116,6 +118,8 @@ export default function DeckEditor(props: {
   const [draftText, setDraftText] = createSignal<string | null>(null)
   const [selectedFormat, setSelectedFormat] = createSignal<DeckFormat>(readFormatFromStorage())
   const [showApplyPopover, setShowApplyPopover] = createSignal(false)
+  const [diffSummary, setDiffSummary] = createSignal<{ additions: number; removals: number } | null>(null)
+  const [applyInProgress, setApplyInProgress] = createSignal(false)
   const [copied, setCopied] = createSignal(false)
 
   // Debounced text for validation
@@ -266,17 +270,37 @@ export default function DeckEditor(props: {
   }
 
   function handleApply() {
+    const text = draftText()
+    if (!text) return
+    const result = importDeckList(text, props.display, props.printingDisplay)
+    const diff = diffDeckList(result.candidates, props.instances)
+    setDiffSummary({ additions: diff.additions.length, removals: diff.removals.length })
     setShowApplyPopover(true)
   }
 
-  function handleApplyOk() {
-    setShowApplyPopover(false)
-    const detected = detectedFormat()
-    if (detected) {
-      setSelectedFormat(detected)
-      writeFormatToStorage(detected)
+  async function handleApplyAccept() {
+    const text = draftText()
+    if (!text) return
+    setApplyInProgress(true)
+    try {
+      const success = await props.onApply(text)
+      if (success) {
+        setShowApplyPopover(false)
+        const detected = detectedFormat()
+        if (detected) {
+          setSelectedFormat(detected)
+          writeFormatToStorage(detected)
+        }
+        handleRevert()
+      }
+    } finally {
+      setApplyInProgress(false)
     }
-    handleRevert()
+  }
+
+  function handleApplyCancel() {
+    setShowApplyPopover(false)
+    setDiffSummary(null)
   }
 
   async function handleCopy() {
@@ -361,19 +385,45 @@ export default function DeckEditor(props: {
               Apply
             </button>
 
-            {/* Placeholder popover */}
             <Show when={showApplyPopover()}>
               <div class="absolute left-0 top-full mt-2 z-50 w-64 p-4 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
-                <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                  Apply is not yet supported.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleApplyOk}
-                  class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  OK
-                </button>
+                <Show when={diffSummary()} keyed>
+                  {(summary) => {
+                    const hasChanges = summary.additions > 0 || summary.removals > 0
+                    return (
+                      <>
+                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-3 space-y-0.5">
+                          <Show when={hasChanges} fallback={<p>No changes</p>}>
+                            <Show when={summary.additions > 0}>
+                              <p class="text-green-700 dark:text-green-400">+{summary.additions} card{summary.additions !== 1 ? 's' : ''}</p>
+                            </Show>
+                            <Show when={summary.removals > 0}>
+                              <p class="text-red-700 dark:text-red-400">&minus;{summary.removals} card{summary.removals !== 1 ? 's' : ''}</p>
+                            </Show>
+                          </Show>
+                        </div>
+                        <div class="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleApplyAccept}
+                            disabled={applyInProgress()}
+                            class="px-3 py-1.5 text-xs font-medium rounded border transition-colors disabled:opacity-50 bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600"
+                          >
+                            {applyInProgress() ? 'Applying\u2026' : 'Accept'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleApplyCancel}
+                            disabled={applyInProgress()}
+                            class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )
+                  }}
+                </Show>
               </div>
             </Show>
           </div>

@@ -53,7 +53,8 @@ function inst(
   oracleId: string,
   listId = "default",
   scryfallId: string | null = null,
-  finish: string | null = null
+  finish: string | null = null,
+  zone: string | null = null
 ): InstanceState {
   return {
     uuid: crypto.randomUUID(),
@@ -61,6 +62,10 @@ function inst(
     scryfall_id: scryfallId,
     finish,
     list_id: listId,
+    zone,
+    tags: [],
+    collection_status: null,
+    variant: null,
   };
 }
 
@@ -303,5 +308,61 @@ describe("serializeMtggoldfish", () => {
     expect(lines).toHaveLength(2);
     expect(lines).toContainEqual("1 Lightning Bolt");
     expect(lines).toContainEqual("1 Lightning Bolt <141> [M21]");
+  });
+});
+
+describe("zone grouping", () => {
+  it("serializeArena emits section headers when zones are present", () => {
+    const instances = [
+      inst("bolt-oracle", "default", null, null, "Deck"),
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+    ];
+    const result = serializeArena(instances, display);
+    expect(result).toBe(
+      "Deck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration"
+    );
+  });
+
+  it("serializeArena omits headers when all instances are zone-less", () => {
+    const instances = [inst("bolt-oracle"), inst("delver-oracle")];
+    const result = serializeArena(instances, display);
+    expect(result).not.toContain("Deck\n");
+    expect(result).toContain("1 Lightning Bolt");
+  });
+
+  it("serializeArena uses 'Deck' for null zone when other zones exist", () => {
+    const instances = [
+      inst("bolt-oracle"),
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+    ];
+    const result = serializeArena(instances, display);
+    expect(result).toContain("Deck\n1 Lightning Bolt");
+    expect(result).toContain(
+      "Sideboard\n1 Delver of Secrets // Insectile Aberration"
+    );
+  });
+
+  it("serializeMoxfield emits section headers with zones", () => {
+    const instances = [
+      inst("bolt-oracle", "default", null, null, "Deck"),
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+    ];
+    const result = serializeMoxfield(instances, display, null);
+    expect(result).toBe(
+      "Deck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration"
+    );
+  });
+
+  it("zone order follows KNOWN_ZONES: null, Deck, Sideboard, Commander", () => {
+    const instances = [
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+      inst("bolt-oracle", "default", null, null, "Commander"),
+      inst("bolt-oracle", "default", null, null, "Deck"),
+    ];
+    const result = serializeArena(instances, display);
+    const sections = result.split("\n\n");
+    expect(sections[0]).toMatch(/^Deck/);
+    expect(sections[1]).toMatch(/^Sideboard/);
+    expect(sections[2]).toMatch(/^Commander/);
   });
 });

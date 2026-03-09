@@ -131,6 +131,10 @@ export function replayInstanceLog(
       const entry = cursor.value as InstanceStateEntry
       if (!result.has(entry.uuid)) {
         const { timestamp: _t, ...state } = entry
+        state.zone ??= null
+        state.tags ??= []
+        state.collection_status ??= null
+        state.variant ??= null
         result.set(entry.uuid, state)
       }
       cursor.continue()

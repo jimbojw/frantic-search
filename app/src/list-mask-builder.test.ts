@@ -8,8 +8,12 @@ import {
   hasPrintingLevelEntries,
   countListEntriesPerCard,
 } from './list-mask-builder'
-import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import type { DisplayColumns, PrintingDisplayColumns, InstanceState } from '@frantic-search/shared'
 import type { MaterializedView } from '@frantic-search/shared'
+
+function inst(partial: Omit<InstanceState, 'zone' | 'tags' | 'collection_status' | 'variant'> & Partial<Pick<InstanceState, 'zone' | 'tags' | 'collection_status' | 'variant'>>): InstanceState {
+  return { zone: null, tags: [], collection_status: null, variant: null, ...partial }
+}
 
 function makeDisplay(): DisplayColumns {
   return {
@@ -148,20 +152,20 @@ describe('buildMasksForList', () => {
     uuids.add(uuid1)
     uuids.add(uuid2)
     view.instancesByList.set('default', uuids)
-    view.instances.set(uuid1, {
+    view.instances.set(uuid1, inst({
       uuid: uuid1,
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
-    view.instances.set(uuid2, {
+    }))
+    view.instances.set(uuid2, inst({
       uuid: uuid2,
       oracle_id: 'oid-sol',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     const { faceMask } = buildMasksForList({
       view,
       listId: 'default',
@@ -179,13 +183,13 @@ describe('buildMasksForList', () => {
     const uuid1 = 'uuid-1'
     uuids.add(uuid1)
     view.instancesByList.set('default', uuids)
-    view.instances.set(uuid1, {
+    view.instances.set(uuid1, inst({
       uuid: uuid1,
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-b',
       finish: 'foil',
       list_id: 'default',
-    })
+    }))
     const { faceMask, printingMask } = buildMasksForList({
       view,
       listId: 'default',
@@ -207,13 +211,13 @@ describe('buildMasksForList', () => {
     const uuid1 = 'uuid-1'
     uuids.add(uuid1)
     view.instancesByList.set('default', uuids)
-    view.instances.set(uuid1, {
+    view.instances.set(uuid1, inst({
       uuid: uuid1,
       oracle_id: 'unknown-oid',
       scryfall_id: 'p-b',
       finish: 'foil',
       list_id: 'default',
-    })
+    }))
     const { faceMask, printingMask } = buildMasksForList({
       view,
       listId: 'default',
@@ -237,20 +241,20 @@ describe('buildMasksForList', () => {
     uuids.add(uuid1)
     uuids.add(uuid2)
     view.instancesByList.set('default', uuids)
-    view.instances.set(uuid1, {
+    view.instances.set(uuid1, inst({
       uuid: uuid1,
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
-    view.instances.set(uuid2, {
+    }))
+    view.instances.set(uuid2, inst({
       uuid: uuid2,
       oracle_id: 'oid-sol',
       scryfall_id: 'p-c',
       finish: 'nonfoil',
       list_id: 'default',
-    })
+    }))
     const { faceMask, printingMask } = buildMasksForList({
       view,
       listId: 'default',
@@ -271,13 +275,13 @@ describe('buildMasksForList', () => {
     const uuid1 = 'uuid-1'
     uuids.add(uuid1)
     view.instancesByList.set('default', uuids)
-    view.instances.set(uuid1, {
+    view.instances.set(uuid1, inst({
       uuid: uuid1,
       oracle_id: 'unknown-oid',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     const { faceMask } = buildMasksForList({
       view,
       listId: 'default',
@@ -303,13 +307,13 @@ describe('getMatchingCount', () => {
     const uuids = new Set<string>()
     uuids.add('uuid-1')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     expect(getMatchingCount(view, 'other', 'oid-bolt')).toBe(0)
   })
 
@@ -319,20 +323,20 @@ describe('getMatchingCount', () => {
     uuids.add('uuid-1')
     uuids.add('uuid-2')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
-    view.instances.set('uuid-2', {
+    }))
+    view.instances.set('uuid-2', inst({
       uuid: 'uuid-2',
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     expect(getMatchingCount(view, 'default', 'oid-bolt')).toBe(2)
     expect(getMatchingCount(view, 'default', 'oid-sol')).toBe(0)
   })
@@ -342,13 +346,13 @@ describe('getMatchingCount', () => {
     const uuids = new Set<string>()
     uuids.add('uuid-1')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-a',
       finish: 'nonfoil',
       list_id: 'default',
-    })
+    }))
     expect(getMatchingCount(view, 'default', 'oid-bolt')).toBe(0)
   })
 
@@ -358,20 +362,20 @@ describe('getMatchingCount', () => {
     uuids.add('uuid-1')
     uuids.add('uuid-2')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-a',
       finish: 'nonfoil',
       list_id: 'default',
-    })
-    view.instances.set('uuid-2', {
+    }))
+    view.instances.set('uuid-2', inst({
       uuid: 'uuid-2',
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-a',
       finish: 'nonfoil',
       list_id: 'default',
-    })
+    }))
     expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(2)
     expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-b', 'foil')).toBe(0)
     expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'foil')).toBe(0)
@@ -382,13 +386,13 @@ describe('getMatchingCount', () => {
     const uuids = new Set<string>()
     uuids.add('uuid-1')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(0)
   })
 })
@@ -405,13 +409,13 @@ describe('hasPrintingLevelEntries', () => {
     const uuids = new Set<string>()
     uuids.add('uuid-1')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: null,
       finish: null,
       list_id: 'default',
-    })
+    }))
     expect(hasPrintingLevelEntries(view, 'default')).toBe(false)
   })
 
@@ -420,13 +424,13 @@ describe('hasPrintingLevelEntries', () => {
     const uuids = new Set<string>()
     uuids.add('uuid-1')
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', {
+    view.instances.set('uuid-1', inst({
       uuid: 'uuid-1',
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-a',
       finish: 'nonfoil',
       list_id: 'default',
-    })
+    }))
     expect(hasPrintingLevelEntries(view, 'default')).toBe(true)
   })
 })
@@ -443,9 +447,9 @@ describe('countListEntriesPerCard', () => {
     const view = makeView()
     const uuids = new Set<string>(['uuid-1', 'uuid-2', 'uuid-3'])
     view.instancesByList.set('default', uuids)
-    view.instances.set('uuid-1', { uuid: 'uuid-1', oracle_id: 'oid-bolt', scryfall_id: null, finish: null, list_id: 'default' })
-    view.instances.set('uuid-2', { uuid: 'uuid-2', oracle_id: 'oid-bolt', scryfall_id: 'p-a', finish: 'nonfoil', list_id: 'default' })
-    view.instances.set('uuid-3', { uuid: 'uuid-3', oracle_id: 'oid-sol', scryfall_id: null, finish: null, list_id: 'default' })
+    view.instances.set('uuid-1', inst({ uuid: 'uuid-1', oracle_id: 'oid-bolt', scryfall_id: null, finish: null, list_id: 'default' }))
+    view.instances.set('uuid-2', inst({ uuid: 'uuid-2', oracle_id: 'oid-bolt', scryfall_id: 'p-a', finish: 'nonfoil', list_id: 'default' }))
+    view.instances.set('uuid-3', inst({ uuid: 'uuid-3', oracle_id: 'oid-sol', scryfall_id: null, finish: null, list_id: 'default' }))
     const oracleMap = buildOracleToCanonicalFaceMap(makeDisplay())
     const result = countListEntriesPerCard(view, 'default', oracleMap)
     expect(result.get(0)).toBe(2)

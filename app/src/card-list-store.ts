@@ -157,17 +157,27 @@ export class CardListStore {
   async addInstance(
     oracleId: string,
     listId: string,
-    scryfallId: string | null = null,
-    finish: string | null = null
+    opts?: {
+      scryfallId?: string | null
+      finish?: string | null
+      zone?: string | null
+      tags?: string[]
+      collection_status?: string | null
+      variant?: string | null
+    }
   ): Promise<InstanceState> {
     if (!this.db) throw new Error('CardListStore not initialized')
     const uuid = crypto.randomUUID()
     const instance: InstanceState = {
       uuid,
       oracle_id: oracleId,
-      scryfall_id: scryfallId,
-      finish,
+      scryfall_id: opts?.scryfallId ?? null,
+      finish: opts?.finish ?? null,
       list_id: listId,
+      zone: opts?.zone ?? null,
+      tags: opts?.tags ?? [],
+      collection_status: opts?.collection_status ?? null,
+      variant: opts?.variant ?? null,
     }
     const entry: InstanceStateEntry = { ...instance, timestamp: Date.now() }
     await appendInstanceEntry(this.db, entry)

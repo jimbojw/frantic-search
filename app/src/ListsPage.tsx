@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createMemo, createSignal } from 'solid-js'
 import type { DisplayColumns, InstanceState, PrintingDisplayColumns } from '@frantic-search/shared'
-import { DEFAULT_LIST_ID } from '@frantic-search/shared'
+import { DEFAULT_LIST_ID, importDeckList, diffDeckList } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
 import DeckEditor from './DeckEditor'
 
@@ -36,7 +36,36 @@ export default function ListsPage(props: {
     return props.cardListStore.getView().lists.get(listId()) ?? null
   })
 
-  async function handleApply(_draftText: string): Promise<boolean> {
+  async function handleApply(draftText: string): Promise<boolean> {
+    const result = importDeckList(draftText, props.display, props.printingDisplay)
+    const currentInstances = instances()
+    const diff = diffDeckList(result.candidates, currentInstances)
+
+    for (const inst of diff.removals) {
+      await props.cardListStore.removeToTrash(inst.uuid)
+    }
+
+    for (const cand of diff.additions) {
+      await props.cardListStore.addInstance(cand.oracle_id, listId(), {
+        scryfallId: cand.scryfall_id,
+        finish: cand.finish,
+        zone: cand.zone,
+        tags: cand.tags,
+        collection_status: cand.collection_status,
+        variant: cand.variant,
+      })
+    }
+
+    if (result.deckName || Object.keys(result.tagColors).length > 0) {
+      const meta = metadata()
+      await props.cardListStore.updateListMetadata(listId(), {
+        name: result.deckName ?? meta?.name ?? 'My List',
+        ...(meta?.description ? { description: meta.description } : {}),
+        ...(meta?.short_name ? { short_name: meta.short_name } : {}),
+        ...(Object.keys(result.tagColors).length > 0 ? { tag_colors: result.tagColors } : {}),
+      })
+    }
+
     return true
   }
 

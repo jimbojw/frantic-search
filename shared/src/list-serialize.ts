@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { InstanceState } from "./card-list";
+import { KNOWN_ZONES } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
 /**
@@ -112,8 +113,61 @@ function aggregateInstances(
   return entries;
 }
 
+interface ZoneGroup {
+  zone: string | null;
+  entries: AggregatedEntry[];
+}
+
+const ZONE_ORDER: readonly string[] = KNOWN_ZONES;
+
+function zoneSort(a: string | null, b: string | null): number {
+  const ai = a ? ZONE_ORDER.indexOf(a) : -1;
+  const bi = b ? ZONE_ORDER.indexOf(b) : -1;
+  const aOrder = ai >= 0 ? ai : (a === null ? -1 : ZONE_ORDER.length);
+  const bOrder = bi >= 0 ? bi : (b === null ? -1 : ZONE_ORDER.length);
+  return aOrder - bOrder;
+}
+
+/**
+ * Group instances by zone, then aggregate each zone group.
+ * Returns zone groups in KNOWN_ZONES order, with null (implicit main) first.
+ */
+function groupByZone(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): ZoneGroup[] {
+  const byZone = new Map<string | null, InstanceState[]>();
+  for (const inst of instances) {
+    const zone = inst.zone ?? null;
+    let arr = byZone.get(zone);
+    if (!arr) {
+      arr = [];
+      byZone.set(zone, arr);
+    }
+    arr.push(inst);
+  }
+
+  const zones = [...byZone.keys()].sort(zoneSort);
+  return zones.map((zone) => ({
+    zone,
+    entries: aggregateInstances(byZone.get(zone)!, display, printingDisplay),
+  }));
+}
+
+/**
+ * Whether zone headers should be emitted.
+ * Skip headers when all instances are in a single zone group of null (no zone metadata).
+ */
+function needsZoneHeaders(groups: ZoneGroup[]): boolean {
+  if (groups.length === 0) return false;
+  if (groups.length === 1 && groups[0]!.zone === null) return false;
+  return true;
+}
+
 /**
  * Serialize instances in Arena format: `quantity cardname`
+ * Groups by zone with section headers (Deck, Sideboard, Commander, etc.)
  */
 export function serializeArena(
   instances: InstanceState[],
@@ -121,13 +175,28 @@ export function serializeArena(
 ): string {
   if (instances.length === 0) return "";
 
-  const entries = aggregateInstances(instances, display, null);
-  return entries.map((e) => `${e.quantity} ${e.name}`).join("\n");
+  const groups = groupByZone(instances, display, null);
+  const showHeaders = needsZoneHeaders(groups);
+  const sections: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const lines: string[] = [];
+    if (showHeaders) {
+      lines.push(zone ?? "Deck");
+    }
+    for (const e of entries) {
+      lines.push(`${e.quantity} ${e.name}`);
+    }
+    sections.push(lines.join("\n"));
+  }
+
+  return sections.join("\n\n");
 }
 
 /**
  * Serialize instances in Moxfield format: `quantity cardname (SET) collector [*F*|*E*]`
  * Falls back to name-only when printing data is unavailable.
+ * Uses section headers for zones (Sideboard becomes "SIDEBOARD:" per Moxfield convention).
  */
 export function serializeMoxfield(
   instances: InstanceState[],
@@ -136,23 +205,34 @@ export function serializeMoxfield(
 ): string {
   if (instances.length === 0) return "";
 
-  const entries = aggregateInstances(instances, display, printingDisplay);
-  return entries
-    .map((e) => {
+  const groups = groupByZone(instances, display, printingDisplay);
+  const showHeaders = needsZoneHeaders(groups);
+  const sections: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const lines: string[] = [];
+    if (showHeaders) {
+      lines.push(zone ?? "Deck");
+    }
+    for (const e of entries) {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` (${e.setCode.toUpperCase()}) ${e.collectorNumber}`;
       }
       if (e.finish === "foil") line += " *F*";
       else if (e.finish === "etched") line += " *E*";
-      return line;
-    })
-    .join("\n");
+      lines.push(line);
+    }
+    sections.push(lines.join("\n"));
+  }
+
+  return sections.join("\n\n");
 }
 
 /**
  * Serialize instances in Archidekt format: `quantityx cardname (set) collector`
  * Lowercase set codes, x suffix on quantity, no finish markers.
+ * Groups by zone with section headers.
  */
 export function serializeArchidekt(
   instances: InstanceState[],
@@ -161,21 +241,32 @@ export function serializeArchidekt(
 ): string {
   if (instances.length === 0) return "";
 
-  const entries = aggregateInstances(instances, display, printingDisplay);
-  return entries
-    .map((e) => {
+  const groups = groupByZone(instances, display, printingDisplay);
+  const showHeaders = needsZoneHeaders(groups);
+  const sections: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const lines: string[] = [];
+    if (showHeaders) {
+      lines.push(zone ?? "Deck");
+    }
+    for (const e of entries) {
       let line = `${e.quantity}x ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` (${e.setCode.toLowerCase()}) ${e.collectorNumber}`;
       }
-      return line;
-    })
-    .join("\n");
+      lines.push(line);
+    }
+    sections.push(lines.join("\n"));
+  }
+
+  return sections.join("\n\n");
 }
 
 /**
  * Serialize instances in MTGGoldfish format: `quantity cardname <collector> [SET] (F|E)?`
  * Uses collector number as variant. Uppercase set codes in square brackets.
+ * Groups by zone with section headers.
  */
 export function serializeMtggoldfish(
   instances: InstanceState[],
@@ -184,16 +275,26 @@ export function serializeMtggoldfish(
 ): string {
   if (instances.length === 0) return "";
 
-  const entries = aggregateInstances(instances, display, printingDisplay);
-  return entries
-    .map((e) => {
+  const groups = groupByZone(instances, display, printingDisplay);
+  const showHeaders = needsZoneHeaders(groups);
+  const sections: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const lines: string[] = [];
+    if (showHeaders) {
+      lines.push(zone ?? "Deck");
+    }
+    for (const e of entries) {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` <${e.collectorNumber}> [${e.setCode.toUpperCase()}]`;
       }
       if (e.finish === "foil") line += " (F)";
       else if (e.finish === "etched") line += " (E)";
-      return line;
-    })
-    .join("\n");
+      lines.push(line);
+    }
+    sections.push(lines.join("\n"));
+  }
+
+  return sections.join("\n\n");
 }

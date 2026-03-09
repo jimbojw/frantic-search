@@ -507,7 +507,7 @@ export default function CardDetail(props: {
                                           const oid = oracleId()
                                           const scryfallId = pcols().scryfall_ids[pi]
                                           const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
-                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                         }}
                                         onRemove={() => {
                                           const store = props.cardListStore!
@@ -551,7 +551,7 @@ export default function CardDetail(props: {
                                       const oid = oracleId()
                                       const scryfallId = pcols().scryfall_ids[pidx]
                                       const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
-                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                     }}
                                     onRemove={() => {
                                       const store = props.cardListStore!

@@ -1,6 +1,6 @@
 # Spec 109: Deck-Aware Instance Model and Import/Apply Pipeline
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea), Spec 110 (Hybrid Deck Editor)
 

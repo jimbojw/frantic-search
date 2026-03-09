@@ -1,6 +1,6 @@
 # Spec 110: Hybrid Import/Export Deck Editor
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea), Spec 109 (Deck Instance Model)
 
