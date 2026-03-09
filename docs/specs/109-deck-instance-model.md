@@ -190,7 +190,7 @@ This intentional duplication (zone echoes information also in tags) means:
 - `zone` is the normalized, query-friendly field for structural organization.
 - `tags` is the verbatim, round-trip-safe field for export fidelity.
 
-When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). When exporting to Arena format, `zone` drives the section headers.
+When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). The Archidekt serializer emits `[tags]` and `^collection_status^` when present for round-trip fidelity. When exporting to Arena format, `zone` drives the section headers.
 
 #### Collection status storage
 

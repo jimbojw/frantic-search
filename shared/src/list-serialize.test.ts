@@ -54,7 +54,8 @@ function inst(
   listId = "default",
   scryfallId: string | null = null,
   finish: string | null = null,
-  zone: string | null = null
+  zone: string | null = null,
+  opts?: { tags?: string[]; collection_status?: string | null }
 ): InstanceState {
   return {
     uuid: crypto.randomUUID(),
@@ -63,8 +64,8 @@ function inst(
     finish,
     list_id: listId,
     zone,
-    tags: [],
-    collection_status: null,
+    tags: opts?.tags ?? [],
+    collection_status: opts?.collection_status ?? null,
     variant: null,
   };
 }
@@ -244,6 +245,49 @@ describe("serializeArchidekt", () => {
     expect(lines).toHaveLength(2);
     expect(lines).toContainEqual("1x Lightning Bolt (m21) 141");
     expect(lines).toContainEqual("1x Lightning Bolt (2xm) 141");
+  });
+
+  it("includes category bracket and collection status when present", () => {
+    const i = inst("bolt-oracle", "default", null, null, null, {
+      tags: ["Ramp"],
+      collection_status: "Have,#37d67a",
+    });
+    const result = serializeArchidekt([i], display, null);
+    expect(result).toBe("1x Lightning Bolt [Ramp] ^Have,#37d67a^");
+  });
+
+  it("includes multiple categories in bracket", () => {
+    const i = inst("bolt-oracle", "default", null, null, null, {
+      tags: ["Control", "Removal"],
+      collection_status: "Don't Have,#f47373",
+    });
+    const result = serializeArchidekt([i], display, null);
+    expect(result).toBe("1x Lightning Bolt [Control, Removal] ^Don't Have,#f47373^");
+  });
+
+  it("includes category tag with modifier", () => {
+    const i = inst("bolt-oracle", "default", null, null, null, {
+      tags: ["Commander{top}"],
+    });
+    const result = serializeArchidekt([i], display, null);
+    expect(result).toBe("1x Lightning Bolt [Commander{top}]");
+  });
+
+  it("separates lines for same card with different tags", () => {
+    const instances = [
+      inst("bolt-oracle", "default", null, null, null, { tags: ["Ramp"] }),
+      inst("bolt-oracle", "default", null, null, null, { tags: ["Removal"] }),
+    ];
+    const result = serializeArchidekt(instances, display, null);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1x Lightning Bolt [Ramp]");
+    expect(lines).toContainEqual("1x Lightning Bolt [Removal]");
+  });
+
+  it("omits tags and collection_status when absent (backward compatible)", () => {
+    const result = serializeArchidekt([inst("bolt-oracle")], display, null);
+    expect(result).toBe("1x Lightning Bolt");
   });
 });
 

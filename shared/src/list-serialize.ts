@@ -45,6 +45,10 @@ interface AggregatedEntry {
   setCode: string | null;
   collectorNumber: string | null;
   finish: string | null;
+  /** Archidekt: bracket categories e.g. [Ramp], [Control, Removal] */
+  tags?: string[];
+  /** Archidekt: collection status e.g. ^Have,#37d67a^ */
+  collection_status?: string | null;
 }
 
 type GroupKey = string;
@@ -52,24 +56,45 @@ type GroupKey = string;
 function groupKey(
   oracleId: string,
   scryfallId: string | null,
-  finish: string | null
+  finish: string | null,
+  tags?: string[],
+  collectionStatus?: string | null
 ): GroupKey {
-  return `${oracleId}\0${scryfallId ?? ""}\0${finish ?? ""}`;
+  const base = `${oracleId}\0${scryfallId ?? ""}\0${finish ?? ""}`;
+  if (tags !== undefined && collectionStatus !== undefined) {
+    return `${base}\0${tags.join("\x01")}\0${collectionStatus ?? ""}`;
+  }
+  return base;
+}
+
+interface AggregateOptions {
+  preserveTagsAndStatus?: boolean;
 }
 
 function aggregateInstances(
   instances: InstanceState[],
   display: DisplayColumns,
-  printingDisplay: PrintingDisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null,
+  options?: AggregateOptions
 ): AggregatedEntry[] {
+  const preserve = options?.preserveTagsAndStatus ?? false;
   const groups = new Map<
     GroupKey,
-    { oracleId: string; scryfallId: string | null; finish: string | null; count: number }
+    {
+      oracleId: string;
+      scryfallId: string | null;
+      finish: string | null;
+      count: number;
+      tags?: string[];
+      collection_status?: string | null;
+    }
   >();
   const order: GroupKey[] = [];
 
   for (const inst of instances) {
-    const key = groupKey(inst.oracle_id, inst.scryfall_id, inst.finish);
+    const key = preserve
+      ? groupKey(inst.oracle_id, inst.scryfall_id, inst.finish, inst.tags, inst.collection_status)
+      : groupKey(inst.oracle_id, inst.scryfall_id, inst.finish);
     const existing = groups.get(key);
     if (existing) {
       existing.count++;
@@ -79,6 +104,10 @@ function aggregateInstances(
         scryfallId: inst.scryfall_id,
         finish: inst.finish,
         count: 1,
+        ...(preserve && {
+          tags: inst.tags,
+          collection_status: inst.collection_status,
+        }),
       });
       order.push(key);
     }
@@ -106,6 +135,8 @@ function aggregateInstances(
       setCode,
       collectorNumber,
       finish: g.finish,
+      ...(preserve && g.tags !== undefined && { tags: g.tags }),
+      ...(preserve && "collection_status" in g && { collection_status: g.collection_status }),
     });
   }
 
@@ -128,6 +159,10 @@ function zoneSort(a: string | null, b: string | null): number {
   return aOrder - bOrder;
 }
 
+interface GroupByZoneOptions {
+  preserveTagsAndStatus?: boolean;
+}
+
 /**
  * Group instances by zone, then aggregate each zone group.
  * Returns zone groups in KNOWN_ZONES order, with null (implicit main) first.
@@ -135,7 +170,8 @@ function zoneSort(a: string | null, b: string | null): number {
 function groupByZone(
   instances: InstanceState[],
   display: DisplayColumns,
-  printingDisplay: PrintingDisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null,
+  options?: GroupByZoneOptions
 ): ZoneGroup[] {
   const byZone = new Map<string | null, InstanceState[]>();
   for (const inst of instances) {
@@ -151,7 +187,7 @@ function groupByZone(
   const zones = [...byZone.keys()].sort(zoneSort);
   return zones.map((zone) => ({
     zone,
-    entries: aggregateInstances(byZone.get(zone)!, display, printingDisplay),
+    entries: aggregateInstances(byZone.get(zone)!, display, printingDisplay, options),
   }));
 }
 
@@ -230,8 +266,9 @@ export function serializeMoxfield(
 }
 
 /**
- * Serialize instances in Archidekt format: `quantityx cardname (set) collector`
+ * Serialize instances in Archidekt format: `quantityx cardname (set) collector [tags] ^status^`
  * Lowercase set codes, x suffix on quantity, no finish markers.
+ * Includes bracket categories and collection status when present for round-trip fidelity.
  * Groups by zone with section headers.
  */
 export function serializeArchidekt(
@@ -241,7 +278,9 @@ export function serializeArchidekt(
 ): string {
   if (instances.length === 0) return "";
 
-  const groups = groupByZone(instances, display, printingDisplay);
+  const groups = groupByZone(instances, display, printingDisplay, {
+    preserveTagsAndStatus: true,
+  });
   const showHeaders = needsZoneHeaders(groups);
   const sections: string[] = [];
 
@@ -254,6 +293,12 @@ export function serializeArchidekt(
       let line = `${e.quantity}x ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` (${e.setCode.toLowerCase()}) ${e.collectorNumber}`;
+      }
+      if (e.tags && e.tags.length > 0) {
+        line += ` [${e.tags.join(", ")}]`;
+      }
+      if (e.collection_status) {
+        line += ` ^${e.collection_status}^`;
       }
       lines.push(line);
     }
