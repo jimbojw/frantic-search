@@ -6,7 +6,7 @@
 
 ## Goal
 
-Extend the Spec 075 Instance data model with `zone`, `tags`, and `collection_status` fields so that imported deck lists from Arena, Moxfield, and Archidekt can be represented without information loss. Define the import procedure that maps Spec 108 lexer/validator output into Instances.
+Extend the Spec 075 Instance data model with `zone`, `tags`, `collection_status`, and `variant` fields so that imported deck lists from Arena, Moxfield, Archidekt, and MTGGoldfish can be represented without information loss. Define the import procedure that maps Spec 108 lexer/validator output into Instances.
 
 ## Background
 
@@ -15,14 +15,15 @@ Spec 075 defines an append-only log of `InstanceStateEntry` records. Each Instan
 - **Arena** exports use section headers (`Deck`, `Sideboard`, `Commander`) to organize cards into zones.
 - **Moxfield** exports use `SIDEBOARD:` headers and foil/alter/etched markers (`*F*`, `*A*`, `*E*`).
 - **Archidekt** exports use bracket categories (`[Ramp]`, `[Commander{top}]`, `[Maybeboard{noDeck}{noPrice},Proliferate]`) and collection status markers (`^Have,#37d67a^`).
+- **MTGGoldfish** "Exact Card Versions" exports use `<variant>` angle brackets (e.g. `<prerelease>`, `<extended>`, `<251>`), `[SET]` square brackets, and `(F)` / `(E)` finish markers. The variant string identifies a specific product variant that may or may not correspond to a distinct Scryfall printing.
 
-Spec 108 implemented a lexer and validator that tokenize all of these formats. This spec defines what happens after parsing: how tokens map to Instance fields and how the data model accommodates them.
+Spec 108 implemented a lexer and validator that tokenize all of these formats, including variant fallback resolution for known MTGGoldfish variants that lack distinct Scryfall printings (see Spec 108 § "Validation rules" rule 5). This spec defines what happens after parsing: how tokens map to Instance fields and how the data model accommodates them.
 
 ## Design
 
 ### 1. Updated InstanceState
 
-Add three new fields to `InstanceState`. Like `list_id`, these are mutable — each append-only log entry carries the full state.
+Add four new fields to `InstanceState`. Like `list_id`, these are mutable — each append-only log entry carries the full state.
 
 ```typescript
 interface InstanceState {
@@ -34,6 +35,7 @@ interface InstanceState {
   zone: string | null
   tags: string[]
   collection_status: string | null
+  variant: string | null
 }
 ```
 
@@ -42,8 +44,9 @@ interface InstanceState {
 | `zone` | string \| null | Mutually exclusive deck zone. One of the known zone names (see below), or null (implicit main deck). Derived from section headers or recognized primary bracket categories. |
 | `tags` | string[] | Verbatim bracket content from imports. Each comma-separated segment within `[...]` becomes one entry. Includes modifiers (e.g. `"Commander{top}"`, `"Maybeboard{noDeck}{noPrice}"`). Open-ended, multiple per Instance. |
 | `collection_status` | string \| null | Verbatim Archidekt `^...^` inner content including color (e.g. `"Have,#37d67a"`, `"Don't Have,#f47373"`). Null when not present. |
+| `variant` | string \| null | Verbatim MTGGoldfish variant string from `<...>` (e.g. `"prerelease"`, `"extended"`, `"251"`, `"Shadowmoor - borderless"`). Null when not present (Moxfield, Arena, Archidekt formats have no variant). Stored for round-trip fidelity: a future export to MTGGoldfish format can reconstruct the `<variant>` bracket from this field. The `scryfall_id` may point to an approximate match when the variant is a known MTGGoldfish variation without a distinct Scryfall printing (see Spec 108 § variant fallback). |
 
-Old log entries without these fields are treated as `zone: null`, `tags: []`, `collection_status: null` during materialized view replay. No IndexedDB schema migration required (additive change per Spec 075 § "Schema evolution").
+Old log entries without these fields are treated as `zone: null`, `tags: []`, `collection_status: null`, `variant: null` during materialized view replay. No IndexedDB schema migration required (additive change per Spec 075 § "Schema evolution").
 
 ### 2. Updated ListMetadata
 
@@ -84,7 +87,7 @@ The import procedure consumes the output of `lexDeckList()` and `validateDeckLis
 #### Input
 
 - Lexer tokens from `lexDeckList(text)` — full-document token stream.
-- Validation result from `validateDeckList(text, display, printingDisplay)` — resolved `ParsedEntry[]` with oracle_id and optional scryfall_id.
+- Validation result from `validateDeckList(text, display, printingDisplay)` — resolved `ParsedEntry[]` with oracle_id, optional scryfall_id, optional finish (`"foil" | "etched" | null`), and optional variant (verbatim `<...>` content from MTGGoldfish format). Lines with `kind: "error"` have no resolved entry. Lines with `kind: "warning"` (approximate variant resolution) have valid resolved entries and should be imported normally.
 
 #### State machine
 
@@ -107,8 +110,10 @@ for each line:
     skip to next line
 
   if card line (has QUANTITY + CARD_NAME tokens):
-    resolve oracle_id, scryfall_id from validation result
-    if card not resolved (unknown card): skip line
+    resolve oracle_id, scryfall_id, finish, variant from validation result (ParsedEntry)
+    if card not resolved (unknown card / error line): skip line
+    note: warning lines (kind: "warning", e.g. approximate variant resolution) ARE imported —
+      they have valid ParsedEntry data with a best-effort scryfall_id
 
     determine zone:
       1. If CATEGORY token's primary segment matches KNOWN_ZONES → use it
@@ -130,9 +135,13 @@ for each line:
       if collection status has text + color, record mapping in tag_colors accumulator
 
     determine finish:
-      if FOIL_MARKER → "foil"
-      if ETCHED_MARKER → "etched"
-      else → null (or from printing resolution)
+      use ParsedEntry.finish which already resolves both Moxfield markers (*F*, *E*)
+      and MTGGoldfish markers ((F), (E)):
+        "foil" | "etched" | null
+
+    determine variant:
+      use ParsedEntry.variant — verbatim content of <...> from MTGGoldfish format
+      null for Moxfield/Arena/Archidekt lines (no VARIANT token)
 
     determine quantity:
       parse QUANTITY value, strip trailing "x"
@@ -147,6 +156,7 @@ for each line:
         zone: determined zone
         tags: built tags[]
         collection_status: built collection_status
+        variant: determined variant
         timestamp: Date.now()
 ```
 
@@ -216,7 +226,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 ### 6. Relationship to Existing Specs
 
 - **Spec 075** remains the authority on append-only log mechanics, IndexedDB storage, BroadcastChannel protocol, and materialized view derivation. This spec extends the `InstanceState` and `ListMetadata` types with additive fields. Spec 075's statement "Only `list_id` mutates" is broadened: `zone`, `tags`, and `collection_status` are also mutable via log appends.
-- **Spec 108** remains the authority on deck list parsing (lexer, validator, syntax highlighting). This spec consumes the lexer/validator output and defines what happens after parsing.
+- **Spec 108** remains the authority on deck list parsing (lexer, validator, syntax highlighting), including MTGGoldfish variant resolution and fallback. This spec consumes the lexer/validator output (including `ParsedEntry.variant` and `ParsedEntry.finish`) and defines what happens after parsing. The `variant` field on `InstanceState` preserves the verbatim MTGGoldfish variant string for round-trip fidelity.
 - **Spec 076** (Worker Protocol List Cache) will need to be aware of the new fields when building bitmasks for `my:` queries. No changes required until tag query support is implemented.
 
 ## Out of Scope
@@ -229,7 +239,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 
 ## Acceptance Criteria
 
-1. `InstanceState` in `shared/src/card-list.ts` includes `zone`, `tags`, and `collection_status` fields.
+1. `InstanceState` in `shared/src/card-list.ts` includes `zone`, `tags`, `collection_status`, and `variant` fields.
 2. `ListMetadata` in `shared/src/card-list.ts` includes optional `tag_colors` field.
 3. `KNOWN_ZONES` constant is defined in shared.
 4. Old `InstanceStateEntry` rows without the new fields are handled gracefully during materialized view replay (default to null/empty).
@@ -239,3 +249,6 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 8. Import procedure stores full `^Status,#hex^` content in `collection_status`.
 9. Import procedure extracts status-to-color mappings into `ListMetadata.tag_colors`.
 10. Each quantity unit (e.g. 4x) produces a separate Instance with a unique UUID.
+11. Import procedure stores `ParsedEntry.variant` in `InstanceState.variant` for MTGGoldfish lines; null for other formats.
+12. Import procedure uses `ParsedEntry.finish` for both Moxfield (`*F*`, `*E*`) and MTGGoldfish (`(F)`, `(E)`) finish markers.
+13. Lines with `kind: "warning"` (approximate variant resolution) produce valid Instances with best-effort `scryfall_id` and preserved `variant`.
