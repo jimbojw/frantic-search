@@ -258,6 +258,89 @@ describe("lexDeckList", () => {
     expect(tokens.some((t) => t.type === "COLLECTION_STATUS_TEXT")).toBe(false);
     expect(tokens.some((t) => t.type === "COLLECTION_STATUS_COLOR")).toBe(false);
   });
+
+  test("MTGGoldfish: Island with collector number in angle brackets", () => {
+    const tokens = lexDeckList("6 Island <251> [THB]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "6" },
+      { type: "CARD_NAME", value: "Island" },
+      { type: "VARIANT", value: "251" },
+      { type: "SET_CODE_BRACKET", value: "THB" },
+    ]);
+  });
+
+  test("MTGGoldfish: extended art variant", () => {
+    const tokens = lexDeckList("4 Monument to Endurance <extended> [DFT]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "4" },
+      { type: "CARD_NAME", value: "Monument to Endurance" },
+      { type: "VARIANT", value: "extended" },
+      { type: "SET_CODE_BRACKET", value: "DFT" },
+    ]);
+  });
+
+  test("MTGGoldfish: prerelease with foil marker (F)", () => {
+    const tokens = lexDeckList("4 Spirebluff Canal <prerelease> [OTJ] (F)");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "4" },
+      { type: "CARD_NAME", value: "Spirebluff Canal" },
+      { type: "VARIANT", value: "prerelease" },
+      { type: "SET_CODE_BRACKET", value: "OTJ" },
+      { type: "FOIL_PAREN", value: "(F)" },
+    ]);
+  });
+
+  test("MTGGoldfish: set name - variant format", () => {
+    const tokens = lexDeckList("4 Steam Vents <Shadowmoor - borderless> [ECL]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "4" },
+      { type: "CARD_NAME", value: "Steam Vents" },
+      { type: "VARIANT", value: "Shadowmoor - borderless" },
+      { type: "SET_CODE_BRACKET", value: "ECL" },
+    ]);
+  });
+
+  test("MTGGoldfish MTGO: quantity name [SET] (F) - no variant", () => {
+    const tokens = lexDeckList("2 Disdainful Stroke [KTK] (F)");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "2" },
+      { type: "CARD_NAME", value: "Disdainful Stroke" },
+      { type: "SET_CODE_BRACKET", value: "KTK" },
+      { type: "FOIL_PAREN", value: "(F)" },
+    ]);
+  });
+
+  test("MTGGoldfish MTGO: quantity name [SET] - no modifier", () => {
+    const tokens = lexDeckList("1 Flashfreeze [M10]");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Flashfreeze" },
+      { type: "SET_CODE_BRACKET", value: "M10" },
+    ]);
+    expect(tokens.some((t) => t.type === "FOIL_PAREN")).toBe(false);
+    expect(tokens.some((t) => t.type === "ETCHED_PAREN")).toBe(false);
+  });
+
+  test("MTGGoldfish MTGO: quantity name [SET] (E) - etched", () => {
+    const tokens = lexDeckList("1 Sol Ring [CMM] (E)");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Sol Ring" },
+      { type: "SET_CODE_BRACKET", value: "CMM" },
+      { type: "ETCHED_PAREN", value: "(E)" },
+    ]);
+  });
+
+  test("MTGGoldfish Tabletop: (E) etched modifier with variant", () => {
+    const tokens = lexDeckList("1 Sol Ring <etched> [CMM] (E)");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Sol Ring" },
+      { type: "VARIANT", value: "etched" },
+      { type: "SET_CODE_BRACKET", value: "CMM" },
+      { type: "ETCHED_PAREN", value: "(E)" },
+    ]);
+  });
 });
 
 describe("buildListSpans", () => {
@@ -339,6 +422,22 @@ describe("buildListSpans", () => {
     const colorSpan = spans.find((s) => s.text === "#37d67a");
     expect(statusTextSpan?.role).toBe("collection-status-text");
     expect(colorSpan?.role).toBe("collection-status-color");
+  });
+
+  test("MTGGoldfish line produces variant and set-code spans", () => {
+    const spans = buildListSpans("6 Island <251> [THB]");
+    const variantSpan = spans.find((s) => s.text === "251");
+    const setSpan = spans.find((s) => s.text === "THB");
+    expect(variantSpan?.role).toBe("variant");
+    expect(setSpan?.role).toBe("set-code");
+  });
+
+  test("MTGGoldfish MTGO no-variant produces set-code and foil-marker spans", () => {
+    const spans = buildListSpans("2 Disdainful Stroke [KTK] (F)");
+    const setSpan = spans.find((s) => s.text === "KTK");
+    const foilSpan = spans.find((s) => s.text === "(F)");
+    expect(setSpan?.role).toBe("set-code");
+    expect(foilSpan?.role).toBe("foil-marker");
   });
 
   test("validation error overrides role for overlapping span", () => {

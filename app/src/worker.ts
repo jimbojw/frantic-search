@@ -60,6 +60,9 @@ function extractPrintingDisplayColumns(data: PrintingColumnarData): PrintingDisp
     price_usd: data.price_usd,
     canonical_face_ref: data.canonical_face_ref,
     illustration_id_index: data.illustration_id_index,
+    printing_flags: data.printing_flags,
+    promo_types_flags_0: data.promo_types_flags_0,
+    promo_types_flags_1: data.promo_types_flags_1,
   }
 }
 

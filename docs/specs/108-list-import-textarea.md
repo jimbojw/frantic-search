@@ -56,10 +56,17 @@ Reuse the Spec 053 overlay technique:
 | `COMMENT` | `// Sideboard`, `# notes` | Full line when starts with `//` or `#` |
 | `SECTION` | `// Creatures` | Same as COMMENT for MVP; can distinguish later |
 | `WHITESPACE` | spaces, newlines | Between tokens, preserved for span reconstruction |
+| `VARIANT` | `251`, `extended`, `borderless` | MTGGoldfish: content of `<...>` (collector number or variant) |
+| `SET_CODE_BRACKET` | `THB`, `OTJ` | MTGGoldfish: set code from `[SET]` brackets |
+| `FOIL_PAREN` | `(F)` | MTGGoldfish: foil marker |
+| `ETCHED_PAREN` | `(E)` | MTGGoldfish: etched marker (foil-etched) |
 
 **Line patterns:**
 
 - **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`, optional `^Status,#hex^` (Archidekt collection marker)
+- **MTGGoldfish card line:** quantity, name, `<variant>`, `[SET]`, optional `(F)` or `(E)` — e.g. `6 Island <251> [THB]`, `4 Spirebluff Canal <prerelease> [OTJ] (F)`
+- **MTGGoldfish MTGO / no-variant:** quantity, name, `[SET]`, optional `(F)` or `(E)` — no `<variant>`; e.g. `2 Disdainful Stroke [KTK] (F)`, `1 Flashfreeze [M10]`
+- **MTGGoldfish card line:** try before Moxfield pattern
 - **Section header:** `^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon
 - **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
@@ -84,6 +91,7 @@ Reuse the Spec 053 overlay technique:
 | section-header | `Deck` | `text-sky-600 dark:text-sky-400 font-semibold` |
 | metadata | `Name The Birds...` | `text-slate-600 dark:text-slate-400 italic` |
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
+| variant | `251`, `extended` | `text-slate-600 dark:text-slate-400` |
 | error | invalid spans | `text-red-600 dark:text-red-400 underline decoration-wavy` |
 
 **Output:** `ListHighlightSpan[]` with `{ text, role, start, end }`. A `buildListSpans(text, validationResult?)` function produces spans; when validation is provided, error spans override the default role.
@@ -132,6 +140,8 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-08: Added ETCHED_MARKER for Moxfield `*E*` (etched); section headers allow optional trailing colon (e.g. `SIDEBOARD:`).
 - 2026-03-08: Added SECTION_HEADER and METADATA tokens for Moxfield "Export for Arena" format; section headers (About, Deck, Sideboard, Commander) and Name metadata highlighted.
 - 2026-03-08: Added COLLECTION_STATUS_TEXT and COLLECTION_STATUS_COLOR tokens for Archidekt `^Status,#hex^` collection markers; status text and hex color highlighted in slate.
+- 2026-03-09: Added MTGGoldfish "Exact Card Versions (Tabletop)" support. New tokens: VARIANT (content of `<...>`), SET_CODE_BRACKET (`[SET]`), FOIL_PAREN (`(F)`). Lexer tries MTGGoldfish pattern before Moxfield. Validator resolves variant as collector number (numeric) or by printing_flags/promo_types_flags (extended, borderless, prerelease, etc.). PrintingDisplayColumns extended with printing_flags, promo_types_flags_0, promo_types_flags_1 for variant resolution.
+- 2026-03-09: Added MTGGoldfish MTGO / no-variant format: `quantity name [SET] (F|E)?` without `<variant>`. New token ETCHED_PAREN (`(E)`). Modifiers (F)=foil, (E)=etched per MTGGoldfish CSV (FOIL, FOIL_ETCHED). Lexer only matches no-variant when line lacks Moxfield `(SET) number` pattern to avoid misparsing `[Category]` as `[SET]`.
 
 ## Acceptance Criteria
 

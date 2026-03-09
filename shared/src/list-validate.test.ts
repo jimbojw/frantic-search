@@ -140,4 +140,31 @@ describe("validateDeckList", () => {
     expect(aboutSpan?.role).toBe("section-header");
     expect(nameSpan?.role).toBe("metadata");
   });
+
+  test("MTGGoldfish: numeric variant as collector number resolves", () => {
+    const display = makeDisplay({ names: ["Island", "Forest", "Mountain", "Shock", "Lightning Bolt", "Sol Ring"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["island-thb-251", "forest-dmu-273", "bolt-mh2"],
+      collector_numbers: ["251", "273", "1"],
+      set_codes: ["THB", "DMU", "MH2"],
+      canonical_face_ref: [0, 0, 1],
+    });
+    const result = validateDeckList("6 Island <251> [THB]", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toMatchObject([{ oracle_id: "oid0", scryfall_id: "island-thb-251", quantity: 6, variant: "251" }]);
+  });
+
+  test("MTGGoldfish: extended variant resolves when printing has ExtendedArt flag", () => {
+    const display = makeDisplay({ names: ["Monument", "Shock", "Lightning Bolt", "Sol Ring", "Forest", "Island"] });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["monument-ext", "monument-reg"],
+      collector_numbers: ["1", "2"],
+      set_codes: ["DFT", "DFT"],
+      canonical_face_ref: [0, 0],
+      printing_flags: [128, 0],
+    });
+    const result = validateDeckList("4 Monument <extended> [DFT]", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toMatchObject([{ scryfall_id: "monument-ext", variant: "extended" }]);
+  });
 });

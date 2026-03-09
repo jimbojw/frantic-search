@@ -68,6 +68,12 @@ export type PrintingDisplayColumns = {
   price_usd: number[]
   canonical_face_ref: number[]
   illustration_id_index?: number[]
+  /** Per-row printing flags for variant resolution (MTGGoldfish import). */
+  printing_flags?: number[]
+  /** Per-row promo type flags column 0. */
+  promo_types_flags_0?: number[]
+  /** Per-row promo type flags column 1. */
+  promo_types_flags_1?: number[]
 }
 
 export type FromWorker =

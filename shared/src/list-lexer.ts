@@ -17,6 +17,14 @@ export const ListTokenType = {
   COMMENT: "COMMENT",
   SECTION: "SECTION",
   WHITESPACE: "WHITESPACE",
+  /** MTGGoldfish: content of <...> (collector number or variant). */
+  VARIANT: "VARIANT",
+  /** MTGGoldfish: set code from [SET] brackets. */
+  SET_CODE_BRACKET: "SET_CODE_BRACKET",
+  /** MTGGoldfish: (F) foil marker. */
+  FOIL_PAREN: "FOIL_PAREN",
+  /** MTGGoldfish: (E) etched marker. */
+  ETCHED_PAREN: "ETCHED_PAREN",
 } as const;
 
 export type ListTokenType = (typeof ListTokenType)[keyof typeof ListTokenType];
@@ -43,7 +51,8 @@ export type ListHighlightRole =
   | "section-header"
   | "metadata"
   | "comment"
-  | "error";
+  | "error"
+  | "variant";
 
 export interface ListHighlightSpan {
   text: string;
@@ -67,6 +76,12 @@ export interface ListValidationResult {
 
 const CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
+/** MTGGoldfish Exact Card Versions (Tabletop): Qty Name <variant> [SET] (F|E)? */
+const MTGGOLDFISH_CARD_LINE_RE =
+  /^(\d+x?)\s+(.+?)\s+<([^>]+)>\s+\[([A-Za-z0-9_-]+)\]\s*(?:\((F|E)\))?\s*$/;
+/** MTGGoldfish MTGO / no-variant: Qty Name [SET] (F|E)? — no <variant> angle brackets */
+const MTGGOLDFISH_NO_VARIANT_RE =
+  /^(\d+x?)\s+(.+?)\s+\[([A-Za-z0-9_-]+)\]\s*(?:\((F|E)\))?\s*$/;
 const ARENA_SECTION_HEADER_RE = /^\s*(About|Deck|Sideboard|Commander)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
@@ -110,6 +125,107 @@ function parseLine(line: string, lineStart: number): ListToken[] {
       start: lineStart,
       end: lineStart + trimmed.length,
     });
+    return tokens;
+  }
+
+  // MTGGoldfish Exact Card Versions (Tabletop): try before Moxfield pattern
+  const mtgGoldfishMatch = trimmed.match(MTGGOLDFISH_CARD_LINE_RE);
+  if (mtgGoldfishMatch) {
+    const [, qty, name, variant, setCode, modifier] = mtgGoldfishMatch;
+    const qtyStart = lineStart + trimmed.search(/\d/);
+    tokens.push({
+      type: ListTokenType.QUANTITY,
+      value: qty!,
+      start: qtyStart,
+      end: qtyStart + qty!.length,
+    });
+    const nameStart = lineStart + trimmed.indexOf(name!.trimStart());
+    const nameEnd = nameStart + name!.trim().length;
+    tokens.push({
+      type: ListTokenType.CARD_NAME,
+      value: name!.trim(),
+      start: nameStart,
+      end: nameEnd,
+    });
+    const variantStart = trimmed.indexOf("<" + variant + ">");
+    tokens.push({
+      type: ListTokenType.VARIANT,
+      value: variant!,
+      start: lineStart + variantStart + 1,
+      end: lineStart + variantStart + 1 + variant!.length,
+    });
+    const bracketStart = trimmed.indexOf("[" + setCode + "]");
+    tokens.push({
+      type: ListTokenType.SET_CODE_BRACKET,
+      value: setCode!,
+      start: lineStart + bracketStart + 1,
+      end: lineStart + bracketStart + 1 + setCode!.length,
+    });
+    if (modifier === "F") {
+      const foilStart = trimmed.indexOf("(F)");
+      tokens.push({
+        type: ListTokenType.FOIL_PAREN,
+        value: "(F)",
+        start: lineStart + foilStart,
+        end: lineStart + foilStart + 3,
+      });
+    } else if (modifier === "E") {
+      const etchedStart = trimmed.indexOf("(E)");
+      tokens.push({
+        type: ListTokenType.ETCHED_PAREN,
+        value: "(E)",
+        start: lineStart + etchedStart,
+        end: lineStart + etchedStart + 3,
+      });
+    }
+    return tokens;
+  }
+
+  // MTGGoldfish MTGO / no-variant: quantity name [SET] (F|E)? — only when no Moxfield (SET) number
+  const hasMoxfieldSetNumber = /\s+\([A-Za-z0-9]+\)\s+\S+/.test(trimmed);
+  const mtgGoldfishNoVariantMatch =
+    !hasMoxfieldSetNumber && trimmed.match(MTGGOLDFISH_NO_VARIANT_RE);
+  if (mtgGoldfishNoVariantMatch) {
+    const [, qty, name, setCode, modifier] = mtgGoldfishNoVariantMatch;
+    const qtyStart = lineStart + trimmed.search(/\d/);
+    tokens.push({
+      type: ListTokenType.QUANTITY,
+      value: qty!,
+      start: qtyStart,
+      end: qtyStart + qty!.length,
+    });
+    const nameStart = lineStart + trimmed.indexOf(name!.trimStart());
+    const nameEnd = nameStart + name!.trim().length;
+    tokens.push({
+      type: ListTokenType.CARD_NAME,
+      value: name!.trim(),
+      start: nameStart,
+      end: nameEnd,
+    });
+    const bracketStart = trimmed.indexOf("[" + setCode + "]");
+    tokens.push({
+      type: ListTokenType.SET_CODE_BRACKET,
+      value: setCode!,
+      start: lineStart + bracketStart + 1,
+      end: lineStart + bracketStart + 1 + setCode!.length,
+    });
+    if (modifier === "F") {
+      const foilStart = trimmed.indexOf("(F)");
+      tokens.push({
+        type: ListTokenType.FOIL_PAREN,
+        value: "(F)",
+        start: lineStart + foilStart,
+        end: lineStart + foilStart + 3,
+      });
+    } else if (modifier === "E") {
+      const etchedStart = trimmed.indexOf("(E)");
+      tokens.push({
+        type: ListTokenType.ETCHED_PAREN,
+        value: "(E)",
+        start: lineStart + etchedStart,
+        end: lineStart + etchedStart + 3,
+      });
+    }
     return tokens;
   }
 
@@ -293,6 +409,10 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.COMMENT]: "comment",
   [ListTokenType.SECTION]: "comment",
   [ListTokenType.WHITESPACE]: null,
+  [ListTokenType.VARIANT]: "variant",
+  [ListTokenType.SET_CODE_BRACKET]: "set-code",
+  [ListTokenType.FOIL_PAREN]: "foil-marker",
+  [ListTokenType.ETCHED_PAREN]: "etched-marker",
 };
 
 function spanOverlapsError(
