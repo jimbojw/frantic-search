@@ -356,39 +356,58 @@ export default function DeckEditor(props: {
         </For>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — Revert, Edit, Apply, Copy; always visible, conditionally disabled */}
       <div class="flex items-center gap-1.5 min-h-[32px]">
-        {/* Edit button (Display mode only) */}
-        <Show when={mode() === 'display'}>
+        {/* Revert — enabled in Edit mode */}
+        <button
+          type="button"
+          onClick={handleRevert}
+          disabled={mode() !== 'edit'}
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+        >
+          <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+          </svg>
+          Revert
+        </button>
+
+        {/* Edit — enabled in Display mode; primary (blue) when enabled */}
+        <button
+          type="button"
+          onClick={handleEdit}
+          disabled={mode() !== 'display'}
+          class={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors ${
+            mode() === 'display'
+              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600'
+              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent'
+          }`}
+          aria-label="Edit deck list"
+        >
+          <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+          </svg>
+          Edit
+        </button>
+
+        {/* Apply — enabled in Edit mode when validation passes; primary (blue) only when enabled */}
+        <div class="relative">
           <button
             type="button"
-            onClick={handleEdit}
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Edit deck list"
+            onClick={handleApply}
+            disabled={mode() !== 'edit' || hasValidationErrors()}
+            class={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors ${
+              mode() === 'edit' && !hasValidationErrors()
+                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600'
+                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent'
+            }`}
           >
             <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            Edit
+            Apply
           </button>
-        </Show>
 
-        {/* Apply button (Edit mode only) */}
-        <Show when={mode() === 'edit'}>
-          <div class="relative">
-            <button
-              type="button"
-              onClick={handleApply}
-              disabled={hasValidationErrors()}
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600"
-            >
-              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-              Apply
-            </button>
-
-            <Show when={showApplyPopover()}>
+          <Show when={showApplyPopover()}>
               <div class="absolute left-0 top-full mt-2 z-50 w-64 p-4 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
                 <Show when={diffSummary()} keyed>
                   {(summary) => {
@@ -430,29 +449,14 @@ export default function DeckEditor(props: {
               </div>
             </Show>
           </div>
-        </Show>
 
-        {/* Revert button (Edit mode only) */}
-        <Show when={mode() === 'edit'}>
-          <button
-            type="button"
-            onClick={handleRevert}
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-            Revert
-          </button>
-        </Show>
-
-        {/* Copy button (Display and Edit modes) */}
-        <Show when={mode() === 'display' || mode() === 'edit'}>
-          <button
-            type="button"
-            onClick={handleCopy}
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-auto"
-          >
+        {/* Copy — enabled in Display and Edit modes */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={mode() === 'init'}
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent ml-auto"
+        >
             <Show
               when={!copied()}
               fallback={
@@ -466,8 +470,7 @@ export default function DeckEditor(props: {
               </svg>
             </Show>
             {copied() ? 'Copied!' : 'Copy'}
-          </button>
-        </Show>
+        </button>
       </div>
 
       {/* Textarea with syntax-highlighting overlay — auto-grows to avoid scroll (keeps overlay in sync) */}

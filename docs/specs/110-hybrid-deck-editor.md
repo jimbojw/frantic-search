@@ -95,14 +95,14 @@ Mode is derived from two inputs — whether a draft exists and whether the inter
 
 ### 3. Toolbar
 
-A horizontal bar above the textarea with state-dependent actions:
+A horizontal bar above the textarea. All four actions are always visible, ordered left-to-right: **Revert**, **Edit**, **Apply**, **Copy** (Copy right-aligned). Buttons are conditionally disabled/deemphasized by mode:
 
 | Action | Init Mode | Display Mode | Edit Mode |
 |--------|-----------|-------------|-----------|
-| **Edit** | Hidden | Visible (pencil icon); enters Edit mode | Hidden |
-| **Apply** | Hidden | Hidden | Visible; enabled when validation reports zero errors, disabled otherwise |
-| **Revert** | Hidden | Hidden | Visible; discards draft, returns to Display or Init |
-| **Copy** | Hidden | Visible; copies rendered text to clipboard | Visible; copies draft text to clipboard |
+| **Revert** | Disabled | Disabled | Enabled; discards draft, returns to Display or Init |
+| **Edit** | Disabled | Enabled (pencil icon); enters Edit mode | Disabled |
+| **Apply** | Disabled | Disabled | Enabled when validation reports zero errors, disabled otherwise |
+| **Copy** | Disabled | Enabled; copies rendered text to clipboard | Enabled; copies draft text to clipboard |
 
 Apply invokes an `onApply(draftText: string)` callback. The parent owns the diff/commit logic (follow-on spec). The callback returns a boolean (or Promise) indicating success; on success, the editor clears the draft and transitions to Display or Init depending on whether the resulting list has instances.
 
@@ -240,3 +240,4 @@ interface DeckEditorProps {
 - 2026-03-09: Initial implementation of the three-mode state machine, toolbar, format chips, draft persistence, cross-tab sync, and mutation gating signal. Apply shows a placeholder popover ("Apply is not yet supported") and on OK discards the draft, returning to Display or Init. The DeckEditor component replaces ListImportTextarea and the Lists page was stripped to back button + title + DeckEditor.
 - 2026-03-09: Format detection (`shared/src/list-format.ts`) examines token stream for format-discriminating tokens per the spec's heuristic table. Serializers (`shared/src/list-serialize.ts`) implement Arena (quantity + name) and Moxfield (quantity + name + set/collector + finish markers). Other format chips are visible but fall back to Arena when selected. The serializer interface takes `(instances, display, printingDisplay)` rather than the spec's `(instances, metadata)` since card name and printing resolution require display columns.
 - 2026-03-09: On Apply → OK, the detected format (if any) becomes the selected Display mode format per spec § 4, preserving the user's format context even though the actual apply/commit is stubbed.
+- 2026-03-09: Toolbar updated to always show all four buttons (Revert, Edit, Apply, Copy) in fixed order, conditionally disabled by mode. Revert on left (semantic "back"); Edit between Revert and Apply to reduce misclicks; Copy right-aligned.
