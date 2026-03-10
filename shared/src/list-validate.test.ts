@@ -469,4 +469,14 @@ describe("validateDeckList", () => {
     expect(errorLine?.quickFixes?.[0]?.label).toBe("Remove set/collector, use name only");
     expect(errorLine?.quickFixes?.[0]?.replacement).toBe("1 Lightning Bolt");
   });
+
+  test("Unknown set with foil marker removes set and foil (foil only applies to specific printings)", () => {
+    const display = makeDisplay({ names: ["Bident of Thassa", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest"] });
+    const printing = makePrintingDisplay();
+    const result = validateDeckList("1x Bident of Thassa (000) *f* #Artifact #Card_Draw", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.quickFixes).toHaveLength(1);
+    expect(errorLine?.quickFixes?.[0]?.replacement).toBe("1x Bident of Thassa #Artifact #Card_Draw");
+  });
 });

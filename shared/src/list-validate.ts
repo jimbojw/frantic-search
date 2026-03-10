@@ -127,14 +127,17 @@ function getDisplayNameForCanonicalFace(
 
 /**
  * Reconstruct the line without set/collector (or variant+set for MTGGoldfish).
- * Preserves quantity, name, foil markers, tags, etc. Returns line without trailing newline.
+ * When alsoRemoveFinish is true, removes foil/etched/alter markers too — they only
+ * apply to specific printings; resolving by name only has no finish.
+ * Preserves quantity, name, tags, etc. Returns line without trailing newline.
  */
 function reconstructLineWithoutSet(
   line: string,
   setTok: ListToken | undefined,
   collectorTok: ListToken | undefined,
   variantTok?: ListToken,
-  setCodeBracketTok?: ListToken
+  setCodeBracketTok?: ListToken,
+  finishTokens?: ListToken[]
 ): string {
   const tokensToRemove: ListToken[] = [];
   if (variantTok && setCodeBracketTok) {
@@ -143,6 +146,7 @@ function reconstructLineWithoutSet(
     tokensToRemove.push(setTok);
     if (collectorTok) tokensToRemove.push(collectorTok);
   }
+  if (finishTokens) tokensToRemove.push(...finishTokens);
   if (tokensToRemove.length === 0) return line.trimEnd();
 
   const minStart = Math.min(...tokensToRemove.map((t) => t.start));
@@ -151,7 +155,8 @@ function reconstructLineWithoutSet(
   let start = minStart;
   let end = maxEnd;
   while (start > 0 && /[\s(\[<]/.test(line[start - 1]!)) start--;
-  while (end < line.length && /[\s):\]>]/.test(line[end]!)) end++;
+  // Expand to include closing delimiters ) ] > but NOT trailing space (preserves gap before next token)
+  while (end < line.length && /[):\]>]/.test(line[end]!)) end++;
 
   return (line.slice(0, start) + line.slice(end)).trimEnd();
 }
@@ -368,6 +373,7 @@ export function validateDeckList(
     const foilPrereleaseMarkerTok = tokens.find(
       (t) => t.type === ListTokenType.FOIL_PRERELEASE_MARKER
     );
+    const alterMarkerTok = tokens.find((t) => t.type === ListTokenType.ALTER_MARKER);
 
     if (tokens.some((t) => t.type === ListTokenType.COMMENT)) {
       lines.push({
@@ -491,12 +497,21 @@ export function validateDeckList(
         hasPrintingError = true;
         errorSpan = { start: lineStart + setTok.start, end: lineStart + setTok.end };
         errorMessage = `Unknown set — \`${setCode}\``;
+        const finishToks = [
+          foilParenTok,
+          foilMarkerTok,
+          etchedMarkerTok,
+          etchedParenTok,
+          foilPrereleaseMarkerTok,
+          alterMarkerTok,
+        ].filter((t): t is ListToken => t != null);
         const removeSetReplacement = reconstructLineWithoutSet(
           line,
           setTok,
           collectorTok ?? undefined,
           setTok.type === ListTokenType.SET_CODE_BRACKET ? variantTok : undefined,
-          setTok.type === ListTokenType.SET_CODE_BRACKET ? setTok : undefined
+          setTok.type === ListTokenType.SET_CODE_BRACKET ? setTok : undefined,
+          finishToks
         );
         if (removeSetReplacement) {
           errorQuickFixes = [
@@ -534,10 +549,18 @@ export function validateDeckList(
               errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${variant}\``;
               const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
               if (correctName) {
+                const finishToksMtgf = [
+                  foilParenTok,
+                  foilMarkerTok,
+                  etchedMarkerTok,
+                  etchedParenTok,
+                  foilPrereleaseMarkerTok,
+                  alterMarkerTok,
+                ].filter((t): t is ListToken => t != null);
                 errorQuickFixes = [
                   {
                     label: "Remove set/collector, use name only",
-                    replacement: reconstructLineWithoutSet(line, setTok, undefined, variantTok, setTok).trimEnd(),
+                    replacement: reconstructLineWithoutSet(line, setTok, undefined, variantTok, setTok, finishToksMtgf).trimEnd(),
                   },
                   {
                     label: `Use "${correctName}"`,
@@ -610,10 +633,18 @@ export function validateDeckList(
             errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${collectorNumber}\``;
             const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
             if (correctName) {
+              const finishToksMox = [
+                foilParenTok,
+                foilMarkerTok,
+                etchedMarkerTok,
+                etchedParenTok,
+                foilPrereleaseMarkerTok,
+                alterMarkerTok,
+              ].filter((t): t is ListToken => t != null);
               errorQuickFixes = [
                 {
                   label: "Remove set/collector, use name only",
-                  replacement: reconstructLineWithoutSet(line, setTok, collectorTok).trimEnd(),
+                  replacement: reconstructLineWithoutSet(line, setTok, collectorTok, undefined, undefined, finishToksMox).trimEnd(),
                 },
                 {
                   label: `Use "${correctName}"`,
