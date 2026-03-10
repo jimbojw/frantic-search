@@ -63,6 +63,49 @@ function findCardByName(
   return null;
 }
 
+/**
+ * Resolve card by canonical face (from printing) and verify name matches.
+ * Used for printing-first resolution when set+collector are present.
+ */
+function findCardByCanonicalFace(
+  canonicalFace: number,
+  name: string,
+  display: DisplayColumns,
+  combinedNames: string[]
+): { oracleId: string; canonicalFace: number } | null {
+  const normalized = normalize(name);
+  if (!normalized) return null;
+
+  const names = display.names;
+  for (let i = 0; i < names.length; i++) {
+    if ((display.canonical_face[i] ?? i) !== canonicalFace) continue;
+    const faceName = normalize(names[i]!);
+    const combinedName = normalize(combinedNames[i]!);
+    if (faceName === normalized || combinedName === normalized) {
+      const oracleId = display.oracle_ids[i] ?? "";
+      return { oracleId, canonicalFace };
+    }
+  }
+
+  // Fallback: alternate names (Spec 111)
+  const altIndex = display.alternate_name_to_canonical_face;
+  if (altIndex) {
+    const altNormalized = normalized.replace(/[^a-z0-9]/g, "");
+    if (altIndex[altNormalized] === canonicalFace) {
+      for (let i = 0; i < display.canonical_face.length; i++) {
+        if (display.canonical_face[i] === canonicalFace) {
+          return {
+            oracleId: display.oracle_ids[i] ?? "",
+            canonicalFace,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 function findPrintingRow(
   setCode: string,
   collectorNumber: string,
@@ -271,7 +314,7 @@ export function validateDeckList(
       continue;
     }
 
-    const card = findCardByName(nameTok.value, display, combinedNames);
+    let card = findCardByName(nameTok.value, display, combinedNames);
     if (!card) {
       lines.push({
         lineIndex,
@@ -320,11 +363,18 @@ export function validateDeckList(
             errorMessage = "Collector number doesn't match";
           } else {
             const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
-            if (printingCanonicalFace !== card.canonicalFace) {
+            const printingCard = findCardByCanonicalFace(
+              printingCanonicalFace,
+              nameTok.value,
+              display,
+              combinedNames
+            );
+            if (!printingCard) {
               hasPrintingError = true;
-              errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
-              errorMessage = "Collector number doesn't match";
+              errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
+              errorMessage = "Card name doesn't match printing";
             } else {
+              card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
               scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
             }
           }
@@ -367,11 +417,18 @@ export function validateDeckList(
           errorMessage = "Collector number doesn't match";
         } else {
           const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
-          if (printingCanonicalFace !== card.canonicalFace) {
+          const printingCard = findCardByCanonicalFace(
+            printingCanonicalFace,
+            nameTok.value,
+            display,
+            combinedNames
+          );
+          if (!printingCard) {
             hasPrintingError = true;
-            errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
-            errorMessage = "Collector number doesn't match";
+            errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
+            errorMessage = "Card name doesn't match printing";
           } else {
+            card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
           }
         }

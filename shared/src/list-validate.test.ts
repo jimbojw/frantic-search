@@ -313,4 +313,66 @@ describe("validateDeckList", () => {
     expect(errorLine).toBeDefined();
     expect(errorLine?.message).toContain("Unknown card");
   });
+
+  // -------------------------------------------------------------------------
+  // Printing-first resolution (tokens, duplicate names)
+  // -------------------------------------------------------------------------
+
+  test("token with set+collector resolves via printing-first when multiple cards share name", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Beast"],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      oracle_ids: ["oid-beast-1", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-beast-tc16"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "beast-tc16-14"],
+      collector_numbers: ["159", "273", "1", "14"],
+      set_codes: ["M21", "DMU", "MH2", "tc16"],
+      set_names: ["Core Set 2021", "Dominaria United", "Modern Horizons 2", "Tokens Commander 2016"],
+      canonical_face_ref: [4, 5, 1, 6],
+    });
+    const result = validateDeckList("1x Beast (tc16) 14 [Tokens & Extras{noDeck}]", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toMatchObject([
+      { oracle_id: "oid-beast-tc16", scryfall_id: "beast-tc16-14", quantity: 1 },
+    ]);
+  });
+
+  test("name mismatch when set+collector points to different card errors on name", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Goblin"],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      oracle_ids: ["oid-beast", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-goblin"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "goblin-tc16-14"],
+      collector_numbers: ["159", "273", "1", "14"],
+      set_codes: ["M21", "DMU", "MH2", "tc16"],
+      canonical_face_ref: [4, 5, 1, 6],
+    });
+    const result = validateDeckList("1x Beast (tc16) 14", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Card name doesn't match printing");
+    expect(errorLine?.span).toBeDefined();
+  });
+
+  test("unknown collector number when set+collector present errors on collector", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest"],
+      canonical_face: [0, 1, 2, 3, 4, 5],
+      oracle_ids: ["oid-beast", "oid1", "oid2", "oid3", "oid4", "oid5"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "beast-tc16-14"],
+      collector_numbers: ["159", "273", "1", "14"],
+      set_codes: ["M21", "DMU", "MH2", "tc16"],
+      set_names: ["Core Set 2021", "Dominaria United", "Modern Horizons 2", "Tokens Commander 2016"],
+      canonical_face_ref: [4, 5, 1, 0],
+    });
+    const result = validateDeckList("1x Beast (tc16) 999", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Collector number");
+  });
 });
