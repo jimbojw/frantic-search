@@ -445,15 +445,23 @@ export function evalLeafRegex(
 
 export function evalLeafBareWord(value: string, quoted: boolean, index: CardIndex, buf: Uint8Array): void {
   const cf = index.canonicalFace;
+  const altIndex = index.alternateNamesIndex;
   if (quoted) {
     const valLower = value.toLowerCase();
     for (let i = 0; i < index.faceCount; i++) {
       if (index.combinedNamesLower[i].includes(valLower)) buf[cf[i]] = 1;
     }
+    const valNorm = valLower.replace(/[^a-z0-9]/g, "");
+    for (const altName in altIndex) {
+      if (altName.includes(valNorm)) buf[altIndex[altName]] = 1;
+    }
   } else {
     const valNormalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
     for (let i = 0; i < index.faceCount; i++) {
       if (index.combinedNamesNormalized[i].includes(valNormalized)) buf[cf[i]] = 1;
+    }
+    for (const altName in altIndex) {
+      if (altName.includes(valNormalized)) buf[altIndex[altName]] = 1;
     }
   }
 }
@@ -465,5 +473,9 @@ export function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8A
   for (let i = 0; i < index.faceCount; i++) {
     if (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) buf[cf[i]] = 1;
   }
+  // Alternate names: exact match on normalized value (Spec 111)
+  const valNormalized = valLower.replace(/[^a-z0-9]/g, "");
+  const altMatch = index.alternateNamesIndex[valNormalized];
+  if (altMatch !== undefined) buf[altMatch] = 1;
   return null;
 }

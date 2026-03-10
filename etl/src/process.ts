@@ -163,6 +163,63 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
+/** Normalize for alternate name index: lowercase, strip non-alphanumeric. Spec 111. */
+function normalizeAlternateName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Build alternate_names_index from default-cards. Spec 111. */
+function buildAlternateNamesIndex(
+  data: ColumnarDataBuilder,
+  verbose: boolean
+): Record<string, number> {
+  const index: Record<string, number> = {};
+  try {
+    const defaultRaw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
+    const defaultCards: Array<{
+      oracle_id?: string;
+      name?: string;
+      printed_name?: string;
+      flavor_name?: string;
+      card_faces?: Array<{ oracle_id?: string; name?: string; printed_name?: string; flavor_name?: string }>;
+    }> = JSON.parse(defaultRaw);
+
+    // Build oracle_id → canonical_face from columns
+    const oracleToFace = new Map<string, number>();
+    for (let i = 0; i < data.oracle_ids.length; i++) {
+      const oid = data.oracle_ids[i];
+      if (oid) oracleToFace.set(oid, data.canonical_face[i] ?? i);
+    }
+
+    for (const card of defaultCards) {
+      const collect = (alt: string | undefined, oracleName: string, oid: string | undefined) => {
+        if (!alt || !oid) return;
+        if (alt.toLowerCase() === oracleName.toLowerCase()) return;
+        const canonicalFace = oracleToFace.get(oid);
+        if (canonicalFace === undefined) return;
+        const norm = normalizeAlternateName(alt);
+        if (norm) index[norm] = canonicalFace;
+      };
+
+      const oracleId = card.oracle_id ?? card.card_faces?.[0]?.oracle_id;
+      collect(card.printed_name, card.name ?? "", oracleId);
+      collect(card.flavor_name, card.name ?? "", oracleId);
+
+      for (const face of card.card_faces ?? []) {
+        const faceOid = face.oracle_id ?? oracleId;
+        const faceName = face.name ?? card.name ?? "";
+        collect(face.printed_name, faceName, faceOid);
+        collect(face.flavor_name, faceName, faceOid);
+      }
+    }
+
+    log(`Alternate names: ${Object.keys(index).length} entries from default-cards`, verbose);
+  } catch {
+    log("default-cards.json not found; alternate_names_index empty", verbose);
+  }
+  return index;
+}
+
 function loadSaltMap(verbose: boolean): Map<string, number> {
   if (!fs.existsSync(ATOMIC_CARDS_PATH)) {
     log("atomic-cards.json not found; salt column will be all null", verbose);
@@ -335,6 +392,9 @@ export function processCards(verbose: boolean): void {
   data.loyalty_lookup = loyaltyDict.lookup();
   data.defense_lookup = defenseDict.lookup();
   data.keywords_index = keywordsIndex;
+
+  // Build alternate_names_index from default-cards (Spec 111)
+  data.alternate_names_index = buildAlternateNamesIndex(data, verbose);
 
   log(`Emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);

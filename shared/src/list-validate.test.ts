@@ -272,4 +272,45 @@ describe("validateDeckList", () => {
     const result = validateDeckList("4 Steam Vents <Shadowmoor - borderless> [ECL]", display, printing);
     expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
   });
+
+  // -------------------------------------------------------------------------
+  // Spec 111: Alternate names
+  // -------------------------------------------------------------------------
+
+  test("alternate name resolves to canonical card", () => {
+    const display = makeDisplay({
+      alternate_name_to_canonical_face: { leylineweaver: 1 },
+    });
+    const result = validateDeckList("4 Leyline Weaver", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved?.[0]?.oracle_id).toBe("oid1");
+  });
+
+  test("alternate name with preferred printing sets scryfall_id", () => {
+    const display = makeDisplay({
+      alternate_name_to_canonical_face: { leylineweaver: 1 },
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p-om1-nf", "p-om1-foil", "p-mh2"],
+      collector_numbers: ["100", "100", "261"],
+      set_codes: ["OM1", "OM1", "MH2"],
+      canonical_face_ref: [1, 1, 1],
+      alternate_name_to_printing_indices: { leylineweaver: [0, 1] },
+    });
+    const result = validateDeckList("4 Leyline Weaver", display, printing);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved?.[0]?.scryfall_id).toBe("p-om1-nf");
+  });
+
+  test("unknown card still errors even with empty alternate_names_index", () => {
+    const display = makeDisplay({
+      alternate_name_to_canonical_face: {},
+    });
+    const result = validateDeckList("1 TotallyFakeCard", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Unknown card");
+  });
 });

@@ -25,7 +25,7 @@ function findCardByName(
   name: string,
   display: DisplayColumns,
   combinedNames: string[]
-): { faceIndex: number; oracleId: string; canonicalFace: number } | null {
+): { faceIndex: number; oracleId: string; canonicalFace: number; resolvedViaAlternateName?: boolean } | null {
   const normalized = normalize(name);
   if (!normalized) return null;
 
@@ -39,6 +39,27 @@ function findCardByName(
       return { faceIndex: i, oracleId, canonicalFace };
     }
   }
+
+  // Fallback: alternate names (Spec 111)
+  const altIndex = display.alternate_name_to_canonical_face;
+  if (altIndex) {
+    const altNormalized = normalized.replace(/[^a-z0-9]/g, "");
+    const canonicalFace = altIndex[altNormalized];
+    if (canonicalFace !== undefined) {
+      // Find the face row and oracle_id for this canonical face
+      for (let i = 0; i < display.canonical_face.length; i++) {
+        if (display.canonical_face[i] === canonicalFace) {
+          return {
+            faceIndex: i,
+            oracleId: display.oracle_ids[i] ?? "",
+            canonicalFace,
+            resolvedViaAlternateName: true,
+          };
+        }
+      }
+    }
+  }
+
   return null;
 }
 
@@ -353,6 +374,18 @@ export function validateDeckList(
           } else {
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
           }
+        }
+      }
+    }
+
+    // Preferred printing for alternate-name resolution (Spec 111)
+    if (!scryfallId && !hasPrintingError && card.resolvedViaAlternateName && printingDisplay) {
+      const altPrintIndex = printingDisplay.alternate_name_to_printing_indices;
+      if (altPrintIndex) {
+        const altNorm = normalize(nameTok.value).replace(/[^a-z0-9]/g, "");
+        const pis = altPrintIndex[altNorm];
+        if (pis && pis.length > 0) {
+          scryfallId = printingDisplay.scryfall_ids[pis[0]] ?? null;
         }
       }
     }

@@ -46,6 +46,7 @@ function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(''),
     edhrec_rank: data.edhrec_ranks,
     edhrec_salt: data.edhrec_salts,
+    alternate_name_to_canonical_face: data.alternate_names_index,
   }
 }
 
@@ -63,6 +64,7 @@ function extractPrintingDisplayColumns(data: PrintingColumnarData): PrintingDisp
     printing_flags: data.printing_flags,
     promo_types_flags_0: data.promo_types_flags_0,
     promo_types_flags_1: data.promo_types_flags_1,
+    alternate_name_to_printing_indices: data.alternate_names_index,
   }
 }
 

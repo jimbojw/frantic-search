@@ -2,7 +2,8 @@
 import { describe, test, expect } from "vitest";
 import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
-import { index, matchCount, saltIndex, saltMatchCount } from "./evaluator.test-fixtures";
+import { CardIndex } from "./card-index";
+import { index, matchCount, TEST_DATA, saltIndex, saltMatchCount } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Node key uniqueness
@@ -947,5 +948,55 @@ describe("reminder text stripping", () => {
 
   test("o:/reach/ regex does NOT match reminder text", () => {
     expect(matchCount("o:/reach/")).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 111: Alternate names (printed_name, flavor_name)
+// ---------------------------------------------------------------------------
+
+describe("alternate names (Spec 111)", () => {
+  // Bolt (face 1) has alternate name "chain lightning variant"
+  // Sol Ring (face 3) has alternate name "sol ring godzilla"
+  const altData = {
+    ...TEST_DATA,
+    alternate_names_index: {
+      chainlightningvariant: 1,  // maps to Lightning Bolt's canonical face
+      solringgodzilla: 3,        // maps to Sol Ring's canonical face
+    },
+  };
+  const altIndex = new CardIndex(altData);
+  function altMatchCount(query: string): number {
+    const cache = new NodeCache(altIndex);
+    return cache.evaluate(parse(query)).result.matchCount;
+  }
+
+  test("bare word matches alternate name", () => {
+    expect(altMatchCount("chainlightningvariant")).toBe(1);
+  });
+
+  test("bare word substring matches alternate name", () => {
+    expect(altMatchCount("chainlightning")).toBe(1);
+  });
+
+  test("exact name matches alternate name", () => {
+    expect(altMatchCount('!"Chain Lightning Variant"')).toBe(1);
+  });
+
+  test("exact name is case-insensitive for alternate names", () => {
+    expect(altMatchCount('!"chain lightning variant"')).toBe(1);
+  });
+
+  test("bare word matches godzilla-style alternate name", () => {
+    expect(altMatchCount("solringgodzilla")).toBe(1);
+  });
+
+  test("alternate name does not match when query is unrelated", () => {
+    expect(altMatchCount("nonexistentcard")).toBe(0);
+  });
+
+  test("primary name still works alongside alternate names", () => {
+    expect(altMatchCount("Lightning Bolt")).toBe(1);
+    expect(altMatchCount('!"Lightning Bolt"')).toBe(1);
   });
 });

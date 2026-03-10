@@ -34,6 +34,8 @@ export type DisplayColumns = {
   oracle_ids: string[]
   edhrec_rank: (number | null)[]
   edhrec_salt: (number | null)[]
+  /** Alternate name (normalized) → canonical face index. Spec 111. */
+  alternate_name_to_canonical_face?: Record<string, number>
 }
 
 export type BreakdownNode = {
@@ -74,6 +76,8 @@ export type PrintingDisplayColumns = {
   promo_types_flags_0?: number[]
   /** Per-row promo type flags column 1. */
   promo_types_flags_1?: number[]
+  /** Alternate name (normalized) → sorted printing row indices. Spec 111. */
+  alternate_name_to_printing_indices?: Record<string, number[]>
 }
 
 export type FromWorker =
