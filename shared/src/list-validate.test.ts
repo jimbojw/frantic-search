@@ -357,6 +357,17 @@ describe("validateDeckList", () => {
     expect(errorLine?.span).toBeDefined();
   });
 
+  test("Moxfield single-slash split card matches double-slash combined name", () => {
+    const display = makeDisplay({
+      names: ["Marang River Regent", "Coil and Catch", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock"],
+      canonical_face: [0, 0, 2, 3, 4, 5],
+      oracle_ids: ["oid-split", "oid-split", "oid1", "oid2", "oid3", "oid4"],
+    });
+    const result = validateDeckList("1 Marang River Regent / Coil and Catch", display, null);
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toMatchObject([{ oracle_id: "oid-split", quantity: 1 }]);
+  });
+
   test("unknown collector number when set+collector present errors on collector", () => {
     const display = makeDisplay({
       names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest"],

@@ -21,12 +21,17 @@ function normalize(s: string): string {
     .trim();
 }
 
+/** Normalize user input for name match; treats Moxfield " / " as equivalent to " // ". */
+function normalizeForNameMatch(s: string): string {
+  return normalize(s).replace(/ \/ /g, " // ");
+}
+
 function findCardByName(
   name: string,
   display: DisplayColumns,
   combinedNames: string[]
 ): { faceIndex: number; oracleId: string; canonicalFace: number; resolvedViaAlternateName?: boolean } | null {
-  const normalized = normalize(name);
+  const normalized = normalizeForNameMatch(name);
   if (!normalized) return null;
 
   const names = display.names;
@@ -73,7 +78,7 @@ function findCardByCanonicalFace(
   display: DisplayColumns,
   combinedNames: string[]
 ): { oracleId: string; canonicalFace: number } | null {
-  const normalized = normalize(name);
+  const normalized = normalizeForNameMatch(name);
   if (!normalized) return null;
 
   const names = display.names;
