@@ -353,7 +353,10 @@ describe("validateDeckList", () => {
     const result = validateDeckList("1x Beast (tc16) 14", display, printing);
     const errorLine = result.lines.find((l) => l.kind === "error");
     expect(errorLine).toBeDefined();
-    expect(errorLine?.message).toContain("Card name doesn't match printing");
+    expect(errorLine?.message).toContain("Card name");
+    expect(errorLine?.message).toContain("doesn't match");
+    expect(errorLine?.message).toContain("tc16");
+    expect(errorLine?.message).toContain("14");
     expect(errorLine?.span).toBeDefined();
   });
 

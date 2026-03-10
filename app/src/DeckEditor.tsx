@@ -233,6 +233,23 @@ export default function DeckEditor(props: {
     return v.lines.some((l) => l.kind === 'error')
   })
 
+  // Validation errors for Status box (Edit mode with errors)
+  const validationErrors = createMemo(() => {
+    const v = validation()
+    if (!v) return []
+    return v.lines.filter((l) => l.kind === 'error')
+  })
+
+  // Diff summary for Status box (Edit mode, no errors) — uses debounced draft
+  const editDiffSummary = createMemo<{ additions: number; removals: number } | null>(() => {
+    if (mode() !== 'edit') return null
+    const text = debouncedDraft()
+    if (!text.trim() || !props.display || hasValidationErrors()) return null
+    const result = importDeckList(text, props.display, props.printingDisplay)
+    const diff = diffDeckList(result.candidates, props.instances)
+    return { additions: diff.additions.length, removals: diff.removals.length }
+  })
+
   // Detected format in Edit mode
   const detectedFormat = createMemo<DeckFormat | null>(() => {
     const d = draftText()
@@ -490,6 +507,101 @@ export default function DeckEditor(props: {
             </Show>
             {copied() ? 'Copied!' : 'Copy'}
         </button>
+      </div>
+
+      {/* Status box — mode-appropriate info between toolbar and textarea */}
+      <div
+        classList={{
+          'px-3 py-2 rounded border text-sm min-h-[2.5rem] flex flex-col justify-center': true,
+          'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200': mode() === 'edit' && validationErrors().length > 0,
+          'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400': mode() !== 'edit' || validationErrors().length === 0,
+        }}
+      >
+        <Show when={mode() === 'init'} fallback={null}>
+          <p>List is empty. Paste a deck list or add cards from search results.</p>
+        </Show>
+        <Show when={mode() === 'display'} fallback={null}>
+          <p>
+            {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
+          </p>
+        </Show>
+        <Show when={mode() === 'edit' && validationErrors().length > 0} fallback={null}>
+          <div>
+            <p class="font-medium mb-1.5">
+              Errors ({validationErrors().length} card{validationErrors().length !== 1 ? 's' : ''}):
+            </p>
+            <ul class="list-none space-y-2">
+              <For each={validationErrors()}>
+                {(err) => {
+                  const lineText = draftText()?.slice(err.lineStart, err.lineEnd) ?? ''
+                  const spanText =
+                    err.span != null && draftText() != null
+                      ? draftText()!.slice(err.span.start, err.span.end).replace(/\s+/g, ' ').trim()
+                      : null
+                  const displayMessage =
+                    spanText != null && !(err.message ?? '').includes(spanText)
+                      ? `Error: ${err.message ?? 'Validation error'} — "${spanText}"`
+                      : `Error: ${err.message ?? 'Validation error'}`
+                  const validationForLine =
+                    err.span
+                      ? {
+                          lines: [
+                            {
+                              kind: 'error' as const,
+                              lineIndex: 0,
+                              lineStart: 0,
+                              lineEnd: lineText.length,
+                              span: {
+                                start: err.span.start - err.lineStart,
+                                end: err.span.end - err.lineStart,
+                              },
+                            },
+                          ],
+                        }
+                      : null
+                  return (
+                    <li class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 py-1.5 border-b border-red-200 dark:border-red-900/50 last:border-b-0">
+                      <span class="text-gray-500 dark:text-gray-400 text-xs font-mono row-span-2 self-start pt-0.5">
+                        L{err.lineIndex + 1}:
+                      </span>
+                      <div class="min-w-0 bg-white dark:bg-gray-900 overflow-x-auto">
+                        <ListHighlight
+                          text={lineText}
+                          validation={validationForLine}
+                          class="text-sm leading-relaxed"
+                        />
+                      </div>
+                      <span class="text-xs">{displayMessage}</span>
+                    </li>
+                  )
+                }}
+              </For>
+            </ul>
+          </div>
+        </Show>
+        <Show when={mode() === 'edit' && validationErrors().length === 0} fallback={null}>
+          <Show
+            when={editDiffSummary()}
+            fallback={<p class="text-gray-500 dark:text-gray-400">—</p>}
+          >
+            {(summary) => {
+              const hasChanges = summary().additions > 0 || summary().removals > 0
+              return (
+                <p>
+                  {hasChanges ? (
+                    <>
+                      <span class="text-green-700 dark:text-green-400">+{summary().additions} card{summary().additions !== 1 ? 's' : ''}</span>
+                      {' / '}
+                      <span class="text-red-700 dark:text-red-400">−{summary().removals} card{summary().removals !== 1 ? 's' : ''}</span>
+                    </>
+                  ) : (
+                    'No changes'
+                  )}
+                </p>
+              )
+            }}
+          </Show>
+        </Show>
       </div>
 
       {/* Textarea with syntax-highlighting overlay — auto-grows to avoid scroll (keeps overlay in sync) */}

@@ -330,7 +330,7 @@ export function validateDeckList(
         lineEnd,
         kind: "error",
         span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
-        message: "Unknown card",
+        message: `Unknown card — "${nameTok.value}"`,
       });
       offset = lineEnd + (lineIndex < lineStrings.length - 1 ? 1 : 0);
       if (lineIndex < lineStrings.length - 1 && offset < text.length) {
@@ -364,7 +364,7 @@ export function validateDeckList(
       if (!setExists) {
         hasPrintingError = true;
         errorSpan = { start: lineStart + setTok.start, end: lineStart + setTok.end };
-        errorMessage = "Unknown set";
+        errorMessage = `Unknown set — "${setCode}"`;
       } else if (variantTok && setTok.type === ListTokenType.SET_CODE_BRACKET) {
         const variant = variantTok.value;
         if (isNumericCollectorNumber(variant)) {
@@ -372,7 +372,7 @@ export function validateDeckList(
           if (pi < 0) {
             hasPrintingError = true;
             errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
-            errorMessage = "Collector number doesn't match";
+            errorMessage = `Collector number doesn't match — "${variant}" in \`${setCode}\``;
           } else {
             const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
             const printingCard = findCardByCanonicalFace(
@@ -384,7 +384,7 @@ export function validateDeckList(
             if (!printingCard) {
               hasPrintingError = true;
               errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
-              errorMessage = "Card name doesn't match printing";
+              errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${variant}\``;
             } else {
               card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
               scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
@@ -426,7 +426,7 @@ export function validateDeckList(
         if (pi < 0) {
           hasPrintingError = true;
           errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
-          errorMessage = "Collector number doesn't match";
+          errorMessage = `Collector number doesn't match — "${collectorNumber}" in \`${setCode}\``;
         } else {
           const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
           const printingCard = findCardByCanonicalFace(
@@ -438,7 +438,7 @@ export function validateDeckList(
           if (!printingCard) {
             hasPrintingError = true;
             errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
-            errorMessage = "Card name doesn't match printing";
+            errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${collectorNumber}\``;
           } else {
             card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;

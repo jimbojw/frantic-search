@@ -106,7 +106,36 @@ A horizontal bar above the textarea. All four actions are always visible, ordere
 
 Apply invokes an `onApply(draftText: string)` callback. The parent owns the diff/commit logic (follow-on spec). The callback returns a boolean (or Promise) indicating success; on success, the editor clears the draft and transitions to Display or Init depending on whether the resulting list has instances.
 
-### 4. Format Chips
+### 4. Status Area
+
+A Status box renders **between** the toolbar and the textarea. It displays mode-appropriate information:
+
+| Mode | Content |
+|------|---------|
+| **Init** | Help text: "List is empty. Paste a deck list or add cards from search results." |
+| **Display** | Summary: "N card(s)" (total instance count). Future: breakdown by zone/type. |
+| **Edit** | When no errors: "+A / −R cards" (same as Apply popover). When errors: list each error with message. |
+
+**Edit mode with errors:** When `validateDeckList` returns lines with `kind: "error"`, the Status box switches to an **error state** with distinct styling (e.g., red/amber border, error icon). Display errors hierarchically:
+
+1. **Header:** "Errors (N card(s)):" — count of lines with errors.
+2. **Per error:** Two-column grid layout. Column 1: line number (1-based, e.g. `L11:`). Column 2: syntax-highlighted card line (same as textarea, no border/padding) and error message beneath with "Error: " prefix. Example:
+
+   ```
+   Errors (7 cards):
+   | L11: | 1x Bident of Thassa (000) *f* #Artifact #Card_Draw
+   |      | Error: Unknown set — "000"
+   | L23: | 1x Floodfarm Verge (DSK:33) *f* #Land
+   |      | Error: Card name "Floodfarm Verge" doesn't match `DSK` collector number `33`
+   ```
+
+   The validator may include span text in `LineValidation.message` (e.g., quoted set code for "Unknown set", or card name + set/collector for "Card name doesn't match printing") to make messages self-contained. When `span` is present and the message lacks the quoted span, the UI appends the span text for context.
+
+**Diff in Edit mode:** Compute diff from draft (debounced with validation) to show additions/removals when no errors. This mirrors the Apply popover content.
+
+**Styling:** Default (Init, Display, Edit with no errors): neutral background, muted text. Error state (Edit with errors): distinct styling — e.g., `border-red-500`, `bg-red-50 dark:bg-red-950/20`, error icon — so it is obvious that Apply is blocked and why.
+
+### 5. Format Chips
 
 A horizontal row of selectable chips, positioned above (or inline with) the toolbar. Each chip maps to an export format.
 
@@ -143,7 +172,7 @@ type DeckSerializer = (instances: InstanceState[], metadata: ListMetadata) => st
 
 Each chip maps to a serializer function that receives the active list's instances and metadata and returns the formatted text for the textarea. Serializer implementations are out of scope for this spec.
 
-### 5. Draft State Persistence (localStorage)
+### 6. Draft State Persistence (localStorage)
 
 The draft is aggressively cached so it survives page reloads, navigation, and accidental tab closure.
 
@@ -166,7 +195,7 @@ interface DraftCache {
 
 **Cross-tab sync:** `localStorage` fires a `storage` event in all other same-origin tabs when a key is written or removed. The component listens for `storage` events on the draft key. When another tab creates a draft, the receiving tab enters Edit mode (and gates mutations) for that list. When another tab clears the draft (Apply or Revert), the receiving tab exits Edit mode. The originating tab updates its own state directly — the `storage` event only fires in other tabs. No additional `BroadcastChannel` is needed for draft state; the existing `frantic-search-card-lists` channel (Spec 075) handles instance log changes independently.
 
-### 6. External Mutation Gating
+### 7. External Mutation Gating
 
 While the editor is in Edit mode, the user has a draft representing their intended list state. If external actions (add/remove buttons on search results, quantity adjustments) modified the internal model concurrently, the rendered state the user expects to see on Revert (or after Apply) would be unpredictable.
 
@@ -179,7 +208,7 @@ To prevent this:
 
 Init mode and Display mode do **not** gate external mutations. In Init mode, + buttons are the expected way to start building a list. In Display mode, +/- buttons trigger immediate re-render of the read-only textarea.
 
-### 7. Component Architecture
+### 8. Component Architecture
 
 `ListImportTextarea` is refactored into a `DeckEditor` component that owns:
 
@@ -236,6 +265,12 @@ interface DeckEditorProps {
 16. While in Edit mode, add/remove actions for the active list are disabled. Init and Display modes do not gate mutations.
 17. Syntax highlighting (Spec 108) works in Display and Edit modes.
 18. Removing the last instance via external - action transitions Display → Init.
+19. Status box renders between toolbar and textarea in all modes.
+20. Init mode: Help text explains empty list, paste or add via UI.
+21. Display mode: Shows "N card(s)" (instance count).
+22. Edit mode, no errors: Shows "+A / −R cards" (or "No changes" when 0/0).
+23. Edit mode, with errors: Shows "Errors (N card(s)):" header and each error hierarchically — full card line as context, error message indented beneath.
+24. Error state has visually distinct styling (border, background) from default state.
 
 ## Implementation Notes
 
@@ -246,3 +281,7 @@ interface DeckEditorProps {
 - 2026-03-09: Serialization format fixes. Arena/MTGGoldfish: Commander first, deck, two newlines, Sideboard — no headings. Moxfield: `SIDEBOARD:` on own line for post-main zones. Archidekt: flat alphabetical list, no headers; zone-derived tags when tags empty. Melee: `MainDeck` header, two newlines, `Sideboard` header. Added `serializeMelee`.
 - 2026-03-10: Display mode serialization runs in the search worker to keep the main thread responsive. The main thread requests serialization via `postMessage` and renders the returned string. When `onSerializeRequest` is not provided (e.g. tests), DeckEditor falls back to synchronous `serialize()` on the main thread.
 - 2026-03-10: Added TappedOut format. Format chip, detection (HASH_TAG, ROLE_MARKER, lowercase foil markers), and `serializeTappedOut` (1x name (SET:num) *f* #Tag, flat alphabetical).
+- 2026-03-10: Added Status area between toolbar and textarea. Mode-specific content: Init help, Display card count, Edit diff or validation errors. Error state styling when validation fails.
+- 2026-03-10: Status box error display made hierarchical per spec § 4 — "Errors (N card(s)):" header, full card line as context, error message indented beneath. Validator enhanced to produce richer messages (set code for "Unknown set", card name + set/collector for "Card name doesn't match printing").
+- 2026-03-10: Error lines show 1-based line numbers (L11:) and syntax highlighting; line block uses same background as textarea for visual consistency.
+- 2026-03-10: Error display reorganized into 2-column grid (line number | content); removed border/padding from highlighted lines; added "Error: " prefix to messages.
