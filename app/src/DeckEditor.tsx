@@ -184,9 +184,8 @@ export default function DeckEditor(props: {
   onDraftActiveChange?: (active: boolean) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
+  const [baselineText, setBaselineText] = createSignal<string | null>(null)
   const [selectedFormat, setSelectedFormat] = createSignal<DeckFormat>(readFormatFromStorage())
-  const [showApplyPopover, setShowApplyPopover] = createSignal(false)
-  const [diffSummary, setDiffSummary] = createSignal<{ additions: number; removals: number } | null>(null)
   const [applyInProgress, setApplyInProgress] = createSignal(false)
   const [copied, setCopied] = createSignal(false)
   const [quickFixApplying, setQuickFixApplying] = createSignal<{ lineIndex: number; fixIndex: number } | null>(null)
@@ -210,12 +209,29 @@ export default function DeckEditor(props: {
     if (debounceTimer) clearTimeout(debounceTimer)
   })
 
+  // Populate baseline when in Edit mode with cached draft (restore-from-cache case)
+  createEffect(() => {
+    if (mode() !== 'edit' || baselineText() !== null) return
+    const ins = props.instances
+    const fmt = selectedFormat()
+    if (!props.display) {
+      setBaselineText('')
+      return
+    }
+    if (props.onSerializeRequest) {
+      props.onSerializeRequest(ins, fmt).then((text) => setBaselineText(text))
+    } else {
+      setBaselineText(serialize(fmt, ins, props.display!, props.printingDisplay))
+    }
+  })
+
   // Cross-tab draft sync via storage events
   function handleStorageEvent(e: StorageEvent) {
     if (e.key !== draftKey(props.listId)) return
     if (e.newValue === null) {
       setDraftText(null)
       setDebouncedDraft('')
+      setBaselineText(null)
     } else {
       try {
         const parsed = JSON.parse(e.newValue) as { text?: string }
@@ -301,6 +317,13 @@ export default function DeckEditor(props: {
     return v.lines.filter((l) => l.kind === 'error')
   })
 
+  // Has changes: draft differs from baseline (Spec 113)
+  const hasChanges = createMemo(() => {
+    const base = baselineText()
+    const draft = draftText()
+    return mode() === 'edit' && base !== null && draft !== null && draft !== base
+  })
+
   // Diff summary for Status box (Edit mode, no errors) — uses debounced draft
   const editDiffSummary = createMemo<{ additions: number; removals: number } | null>(() => {
     if (mode() !== 'edit') return null
@@ -311,11 +334,16 @@ export default function DeckEditor(props: {
     return { additions: diff.additions.length, removals: diff.removals.length }
   })
 
-  // Detected format in Edit mode
+  // Detected format in Edit mode (falls back to selected format when undetectable)
   const detectedFormat = createMemo<DeckFormat | null>(() => {
     const d = draftText()
     if (d === null) return null
     return detectDeckFormat(lexDeckList(d))
+  })
+
+  const editFormatLabel = createMemo(() => {
+    const fmt = detectedFormat() ?? selectedFormat()
+    return ALL_FORMATS.find((f) => f.id === fmt)?.label ?? 'Unknown'
   })
 
   // The text shown in the textarea
@@ -354,15 +382,29 @@ export default function DeckEditor(props: {
 
   function handleEdit() {
     const text = serializedText()
+    setBaselineText(text)
     setDraftText(text)
     setDebouncedDraft(text)
     writeDraftToStorage(props.listId, text)
   }
 
-  function handleRevert() {
+  function handleCancel() {
     setDraftText(null)
     setDebouncedDraft('')
+    setBaselineText(null)
     clearDraftFromStorage(props.listId)
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = undefined
+    }
+  }
+
+  function handleRevert() {
+    const base = baselineText()
+    if (base === null) return
+    setDraftText(base)
+    setDebouncedDraft(base)
+    writeDraftToStorage(props.listId, base)
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = undefined
@@ -387,38 +429,23 @@ export default function DeckEditor(props: {
     }, 50)
   }
 
-  function handleApply() {
-    const text = draftText()
-    if (!text) return
-    const result = importDeckList(text, props.display, props.printingDisplay)
-    const diff = diffDeckList(result.candidates, props.instances)
-    setDiffSummary({ additions: diff.additions.length, removals: diff.removals.length })
-    setShowApplyPopover(true)
-  }
-
-  async function handleApplyAccept() {
+  async function handleApply() {
     const text = draftText()
     if (!text) return
     setApplyInProgress(true)
     try {
       const success = await props.onApply(text)
       if (success) {
-        setShowApplyPopover(false)
         const detected = detectedFormat()
         if (detected) {
           setSelectedFormat(detected)
           writeFormatToStorage(detected)
         }
-        handleRevert()
+        handleCancel()
       }
     } finally {
       setApplyInProgress(false)
     }
-  }
-
-  function handleApplyCancel() {
-    setShowApplyPopover(false)
-    setDiffSummary(null)
   }
 
   async function handleCopy() {
@@ -471,21 +498,8 @@ export default function DeckEditor(props: {
         </For>
       </div>
 
-      {/* Toolbar — Revert, Edit, Apply, Copy; always visible, conditionally disabled */}
+      {/* Toolbar — Edit, Copy only (Spec 113) */}
       <div class="flex items-center gap-1.5 min-h-[32px]">
-        {/* Revert — enabled in Edit mode */}
-        <button
-          type="button"
-          onClick={handleRevert}
-          disabled={mode() !== 'edit'}
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
-        >
-          <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-          </svg>
-          Revert
-        </button>
-
         {/* Edit — enabled in Display mode; primary (blue) when enabled */}
         <button
           type="button"
@@ -503,67 +517,6 @@ export default function DeckEditor(props: {
           </svg>
           Edit
         </button>
-
-        {/* Apply — enabled in Edit mode when validation passes; primary (blue) only when enabled */}
-        <div class="relative">
-          <button
-            type="button"
-            onClick={handleApply}
-            disabled={mode() !== 'edit' || hasValidationErrors()}
-            class={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors ${
-              mode() === 'edit' && !hasValidationErrors()
-                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600'
-                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent'
-            }`}
-          >
-            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-            Apply
-          </button>
-
-          <Show when={showApplyPopover()}>
-              <div class="absolute left-0 top-full mt-2 z-50 w-64 p-4 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
-                <Show when={diffSummary()} keyed>
-                  {(summary) => {
-                    const hasChanges = summary.additions > 0 || summary.removals > 0
-                    return (
-                      <>
-                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-3 space-y-0.5">
-                          <Show when={hasChanges} fallback={<p>No changes</p>}>
-                            <Show when={summary.additions > 0}>
-                              <p class="text-green-700 dark:text-green-400">+{summary.additions} card{summary.additions !== 1 ? 's' : ''}</p>
-                            </Show>
-                            <Show when={summary.removals > 0}>
-                              <p class="text-red-700 dark:text-red-400">&minus;{summary.removals} card{summary.removals !== 1 ? 's' : ''}</p>
-                            </Show>
-                          </Show>
-                        </div>
-                        <div class="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={handleApplyAccept}
-                            disabled={applyInProgress()}
-                            class="px-3 py-1.5 text-xs font-medium rounded border transition-colors disabled:opacity-50 bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600"
-                          >
-                            {applyInProgress() ? 'Applying\u2026' : 'Accept'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleApplyCancel}
-                            disabled={applyInProgress()}
-                            class="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    )
-                  }}
-                </Show>
-              </div>
-            </Show>
-          </div>
 
         {/* Copy — enabled in Display and Edit modes */}
         <button
@@ -588,10 +541,10 @@ export default function DeckEditor(props: {
         </button>
       </div>
 
-      {/* Status box — mode-appropriate info between toolbar and textarea */}
+      {/* Status box — mode-appropriate info and actions (Spec 113) */}
       <div
         classList={{
-          'px-3 py-2 rounded border text-sm min-h-[2.5rem] flex flex-col justify-center': true,
+          'px-3 py-2 rounded border text-sm min-h-[2.5rem] flex flex-col gap-2': true,
           'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200': mode() === 'edit' && validationErrors().length > 0,
           'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400': mode() !== 'edit' || validationErrors().length === 0,
         }}
@@ -604,109 +557,150 @@ export default function DeckEditor(props: {
             {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
           </p>
         </Show>
-        <Show when={mode() === 'edit' && validationErrors().length > 0} fallback={null}>
-          <div>
-            <p class="font-medium mb-1.5">
-              Errors ({validationErrors().length} card{validationErrors().length !== 1 ? 's' : ''}):
-            </p>
-            <ul class="list-none space-y-2">
-              <For each={validationErrors()}>
-                {(err) => {
-                  const lineText = draftText()?.slice(err.lineStart, err.lineEnd) ?? ''
-                  const spanText =
-                    err.span != null && draftText() != null
-                      ? draftText()!.slice(err.span.start, err.span.end).replace(/\s+/g, ' ').trim()
-                      : null
-                  const displayMessage =
-                    spanText != null && !(err.message ?? '').includes(spanText)
-                      ? `Error: ${err.message ?? 'Validation error'} — "${spanText}"`
-                      : `Error: ${err.message ?? 'Validation error'}`
-                  const validationForLine =
-                    err.span
-                      ? {
-                          lines: [
-                            {
-                              kind: 'error' as const,
-                              lineIndex: 0,
-                              lineStart: 0,
-                              lineEnd: lineText.length,
-                              span: {
-                                start: err.span.start - err.lineStart,
-                                end: err.span.end - err.lineStart,
-                              },
-                            },
-                          ],
-                        }
-                      : null
-                  return (
-                    <li class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 py-1.5 border-b border-red-200 dark:border-red-900/50 last:border-b-0">
-                      <span class="text-gray-500 dark:text-gray-400 text-xs font-mono row-span-3 self-start pt-0.5">
-                        L{err.lineIndex + 1}:
-                      </span>
-                      <div class="min-w-0 bg-white dark:bg-gray-900 overflow-x-auto">
-                        <ListHighlight
-                          text={lineText}
-                          validation={validationForLine}
-                          class="text-sm leading-relaxed"
-                        />
-                      </div>
-                      <span class="text-xs">
-                        <StyledValidationText text={displayMessage} />
-                      </span>
-                      <Show when={err.quickFixes && err.quickFixes.length > 0}>
-                        <div class="flex flex-wrap items-center gap-1.5">
-                          <span class="text-xs text-gray-500 dark:text-gray-400">
-                            {err.quickFixes!.length === 1 ? 'Fix:' : 'Fixes:'}
+        <Show when={mode() === 'edit'} fallback={null}>
+          <div class="flex flex-col gap-2">
+            {/* Edit mode: buttons on top row */}
+            <div class="flex flex-wrap items-center gap-2">
+              <Show when={!hasChanges()} fallback={null}>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </Show>
+              <Show when={hasChanges()} fallback={null}>
+                <button
+                  type="button"
+                  onClick={handleRevert}
+                  disabled={baselineText() === null}
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                  </svg>
+                  Revert
+                </button>
+              </Show>
+              <Show when={hasChanges() && !hasValidationErrors()} fallback={null}>
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={applyInProgress()}
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  {applyInProgress() ? 'Applying…' : 'Apply'}
+                </button>
+              </Show>
+            </div>
+            {/* Edit mode: status message on second row */}
+            <div class="text-gray-500 dark:text-gray-400">
+              <Show when={!hasChanges()} fallback={null}>
+                Editing: No changes ({editFormatLabel()})
+              </Show>
+              <Show when={hasChanges() && validationErrors().length > 0} fallback={null}>
+                <span class="text-red-800 dark:text-red-200">
+                  Editing: {validationErrors().length} error{validationErrors().length !== 1 ? 's' : ''} ({editFormatLabel()})
+                </span>
+              </Show>
+              <Show
+                when={hasChanges() && validationErrors().length === 0 && editDiffSummary()}
+                fallback={hasChanges() && validationErrors().length === 0 ? <span>Editing: changes pending ({editFormatLabel()})</span> : null}
+              >
+                {(summary) => (
+                  <>
+                    Editing: <span class="text-green-700 dark:text-green-400">+{summary().additions} card{summary().additions !== 1 ? 's' : ''}</span>
+                    {' / '}
+                    <span class="text-red-700 dark:text-red-400">−{summary().removals} card{summary().removals !== 1 ? 's' : ''}</span>
+                    {' '}({editFormatLabel()})
+                  </>
+                )}
+              </Show>
+            </div>
+            {/* Error table when validation fails */}
+            <Show when={validationErrors().length > 0} fallback={null}>
+              <div>
+                <ul class="list-none space-y-2">
+                  <For each={validationErrors()}>
+                    {(err) => {
+                      const lineText = draftText()?.slice(err.lineStart, err.lineEnd) ?? ''
+                      const spanText =
+                        err.span != null && draftText() != null
+                          ? draftText()!.slice(err.span.start, err.span.end).replace(/\s+/g, ' ').trim()
+                          : null
+                      const displayMessage =
+                        spanText != null && !(err.message ?? '').includes(spanText)
+                          ? `Error: ${err.message ?? 'Validation error'} — "${spanText}"`
+                          : `Error: ${err.message ?? 'Validation error'}`
+                      const validationForLine =
+                        err.span
+                          ? {
+                              lines: [
+                                {
+                                  kind: 'error' as const,
+                                  lineIndex: 0,
+                                  lineStart: 0,
+                                  lineEnd: lineText.length,
+                                  span: {
+                                    start: err.span.start - err.lineStart,
+                                    end: err.span.end - err.lineStart,
+                                  },
+                                },
+                              ],
+                            }
+                          : null
+                      return (
+                        <li class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 py-1.5 border-b border-red-200 dark:border-red-900/50 last:border-b-0">
+                          <span class="text-gray-500 dark:text-gray-400 text-xs font-mono row-span-3 self-start pt-0.5">
+                            L{err.lineIndex + 1}:
                           </span>
-                          <For each={err.quickFixes}>
-                            {(fix, fixIndex) => {
-                              const isApplying = () =>
-                                quickFixApplying()?.lineIndex === err.lineIndex &&
-                                quickFixApplying()?.fixIndex === fixIndex()
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => applyQuickFix(err, fix, fixIndex())}
-                                  disabled={isApplying()}
-                                  class="inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-wait"
-                                  aria-label={`Apply fix: ${fix.label}`}
-                                >
-                                  {isApplying() ? 'Applying…' : <StyledValidationText text={fix.label} />}
-                                </button>
-                              )
-                            }}
-                          </For>
-                        </div>
-                      </Show>
-                    </li>
-                  )
-                }}
-              </For>
-            </ul>
+                          <div class="min-w-0 bg-white dark:bg-gray-900 overflow-x-auto">
+                            <ListHighlight
+                              text={lineText}
+                              validation={validationForLine}
+                              class="text-sm leading-relaxed"
+                            />
+                          </div>
+                          <span class="text-xs">
+                            <StyledValidationText text={displayMessage} />
+                          </span>
+                          <Show when={err.quickFixes && err.quickFixes.length > 0}>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {err.quickFixes!.length === 1 ? 'Fix:' : 'Fixes:'}
+                              </span>
+                              <For each={err.quickFixes}>
+                                {(fix, fixIndex) => {
+                                  const isApplying = () =>
+                                    quickFixApplying()?.lineIndex === err.lineIndex &&
+                                    quickFixApplying()?.fixIndex === fixIndex()
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => applyQuickFix(err, fix, fixIndex())}
+                                      disabled={isApplying()}
+                                      class="inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-wait"
+                                      aria-label={`Apply fix: ${fix.label}`}
+                                    >
+                                      {isApplying() ? 'Applying…' : <StyledValidationText text={fix.label} />}
+                                    </button>
+                                  )
+                                }}
+                              </For>
+                            </div>
+                          </Show>
+                        </li>
+                      )
+                    }}
+                  </For>
+                </ul>
+              </div>
+            </Show>
           </div>
-        </Show>
-        <Show when={mode() === 'edit' && validationErrors().length === 0} fallback={null}>
-          <Show
-            when={editDiffSummary()}
-            fallback={<p class="text-gray-500 dark:text-gray-400">—</p>}
-          >
-            {(summary) => {
-              const hasChanges = summary().additions > 0 || summary().removals > 0
-              return (
-                <p>
-                  {hasChanges ? (
-                    <>
-                      <span class="text-green-700 dark:text-green-400">+{summary().additions} card{summary().additions !== 1 ? 's' : ''}</span>
-                      {' / '}
-                      <span class="text-red-700 dark:text-red-400">−{summary().removals} card{summary().removals !== 1 ? 's' : ''}</span>
-                    </>
-                  ) : (
-                    'No changes'
-                  )}
-                </p>
-              )
-            }}
-          </Show>
         </Show>
       </div>
 

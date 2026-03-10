@@ -285,3 +285,4 @@ interface DeckEditorProps {
 - 2026-03-10: Status box error display made hierarchical per spec § 4 — "Errors (N card(s)):" header, full card line as context, error message indented beneath. Validator enhanced to produce richer messages (set code for "Unknown set", card name + set/collector for "Card name doesn't match printing").
 - 2026-03-10: Error lines show 1-based line numbers (L11:) and syntax highlighting; line block uses same background as textarea for visual consistency.
 - 2026-03-10: Error display reorganized into 2-column grid (line number | content); removed border/padding from highlighted lines; added "Error: " prefix to messages.
+- 2026-03-10: Toolbar and Status box redesigned per Spec 113. Toolbar reduced to Edit and Copy only; Revert, Cancel, and Apply moved into the Status box with contextual placement.
