@@ -363,8 +363,7 @@ describe("seededSortPrintings", () => {
 // ---------------------------------------------------------------------------
 import { sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./ordering";
 import type { SortDirective } from "./ast";
-import { index, printingIndex, TEST_DATA, saltIndex } from "./evaluator.test-fixtures";
-import { RARITY_ORDER } from "../../src/bits";
+import { index, printingIndex, saltIndex } from "./evaluator.test-fixtures";
 
 describe("sortByField — face-domain sort", () => {
   // Canonical faces: 0=Birds, 1=Bolt, 2=Counterspell, 3=Sol Ring,
@@ -405,7 +404,6 @@ describe("sortByField — face-domain sort", () => {
     sortByField(indices, d, index, 0);
     // Creatures (with numeric power): Birds(0), Tarmogoyf(*=0), Thalia(2), Ayara(3)
     // Non-creatures sort last: Bolt, Counterspell, Sol Ring, Azorius Charm, Dismember
-    const powers = indices.map(i => index.numericPowerLookup[i]);
     // First few should be creatures with highest power
     const creatureIndices = indices.filter(i => !isNaN(index.numericPowerLookup[i]));
     const nonCreatureIndices = indices.filter(i => isNaN(index.numericPowerLookup[i]));
@@ -521,7 +519,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     const deduped = [1, 3]; // Bolt, Sol Ring
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
     const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
-    const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // Bolt cheapest=10 ($0.10 via WCD), Sol Ring cheapest=50 ($0.50)
     // asc: Bolt (cheapest $0.10) before Sol Ring (cheapest $0.50)
     expect(cardOrder[0]).toBe(1); // Bolt
@@ -532,7 +530,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     const deduped = [1, 3];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
     const d: SortDirective = { field: "usd", direction: "desc", isPrintingDomain: true };
-    const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
     // desc: Sol Ring (max $5.00) before Bolt (max $3.00)
     expect(cardOrder[0]).toBe(3); // Sol Ring
     expect(cardOrder[1]).toBe(1); // Bolt

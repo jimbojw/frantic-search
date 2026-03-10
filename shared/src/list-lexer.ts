@@ -92,6 +92,20 @@ export interface ListValidationResult {
   lines: LineValidation[];
 }
 
+/** Resolved card entry from validation; used by importDeckList. Spec 108/109. */
+export interface ParsedEntry {
+  oracle_id: string;
+  scryfall_id: string | null;
+  quantity: number;
+  finish?: "foil" | "etched" | null;
+  variant?: string;
+}
+
+/** Full validation result with resolved entries for import/diff. Spec 114. */
+export interface ValidationResult extends ListValidationResult {
+  resolved?: ParsedEntry[];
+}
+
 const CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
 /** TappedOut inline format: (SET) or (SET:num), *f*|*f-etch*|*e*|*f-pre*|*f-pp*, *CMDR*|*CMPN*, #Tag... */

@@ -3,7 +3,7 @@ import { describe, test, expect } from "vitest";
 import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { index, matchCount, TEST_DATA, saltIndex, saltMatchCount } from "./evaluator.test-fixtures";
+import { index, matchCount, TEST_DATA, saltMatchCount } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Node key uniqueness

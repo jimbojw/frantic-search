@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, ValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
@@ -391,6 +391,8 @@ function App() {
   let latestQueryIdRight = 0
   let serializeRequestId = 0
   const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
+  let validateRequestId = 0
+  const validatePending = new Map<number, (result: ValidationResult) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
 
   function serializeDeckList(instances: InstanceState[], format: DeckFormat): Promise<string> {
@@ -398,6 +400,14 @@ function App() {
     return new Promise((resolve, reject) => {
       serializePending.set(requestId, { resolve, reject })
       worker.postMessage({ type: 'serialize-list', requestId, instances, format })
+    })
+  }
+
+  function validateDeckList(text: string): Promise<ValidationResult> {
+    const requestId = ++validateRequestId
+    return new Promise((resolve) => {
+      validatePending.set(requestId, resolve)
+      worker.postMessage({ type: 'validate-list', requestId, text })
     })
   }
 
@@ -555,6 +565,14 @@ function App() {
         if (pending) {
           serializePending.delete(msg.requestId)
           pending.resolve(msg.text)
+        }
+        break
+      }
+      case 'validate-result': {
+        const cb = validatePending.get(msg.requestId)
+        if (cb) {
+          validatePending.delete(msg.requestId)
+          cb(msg.result)
         }
         break
       }
@@ -1170,6 +1188,7 @@ function App() {
           display={display()}
           printingDisplay={printingDisplay()}
           onSerializeRequest={serializeDeckList}
+          onValidateRequest={validateDeckList}
           onBack={() => history.back()}
         />
       </Show>

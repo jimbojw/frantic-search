@@ -20,6 +20,7 @@ import type {
   ListMetadata,
   DeckFormat,
   ListValidationResult,
+  ValidationResult,
   LineValidation,
   QuickFix,
 } from '@frantic-search/shared'
@@ -181,6 +182,7 @@ export default function DeckEditor(props: {
   printingDisplay: PrintingDisplayColumns | null
   onApply: (draftText: string) => Promise<boolean>
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
+  onValidateRequest?: (text: string) => Promise<ValidationResult>
   onDraftActiveChange?: (active: boolean) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
@@ -297,12 +299,25 @@ export default function DeckEditor(props: {
     }
   })
 
-  // Validation for Edit mode (debounced)
-  const validation = createMemo<ListValidationResult | null>(() => {
+  // Validation for Edit mode (debounced, async via worker when available)
+  const [validationResult, setValidationResult] = createSignal<ValidationResult | null>(null)
+  let validationVersion = 0
+  createEffect(() => {
     const t = debouncedDraft()
-    if (!t.trim()) return null
-    return validateDeckList(t, props.display, props.printingDisplay)
+    if (!t.trim()) {
+      setValidationResult(null)
+      return
+    }
+    if (props.onValidateRequest) {
+      const version = ++validationVersion
+      props.onValidateRequest(t).then((result) => {
+        if (version === validationVersion) setValidationResult(result)
+      })
+    } else {
+      setValidationResult(validateDeckList(t, props.display, props.printingDisplay))
+    }
   })
+  const validation = createMemo<ListValidationResult | null>(() => validationResult())
 
   const hasValidationErrors = createMemo(() => {
     const v = validation()
@@ -368,6 +383,15 @@ export default function DeckEditor(props: {
     return null
   })
 
+  // Validating… when async validation is in flight (Spec 114 § 5)
+  const isValidating = createMemo(
+    () =>
+      mode() === 'edit' &&
+      debouncedDraft().trim() !== '' &&
+      validationResult() === null &&
+      !!props.onValidateRequest,
+  )
+
   function handleInput(e: Event) {
     const el = e.currentTarget as HTMLTextAreaElement
     const value = el.value
@@ -384,8 +408,9 @@ export default function DeckEditor(props: {
     const text = serializedText()
     setBaselineText(text)
     setDraftText(text)
-    setDebouncedDraft(text)
     writeDraftToStorage(props.listId, text)
+    // Defer debounced draft so UI can paint edit mode before validation fires
+    setTimeout(() => setDebouncedDraft(text), 0)
   }
 
   function handleCancel() {
@@ -590,17 +615,20 @@ export default function DeckEditor(props: {
             </div>
             {/* Edit mode: status message on second row */}
             <div class="text-gray-500 dark:text-gray-400">
-              <Show when={!hasChanges()} fallback={null}>
+              <Show when={isValidating()} fallback={null}>
+                Validating…
+              </Show>
+              <Show when={!isValidating() && !hasChanges()} fallback={null}>
                 Editing: No changes ({editFormatLabel()})
               </Show>
-              <Show when={hasChanges() && validationErrors().length > 0} fallback={null}>
+              <Show when={!isValidating() && hasChanges() && validationErrors().length > 0} fallback={null}>
                 <span class="text-red-800 dark:text-red-200">
                   Editing: {validationErrors().length} error{validationErrors().length !== 1 ? 's' : ''} ({editFormatLabel()})
                 </span>
               </Show>
               <Show
-                when={hasChanges() && validationErrors().length === 0 && editDiffSummary()}
-                fallback={hasChanges() && validationErrors().length === 0 ? <span>Editing: changes pending ({editFormatLabel()})</span> : null}
+                when={!isValidating() && hasChanges() && validationErrors().length === 0 && editDiffSummary()}
+                fallback={!isValidating() && hasChanges() && validationErrors().length === 0 ? <span>Editing: changes pending ({editFormatLabel()})</span> : null}
               >
                 {(summary) => (
                   <>

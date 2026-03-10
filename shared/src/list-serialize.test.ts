@@ -43,12 +43,6 @@ const printingDisplay: PrintingDisplayColumns = {
   canonical_face_ref: [0, 0, 1],
 };
 
-// Mapping from scryfall printing IDs to oracle IDs (via canonical_face_ref → display.oracle_ids)
-const oracleToCanonicalFace = new Map([
-  ["bolt-oracle", 0],
-  ["delver-oracle", 1],
-]);
-
 function inst(
   oracleId: string,
   listId = "default",

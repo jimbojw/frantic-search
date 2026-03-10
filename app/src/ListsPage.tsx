@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createMemo, createSignal } from 'solid-js'
-import type { DisplayColumns, InstanceState, PrintingDisplayColumns } from '@frantic-search/shared'
+import type { DisplayColumns, InstanceState, PrintingDisplayColumns, ValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { DEFAULT_LIST_ID, importDeckList, diffDeckList } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
@@ -14,6 +14,7 @@ export default function ListsPage(props: {
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
+  onValidateRequest?: (text: string) => Promise<ValidationResult>
   onBack: () => void
 }) {
   const [_isDraftActive, setIsDraftActive] = createSignal(false)
@@ -85,6 +86,7 @@ export default function ListsPage(props: {
         printingDisplay={props.printingDisplay}
         onApply={handleApply}
         onSerializeRequest={props.onSerializeRequest}
+        onValidateRequest={props.onValidateRequest}
         onDraftActiveChange={setIsDraftActive}
       />
     </div>

@@ -1,6 +1,6 @@
 # Spec 114: Worker-Based Deck List Validation
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 108 (List Import Textarea), Spec 110 (Hybrid Deck Editor), Spec 112 (Deck Editor Quick Fixes), Spec 113 (Deck Editor Toolbar and Status Redesign), Spec 076 (Worker Protocol and List Caching)
 
@@ -212,3 +212,4 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 - Worker handler: add branch for `msg.type === 'validate-list'`; call `validateDeckListWithEngine`; post `validate-result`.
 - `displayRef` and `printingDisplayRef` are already in scope in the worker from init.
 - Test `validateDeckListWithEngine` with existing list-validate test fixtures; use test CardIndex/PrintingIndex/NodeCache from evaluator tests.
+- **§ 3g approximate match:** The spec describes using a BARE node and `cache.evaluate()` for approximate matching. The implementation uses a manual loop over `cardIndex.faceCount` and `combinedNamesNormalized`, plus `alternateNamesIndex`, instead. Behavior is correct (exact normalized match and alternate-name lookup); the manual path is O(faceCount) per unknown card and only runs when EXACT fails. NodeCache internment for the BARE node was not implemented.

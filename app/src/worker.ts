@@ -19,6 +19,7 @@ import {
   serializeMtggoldfish,
   serializeMelee,
   serializeTappedOut,
+  validateDeckListWithEngine,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -339,6 +340,13 @@ async function init(): Promise<void> {
     if (msg.type === 'serialize-list') {
       const text = serializeList(msg.instances, msg.format)
       post({ type: 'serialize-result', requestId: msg.requestId, text })
+      return
+    }
+    if (msg.type === 'validate-list') {
+      const result = validateDeckListWithEngine(
+        msg.text, index, printingIndex, displayRef, printingDisplayRef, cache,
+      )
+      post({ type: 'validate-result', requestId: msg.requestId, result })
       return
     }
     if (msg.type === 'get-tags-for-card') {

@@ -5,15 +5,8 @@ import { lexDeckList, ListTokenType } from "./list-lexer";
 import type { ListToken } from "./list-lexer";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
-export type { LineValidation, ListValidationResult } from "./list-lexer";
-
-export interface ParsedEntry {
-  oracle_id: string;
-  scryfall_id: string | null;
-  quantity: number;
-  finish?: "foil" | "etched" | null;
-  variant?: string;
-}
+import type { ParsedEntry } from "./list-lexer";
+export type { LineValidation, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
 
 function normalize(s: string): string {
   return s
@@ -131,7 +124,7 @@ function getDisplayNameForCanonicalFace(
  * apply to specific printings; resolving by name only has no finish.
  * Preserves quantity, name, tags, etc. Returns line without trailing newline.
  */
-function reconstructLineWithoutSet(
+export function reconstructLineWithoutSet(
   line: string,
   setTok: ListToken | undefined,
   collectorTok: ListToken | undefined,
@@ -162,7 +155,7 @@ function reconstructLineWithoutSet(
 }
 
 /** Human-readable variant label from printing flags (e.g. "extended art", "borderless"). */
-function variantLabelForPrinting(
+export function variantLabelForPrinting(
   printing: PrintingDisplayColumns,
   rowIndex: number
 ): string {
@@ -222,7 +215,7 @@ function findPrintingsInSet(
 }
 
 /** MTGGoldfish variant string → printing_flags bit or promo_types lookup. */
-function variantToFlags(variant: string): { printingFlag?: number; promoCol?: 0 | 1; promoBit?: number } | null {
+export function variantToFlags(variant: string): { printingFlag?: number; promoCol?: 0 | 1; promoBit?: number } | null {
   const v = variant.toLowerCase().trim();
   // "SetName - variant" format: use the part after " - "
   const dashIdx = v.indexOf(" - ");
@@ -271,7 +264,7 @@ const KNOWN_GOLDFISH_VARIANTS = new Set([
   "promo pack", "bundle", "sealed", "timeshifted",
 ]);
 
-function isKnownGoldfishVariant(variant: string): boolean {
+export function isKnownGoldfishVariant(variant: string): boolean {
   const v = variant.toLowerCase().trim();
   const dashIdx = v.indexOf(" - ");
   const flagPart = dashIdx >= 0 ? v.slice(dashIdx + 3) : v;
