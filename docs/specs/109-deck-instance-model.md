@@ -190,7 +190,7 @@ This intentional duplication (zone echoes information also in tags) means:
 - `zone` is the normalized, query-friendly field for structural organization.
 - `tags` is the verbatim, round-trip-safe field for export fidelity.
 
-When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). The Archidekt serializer emits `[tags]` and `^collection_status^` when present for round-trip fidelity. When exporting to Arena format, `zone` drives the section headers.
+When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). The Archidekt serializer emits `[tags]` and `^collection_status^` when present for round-trip fidelity; all cards in one alphabetical list, no section headers. Arena, MTGO, and MTGGoldfish serializers emit Commander first, then deck, then two newlines, then Sideboard and other zones — no headings. Moxfield uses `SIDEBOARD:`-style headers for post-main zones. Melee uses `MainDeck` and `Sideboard` headers.
 
 #### Collection status storage
 

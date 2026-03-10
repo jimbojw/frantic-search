@@ -8,6 +8,7 @@ import {
   serializeMoxfield,
   serializeArchidekt,
   serializeMtggoldfish,
+  serializeMelee,
   importDeckList,
   diffDeckList,
 } from '@frantic-search/shared'
@@ -100,6 +101,8 @@ function serialize(
       return serializeArchidekt(instances, display, printingDisplay)
     case 'mtggoldfish':
       return serializeMtggoldfish(instances, display, printingDisplay)
+    case 'melee':
+      return serializeMelee(instances, display)
     case 'arena':
     default:
       return serializeArena(instances, display)

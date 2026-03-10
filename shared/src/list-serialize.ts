@@ -49,6 +49,8 @@ interface AggregatedEntry {
   tags?: string[];
   /** Archidekt: collection status e.g. ^Have,#37d67a^ */
   collection_status?: string | null;
+  /** Archidekt: zone for deriving tags when tags empty */
+  zone?: string | null;
 }
 
 type GroupKey = string;
@@ -58,17 +60,23 @@ function groupKey(
   scryfallId: string | null,
   finish: string | null,
   tags?: string[],
-  collectionStatus?: string | null
+  collectionStatus?: string | null,
+  zone?: string | null
 ): GroupKey {
   const base = `${oracleId}\0${scryfallId ?? ""}\0${finish ?? ""}`;
+  const parts: string[] = [];
   if (tags !== undefined && collectionStatus !== undefined) {
-    return `${base}\0${tags.join("\x01")}\0${collectionStatus ?? ""}`;
+    parts.push(tags.join("\x01"), collectionStatus ?? "");
   }
-  return base;
+  if (zone !== undefined) {
+    parts.push(zone ?? "");
+  }
+  return parts.length > 0 ? base + "\0" + parts.join("\0") : base;
 }
 
 interface AggregateOptions {
   preserveTagsAndStatus?: boolean;
+  preserveZone?: boolean;
 }
 
 function aggregateInstances(
@@ -78,6 +86,7 @@ function aggregateInstances(
   options?: AggregateOptions
 ): AggregatedEntry[] {
   const preserve = options?.preserveTagsAndStatus ?? false;
+  const preserveZone = options?.preserveZone ?? false;
   const groups = new Map<
     GroupKey,
     {
@@ -87,14 +96,23 @@ function aggregateInstances(
       count: number;
       tags?: string[];
       collection_status?: string | null;
+      zone?: string | null;
     }
   >();
   const order: GroupKey[] = [];
 
   for (const inst of instances) {
-    const key = preserve
-      ? groupKey(inst.oracle_id, inst.scryfall_id, inst.finish, inst.tags, inst.collection_status)
-      : groupKey(inst.oracle_id, inst.scryfall_id, inst.finish);
+    const key =
+      preserve || preserveZone
+        ? groupKey(
+            inst.oracle_id,
+            inst.scryfall_id,
+            inst.finish,
+            preserve ? inst.tags : undefined,
+            preserve ? inst.collection_status : undefined,
+            preserveZone ? inst.zone ?? null : undefined
+          )
+        : groupKey(inst.oracle_id, inst.scryfall_id, inst.finish);
     const existing = groups.get(key);
     if (existing) {
       existing.count++;
@@ -108,6 +126,7 @@ function aggregateInstances(
           tags: inst.tags,
           collection_status: inst.collection_status,
         }),
+        ...(preserveZone && { zone: inst.zone ?? null }),
       });
       order.push(key);
     }
@@ -137,6 +156,7 @@ function aggregateInstances(
       finish: g.finish,
       ...(preserve && g.tags !== undefined && { tags: g.tags }),
       ...(preserve && "collection_status" in g && { collection_status: g.collection_status }),
+      ...(preserveZone && "zone" in g && { zone: g.zone }),
     });
   }
 
@@ -149,23 +169,38 @@ interface ZoneGroup {
   entries: AggregatedEntry[];
 }
 
-const ZONE_ORDER: readonly string[] = KNOWN_ZONES;
-
-function zoneSort(a: string | null, b: string | null): number {
-  const ai = a ? ZONE_ORDER.indexOf(a) : -1;
-  const bi = b ? ZONE_ORDER.indexOf(b) : -1;
-  const aOrder = ai >= 0 ? ai : (a === null ? -1 : ZONE_ORDER.length);
-  const bOrder = bi >= 0 ? bi : (b === null ? -1 : ZONE_ORDER.length);
-  return aOrder - bOrder;
-}
-
 interface GroupByZoneOptions {
   preserveTagsAndStatus?: boolean;
+  zoneOrder?: readonly (string | null)[];
+}
+
+/** Zone order for Arena/MTGGoldfish/Moxfield: Commander first, then main deck, then sideboard block. */
+const COMMANDER_FIRST_ORDER: readonly (string | null)[] = [
+  "Commander",
+  "Deck",
+  null,
+  "Sideboard",
+  "Companion",
+  "Maybeboard",
+];
+
+/** Zone order for Melee: main deck first, then sideboard block. */
+const MELEE_ORDER: readonly (string | null)[] = [
+  "Deck",
+  null,
+  "Sideboard",
+  "Companion",
+  "Maybeboard",
+];
+
+function zoneOrderIndex(zone: string | null, order: readonly (string | null)[]): number {
+  const idx = order.indexOf(zone);
+  return idx >= 0 ? idx : order.length;
 }
 
 /**
  * Group instances by zone, then aggregate each zone group.
- * Returns zone groups in KNOWN_ZONES order, with null (implicit main) first.
+ * Returns zone groups in the given order (or KNOWN_ZONES with null first if no order).
  */
 function groupByZone(
   instances: InstanceState[],
@@ -184,7 +219,10 @@ function groupByZone(
     arr.push(inst);
   }
 
-  const zones = [...byZone.keys()].sort(zoneSort);
+  const order = options?.zoneOrder ?? [null, ...KNOWN_ZONES];
+  const zones = [...byZone.keys()].sort(
+    (a, b) => zoneOrderIndex(a, order) - zoneOrderIndex(b, order)
+  );
   return zones.map((zone) => ({
     zone,
     entries: aggregateInstances(byZone.get(zone)!, display, printingDisplay, options),
@@ -192,18 +230,8 @@ function groupByZone(
 }
 
 /**
- * Whether zone headers should be emitted.
- * Skip headers when all instances are in a single zone group of null (no zone metadata).
- */
-function needsZoneHeaders(groups: ZoneGroup[]): boolean {
-  if (groups.length === 0) return false;
-  if (groups.length === 1 && groups[0]!.zone === null) return false;
-  return true;
-}
-
-/**
  * Serialize instances in Arena format: `quantity cardname`
- * Groups by zone with section headers (Deck, Sideboard, Commander, etc.)
+ * Commander first, then deck, then two newlines, then Sideboard and other zones. No headings.
  */
 export function serializeArena(
   instances: InstanceState[],
@@ -211,28 +239,32 @@ export function serializeArena(
 ): string {
   if (instances.length === 0) return "";
 
-  const groups = groupByZone(instances, display, null);
-  const showHeaders = needsZoneHeaders(groups);
-  const sections: string[] = [];
+  const groups = groupByZone(instances, display, null, {
+    zoneOrder: COMMANDER_FIRST_ORDER,
+  });
+  const mainZones = ["Commander", "Deck", null];
+  const mainLines: string[] = [];
+  const postLines: string[] = [];
 
   for (const { zone, entries } of groups) {
-    const lines: string[] = [];
-    if (showHeaders) {
-      lines.push(zone ?? "Deck");
+    const cardLines = entries.map((e) => `${e.quantity} ${e.name}`);
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else {
+      postLines.push(...cardLines);
     }
-    for (const e of entries) {
-      lines.push(`${e.quantity} ${e.name}`);
-    }
-    sections.push(lines.join("\n"));
   }
 
-  return sections.join("\n\n");
+  const main = mainLines.join("\n");
+  const post = postLines.join("\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
 }
 
 /**
  * Serialize instances in Moxfield format: `quantity cardname (SET) collector [*F*|*E*]`
  * Falls back to name-only when printing data is unavailable.
- * Uses section headers for zones (Sideboard becomes "SIDEBOARD:" per Moxfield convention).
+ * Commander first, then deck, then two newlines, then SIDEBOARD: on own line, etc.
  */
 export function serializeMoxfield(
   instances: InstanceState[],
@@ -241,35 +273,40 @@ export function serializeMoxfield(
 ): string {
   if (instances.length === 0) return "";
 
-  const groups = groupByZone(instances, display, printingDisplay);
-  const showHeaders = needsZoneHeaders(groups);
-  const sections: string[] = [];
+  const groups = groupByZone(instances, display, printingDisplay, {
+    zoneOrder: COMMANDER_FIRST_ORDER,
+  });
+  const mainZones = ["Commander", "Deck", null];
+  const mainLines: string[] = [];
+  const postSections: string[] = [];
 
   for (const { zone, entries } of groups) {
-    const lines: string[] = [];
-    if (showHeaders) {
-      lines.push(zone ?? "Deck");
-    }
-    for (const e of entries) {
+    const cardLines = entries.map((e) => {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` (${e.setCode.toUpperCase()}) ${e.collectorNumber}`;
       }
       if (e.finish === "foil") line += " *F*";
       else if (e.finish === "etched") line += " *E*";
-      lines.push(line);
+      return line;
+    });
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else if (zone && cardLines.length > 0) {
+      postSections.push(zone.toUpperCase() + ":\n" + cardLines.join("\n"));
     }
-    sections.push(lines.join("\n"));
   }
 
-  return sections.join("\n\n");
+  const main = mainLines.join("\n");
+  const post = postSections.join("\n\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
 }
 
 /**
  * Serialize instances in Archidekt format: `quantityx cardname (set) collector [tags] ^status^`
  * Lowercase set codes, x suffix on quantity, no finish markers.
- * Includes bracket categories and collection status when present for round-trip fidelity.
- * Groups by zone with section headers.
+ * All cards in alphabetical order by name. No section headers. Categories (tags) indicate zone/role.
  */
 export function serializeArchidekt(
   instances: InstanceState[],
@@ -278,40 +315,33 @@ export function serializeArchidekt(
 ): string {
   if (instances.length === 0) return "";
 
-  const groups = groupByZone(instances, display, printingDisplay, {
+  const entries = aggregateInstances(instances, display, printingDisplay, {
     preserveTagsAndStatus: true,
+    preserveZone: true,
   });
-  const showHeaders = needsZoneHeaders(groups);
-  const sections: string[] = [];
 
-  for (const { zone, entries } of groups) {
-    const lines: string[] = [];
-    if (showHeaders) {
-      lines.push(zone ?? "Deck");
-    }
-    for (const e of entries) {
+  return entries
+    .map((e) => {
       let line = `${e.quantity}x ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` (${e.setCode.toLowerCase()}) ${e.collectorNumber}`;
       }
-      if (e.tags && e.tags.length > 0) {
-        line += ` [${e.tags.join(", ")}]`;
+      const tags = e.tags && e.tags.length > 0 ? e.tags : (e.zone ? [e.zone] : undefined);
+      if (tags) {
+        line += ` [${tags.join(", ")}]`;
       }
       if (e.collection_status) {
         line += ` ^${e.collection_status}^`;
       }
-      lines.push(line);
-    }
-    sections.push(lines.join("\n"));
-  }
-
-  return sections.join("\n\n");
+      return line;
+    })
+    .join("\n");
 }
 
 /**
  * Serialize instances in MTGGoldfish format: `quantity cardname <collector> [SET] (F|E)?`
  * Uses collector number as variant. Uppercase set codes in square brackets.
- * Groups by zone with section headers.
+ * Commander first, then deck, then two newlines, then Sideboard and other zones. No headings.
  */
 export function serializeMtggoldfish(
   instances: InstanceState[],
@@ -320,26 +350,64 @@ export function serializeMtggoldfish(
 ): string {
   if (instances.length === 0) return "";
 
-  const groups = groupByZone(instances, display, printingDisplay);
-  const showHeaders = needsZoneHeaders(groups);
-  const sections: string[] = [];
+  const groups = groupByZone(instances, display, printingDisplay, {
+    zoneOrder: COMMANDER_FIRST_ORDER,
+  });
+  const mainZones = ["Commander", "Deck", null];
+  const mainLines: string[] = [];
+  const postLines: string[] = [];
 
   for (const { zone, entries } of groups) {
-    const lines: string[] = [];
-    if (showHeaders) {
-      lines.push(zone ?? "Deck");
-    }
-    for (const e of entries) {
+    const cardLines = entries.map((e) => {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
         line += ` <${e.collectorNumber}> [${e.setCode.toUpperCase()}]`;
       }
       if (e.finish === "foil") line += " (F)";
       else if (e.finish === "etched") line += " (E)";
-      lines.push(line);
+      return line;
+    });
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else {
+      postLines.push(...cardLines);
     }
-    sections.push(lines.join("\n"));
   }
 
-  return sections.join("\n\n");
+  const main = mainLines.join("\n");
+  const post = postLines.join("\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
+}
+
+/**
+ * Serialize instances in Melee.gg format: `quantity name`
+ * Header MainDeck (no colon), two newlines, then Sideboard (if any) and other zones.
+ */
+export function serializeMelee(
+  instances: InstanceState[],
+  display: DisplayColumns
+): string {
+  if (instances.length === 0) return "";
+
+  const groups = groupByZone(instances, display, null, {
+    zoneOrder: MELEE_ORDER,
+  });
+  const mainZones = ["Deck", null];
+  const mainLines: string[] = [];
+  const postSections: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const cardLines = entries.map((e) => `${e.quantity} ${e.name}`);
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else if (zone && cardLines.length > 0) {
+      postSections.push(zone + "\n" + cardLines.join("\n"));
+    }
+  }
+
+  const main = "MainDeck\n" + mainLines.join("\n");
+  const post = postSections.join("\n\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
 }

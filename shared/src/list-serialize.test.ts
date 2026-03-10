@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -356,14 +356,14 @@ describe("serializeMtggoldfish", () => {
 });
 
 describe("zone grouping", () => {
-  it("serializeArena emits section headers when zones are present", () => {
+  it("serializeArena emits no headers; main block then two newlines then sideboard block", () => {
     const instances = [
       inst("bolt-oracle", "default", null, null, "Deck"),
       inst("delver-oracle", "default", null, null, "Sideboard"),
     ];
     const result = serializeArena(instances, display);
     expect(result).toBe(
-      "Deck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration"
+      "1 Lightning Bolt\n\n1 Delver of Secrets // Insectile Aberration"
     );
   });
 
@@ -374,30 +374,41 @@ describe("zone grouping", () => {
     expect(result).toContain("1 Lightning Bolt");
   });
 
-  it("serializeArena uses 'Deck' for null zone when other zones exist", () => {
+  it("serializeArena emits no headers; null zone in main block", () => {
     const instances = [
       inst("bolt-oracle"),
       inst("delver-oracle", "default", null, null, "Sideboard"),
     ];
     const result = serializeArena(instances, display);
-    expect(result).toContain("Deck\n1 Lightning Bolt");
-    expect(result).toContain(
-      "Sideboard\n1 Delver of Secrets // Insectile Aberration"
-    );
+    expect(result).toContain("1 Lightning Bolt");
+    expect(result).toContain("1 Delver of Secrets // Insectile Aberration");
+    expect(result).toBe("1 Lightning Bolt\n\n1 Delver of Secrets // Insectile Aberration");
   });
 
-  it("serializeMoxfield emits section headers with zones", () => {
+  it("serializeMoxfield emits SIDEBOARD: for post-main zones", () => {
     const instances = [
       inst("bolt-oracle", "default", null, null, "Deck"),
       inst("delver-oracle", "default", null, null, "Sideboard"),
     ];
     const result = serializeMoxfield(instances, display, null);
     expect(result).toBe(
-      "Deck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration"
+      "1 Lightning Bolt\n\nSIDEBOARD:\n1 Delver of Secrets // Insectile Aberration"
     );
   });
 
-  it("zone order follows KNOWN_ZONES: null, Deck, Sideboard, Commander", () => {
+  it("serializeMtggoldfish emits no headers; same structure as Arena", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", null, "Deck"),
+      inst("delver-oracle", "default", "delver-print-a", null, "Sideboard"),
+    ];
+    const result = serializeMtggoldfish(instances, display, printingDisplay);
+    expect(result).toContain("1 Lightning Bolt");
+    expect(result).toContain("1 Delver of Secrets // Insectile Aberration");
+    expect(result).not.toContain("Deck\n");
+    expect(result).not.toContain("Sideboard\n");
+  });
+
+  it("serializeArena orders Commander first, then deck, then two newlines, then Sideboard", () => {
     const instances = [
       inst("delver-oracle", "default", null, null, "Sideboard"),
       inst("bolt-oracle", "default", null, null, "Commander"),
@@ -405,8 +416,53 @@ describe("zone grouping", () => {
     ];
     const result = serializeArena(instances, display);
     const sections = result.split("\n\n");
-    expect(sections[0]).toMatch(/^Deck/);
-    expect(sections[1]).toMatch(/^Sideboard/);
-    expect(sections[2]).toMatch(/^Commander/);
+    expect(sections[0]).toContain("Lightning Bolt");
+    expect(sections[0]).not.toContain("Delver");
+    expect(sections[1]).toContain("Delver of Secrets");
+  });
+
+  it("serializeArchidekt outputs flat alphabetical list with no section headers", () => {
+    const instances = [
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+      inst("bolt-oracle", "default", null, null, "Deck"),
+    ];
+    const result = serializeArchidekt(instances, display, null);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toContain("Delver of Secrets");
+    expect(lines[1]).toContain("Lightning Bolt");
+    expect(result).not.toContain("Deck\n");
+    expect(result).not.toContain("Sideboard\n");
+  });
+
+  it("serializeArchidekt emits zone as tag when tags empty", () => {
+    const instances = [
+      inst("bolt-oracle", "default", null, null, "Commander"),
+    ];
+    const result = serializeArchidekt(instances, display, null);
+    expect(result).toContain("[Commander]");
+  });
+});
+
+describe("serializeMelee", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeMelee([], display)).toBe("");
+  });
+
+  it("emits MainDeck header then main deck cards", () => {
+    const instances = [inst("bolt-oracle"), inst("delver-oracle")];
+    const result = serializeMelee(instances, display);
+    expect(result).toMatch(/^MainDeck\n/);
+    expect(result).toContain("1 Lightning Bolt");
+    expect(result).toContain("1 Delver of Secrets // Insectile Aberration");
+  });
+
+  it("emits two newlines then Sideboard header and sideboard cards", () => {
+    const instances = [
+      inst("bolt-oracle", "default", null, null, "Deck"),
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+    ];
+    const result = serializeMelee(instances, display);
+    expect(result).toContain("MainDeck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration");
   });
 });
