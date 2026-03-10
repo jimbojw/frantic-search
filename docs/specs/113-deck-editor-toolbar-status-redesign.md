@@ -87,18 +87,20 @@ If a confirmation step is desired later, it can be reintroduced without changing
 
 ### 6. Status Box — Init and Display Modes
 
-Unchanged from Spec 110:
-
 | Mode | Content |
 |------|---------|
 | **Init** | "List is empty. Paste a deck list or add cards from search results." |
-| **Display** | "N card(s)" |
+| **Display** | Format chips on first row, card count on second row: `[Moxfield] [Archidekt] [Arena] …` then `N card(s)` |
 
 No buttons in Init or Display.
 
 ### 7. Format Chips
 
-Unchanged. Format chips remain above the toolbar. Behavior per Spec 110.
+Format chips move into the status box. Visible only in Display mode (when the list has content).
+
+- **Init mode:** No chips (list is empty).
+- **Edit mode:** No chips; format is shown in the status line ("Editing: … (Moxfield)").
+- **Display mode:** Chips are interactive; selecting one changes the output format and persists to localStorage. Same behavior as Spec 110 § 5 for Display mode.
 
 ## Acceptance Criteria
 
@@ -112,6 +114,8 @@ Unchanged. Format chips remain above the toolbar. Behavior per Spec 110.
 8. Apply commits changes; on success, draft cleared, editor returns to Display or Init.
 9. Apply popover is removed; Apply commits directly from the Status box.
 10. Baseline is correctly set on Edit and on restore from cache.
+11. Format chips appear in the status box in Display mode only.
+12. Format chips are removed from above the toolbar.
 
 ## Implementation Notes
 

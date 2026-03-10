@@ -467,37 +467,6 @@ export default function DeckEditor(props: {
 
   return (
     <div class="flex flex-col gap-2">
-      {/* Format chips */}
-      <div class="flex flex-wrap gap-1.5">
-        <For each={ALL_FORMATS}>
-          {(fmt) => {
-            const isSelected = () => mode() === 'display' && selectedFormat() === fmt.id
-            const isDetected = () => mode() === 'edit' && detectedFormat() === fmt.id
-            const isDisabled = () => mode() === 'init'
-            const isNonInteractive = () => mode() === 'edit'
-
-            return (
-              <button
-                type="button"
-                onClick={() => handleFormatSelect(fmt.id)}
-                disabled={isDisabled() || isNonInteractive()}
-                class={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
-                  isSelected()
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                    : isDetected()
-                      ? 'bg-transparent text-blue-600 dark:text-blue-400 border-blue-400 dark:border-blue-500'
-                      : isDisabled() || isNonInteractive()
-                        ? 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-default'
-                        : 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer'
-                }`}
-              >
-                {fmt.label}
-              </button>
-            )
-          }}
-        </For>
-      </div>
-
       {/* Toolbar — Edit, Copy only (Spec 113) */}
       <div class="flex items-center gap-1.5 min-h-[32px]">
         {/* Edit — enabled in Display mode; primary (blue) when enabled */}
@@ -553,9 +522,31 @@ export default function DeckEditor(props: {
           <p>List is empty. Paste a deck list or add cards from search results.</p>
         </Show>
         <Show when={mode() === 'display'} fallback={null}>
-          <p>
-            {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
-          </p>
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap gap-1.5">
+              <For each={ALL_FORMATS}>
+                {(fmt) => {
+                  const isSelected = () => selectedFormat() === fmt.id
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleFormatSelect(fmt.id)}
+                      class={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                        isSelected()
+                          ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
+                          : 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer'
+                      }`}
+                    >
+                      {fmt.label}
+                    </button>
+                  )
+                }}
+              </For>
+            </div>
+            <p>
+              {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
+            </p>
+          </div>
         </Show>
         <Show when={mode() === 'edit'} fallback={null}>
           <div class="flex flex-col gap-2">
