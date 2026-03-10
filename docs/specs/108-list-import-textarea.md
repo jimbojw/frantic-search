@@ -11,7 +11,7 @@ Define a deck list textarea that provides syntax highlighting and validation aga
 ## Background
 
 - **Overlay pattern:** Spec 053 and `QueryHighlight.tsx` use a transparent textarea over a `<pre>` highlight layer. Both use `grid-area: 1/1`, `.hl-layer` / `.hl-input` classes, and scroll sync. This pattern is proven and reusable.
-- **Data sources:** The app receives `DisplayColumns` (names, oracle_ids, combined_names) and `PrintingDisplayColumns` (set_codes, collector_numbers, canonical_face_ref) from the worker. All validation runs on the main thread.
+- **Data sources:** The app receives `DisplayColumns` (names, oracle_ids, combined_names) and `PrintingDisplayColumns` (set_codes, collector_numbers, canonical_face_ref) from the worker. Spec 114 moves deck list validation to the worker and uses the search engine for name resolution.
 - **Deck list formats:** Common formats are `1 Card Name`, `4x Card Name`, `1 Card Name (SET) 123`, `// Comment`, and section headers.
 
 ## Design

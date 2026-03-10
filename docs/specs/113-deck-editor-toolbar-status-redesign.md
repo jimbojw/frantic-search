@@ -119,4 +119,4 @@ Format chips move into the status box. Visible only in Display mode (when the li
 
 ## Implementation Notes
 
-- (To be filled as implementation proceeds.)
+- Validation runs in the worker per Spec 114 (Worker-Based Deck List Validation). The DeckEditor receives validation results asynchronously via `onValidateRequest`.
