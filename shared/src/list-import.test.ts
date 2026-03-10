@@ -154,6 +154,24 @@ describe("importDeckList", () => {
     expect(result.candidates[0]!.collection_status).toBe("Have,#37d67a");
   });
 
+  test("extracts tags from TappedOut inline #Tag", () => {
+    const text = "1x Lightning Bolt #Land #Removal";
+    const result = importDeckList(text, display, null);
+    expect(result.candidates[0]!.tags).toEqual(["Land", "Removal"]);
+  });
+
+  test("sets zone from TappedOut *CMDR* role marker", () => {
+    const text = "1x Sol Ring *CMDR*";
+    const result = importDeckList(text, display, null);
+    expect(result.candidates[0]!.zone).toBe("Commander");
+  });
+
+  test("TappedOut tags with slash preserved as single tag", () => {
+    const text = "1x Lightning Bolt #Ramp/Reduction";
+    const result = importDeckList(text, display, null);
+    expect(result.candidates[0]!.tags).toEqual(["Ramp/Reduction"]);
+  });
+
   test("extracts tag_colors from collection status markers", () => {
     const text =
       "1 Lightning Bolt [Ramp] ^Have,#37d67a^\n1 Counterspell [Control] ^Don't Have,#f47373^";

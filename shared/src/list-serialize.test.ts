@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -464,5 +464,35 @@ describe("serializeMelee", () => {
     ];
     const result = serializeMelee(instances, display);
     expect(result).toContain("MainDeck\n1 Lightning Bolt\n\nSideboard\n1 Delver of Secrets // Insectile Aberration");
+  });
+});
+
+describe("serializeTappedOut", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeTappedOut([], display, null)).toBe("");
+  });
+
+  it("emits 1x name format with tags", () => {
+    const i = inst("bolt-oracle", "default", null, null, null, { tags: ["Land", "Removal"] });
+    const result = serializeTappedOut([i], display, null);
+    expect(result).toMatch(/^1x Lightning Bolt #Land #Removal$/);
+  });
+
+  it("emits *CMDR* for Commander zone", () => {
+    const i = inst("bolt-oracle", "default", null, null, "Commander");
+    const result = serializeTappedOut([i], display, null);
+    expect(result).toContain("*CMDR*");
+  });
+
+  it("emits (SET:num) when printing available", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", null);
+    const result = serializeTappedOut([i], display, printingDisplay);
+    expect(result).toMatch(/\(m21:141\)/i);
+  });
+
+  it("emits *f* for foil finish", () => {
+    const i = inst("bolt-oracle", "default", null, "foil");
+    const result = serializeTappedOut([i], display, null);
+    expect(result).toContain("*f*");
   });
 });

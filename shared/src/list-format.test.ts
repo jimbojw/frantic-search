@@ -89,4 +89,20 @@ describe("detectDeckFormat", () => {
     // The spec says mixed tokens fall back to ambiguous.
     expect(detect("1 Lightning Bolt (M21) 159 *F*\n2 Island <251> [THB]")).toBe(null);
   });
+
+  it("detects tappedout from HASH_TAG", () => {
+    expect(detect("1x Lightning Bolt #Land")).toBe("tappedout");
+  });
+
+  it("detects tappedout from ROLE_MARKER", () => {
+    expect(detect("1x Codie, Vociferous Codex *CMDR*")).toBe("tappedout");
+  });
+
+  it("detects tappedout from *f* lowercase foil marker", () => {
+    expect(detect("1x Sol Ring (SLD) *f* #Artifact")).toBe("tappedout");
+  });
+
+  it("tappedout wins over moxfield when both have foil markers", () => {
+    expect(detect("1x Sol Ring (SLD:589) *f* #Land")).toBe("tappedout");
+  });
 });

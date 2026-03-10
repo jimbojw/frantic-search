@@ -18,6 +18,7 @@ import {
   serializeArchidekt,
   serializeMtggoldfish,
   serializeMelee,
+  serializeTappedOut,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -298,6 +299,8 @@ async function init(): Promise<void> {
         return serializeMtggoldfish(instances, displayRef, printingDisplayRef)
       case 'melee':
         return serializeMelee(instances, displayRef)
+      case 'tappedout':
+        return serializeTappedOut(instances, displayRef, printingDisplayRef)
       case 'arena':
       default:
         return serializeArena(instances, displayRef)

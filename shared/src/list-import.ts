@@ -134,27 +134,33 @@ export function importDeckList(
     const entry: ParsedEntry = resolved[resolvedIdx]!;
     resolvedIdx++;
 
-    // Extract tags from CATEGORY + CATEGORY_TAG tokens.
-    // The lexer splits [Category{tag}] into CATEGORY("Category") + CATEGORY_TAG("tag").
-    // Multi-segment brackets like [A,B] produce a single CATEGORY("A,B").
-    // We reconstruct the full bracket content, then split on commas.
+    // Extract tags from CATEGORY + CATEGORY_TAG tokens (Archidekt) or HASH_TAG (TappedOut).
     const tags: string[] = [];
-    let fullCategoryValue = "";
-    for (const t of lineTokens) {
-      if (t.type === ListTokenType.CATEGORY) {
-        fullCategoryValue = t.value;
-      } else if (t.type === ListTokenType.CATEGORY_TAG) {
-        fullCategoryValue += `{${t.value}}`;
+    const hashTags = lineTokens.filter((t) => t.type === ListTokenType.HASH_TAG);
+    if (hashTags.length > 0) {
+      tags.push(...hashTags.map((t) => t.value));
+    } else {
+      let fullCategoryValue = "";
+      for (const t of lineTokens) {
+        if (t.type === ListTokenType.CATEGORY) {
+          fullCategoryValue = t.value;
+        } else if (t.type === ListTokenType.CATEGORY_TAG) {
+          fullCategoryValue += `{${t.value}}`;
+        }
+      }
+      if (fullCategoryValue) {
+        const parts = fullCategoryValue.split(",").map((s) => s.trim()).filter(Boolean);
+        tags.push(...parts);
       }
     }
-    if (fullCategoryValue) {
-      const parts = fullCategoryValue.split(",").map((s) => s.trim()).filter(Boolean);
-      tags.push(...parts);
-    }
 
-    // Determine zone: bracket category takes priority over section header
+    // Determine zone: ROLE_MARKER (TappedOut) or bracket category takes priority over section header
     let zone = currentZone;
-    if (tags.length > 0) {
+    const roleMarker = lineTokens.find((t) => t.type === ListTokenType.ROLE_MARKER);
+    if (roleMarker) {
+      if (roleMarker.value === "*CMDR*") zone = "Commander";
+      else if (roleMarker.value === "*CMPN*") zone = "Companion";
+    } else if (tags.length > 0) {
       const primaryBase = baseName(tags[0]!);
       const bracketZone = canonicalZone(primaryBase);
       if (bracketZone) zone = bracketZone;

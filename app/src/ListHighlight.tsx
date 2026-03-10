@@ -23,6 +23,8 @@ export const LIST_ROLE_CLASSES: Record<string, string> = {
   "etched-marker": "text-violet-600 dark:text-violet-400",
   category: "text-emerald-600 dark:text-emerald-400",
   "category-tag": "text-slate-600 dark:text-slate-400",
+  "hash-tag": "text-emerald-600 dark:text-emerald-400",
+  "role-marker": "text-sky-600 dark:text-sky-400 font-semibold",
   variant: "text-slate-600 dark:text-slate-400",
   "collection-status-text": "text-slate-600 dark:text-slate-400",
   "collection-status-color": "text-slate-500 dark:text-slate-500",

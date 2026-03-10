@@ -122,8 +122,10 @@ On Apply, the detected format becomes the selected Display mode format. This avo
 
 | Discriminating tokens | Detected format |
 |----------------------|-----------------|
+| `HASH_TAG`, `ROLE_MARKER`, `FOIL_PRERELEASE_MARKER` | TappedOut |
+| `FOIL_MARKER`/`ETCHED_MARKER` with lowercase (`*f*`, `*f-etch*`, `*e*`) | TappedOut |
 | `CATEGORY`, `CATEGORY_TAG`, `COLLECTION_STATUS_TEXT` | Archidekt |
-| `FOIL_MARKER`, `ALTER_MARKER`, `ETCHED_MARKER` | Moxfield |
+| `FOIL_MARKER`, `ALTER_MARKER`, `ETCHED_MARKER` (Moxfield style) | Moxfield |
 | `VARIANT`, `SET_CODE_BRACKET`, `FOIL_PAREN`, `ETCHED_PAREN` | MTGGoldfish |
 | `SECTION_HEADER` value matches `MainDeck` / `Main Deck` | Melee.gg |
 | `SECTION_HEADER` only (no format-specific tokens) | Arena |
@@ -243,3 +245,4 @@ interface DeckEditorProps {
 - 2026-03-09: Toolbar updated to always show all four buttons (Revert, Edit, Apply, Copy) in fixed order, conditionally disabled by mode. Revert on left (semantic "back"); Edit between Revert and Apply to reduce misclicks; Copy right-aligned.
 - 2026-03-09: Serialization format fixes. Arena/MTGGoldfish: Commander first, deck, two newlines, Sideboard — no headings. Moxfield: `SIDEBOARD:` on own line for post-main zones. Archidekt: flat alphabetical list, no headers; zone-derived tags when tags empty. Melee: `MainDeck` header, two newlines, `Sideboard` header. Added `serializeMelee`.
 - 2026-03-10: Display mode serialization runs in the search worker to keep the main thread responsive. The main thread requests serialization via `postMessage` and renders the returned string. When `onSerializeRequest` is not provided (e.g. tests), DeckEditor falls back to synchronous `serialize()` on the main thread.
+- 2026-03-10: Added TappedOut format. Format chip, detection (HASH_TAG, ROLE_MARKER, lowercase foil markers), and `serializeTappedOut` (1x name (SET:num) *f* #Tag, flat alphabetical).

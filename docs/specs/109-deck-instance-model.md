@@ -6,7 +6,7 @@
 
 ## Goal
 
-Extend the Spec 075 Instance data model with `zone`, `tags`, `collection_status`, and `variant` fields so that imported deck lists from Arena, Moxfield, Archidekt, and MTGGoldfish can be represented without information loss. Define the full Apply pipeline: import (parsing draft text into candidate Instances), diff (comparing candidates to the current list), confirmation UX, and write operations.
+Extend the Spec 075 Instance data model with `zone`, `tags`, `collection_status`, and `variant` fields so that imported deck lists from Arena, Moxfield, Archidekt, MTGGoldfish, and TappedOut can be represented without information loss. Define the full Apply pipeline: import (parsing draft text into candidate Instances), diff (comparing candidates to the current list), confirmation UX, and write operations.
 
 ## Background
 
@@ -17,6 +17,7 @@ Spec 075 defines an append-only log of `InstanceStateEntry` records. Each Instan
 - **Archidekt** exports use bracket categories (`[Ramp]`, `[Commander{top}]`, `[Maybeboard{noDeck}{noPrice},Proliferate]`) and collection status markers (`^Have,#37d67a^`).
 - **MTGGoldfish** "Exact Card Versions" exports use `<variant>` angle brackets (e.g. `<prerelease>`, `<extended>`, `<251>`), `[SET]` square brackets, and `(F)` / `(E)` finish markers. The variant string identifies a specific product variant that may or may not correspond to a distinct Scryfall printing.
 - **Melee.gg** exports use `MainDeck` (no space) and `Sideboard` as section headers, with plain `quantity name` card lines. The lexer recognizes `MainDeck` / `Main Deck` as a section header; the importer normalizes it to the `"Deck"` zone.
+- **TappedOut** exports use inline `#Tag` (e.g. `#Land`, `#Ramp/Reduction`), `*CMDR*`/`*CMPN*` role markers, `(SET)` or `(SET:num)` for set/collector, and `*f*`/`*f-etch*`/`*e*` for finish. All tags are inline; no section headers.
 
 Spec 108 implemented a lexer and validator that tokenize all of these formats, including variant fallback resolution for known MTGGoldfish variants that lack distinct Scryfall printings (see Spec 108 § "Validation rules" rule 5). Spec 110 implemented a three-mode deck editor with a placeholder Apply button. This spec defines the real Apply pipeline that replaces that placeholder: how draft text becomes candidate Instances, how candidates are diffed against the current list, and how the result is committed.
 
@@ -118,12 +119,14 @@ for each line:
       they have valid ParsedEntry data with a best-effort scryfall_id
 
     determine zone:
-      1. If CATEGORY token's primary segment matches KNOWN_ZONES → use it
-      2. Else if currentZone is set → use currentZone
-      3. Else → null
+      1. If ROLE_MARKER token (*CMDR* or *CMPN*) → set zone to Commander or Companion (TappedOut)
+      2. Else if CATEGORY token's primary segment matches KNOWN_ZONES → use it
+      3. Else if currentZone is set → use currentZone
+      4. Else → null
 
     build tags[]:
-      from CATEGORY token value, split on commas
+      if HASH_TAG tokens present (TappedOut): each HASH_TAG.value becomes one tag (slash preserved, e.g. "Ramp/Reduction")
+      else from CATEGORY token value, split on commas
       each segment becomes one tag entry, stored verbatim
       (e.g. "[Maybeboard{noDeck}{noPrice},Proliferate]" → ["Maybeboard{noDeck}{noPrice}", "Proliferate"])
 
@@ -142,7 +145,8 @@ for each line:
         "foil" | "etched" | null
 
     determine variant:
-      use ParsedEntry.variant — verbatim content of <...> from MTGGoldfish format
+      use ParsedEntry.variant — verbatim content of <...> from MTGGoldfish format,
+      or "prerelease" from TappedOut *f-pre* (Spec 108 variant fallback)
       null for Moxfield/Arena/Archidekt lines (no VARIANT token)
 
     determine quantity:
@@ -173,6 +177,7 @@ Each comma-separated segment within `[...]` becomes one entry in `tags[]`. Modif
 | `[Commander{top}]` | `["Commander{top}"]` |
 | `[Blight,Creature]` | `["Blight", "Creature"]` |
 | `[Maybeboard{noDeck}{noPrice},Proliferate]` | `["Maybeboard{noDeck}{noPrice}", "Proliferate"]` |
+| `#Land #Ramp/Reduction` (TappedOut HASH_TAG) | `["Land", "Ramp/Reduction"]` |
 
 #### Zone inference from brackets
 
@@ -190,7 +195,7 @@ This intentional duplication (zone echoes information also in tags) means:
 - `zone` is the normalized, query-friendly field for structural organization.
 - `tags` is the verbatim, round-trip-safe field for export fidelity.
 
-When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). The Archidekt serializer emits `[tags]` and `^collection_status^` when present for round-trip fidelity; all cards in one alphabetical list, no section headers. Arena, MTGO, and MTGGoldfish serializers emit Commander first, then deck, then two newlines, then Sideboard and other zones — no headings. Moxfield uses `SIDEBOARD:`-style headers for post-main zones. Melee uses `MainDeck` and `Sideboard` headers.
+When exporting to Archidekt format, `zone` can be omitted (it's redundant with the primary tag). The Archidekt serializer emits `[tags]` and `^collection_status^` when present for round-trip fidelity; all cards in one alphabetical list, no section headers. Arena, MTGO, and MTGGoldfish serializers emit Commander first, then deck, then two newlines, then Sideboard and other zones — no headings. Moxfield uses `SIDEBOARD:`-style headers for post-main zones. Melee uses `MainDeck` and `Sideboard` headers. TappedOut uses inline `#Tag` and `*CMDR*`/`*CMPN*` role markers; flat alphabetical list.
 
 #### Collection status storage
 
@@ -313,6 +318,10 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 - **Spec 108** remains the authority on deck list parsing (lexer, validator, syntax highlighting), including MTGGoldfish variant resolution and fallback. This spec consumes the lexer/validator output (including `ParsedEntry.variant` and `ParsedEntry.finish`) and defines what happens after parsing. The `variant` field on `InstanceState` preserves the verbatim MTGGoldfish variant string for round-trip fidelity.
 - **Spec 110** defines the three-mode deck editor (Init / Display / Edit), toolbar, format chips, and draft persistence. This spec implements the `onApply` callback that Spec 110 defers. When the user clicks Apply, Spec 110 invokes the pipeline defined here (import → diff → confirm → write). Spec 110's "Out of Scope" items for diff calculation, apply/commit procedure, and confirmation modal are covered by §§ 5–7 of this spec.
 - **Spec 076** (Worker Protocol List Cache) will need to be aware of the new fields when building bitmasks for `my:` queries. No changes required until tag query support is implemented.
+
+## Implementation Notes
+
+- 2026-03-10: Added TappedOut import support. ROLE_MARKER (*CMDR*, *CMPN*) sets zone; HASH_TAG tokens populate tags (slash preserved in tag names). TappedOut uses *f*/*f-etch*/*e* for finish (same as Moxfield); *f-pre* uses variant fallback per Spec 108.
 
 ## Out of Scope
 

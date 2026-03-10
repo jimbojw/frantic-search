@@ -277,6 +277,9 @@ export function validateDeckList(
     const foilMarkerTok = tokens.find((t) => t.type === ListTokenType.FOIL_MARKER);
     const etchedMarkerTok = tokens.find((t) => t.type === ListTokenType.ETCHED_MARKER);
     const etchedParenTok = tokens.find((t) => t.type === ListTokenType.ETCHED_PAREN);
+    const foilPrereleaseMarkerTok = tokens.find(
+      (t) => t.type === ListTokenType.FOIL_PRERELEASE_MARKER
+    );
 
     if (tokens.some((t) => t.type === ListTokenType.COMMENT)) {
       lines.push({
@@ -344,10 +347,14 @@ export function validateDeckList(
     let hasVariantWarning = false;
     let warningSpan: { start: number; end: number } | undefined;
     let warningMessage: string | undefined;
-    const preferFoil = !!(foilParenTok || foilMarkerTok);
+    const preferFoil = !!(
+      foilParenTok ||
+      foilMarkerTok ||
+      foilPrereleaseMarkerTok
+    );
     let finish: "foil" | "etched" | null = null;
     if (etchedMarkerTok || etchedParenTok) finish = "etched";
-    else if (foilParenTok || foilMarkerTok) finish = "foil";
+    else if (foilParenTok || foilMarkerTok || foilPrereleaseMarkerTok) finish = "foil";
 
     if (setTok && printingDisplay) {
       const setCode = setTok.value;
@@ -437,6 +444,41 @@ export function validateDeckList(
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
           }
         }
+      } else if (foilPrereleaseMarkerTok) {
+        // TappedOut *f-pre*: prerelease variant fallback (like MTGGoldfish <prerelease>)
+        const fallbackPi = findAnyPrintingInSet(
+          setCode,
+          card.canonicalFace,
+          printingDisplay,
+          preferFoil
+        );
+        if (fallbackPi >= 0) {
+          scryfallId = printingDisplay.scryfall_ids[fallbackPi] ?? null;
+          hasVariantWarning = true;
+          warningSpan = {
+            start: lineStart + foilPrereleaseMarkerTok.start,
+            end: lineStart + foilPrereleaseMarkerTok.end,
+          };
+          warningMessage = "Variant resolved approximately";
+        } else {
+          hasPrintingError = true;
+          errorSpan = {
+            start: lineStart + foilPrereleaseMarkerTok.start,
+            end: lineStart + foilPrereleaseMarkerTok.end,
+          };
+          errorMessage = "No matching printing";
+        }
+      } else {
+        // TappedOut (SET) without collector: pick any printing in set
+        const fallbackPi = findAnyPrintingInSet(
+          setCode,
+          card.canonicalFace,
+          printingDisplay,
+          preferFoil
+        );
+        if (fallbackPi >= 0) {
+          scryfallId = printingDisplay.scryfall_ids[fallbackPi] ?? null;
+        }
       }
     }
 
@@ -481,12 +523,14 @@ export function validateDeckList(
           kind: "ok",
         });
       }
+      const variantValue =
+        variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
       resolved.push({
         oracle_id: card.oracleId,
         scryfall_id: scryfallId,
         quantity,
         finish: finish ?? undefined,
-        variant: variantTok?.value,
+        variant: variantValue,
       });
     }
 

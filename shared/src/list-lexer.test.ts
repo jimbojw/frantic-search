@@ -356,6 +356,67 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("TappedOut: (SET:num) with inline #Tag", () => {
+    const tokens = lexDeckList("1x Academy Ruins (2XM:369) *f* #Land");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1x" },
+      { type: "CARD_NAME", value: "Academy Ruins" },
+      { type: "SET_CODE", value: "2XM" },
+      { type: "COLLECTOR_NUMBER", value: "369" },
+      { type: "FOIL_MARKER", value: "*f*" },
+      { type: "HASH_TAG", value: "Land" },
+    ]);
+  });
+
+  test("TappedOut: (SET) only, multiple #Tags with slash", () => {
+    const tokens = lexDeckList("1x Voyager Quickwelder (DFT) *f* #Artifact #Ramp/Reduction");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1x" },
+      { type: "CARD_NAME", value: "Voyager Quickwelder" },
+      { type: "SET_CODE", value: "DFT" },
+      { type: "FOIL_MARKER", value: "*f*" },
+      { type: "HASH_TAG", value: "Artifact" },
+      { type: "HASH_TAG", value: "Ramp/Reduction" },
+    ]);
+    expect(tokens.find((t) => t.type === "COLLECTOR_NUMBER")).toBeUndefined();
+  });
+
+  test("TappedOut: *f-etch* etched marker", () => {
+    const tokens = lexDeckList("1x Arcane Signet (SLD:589) *f-etch* #Artifact #Ramp/Reduction");
+    expect(tokens.find((t) => t.type === "CARD_NAME")).toMatchObject({ value: "Arcane Signet" });
+    expect(tokens.find((t) => t.type === "ETCHED_MARKER")).toMatchObject({ value: "*f-etch*" });
+    expect(tokens.filter((t) => t.type === "HASH_TAG").map((t) => t.value)).toEqual([
+      "Artifact",
+      "Ramp/Reduction",
+    ]);
+  });
+
+  test("TappedOut: *f-pre* prerelease variant", () => {
+    const tokens = lexDeckList("1x The Antiquities War (DOM) *f-pre* #Synergy #WinCons");
+    expect(tokens.find((t) => t.type === "CARD_NAME")).toMatchObject({ value: "The Antiquities War" });
+    expect(tokens.find((t) => t.type === "FOIL_PRERELEASE_MARKER")).toMatchObject({ value: "*f-pre*" });
+    expect(tokens.filter((t) => t.type === "HASH_TAG").map((t) => t.value)).toEqual([
+      "Synergy",
+      "WinCons",
+    ]);
+  });
+
+  test("TappedOut: *CMDR* role marker", () => {
+    const tokens = lexDeckList("1x Glacian, Powerstone Engineer (CMR:559) *f* *CMDR*");
+    expect(tokens.find((t) => t.type === "CARD_NAME")).toMatchObject({
+      value: "Glacian, Powerstone Engineer",
+    });
+    expect(tokens.find((t) => t.type === "ROLE_MARKER")).toMatchObject({ value: "*CMDR*" });
+  });
+
+  test("TappedOut: plain line without markers uses Moxfield pattern", () => {
+    const tokens = lexDeckList("1x Lightning Bolt (M21) 159");
+    expect(tokens.find((t) => t.type === "CARD_NAME")).toMatchObject({ value: "Lightning Bolt" });
+    expect(tokens.find((t) => t.type === "SET_CODE")).toMatchObject({ value: "M21" });
+    expect(tokens.find((t) => t.type === "COLLECTOR_NUMBER")).toMatchObject({ value: "159" });
+    expect(tokens.some((t) => t.type === "HASH_TAG")).toBe(false);
+  });
+
   test("MTGGoldfish Tabletop: (E) etched modifier with variant", () => {
     const tokens = lexDeckList("1 Sol Ring <etched> [CMM] (E)");
     expect(tokens).toMatchObject([

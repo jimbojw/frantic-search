@@ -60,12 +60,16 @@ Reuse the Spec 053 overlay technique:
 | `SET_CODE_BRACKET` | `THB`, `OTJ` | MTGGoldfish: set code from `[SET]` brackets |
 | `FOIL_PAREN` | `(F)` | MTGGoldfish: foil marker |
 | `ETCHED_PAREN` | `(E)` | MTGGoldfish: etched marker (foil-etched) |
+| `HASH_TAG` | `Land`, `Ramp/Reduction` | TappedOut: inline `#Tag` (slash preserved in tag name) |
+| `ROLE_MARKER` | `*CMDR*`, `*CMPN*` | TappedOut: Commander or Companion role |
+| `FOIL_PRERELEASE_MARKER` | `*f-pre*` | TappedOut: prerelease variant (like MTGGoldfish `<prerelease>`) |
 
 **Line patterns:**
 
 - **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`, optional `^Status,#hex^` (Archidekt collection marker)
 - **MTGGoldfish card line:** quantity, name, `<variant>`, `[SET]`, optional `(F)` or `(E)` — e.g. `6 Island <251> [THB]`, `4 Spirebluff Canal <prerelease> [OTJ] (F)`
 - **MTGGoldfish MTGO / no-variant:** quantity, name, `[SET]`, optional `(F)` or `(E)` — no `<variant>`; e.g. `2 Disdainful Stroke [KTK] (F)`, `1 Flashfreeze [M10]`
+- **TappedOut inline:** quantity, name, optional `(SET)` or `(SET:num)`, optional `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional `*CMDR*`/`*CMPN*`, optional `#Tag` (multiple). E.g. `1x Sol Ring (SLD:589) *f* #Land #Ramp/Reduction`. Tried when line has `#Tag`, `*f*`, `*CMDR*`, or `(SET:num)`; `#` inside Archidekt `^...#hex^` is excluded.
 - **MTGGoldfish card line:** try before Moxfield pattern
 - **Section header:** `^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon. `MainDeck` and `Main Deck` are recognized for Melee.gg format.
 - **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
@@ -93,6 +97,8 @@ Reuse the Spec 053 overlay technique:
 | comment | `// Sideboard` | `text-gray-500 dark:text-gray-400 italic` |
 | variant | `251`, `extended` | `text-slate-600 dark:text-slate-400` |
 | variant-approx | `prerelease` (known but no exact match) | `text-amber-600 dark:text-amber-400 underline decoration-wavy` |
+| hash-tag | `#Land`, `#Ramp/Reduction` | `text-emerald-600 dark:text-emerald-400` |
+| role-marker | `*CMDR*`, `*CMPN*` | `text-sky-600 dark:text-sky-400 font-semibold` |
 | error | invalid spans | `text-red-600 dark:text-red-400 underline decoration-wavy` |
 
 **Output:** `ListHighlightSpan[]` with `{ text, role, start, end }`. A `buildListSpans(text, validationResult?)` function produces spans; when validation is provided, error spans override the default role. Warning spans (from approximate variant resolution) override the default role with `variant-approx`.
@@ -146,6 +152,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-09: Added MTGGoldfish MTGO / no-variant format: `quantity name [SET] (F|E)?` without `<variant>`. New token ETCHED_PAREN (`(E)`). Modifiers (F)=foil, (E)=etched per MTGGoldfish CSV (FOIL, FOIL_ETCHED). Lexer only matches no-variant when line lacks Moxfield `(SET) number` pattern to avoid misparsing `[Category]` as `[SET]`.
 - 2026-03-09: Added MTGGoldfish variant fallback. Known MTGGoldfish variations (14 values from [help page](https://www.mtggoldfish.com/help/import_formats)) that cannot resolve to a distinct Scryfall printing now fall back to best-match-in-set (prefer foil when `(F)` present) instead of erroring. `LineValidation.kind` extended with `"warning"`; new `variant-approx` highlight role with amber wavy underline (mirrors query highlighter `value-zero` style). Variant string preserved on `ParsedEntry.variant` for round-trip fidelity. `findPrintingBySetAndVariant` now returns -1 when `variantToFlags` cannot interpret the variant, preventing unrecognized variants from silently matching all printings.
 - 2026-03-09: Added Melee.gg support. Section header regex now recognizes `MainDeck` and `Main Deck` (with optional space) as synonyms for `Deck`. Token value is the verbatim matched text; zone normalization (`MainDeck` → `Deck`) is handled by the importer (Spec 109).
+- 2026-03-10: Added TappedOut inline format. New tokens: HASH_TAG (`#Tag`), ROLE_MARKER (`*CMDR*`, `*CMPN*`), FOIL_PRERELEASE_MARKER (`*f-pre*`). Card line pattern: `(SET)` or `(SET:num)`, `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional role, optional `#Tag` (multiple). Tried when line has TappedOut markers; `#` inside Archidekt `^...#hex^` excluded to avoid misparse. Validator: `*f-pre*` uses variant fallback; `(SET)` without collector uses `findAnyPrintingInSet`.
 
 ## Acceptance Criteria
 

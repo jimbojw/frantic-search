@@ -411,3 +411,41 @@ export function serializeMelee(
   if (post.length === 0) return main;
   return main + "\n\n" + post;
 }
+
+/**
+ * Serialize instances in TappedOut inline format: 1x name (SET:num) with finish and tags.
+ * Uses (SET:num) for set+collector, foil/etched markers, CMDR/CMPN for zone.
+ * Flat alphabetical list by name.
+ */
+export function serializeTappedOut(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): string {
+  if (instances.length === 0) return "";
+
+  const entries = aggregateInstances(instances, display, printingDisplay, {
+    preserveTagsAndStatus: true,
+    preserveZone: true,
+  });
+
+  return entries
+    .map((e) => {
+      let line = `${e.quantity}x ${e.name}`;
+      if (e.setCode) {
+        line += e.collectorNumber
+          ? ` (${e.setCode}:${e.collectorNumber})`
+          : ` (${e.setCode})`;
+      }
+      if (e.finish === "foil") line += " *f*";
+      else if (e.finish === "etched") line += " *f-etch*";
+      if (e.zone === "Commander") line += " *CMDR*";
+      else if (e.zone === "Companion") line += " *CMPN*";
+      const tags = e.tags && e.tags.length > 0 ? e.tags : undefined;
+      if (tags) {
+        line += tags.map((t) => ` #${t}`).join("");
+      }
+      return line;
+    })
+    .join("\n");
+}

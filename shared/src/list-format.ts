@@ -7,7 +7,8 @@ export type DeckFormat =
   | "moxfield"
   | "archidekt"
   | "mtggoldfish"
-  | "melee";
+  | "melee"
+  | "tappedout";
 
 const ARCHIDEKT_TOKENS: ReadonlySet<string> = new Set([
   ListTokenType.CATEGORY,
@@ -33,6 +34,12 @@ const MELEE_HEADERS: ReadonlySet<string> = new Set([
   "main deck",
 ]);
 
+const TAPPEDOUT_TOKENS: ReadonlySet<string> = new Set([
+  ListTokenType.HASH_TAG,
+  ListTokenType.ROLE_MARKER,
+  ListTokenType.FOIL_PRERELEASE_MARKER,
+]);
+
 /**
  * Examine a token stream for format-discriminating tokens and return the
  * detected deck list format using a "most-specific wins" heuristic.
@@ -45,10 +52,18 @@ export function detectDeckFormat(tokens: ListToken[]): DeckFormat | null {
   let hasMoxfield = false;
   let hasMtggoldfish = false;
   let hasMelee = false;
+  let hasTappedOut = false;
   let hasSectionHeader = false;
 
   for (const tok of tokens) {
-    if (ARCHIDEKT_TOKENS.has(tok.type)) hasArchidekt = true;
+    if (TAPPEDOUT_TOKENS.has(tok.type)) hasTappedOut = true;
+    else if (
+      (tok.type === ListTokenType.FOIL_MARKER || tok.type === ListTokenType.ETCHED_MARKER) &&
+      /\*[fe]|\*f-/.test(tok.value)
+    ) {
+      // TappedOut uses *f*, *f-etch*, *e* (lowercase); Moxfield uses *F*, *E*
+      hasTappedOut = true;
+    } else if (ARCHIDEKT_TOKENS.has(tok.type)) hasArchidekt = true;
     else if (MOXFIELD_TOKENS.has(tok.type)) hasMoxfield = true;
     else if (MTGGOLDFISH_TOKENS.has(tok.type)) hasMtggoldfish = true;
     else if (tok.type === ListTokenType.SECTION_HEADER) {
@@ -57,9 +72,10 @@ export function detectDeckFormat(tokens: ListToken[]): DeckFormat | null {
     }
   }
 
-  const specifics = [hasArchidekt, hasMoxfield, hasMtggoldfish].filter(Boolean);
+  const specifics = [hasTappedOut, hasArchidekt, hasMoxfield, hasMtggoldfish].filter(Boolean);
   if (specifics.length > 1) return null;
 
+  if (hasTappedOut) return "tappedout";
   if (hasArchidekt) return "archidekt";
   if (hasMoxfield) return "moxfield";
   if (hasMtggoldfish) return "mtggoldfish";

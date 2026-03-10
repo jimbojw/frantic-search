@@ -9,6 +9,7 @@ import {
   serializeArchidekt,
   serializeMtggoldfish,
   serializeMelee,
+  serializeTappedOut,
   importDeckList,
   diffDeckList,
 } from '@frantic-search/shared'
@@ -32,6 +33,7 @@ const ALL_FORMATS: { id: DeckFormat; label: string }[] = [
   { id: 'archidekt', label: 'Archidekt' },
   { id: 'mtggoldfish', label: 'MTGGoldfish' },
   { id: 'melee', label: 'Melee.gg' },
+  { id: 'tappedout', label: 'TappedOut' },
 ]
 
 function draftKey(listId: string): string {
@@ -103,6 +105,8 @@ function serialize(
       return serializeMtggoldfish(instances, display, printingDisplay)
     case 'melee':
       return serializeMelee(instances, display)
+    case 'tappedout':
+      return serializeTappedOut(instances, display, printingDisplay)
     case 'arena':
     default:
       return serializeArena(instances, display)

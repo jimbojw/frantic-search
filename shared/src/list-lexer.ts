@@ -25,6 +25,12 @@ export const ListTokenType = {
   FOIL_PAREN: "FOIL_PAREN",
   /** MTGGoldfish: (E) etched marker. */
   ETCHED_PAREN: "ETCHED_PAREN",
+  /** TappedOut: inline #Tag (e.g. #Land, #Ramp/Reduction). */
+  HASH_TAG: "HASH_TAG",
+  /** TappedOut: *CMDR* or *CMPN* role marker. */
+  ROLE_MARKER: "ROLE_MARKER",
+  /** TappedOut: *f-pre* prerelease variant (like MTGGoldfish <prerelease>). */
+  FOIL_PRERELEASE_MARKER: "FOIL_PRERELEASE_MARKER",
 } as const;
 
 export type ListTokenType = (typeof ListTokenType)[keyof typeof ListTokenType];
@@ -53,7 +59,9 @@ export type ListHighlightRole =
   | "comment"
   | "error"
   | "variant"
-  | "variant-approx";
+  | "variant-approx"
+  | "hash-tag"
+  | "role-marker";
 
 export interface ListHighlightSpan {
   text: string;
@@ -77,6 +85,19 @@ export interface ListValidationResult {
 
 const CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
+/** TappedOut inline format: (SET) or (SET:num), *f*|*f-etch*|*e*|*f-pre*|*f-pp*, *CMDR*|*CMPN*, #Tag... */
+const TAPPEDOUT_CARD_LINE_RE =
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)(?::(\S+))?\))?(?:\s+(\*f\*|\*f-etch\*|\*e\*|\*f-pre\*|\*f-pp\*))?(?:\s+(\*CMDR\*|\*CMPN\*))?((?:\s+#\S+)*)\s*$/;
+/** Line has TappedOut-specific markers; try TappedOut pattern before Moxfield. */
+function hasTappedOutMarkers(line: string): boolean {
+  // Exclude # when it's a hex color inside Archidekt ^...^ (e.g. ^Have,#37d67a^)
+  const hasHashTag = /#\S/.test(line) && !/\^[^^]*#[0-9a-fA-F]{6}\^/.test(line);
+  return (
+    hasHashTag ||
+    /\*f\*|\*f-etch\*|\*e\*|\*f-pre\*|\*f-pp\*|\*CMDR\*|\*CMPN\*/.test(line) ||
+    /\([A-Za-z0-9]+:\S+\)/.test(line)
+  );
+}
 /** MTGGoldfish Exact Card Versions (Tabletop): Qty Name <variant> [SET] (F|E)? */
 const MTGGOLDFISH_CARD_LINE_RE =
   /^(\d+x?)\s+(.+?)\s+<([^>]+)>\s+\[([A-Za-z0-9_-]+)\]\s*(?:\((F|E)\))?\s*$/;
@@ -228,6 +249,99 @@ function parseLine(line: string, lineStart: number): ListToken[] {
       });
     }
     return tokens;
+  }
+
+  // TappedOut inline format: try when line has #Tag, *f*, *CMDR*, or (SET:num)
+  if (hasTappedOutMarkers(trimmed)) {
+    const tappedOutMatch = trimmed.match(TAPPEDOUT_CARD_LINE_RE);
+    if (tappedOutMatch) {
+      const [, qty, name, setCode, collectorNum, finishMarker, roleMarker, tagsPart] =
+        tappedOutMatch;
+      const qtyStart = lineStart + trimmed.search(/\d/);
+      tokens.push({
+        type: ListTokenType.QUANTITY,
+        value: qty!,
+        start: qtyStart,
+        end: qtyStart + qty!.length,
+      });
+      const nameStart = lineStart + trimmed.indexOf(name!.trimStart());
+      const nameEnd = nameStart + name!.trim().length;
+      tokens.push({
+        type: ListTokenType.CARD_NAME,
+        value: name!.trim(),
+        start: nameStart,
+        end: nameEnd,
+      });
+      if (setCode) {
+        const parenStart = trimmed.indexOf("(" + setCode);
+        const setCodeStart = lineStart + parenStart + 1;
+        tokens.push({
+          type: ListTokenType.SET_CODE,
+          value: setCode,
+          start: setCodeStart,
+          end: setCodeStart + setCode.length,
+        });
+        if (collectorNum) {
+          const colonIdx = trimmed.indexOf(":" + collectorNum, parenStart);
+          const numStart = lineStart + colonIdx + 1;
+          tokens.push({
+            type: ListTokenType.COLLECTOR_NUMBER,
+            value: collectorNum,
+            start: numStart,
+            end: numStart + collectorNum.length,
+          });
+        }
+      }
+      if (finishMarker === "*f*" || finishMarker === "*f-pp*") {
+        const pos = trimmed.indexOf(finishMarker);
+        tokens.push({
+          type: ListTokenType.FOIL_MARKER,
+          value: finishMarker,
+          start: lineStart + pos,
+          end: lineStart + pos + finishMarker.length,
+        });
+      } else if (finishMarker === "*f-etch*" || finishMarker === "*e*") {
+        const pos = trimmed.indexOf(finishMarker);
+        tokens.push({
+          type: ListTokenType.ETCHED_MARKER,
+          value: finishMarker,
+          start: lineStart + pos,
+          end: lineStart + pos + finishMarker.length,
+        });
+      } else if (finishMarker === "*f-pre*") {
+        const pos = trimmed.indexOf(finishMarker);
+        tokens.push({
+          type: ListTokenType.FOIL_PRERELEASE_MARKER,
+          value: finishMarker,
+          start: lineStart + pos,
+          end: lineStart + pos + finishMarker.length,
+        });
+      }
+      if (roleMarker) {
+        const pos = trimmed.indexOf(roleMarker);
+        tokens.push({
+          type: ListTokenType.ROLE_MARKER,
+          value: roleMarker,
+          start: lineStart + pos,
+          end: lineStart + pos + roleMarker.length,
+        });
+      }
+      if (tagsPart) {
+        const tagMatches = tagsPart.matchAll(/#(\S+)/g);
+        for (const m of tagMatches) {
+          const full = m[0]!;
+          const tagValue = m[1]!;
+          const pos = trimmed.indexOf(full);
+          tokens.push({
+            type: ListTokenType.HASH_TAG,
+            value: tagValue,
+            start: lineStart + pos,
+            end: lineStart + pos + full.length,
+          });
+        }
+      }
+      return tokens;
+    }
   }
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
@@ -415,6 +529,9 @@ const ROLE_FOR_TYPE: Record<ListTokenType, ListHighlightRole | null> = {
   [ListTokenType.SET_CODE_BRACKET]: "set-code",
   [ListTokenType.FOIL_PAREN]: "foil-marker",
   [ListTokenType.ETCHED_PAREN]: "etched-marker",
+  [ListTokenType.HASH_TAG]: "hash-tag",
+  [ListTokenType.ROLE_MARKER]: "role-marker",
+  [ListTokenType.FOIL_PRERELEASE_MARKER]: "variant",
 };
 
 function spanOverlapsValidation(
