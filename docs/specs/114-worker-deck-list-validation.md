@@ -188,6 +188,8 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 - Store the result in a signal or resource. Downstream memos (`hasValidationErrors`, `validationErrors`, `editDiffSummary`, `highlightValidation`) read from that signal.
 - Use `createResource` or a manual effect + signal to handle loading state. Optional: show "Validating…" briefly.
 
+**Skip validation when draft equals baseline:** When transitioning Display→Edit, the draft text is the serialized output of the current list — known valid by construction. Skip the worker round-trip and set a synthetic valid result (`{ lines: [] }`) so the status bar does not flash "Validating…". Validation runs only when the user has made changes (draft ≠ baseline).
+
 **Defer validation on Edit click:** In `handleEdit`, do not call `setDebouncedDraft(text)` synchronously. Use `setTimeout(() => setDebouncedDraft(text), 0)` so the UI can paint edit mode before validation is requested. This ensures Edit mode appears immediately.
 
 ### 6. Backward Compatibility
@@ -210,6 +212,7 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 ## Implementation Notes
 
 - Worker handler: add branch for `msg.type === 'validate-list'`; call `validateDeckListWithEngine`; post `validate-result`.
+- **Display→Edit fast path:** When `draftText === baselineText` (e.g. just entered Edit from Display, or after Revert), skip `onValidateRequest` and set `validationResult` to `{ lines: [] }`. Avoids "Validating…" flash for known-valid text.
 - **Per-line memoization:** Each line's validation result is cached by line string. Same line content (e.g. `"4 Lightning Bolt"`) yields the same result; unchanged lines on re-validation hit the cache. Helps incremental edits and repeated lines.
 - `displayRef` and `printingDisplayRef` are already in scope in the worker from init.
 - Test `validateDeckListWithEngine` with existing list-validate test fixtures; use test CardIndex/PrintingIndex/NodeCache from evaluator tests.

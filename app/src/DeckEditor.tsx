@@ -308,6 +308,13 @@ export default function DeckEditor(props: {
       setValidationResult(null)
       return
     }
+    // Display→Edit: draft equals baseline (serialized output), known valid — skip worker round-trip
+    const draft = draftText()
+    const base = baselineText()
+    if (draft !== null && base !== null && draft === base) {
+      setValidationResult({ lines: [] })
+      return
+    }
     if (props.onValidateRequest) {
       const version = ++validationVersion
       props.onValidateRequest(t).then((result) => {
