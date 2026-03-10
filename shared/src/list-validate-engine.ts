@@ -4,7 +4,12 @@ import type { CardIndex } from "./search/card-index";
 import type { PrintingIndex } from "./search/printing-index";
 import type { NodeCache } from "./search/evaluator";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
-import type { ParsedEntry, LineValidation, ValidationResult } from "./list-lexer";
+import type {
+  ParsedEntry,
+  LineValidation,
+  ValidationResult,
+  QuickFix,
+} from "./list-lexer";
 import type { ListToken } from "./list-lexer";
 import { lexDeckList, ListTokenType } from "./list-lexer";
 import {
@@ -69,6 +74,59 @@ function variantToIsKeyword(variant: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Per-line memoization — same line content always yields same result
+// ---------------------------------------------------------------------------
+
+interface CachedLineResult {
+  kind: LineValidation["kind"];
+  message?: string;
+  quickFixes?: QuickFix[];
+  spanRel?: { start: number; end: number };
+  entry?: ParsedEntry;
+}
+
+const lineResultCache = new Map<string, CachedLineResult>();
+
+function toCacheable(
+  line: LineValidation,
+  entry: ParsedEntry | undefined,
+  lineStart: number,
+): CachedLineResult {
+  const cached: CachedLineResult = { kind: line.kind };
+  if (line.message) cached.message = line.message;
+  if (line.quickFixes) cached.quickFixes = line.quickFixes;
+  if (line.span)
+    cached.spanRel = {
+      start: line.span.start - lineStart,
+      end: line.span.end - lineStart,
+    };
+  if (entry) cached.entry = entry;
+  return cached;
+}
+
+function fromCacheable(
+  cached: CachedLineResult,
+  lineIndex: number,
+  lineStart: number,
+  lineEnd: number,
+): LineValidation {
+  const line: LineValidation = {
+    lineIndex,
+    lineStart,
+    lineEnd,
+    kind: cached.kind,
+  };
+  if (cached.message) line.message = cached.message;
+  if (cached.quickFixes) line.quickFixes = cached.quickFixes;
+  if (cached.spanRel)
+    line.span = {
+      start: lineStart + cached.spanRel.start,
+      end: lineStart + cached.spanRel.end,
+    };
+  return line;
+}
+
+// ---------------------------------------------------------------------------
 // Engine-based validation (Spec 114)
 // ---------------------------------------------------------------------------
 
@@ -91,6 +149,14 @@ export function validateDeckListWithEngine(
     const lineStart = offset;
     const lineEnd = offset + line.length;
 
+    const cached = lineResultCache.get(line);
+    if (cached !== undefined) {
+      lines.push(fromCacheable(cached, lineIndex, lineStart, lineEnd));
+      if (cached.entry) resolved.push(cached.entry);
+      offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+      continue;
+    }
+
     const tokens = lexDeckList(line);
     const quantityTok = tokens.find((t) => t.type === ListTokenType.QUANTITY);
     const nameTok = tokens.find((t) => t.type === ListTokenType.CARD_NAME);
@@ -109,17 +175,21 @@ export function validateDeckListWithEngine(
     const alterMarkerTok = tokens.find((t) => t.type === ListTokenType.ALTER_MARKER);
 
     if (tokens.some((t) => t.type === ListTokenType.COMMENT)) {
-      lines.push({ lineIndex, lineStart, lineEnd, kind: "ok" });
+      const lineResult = { lineIndex, lineStart, lineEnd, kind: "ok" as const };
+      lines.push(lineResult);
+      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
 
     if (quantityTok && !nameTok) {
-      lines.push({
-        lineIndex, lineStart, lineEnd, kind: "error",
+      const lineResult = {
+        lineIndex, lineStart, lineEnd, kind: "error" as const,
         span: { start: lineStart, end: lineEnd },
         message: "Missing card name",
-      });
+      };
+      lines.push(lineResult);
+      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -178,6 +248,7 @@ export function validateDeckListWithEngine(
       );
       lines.push(result.line);
       if (result.entry) resolved.push(result.entry);
+      lineResultCache.set(line, toCacheable(result.line, result.entry, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -194,25 +265,29 @@ export function validateDeckListWithEngine(
         setTok!.type === ListTokenType.SET_CODE_BRACKET ? setTok : undefined,
         finishToks,
       );
-      lines.push({
-        lineIndex, lineStart, lineEnd, kind: "error",
+      const lineResult = {
+        lineIndex, lineStart, lineEnd, kind: "error" as const,
         span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
         message: `Unknown set — \`${setCode}\``,
         ...(removeSetReplacement
           ? { quickFixes: [{ label: "Remove set/collector, use name only", replacement: removeSetReplacement }] }
           : {}),
-      });
+      };
+      lines.push(lineResult);
+      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
 
     // Unknown variant → error
     if (variantFallbackMode === "unknown") {
-      lines.push({
-        lineIndex, lineStart, lineEnd, kind: "error",
+      const lineResult = {
+        lineIndex, lineStart, lineEnd, kind: "error" as const,
         span: { start: lineStart + variantTok!.start, end: lineStart + variantTok!.end },
         message: "No matching printing",
-      });
+      };
+      lines.push(lineResult);
+      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -221,11 +296,13 @@ export function validateDeckListWithEngine(
     if (variantFallbackMode === "known") {
       const nameResult = cache.evaluate(exactNode(nameTok.value));
       if (nameResult.indices.length === 0) {
-        lines.push({
-          lineIndex, lineStart, lineEnd, kind: "error",
+        const lineResult = {
+          lineIndex, lineStart, lineEnd, kind: "error" as const,
           span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
           message: `Unknown card — "${nameTok.value}"`,
-        });
+        };
+        lines.push(lineResult);
+        lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
         offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
         continue;
       }
@@ -236,27 +313,32 @@ export function validateDeckListWithEngine(
       const variantMarkerTok = variantTok ?? foilPrereleaseMarkerTok;
       if (fallbackPi >= 0) {
         const scryfallId = printingDisplay!.scryfall_ids[fallbackPi] ?? null;
-        lines.push({
-          lineIndex, lineStart, lineEnd, kind: "warning",
-          span: { start: lineStart + variantMarkerTok!.start, end: lineStart + variantMarkerTok!.end },
-          message: "Variant resolved approximately",
-        });
         const qtyStr = quantityTok.value.replace(/x$/i, "");
         const quantity = parseInt(qtyStr, 10) || 1;
         const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
-        resolved.push({
+        const entry: ParsedEntry = {
           oracle_id: display.oracle_ids[nameResult.indices[0]!] ?? "",
           scryfall_id: scryfallId,
           quantity,
           finish: finish ?? undefined,
           variant: variantValue,
-        });
+        };
+        const lineResult = {
+          lineIndex, lineStart, lineEnd, kind: "warning" as const,
+          span: { start: lineStart + variantMarkerTok!.start, end: lineStart + variantMarkerTok!.end },
+          message: "Variant resolved approximately",
+        };
+        lines.push(lineResult);
+        resolved.push(entry);
+        lineResultCache.set(line, toCacheable(lineResult, entry, lineStart));
       } else {
-        lines.push({
-          lineIndex, lineStart, lineEnd, kind: "error",
+        const lineResult = {
+          lineIndex, lineStart, lineEnd, kind: "error" as const,
           span: { start: lineStart + variantMarkerTok!.start, end: lineStart + variantMarkerTok!.end },
           message: "No matching printing",
-        });
+        };
+        lines.push(lineResult);
+        lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
       }
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
@@ -273,6 +355,7 @@ export function validateDeckListWithEngine(
     );
     lines.push(cascadeResult.line);
     if (cascadeResult.entry) resolved.push(cascadeResult.entry);
+    lineResultCache.set(line, toCacheable(cascadeResult.line, cascadeResult.entry, lineStart));
 
     offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
   }

@@ -210,6 +210,7 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 ## Implementation Notes
 
 - Worker handler: add branch for `msg.type === 'validate-list'`; call `validateDeckListWithEngine`; post `validate-result`.
+- **Per-line memoization:** Each line's validation result is cached by line string. Same line content (e.g. `"4 Lightning Bolt"`) yields the same result; unchanged lines on re-validation hit the cache. Helps incremental edits and repeated lines.
 - `displayRef` and `printingDisplayRef` are already in scope in the worker from init.
 - Test `validateDeckListWithEngine` with existing list-validate test fixtures; use test CardIndex/PrintingIndex/NodeCache from evaluator tests.
 - **§ 3g approximate match:** The spec describes using a BARE node and `cache.evaluate()` for approximate matching. The implementation uses a manual loop over `cardIndex.faceCount` and `combinedNamesNormalized`, plus `alternateNamesIndex`, instead. Behavior is correct (exact normalized match and alternate-name lookup); the manual path is O(faceCount) per unknown card and only runs when EXACT fails. NodeCache internment for the BARE node was not implemented.
