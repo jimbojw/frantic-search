@@ -189,6 +189,7 @@ export default function DeckEditor(props: {
   const [diffSummary, setDiffSummary] = createSignal<{ additions: number; removals: number } | null>(null)
   const [applyInProgress, setApplyInProgress] = createSignal(false)
   const [copied, setCopied] = createSignal(false)
+  const [quickFixApplying, setQuickFixApplying] = createSignal<{ lineIndex: number; fixIndex: number } | null>(null)
 
   // Debounced text for validation
   const [debouncedDraft, setDebouncedDraft] = createSignal<string>('')
@@ -368,18 +369,22 @@ export default function DeckEditor(props: {
     }
   }
 
-  function applyQuickFix(err: LineValidation, fix: QuickFix) {
-    const text = draftText()
-    if (text == null) return
-    const newText =
-      text.slice(0, err.lineStart) + fix.replacement + text.slice(err.lineEnd)
-    setDraftText(newText)
-    setDebouncedDraft(newText)
-    writeDraftToStorage(props.listId, newText)
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = undefined
-    }
+  function applyQuickFix(err: LineValidation, fix: QuickFix, fixIndex: number) {
+    setQuickFixApplying({ lineIndex: err.lineIndex, fixIndex })
+    setTimeout(() => {
+      const text = draftText()
+      if (text == null) return
+      const newText =
+        text.slice(0, err.lineStart) + fix.replacement + text.slice(err.lineEnd)
+      setDraftText(newText)
+      setDebouncedDraft(newText)
+      writeDraftToStorage(props.listId, newText)
+      if (debounceTimer) {
+        clearTimeout(debounceTimer)
+        debounceTimer = undefined
+      }
+      setTimeout(() => setQuickFixApplying(null), 100)
+    }, 50)
   }
 
   function handleApply() {
@@ -654,16 +659,22 @@ export default function DeckEditor(props: {
                             {err.quickFixes!.length === 1 ? 'Fix:' : 'Fixes:'}
                           </span>
                           <For each={err.quickFixes}>
-                            {(fix) => (
-                              <button
-                                type="button"
-                                onClick={() => applyQuickFix(err, fix)}
-                                class="inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                aria-label={`Apply fix: ${fix.label}`}
-                              >
-                                <StyledValidationText text={fix.label} />
-                              </button>
-                            )}
+                            {(fix, fixIndex) => {
+                              const isApplying = () =>
+                                quickFixApplying()?.lineIndex === err.lineIndex &&
+                                quickFixApplying()?.fixIndex === fixIndex()
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => applyQuickFix(err, fix, fixIndex())}
+                                  disabled={isApplying()}
+                                  class="inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-wait"
+                                  aria-label={`Apply fix: ${fix.label}`}
+                                >
+                                  {isApplying() ? 'Applying…' : <StyledValidationText text={fix.label} />}
+                                </button>
+                              )
+                            }}
                           </For>
                         </div>
                       </Show>
