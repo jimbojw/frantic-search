@@ -1,6 +1,6 @@
 # Spec 112: Deck Editor Quick Fixes
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 108 (List Import Textarea), Spec 110 (Hybrid Deck Editor)
 
@@ -146,3 +146,8 @@ When reconstructing a line for a fix, preserve the format of the rest of the lin
 8. After applying a fix, the error disappears if the line is now valid.
 9. Multiple fixes (when supported) appear as a menu; selecting one applies that fix.
 10. Fix controls are keyboard-accessible and have clear labels.
+
+## Implementation Notes
+
+- 2026-03-10: Implemented per spec. QuickFix and LineValidation.quickFixes in list-lexer; reconstructLineWithoutSet and variantLabelForPrinting helpers in list-validate; Cases 1–3 and Unknown set quick fixes; DeckEditor Status box shows full fix buttons (same size as MenuDrawer chips: min-h-11, rounded, gray bg). Single fix: "Fix:" prefix; multiple: "Fixes:" prefix. Each button shows the full label.
+- 2026-03-10: Error messages and fix labels use syntax-highlight styling: "..." content (card names) → card-name color (gray-900 dark:gray-100) + font-mono; \`...\` content (set-code, collector) → set-code color (blue-600 dark:blue-400) + font-mono. Validator uses backticks for set/collector consistently.

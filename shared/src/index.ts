@@ -72,7 +72,7 @@ export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
 export { lexDeckList, buildListSpans } from "./list-lexer";
-export type { ListToken, ListTokenType, ListHighlightSpan, ListHighlightRole, LineValidation, ListValidationResult } from "./list-lexer";
+export type { ListToken, ListTokenType, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, ListValidationResult } from "./list-lexer";
 export { validateDeckList } from "./list-validate";
 export type { ParsedEntry } from "./list-validate";
 export { detectDeckFormat } from "./list-format";

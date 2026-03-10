@@ -20,10 +20,70 @@ import type {
   ListMetadata,
   DeckFormat,
   ListValidationResult,
+  LineValidation,
+  QuickFix,
 } from '@frantic-search/shared'
 import ListHighlight from './ListHighlight'
 
 export type EditorMode = 'init' | 'display' | 'edit'
+
+/** Parse text with "..." (card-name) and `...` (set-code) for syntax-highlight-style rendering. */
+function parseStyledParts(text: string): { text: string; role?: 'card-name' | 'set-code' }[] {
+  const result: { text: string; role?: 'card-name' | 'set-code' }[] = []
+  let s = text
+  while (s.length > 0) {
+    const dq = s.indexOf('"')
+    const bt = s.indexOf('`')
+    if (dq < 0 && bt < 0) {
+      result.push({ text: s })
+      break
+    }
+    const next = dq < 0 ? bt : bt < 0 ? dq : Math.min(dq, bt)
+    if (next > 0) {
+      result.push({ text: s.slice(0, next) })
+    }
+    if (dq === next) {
+      const end = s.indexOf('"', next + 1)
+      if (end >= 0) {
+        result.push({ text: s.slice(next + 1, end), role: 'card-name' })
+        s = s.slice(end + 1)
+      } else {
+        result.push({ text: s.slice(next) })
+        break
+      }
+    } else {
+      const end = s.indexOf('`', next + 1)
+      if (end >= 0) {
+        result.push({ text: s.slice(next + 1, end), role: 'set-code' })
+        s = s.slice(end + 1)
+      } else {
+        result.push({ text: s.slice(next) })
+        break
+      }
+    }
+  }
+  return result
+}
+
+const CARD_NAME_CLASS = 'font-mono text-gray-900 dark:text-gray-100'
+const SET_CODE_CLASS = 'font-mono text-blue-600 dark:text-blue-400'
+
+function StyledValidationText(props: { text: string; class?: string }) {
+  const parts = parseStyledParts(props.text)
+  return (
+    <span class={props.class}>
+      {parts.map((p) =>
+        p.role === 'card-name' ? (
+          <span class={CARD_NAME_CLASS}>{p.text}</span>
+        ) : p.role === 'set-code' ? (
+          <span class={SET_CODE_CLASS}>{p.text}</span>
+        ) : (
+          <>{p.text}</>
+        )
+      )}
+    </span>
+  )
+}
 
 const VALIDATION_DEBOUNCE_MS = 150
 
@@ -308,6 +368,20 @@ export default function DeckEditor(props: {
     }
   }
 
+  function applyQuickFix(err: LineValidation, fix: QuickFix) {
+    const text = draftText()
+    if (text == null) return
+    const newText =
+      text.slice(0, err.lineStart) + fix.replacement + text.slice(err.lineEnd)
+    setDraftText(newText)
+    setDebouncedDraft(newText)
+    writeDraftToStorage(props.listId, newText)
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = undefined
+    }
+  }
+
   function handleApply() {
     const text = draftText()
     if (!text) return
@@ -560,8 +634,8 @@ export default function DeckEditor(props: {
                         }
                       : null
                   return (
-                    <li class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 py-1.5 border-b border-red-200 dark:border-red-900/50 last:border-b-0">
-                      <span class="text-gray-500 dark:text-gray-400 text-xs font-mono row-span-2 self-start pt-0.5">
+                    <li class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 py-1.5 border-b border-red-200 dark:border-red-900/50 last:border-b-0">
+                      <span class="text-gray-500 dark:text-gray-400 text-xs font-mono row-span-3 self-start pt-0.5">
                         L{err.lineIndex + 1}:
                       </span>
                       <div class="min-w-0 bg-white dark:bg-gray-900 overflow-x-auto">
@@ -571,7 +645,28 @@ export default function DeckEditor(props: {
                           class="text-sm leading-relaxed"
                         />
                       </div>
-                      <span class="text-xs">{displayMessage}</span>
+                      <span class="text-xs">
+                        <StyledValidationText text={displayMessage} />
+                      </span>
+                      <Show when={err.quickFixes && err.quickFixes.length > 0}>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                          <span class="text-xs text-gray-500 dark:text-gray-400">
+                            {err.quickFixes!.length === 1 ? 'Fix:' : 'Fixes:'}
+                          </span>
+                          <For each={err.quickFixes}>
+                            {(fix) => (
+                              <button
+                                type="button"
+                                onClick={() => applyQuickFix(err, fix)}
+                                class="inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                aria-label={`Apply fix: ${fix.label}`}
+                              >
+                                <StyledValidationText text={fix.label} />
+                              </button>
+                            )}
+                          </For>
+                        </div>
+                      </Show>
                     </li>
                   )
                 }}

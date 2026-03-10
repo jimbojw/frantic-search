@@ -2,6 +2,7 @@
 import { PrintingFlag, PROMO_TYPE_FLAGS } from "./bits";
 import { computeCombinedNames } from "./search/combined-names";
 import { lexDeckList, ListTokenType } from "./list-lexer";
+import type { ListToken } from "./list-lexer";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
 export type { LineValidation, ListValidationResult } from "./list-lexer";
@@ -111,6 +112,74 @@ function findCardByCanonicalFace(
   return null;
 }
 
+/** Get the primary display name for a canonical face (first face with that canonical_face). */
+function getDisplayNameForCanonicalFace(
+  canonicalFace: number,
+  display: DisplayColumns
+): string | undefined {
+  for (let i = 0; i < display.canonical_face.length; i++) {
+    if ((display.canonical_face[i] ?? i) === canonicalFace) {
+      return display.names[i];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Reconstruct the line without set/collector (or variant+set for MTGGoldfish).
+ * Preserves quantity, name, foil markers, tags, etc. Returns line without trailing newline.
+ */
+function reconstructLineWithoutSet(
+  line: string,
+  setTok: ListToken | undefined,
+  collectorTok: ListToken | undefined,
+  variantTok?: ListToken,
+  setCodeBracketTok?: ListToken
+): string {
+  const tokensToRemove: ListToken[] = [];
+  if (variantTok && setCodeBracketTok) {
+    tokensToRemove.push(variantTok, setCodeBracketTok);
+  } else if (setTok) {
+    tokensToRemove.push(setTok);
+    if (collectorTok) tokensToRemove.push(collectorTok);
+  }
+  if (tokensToRemove.length === 0) return line.trimEnd();
+
+  const minStart = Math.min(...tokensToRemove.map((t) => t.start));
+  const maxEnd = Math.max(...tokensToRemove.map((t) => t.end));
+
+  let start = minStart;
+  let end = maxEnd;
+  while (start > 0 && /[\s(\[<]/.test(line[start - 1]!)) start--;
+  while (end < line.length && /[\s):\]>]/.test(line[end]!)) end++;
+
+  return (line.slice(0, start) + line.slice(end)).trimEnd();
+}
+
+/** Human-readable variant label from printing flags (e.g. "extended art", "borderless"). */
+function variantLabelForPrinting(
+  printing: PrintingDisplayColumns,
+  rowIndex: number
+): string {
+  const pf = printing.printing_flags ?? [];
+  const pt0 = printing.promo_types_flags_0 ?? [];
+  const pt1 = printing.promo_types_flags_1 ?? [];
+  const flags = pf[rowIndex] ?? 0;
+  const promo0 = pt0[rowIndex] ?? 0;
+  const promo1 = pt1[rowIndex] ?? 0;
+
+  const labels: string[] = [];
+  if (flags & PrintingFlag.ExtendedArt) labels.push("extended art");
+  if (flags & PrintingFlag.Borderless) labels.push("borderless");
+  if (flags & PrintingFlag.Showcase) labels.push("showcase");
+  if (flags & PrintingFlag.FullArt) labels.push("full art");
+  const prerelease = PROMO_TYPE_FLAGS.prerelease;
+  if (prerelease && ((prerelease.column === 0 ? promo0 : promo1) & (1 << prerelease.bit))) {
+    labels.push("prerelease");
+  }
+  return labels.length > 0 ? ` (${labels[0]})` : "";
+}
+
 function findPrintingRow(
   setCode: string,
   collectorNumber: string,
@@ -126,6 +195,25 @@ function findPrintingRow(
     }
   }
   return -1;
+}
+
+/** All printing row indices for a card in a set (for Case 1 quick fixes). */
+function findPrintingsInSet(
+  setCode: string,
+  canonicalFace: number,
+  printing: PrintingDisplayColumns
+): number[] {
+  const setLower = setCode.toLowerCase();
+  const rows: number[] = [];
+  for (let i = 0; i < printing.set_codes.length; i++) {
+    if (
+      printing.set_codes[i]!.toLowerCase() === setLower &&
+      printing.canonical_face_ref[i] === canonicalFace
+    ) {
+      rows.push(i);
+    }
+  }
+  return rows;
 }
 
 /** MTGGoldfish variant string → printing_flags bit or promo_types lookup. */
@@ -324,6 +412,43 @@ export function validateDeckList(
 
     let card = findCardByName(nameTok.value, display, combinedNames);
     if (!card) {
+      // Case 3: Card name not recognized, but set+collector may point to a known printing
+      const setTokForCase3 =
+        tokens.find((t) => t.type === ListTokenType.SET_CODE) ??
+        tokens.find((t) => t.type === ListTokenType.SET_CODE_BRACKET);
+      const collectorTokForCase3 = tokens.find((t) => t.type === ListTokenType.COLLECTOR_NUMBER);
+      const variantTokForCase3 = tokens.find((t) => t.type === ListTokenType.VARIANT);
+      const collectorOrVariant =
+        collectorTokForCase3?.value ?? (variantTokForCase3 && isNumericCollectorNumber(variantTokForCase3.value) ? variantTokForCase3.value : null);
+      if (
+        setTokForCase3 &&
+        collectorOrVariant &&
+        printingDisplay
+      ) {
+        const pi = findPrintingRow(setTokForCase3.value, collectorOrVariant, printingDisplay);
+        if (pi >= 0) {
+          const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
+          const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
+          if (correctName) {
+            const replacement = line.slice(0, nameTok.start) + correctName + line.slice(nameTok.end);
+            lines.push({
+              lineIndex,
+              lineStart,
+              lineEnd,
+              kind: "error",
+              span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
+              message: `Card name not recognized; set+collector point to "${correctName}"`,
+              quickFixes: [{ label: `Use "${correctName}"`, replacement: replacement.trimEnd() }],
+            });
+            offset = lineEnd + (lineIndex < lineStrings.length - 1 ? 1 : 0);
+            if (lineIndex < lineStrings.length - 1 && offset < text.length) {
+              if (text[offset] === "\r" && text[offset + 1] === "\n") offset += 2;
+              else if (text[offset] === "\n") offset += 1;
+            }
+            continue;
+          }
+        }
+      }
       lines.push({
         lineIndex,
         lineStart,
@@ -344,6 +469,7 @@ export function validateDeckList(
     let hasPrintingError = false;
     let errorSpan: { start: number; end: number } | undefined;
     let errorMessage: string | undefined;
+    let errorQuickFixes: { label: string; replacement: string }[] | undefined;
     let hasVariantWarning = false;
     let warningSpan: { start: number; end: number } | undefined;
     let warningMessage: string | undefined;
@@ -364,7 +490,19 @@ export function validateDeckList(
       if (!setExists) {
         hasPrintingError = true;
         errorSpan = { start: lineStart + setTok.start, end: lineStart + setTok.end };
-        errorMessage = `Unknown set — "${setCode}"`;
+        errorMessage = `Unknown set — \`${setCode}\``;
+        const removeSetReplacement = reconstructLineWithoutSet(
+          line,
+          setTok,
+          collectorTok ?? undefined,
+          setTok.type === ListTokenType.SET_CODE_BRACKET ? variantTok : undefined,
+          setTok.type === ListTokenType.SET_CODE_BRACKET ? setTok : undefined
+        );
+        if (removeSetReplacement) {
+          errorQuickFixes = [
+            { label: "Remove set/collector, use name only", replacement: removeSetReplacement },
+          ];
+        }
       } else if (variantTok && setTok.type === ListTokenType.SET_CODE_BRACKET) {
         const variant = variantTok.value;
         if (isNumericCollectorNumber(variant)) {
@@ -372,7 +510,16 @@ export function validateDeckList(
           if (pi < 0) {
             hasPrintingError = true;
             errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
-            errorMessage = `Collector number doesn't match — "${variant}" in \`${setCode}\``;
+            errorMessage = `Collector number doesn't match — \`${variant}\` in \`${setCode}\``;
+            const printingsInSet = findPrintingsInSet(setCode, card.canonicalFace, printingDisplay);
+            if (printingsInSet.length > 0) {
+              errorQuickFixes = printingsInSet.map((rowIdx) => {
+                const cn = printingDisplay.collector_numbers[rowIdx]!;
+                const variantLabel = variantLabelForPrinting(printingDisplay, rowIdx);
+                const replacement = line.slice(0, variantTok.start) + cn + line.slice(variantTok.end);
+                return { label: `Use ${cn}${variantLabel}`, replacement: replacement.trimEnd() };
+              });
+            }
           } else {
             const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
             const printingCard = findCardByCanonicalFace(
@@ -385,6 +532,19 @@ export function validateDeckList(
               hasPrintingError = true;
               errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
               errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${variant}\``;
+              const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
+              if (correctName) {
+                errorQuickFixes = [
+                  {
+                    label: "Remove set/collector, use name only",
+                    replacement: reconstructLineWithoutSet(line, setTok, undefined, variantTok, setTok).trimEnd(),
+                  },
+                  {
+                    label: `Use "${correctName}"`,
+                    replacement: (line.slice(0, nameTok.start) + correctName + line.slice(nameTok.end)).trimEnd(),
+                  },
+                ];
+              }
             } else {
               card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
               scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
@@ -426,7 +586,16 @@ export function validateDeckList(
         if (pi < 0) {
           hasPrintingError = true;
           errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
-          errorMessage = `Collector number doesn't match — "${collectorNumber}" in \`${setCode}\``;
+          errorMessage = `Collector number doesn't match — \`${collectorNumber}\` in \`${setCode}\``;
+          const printingsInSet = findPrintingsInSet(setCode, card.canonicalFace, printingDisplay);
+          if (printingsInSet.length > 0) {
+            errorQuickFixes = printingsInSet.map((rowIdx) => {
+              const cn = printingDisplay.collector_numbers[rowIdx]!;
+              const variantLabel = variantLabelForPrinting(printingDisplay, rowIdx);
+              const replacement = line.slice(0, collectorTok.start) + cn + line.slice(collectorTok.end);
+              return { label: `Use ${cn}${variantLabel}`, replacement: replacement.trimEnd() };
+            });
+          }
         } else {
           const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
           const printingCard = findCardByCanonicalFace(
@@ -439,6 +608,19 @@ export function validateDeckList(
             hasPrintingError = true;
             errorSpan = { start: lineStart + nameTok.start, end: lineStart + nameTok.end };
             errorMessage = `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${collectorNumber}\``;
+            const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
+            if (correctName) {
+              errorQuickFixes = [
+                {
+                  label: "Remove set/collector, use name only",
+                  replacement: reconstructLineWithoutSet(line, setTok, collectorTok).trimEnd(),
+                },
+                {
+                  label: `Use "${correctName}"`,
+                  replacement: (line.slice(0, nameTok.start) + correctName + line.slice(nameTok.end)).trimEnd(),
+                },
+              ];
+            }
           } else {
             card = { ...card, oracleId: printingCard.oracleId, canonicalFace: printingCard.canonicalFace };
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
@@ -502,6 +684,7 @@ export function validateDeckList(
         kind: "error",
         span: errorSpan,
         message: errorMessage,
+        ...(errorQuickFixes && errorQuickFixes.length > 0 ? { quickFixes: errorQuickFixes } : {}),
       });
     } else {
       const qtyStr = quantityTok.value.replace(/x$/i, "");

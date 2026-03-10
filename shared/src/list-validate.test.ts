@@ -389,4 +389,84 @@ describe("validateDeckList", () => {
     expect(errorLine).toBeDefined();
     expect(errorLine?.message).toContain("Collector number");
   });
+
+  // -------------------------------------------------------------------------
+  // Spec 112: Quick fixes
+  // -------------------------------------------------------------------------
+
+  test("Case 1: wrong collector number produces quick fixes with valid collector numbers", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest"],
+      canonical_face: [0, 1, 2, 3, 4, 5],
+      oracle_ids: ["oid-beast", "oid1", "oid2", "oid3", "oid4", "oid5"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "beast-tc16-14", "beast-tc16-15"],
+      collector_numbers: ["159", "273", "1", "14", "15"],
+      set_codes: ["M21", "DMU", "MH2", "tc16", "tc16"],
+      canonical_face_ref: [4, 5, 1, 0, 0],
+    });
+    const result = validateDeckList("1x Beast (tc16) 999", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.quickFixes).toBeDefined();
+    expect(errorLine?.quickFixes).toHaveLength(2);
+    expect(errorLine?.quickFixes?.map((f) => f.label)).toContain("Use 14");
+    expect(errorLine?.quickFixes?.map((f) => f.label)).toContain("Use 15");
+    const fix14 = errorLine?.quickFixes?.find((f) => f.label === "Use 14");
+    expect(fix14?.replacement).toBe("1x Beast (tc16) 14");
+  });
+
+  test("Case 2: name vs printing mismatch produces two quick fixes", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Goblin"],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      oracle_ids: ["oid-beast", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-goblin"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "goblin-tc16-14"],
+      collector_numbers: ["159", "273", "1", "14"],
+      set_codes: ["M21", "DMU", "MH2", "tc16"],
+      canonical_face_ref: [4, 5, 1, 6],
+    });
+    const result = validateDeckList("1x Beast (tc16) 14", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.quickFixes).toHaveLength(2);
+    expect(errorLine?.quickFixes?.some((f) => f.label === "Remove set/collector, use name only")).toBe(true);
+    expect(errorLine?.quickFixes?.some((f) => f.label === 'Use "Goblin"')).toBe(true);
+  });
+
+  test("Case 3: unknown name with valid set+collector produces quick fix", () => {
+    const display = makeDisplay({
+      names: ["Beast", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Goblin"],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      oracle_ids: ["oid-beast", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-goblin"],
+    });
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "goblin-tc16-14"],
+      collector_numbers: ["159", "273", "1", "14"],
+      set_codes: ["M21", "DMU", "MH2", "tc16"],
+      canonical_face_ref: [4, 5, 1, 6],
+    });
+    const result = validateDeckList("1x TypoCard (tc16) 14", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("not recognized");
+    expect(errorLine?.quickFixes).toHaveLength(1);
+    expect(errorLine?.quickFixes?.[0]?.label).toBe('Use "Goblin"');
+    expect(errorLine?.quickFixes?.[0]?.replacement).toBe("1x Goblin (tc16) 14");
+  });
+
+  test("Unknown set produces quick fix to remove set/collector", () => {
+    const display = makeDisplay();
+    const printing = makePrintingDisplay();
+    const result = validateDeckList("1 Lightning Bolt (XXX) 159", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.message).toContain("Unknown set");
+    expect(errorLine?.quickFixes).toHaveLength(1);
+    expect(errorLine?.quickFixes?.[0]?.label).toBe("Remove set/collector, use name only");
+    expect(errorLine?.quickFixes?.[0]?.replacement).toBe("1 Lightning Bolt");
+  });
 });

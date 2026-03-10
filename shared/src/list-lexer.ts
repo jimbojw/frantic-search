@@ -70,6 +70,13 @@ export interface ListHighlightSpan {
   end: number;
 }
 
+export interface QuickFix {
+  /** Short label shown on the fix button or in a menu. */
+  label: string;
+  /** The full replacement line text. Applied to the draft when user selects this fix. */
+  replacement: string;
+}
+
 export interface LineValidation {
   lineIndex: number;
   lineStart: number;
@@ -77,6 +84,8 @@ export interface LineValidation {
   kind: "ok" | "error" | "warning";
   span?: { start: number; end: number };
   message?: string;
+  /** Suggested fixes for this line. Only present when kind === "error". */
+  quickFixes?: QuickFix[];
 }
 
 export interface ListValidationResult {
