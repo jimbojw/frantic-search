@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState } from '@frantic-search/shared'
+import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
@@ -388,7 +389,17 @@ function App() {
   let latestQueryId = 0
   let latestQueryIdLeft = 0
   let latestQueryIdRight = 0
+  let serializeRequestId = 0
+  const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
+
+  function serializeDeckList(instances: InstanceState[], format: DeckFormat): Promise<string> {
+    const requestId = ++serializeRequestId
+    return new Promise((resolve, reject) => {
+      serializePending.set(requestId, { resolve, reject })
+      worker.postMessage({ type: 'serialize-list', requestId, instances, format })
+    })
+  }
 
   function sendListUpdatesFor(
     workerRef: Worker,
@@ -539,6 +550,14 @@ function App() {
       case 'card-tags':
         setCardTags({ otags: msg.otags, atags: msg.atags })
         break
+      case 'serialize-result': {
+        const pending = serializePending.get(msg.requestId)
+        if (pending) {
+          serializePending.delete(msg.requestId)
+          pending.resolve(msg.text)
+        }
+        break
+      }
       case 'result': {
         const side = msg.side
         const matchesLeft = !side && msg.queryId === latestQueryId
@@ -1150,6 +1169,7 @@ function App() {
           listVersion={listVersion()}
           display={display()}
           printingDisplay={printingDisplay()}
+          onSerializeRequest={serializeDeckList}
           onBack={() => history.back()}
         />
       </Show>

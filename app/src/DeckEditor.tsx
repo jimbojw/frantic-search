@@ -116,6 +116,7 @@ export default function DeckEditor(props: {
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
   onApply: (draftText: string) => Promise<boolean>
+  onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
   onDraftActiveChange?: (active: boolean) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
@@ -198,10 +199,21 @@ export default function DeckEditor(props: {
     return 'init'
   })
 
-  // Rendered text for Display mode
-  const renderedText = createMemo(() => {
-    if (!props.display || !hasInstances()) return ''
-    return serialize(selectedFormat(), props.instances, props.display, props.printingDisplay)
+  // Serialized text for Display mode (async via worker when onSerializeRequest provided)
+  const [serializedText, setSerializedText] = createSignal<string>('')
+  let serializeVersion = 0
+  createEffect(() => {
+    if (mode() !== 'display' || !hasInstances() || !props.display) return
+    const ins = props.instances
+    const fmt = selectedFormat()
+    if (props.onSerializeRequest) {
+      const version = ++serializeVersion
+      props.onSerializeRequest(ins, fmt).then((text) => {
+        if (version === serializeVersion) setSerializedText(text)
+      })
+    } else {
+      setSerializedText(serialize(fmt, ins, props.display!, props.printingDisplay))
+    }
   })
 
   // Validation for Edit mode (debounced)
@@ -228,7 +240,7 @@ export default function DeckEditor(props: {
   const textareaValue = createMemo(() => {
     const m = mode()
     if (m === 'edit') return draftText()!
-    if (m === 'display') return renderedText()
+    if (m === 'display') return serializedText()
     return ''
   })
 
@@ -236,7 +248,7 @@ export default function DeckEditor(props: {
   const highlightText = createMemo(() => {
     const m = mode()
     if (m === 'edit') return draftText()!
-    if (m === 'display') return renderedText()
+    if (m === 'display') return serializedText()
     return ''
   })
 
@@ -259,7 +271,7 @@ export default function DeckEditor(props: {
   }
 
   function handleEdit() {
-    const text = renderedText()
+    const text = serializedText()
     setDraftText(text)
     setDebouncedDraft(text)
     writeDraftToStorage(props.listId, text)
@@ -310,7 +322,7 @@ export default function DeckEditor(props: {
   }
 
   async function handleCopy() {
-    const text = mode() === 'edit' ? draftText()! : renderedText()
+    const text = mode() === 'edit' ? draftText()! : serializedText()
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)

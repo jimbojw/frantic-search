@@ -9,7 +9,16 @@ import type {
   OracleTagData,
   IllustrationTagData,
 } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache } from '@frantic-search/shared'
+import {
+  CardIndex,
+  PrintingIndex,
+  NodeCache,
+  serializeArena,
+  serializeMoxfield,
+  serializeArchidekt,
+  serializeMtggoldfish,
+  serializeMelee,
+} from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -267,12 +276,32 @@ async function init(): Promise<void> {
   const keywordsIndex = data.keywords_index ?? {}
   const keywordDataRef = { keywords: keywordsIndex }
   const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef, keywordDataRef)
-  const display = extractDisplayColumns(data)
+  const displayRef = extractDisplayColumns(data)
+  const printingDisplayRef = printingData ? extractPrintingDisplayColumns(printingData) : null
 
-  post({ type: 'status', status: 'ready', display, keywordLabels: Object.keys(keywordsIndex) })
+  post({ type: 'status', status: 'ready', display: displayRef, keywordLabels: Object.keys(keywordsIndex) })
 
   if (printingData) {
-    post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })
+    post({ type: 'status', status: 'printings-ready', printingDisplay: printingDisplayRef! })
+  }
+
+  function serializeList(
+    instances: import('@frantic-search/shared').InstanceState[],
+    format: import('@frantic-search/shared').DeckFormat
+  ): string {
+    switch (format) {
+      case 'moxfield':
+        return serializeMoxfield(instances, displayRef, printingDisplayRef)
+      case 'archidekt':
+        return serializeArchidekt(instances, displayRef, printingDisplayRef)
+      case 'mtggoldfish':
+        return serializeMtggoldfish(instances, displayRef, printingDisplayRef)
+      case 'melee':
+        return serializeMelee(instances, displayRef)
+      case 'arena':
+      default:
+        return serializeArena(instances, displayRef)
+    }
   }
 
   otagsPromise.then((otags) => {
@@ -302,6 +331,11 @@ async function init(): Promise<void> {
         printingMask: msg.printingMask,
       })
       cache.clearAllComputed()
+      return
+    }
+    if (msg.type === 'serialize-list') {
+      const text = serializeList(msg.instances, msg.format)
+      post({ type: 'serialize-result', requestId: msg.requestId, text })
       return
     }
     if (msg.type === 'get-tags-for-card') {
