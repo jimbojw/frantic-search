@@ -89,6 +89,40 @@ describe("validateDeckList", () => {
     expect(errorLine?.span).toBeDefined();
   });
 
+  test("double-faced card matches by combined name", () => {
+    const display = makeDisplay({
+      names: ["Invasion of Ikoria", "Zilortha, Apex of Ikoria"],
+      canonical_face: [0, 0],
+      oracle_ids: ["dfc-oracle", "dfc-oracle"],
+      mana_costs: ["{2}{G}", ""],
+      type_lines: ["Battle", "Creature"],
+      oracle_texts: ["", ""],
+      powers: [0, 0],
+      toughnesses: [0, 0],
+      loyalties: [0, 0],
+      defenses: [0, 0],
+      color_identity: [0, 0],
+      scryfall_ids: ["", ""],
+      art_crop_thumb_hashes: ["", ""],
+      card_thumb_hashes: ["", ""],
+      layouts: ["battle", "battle"],
+      legalities_legal: [0, 0],
+      legalities_banned: [0, 0],
+      legalities_restricted: [0, 0],
+      power_lookup: [],
+      toughness_lookup: [],
+      loyalty_lookup: [],
+      defense_lookup: [],
+      edhrec_rank: [null, null],
+      edhrec_salt: [null, null],
+    });
+    const result = validateDeckList("1 Invasion of Ikoria // Zilortha, Apex of Ikoria", display, null);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved?.[0]?.oracle_id).toBe("dfc-oracle");
+  });
+
   test("malformed line - quantity only produces error", () => {
     const display = makeDisplay();
     const result = validateDeckList("4x", display, null);

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { PrintingFlag, PROMO_TYPE_FLAGS } from "./bits";
+import { computeCombinedNames } from "./search/combined-names";
 import { lexDeckList, ListTokenType } from "./list-lexer";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -22,14 +23,17 @@ function normalize(s: string): string {
 
 function findCardByName(
   name: string,
-  display: DisplayColumns
+  display: DisplayColumns,
+  combinedNames: string[]
 ): { faceIndex: number; oracleId: string; canonicalFace: number } | null {
   const normalized = normalize(name);
   if (!normalized) return null;
 
   const names = display.names;
   for (let i = 0; i < names.length; i++) {
-    if (normalize(names[i]!) === normalized) {
+    const faceName = normalize(names[i]!);
+    const combinedName = normalize(combinedNames[i]!);
+    if (faceName === normalized || combinedName === normalized) {
       const oracleId = display.oracle_ids[i] ?? "";
       const canonicalFace = display.canonical_face[i] ?? i;
       return { faceIndex: i, oracleId, canonicalFace };
@@ -183,6 +187,7 @@ export function validateDeckList(
     return { lines };
   }
 
+  const combinedNames = computeCombinedNames(display.names, display.canonical_face);
   const lineStrings = text.split(/\r?\n/);
   let offset = 0;
 
@@ -245,7 +250,7 @@ export function validateDeckList(
       continue;
     }
 
-    const card = findCardByName(nameTok.value, display);
+    const card = findCardByName(nameTok.value, display, combinedNames);
     if (!card) {
       lines.push({
         lineIndex,
