@@ -17,8 +17,8 @@ Spec 110 placed Revert, Edit, Apply, and Copy in the toolbar. A prior revision o
 Three or four contiguous sections with shared borders (no gaps):
 
 1. **TOOLBAR** — Flush bar of action buttons. Rounded top corners.
-2. **STATUS** — Mode-appropriate info (help text, card count, edit messages, error table). Connects to toolbar and deck list (or Display Formats when in Display mode).
-3. **DISPLAY FORMATS** — Display mode only. Two-column bar: `| Display: | [Arena] [Moxfield] … |`. Chips use MenuDrawer styling (min-h-11, rounded, gray/blue). Label center-aligns vertically when chips wrap on mobile.
+2. **STATUS** — Mode-appropriate info (help text, card count, edit messages, error table). Connects to toolbar and deck list (or Compatible With bar when in Display mode).
+3. **COMPATIBLE WITH** — Display mode only. Two-column bar: `| Compatible with: | [Arena] [Moxfield] … |` with help text `(for export to)` below the label. Chips use MenuDrawer styling (min-h-11, rounded, gray/outline when selected). Label block center-aligns vertically when chips wrap.
 4. **DECK LIST** — Textarea with syntax-highlight overlay. Rounded bottom corners.
 
 ## Design
@@ -100,17 +100,18 @@ If a confirmation step is desired later, it can be reintroduced without changing
 | **Init** | "List is empty. Paste a deck list or add cards from search results." |
 | **Display** | Card count only: `N card(s)` |
 
-No buttons in Init or Display. Format chips are in the Display Formats bar (§ 7), not the Status box.
+No buttons in Init or Display. Format chips are in the Compatible With bar (§ 7), not the Status box.
 
-### 7. Display Formats Bar
+### 7. Compatible With Bar
 
 A separate bar below the Status box, **visible only in Display mode**. Two-column layout:
 
 ```
-| Display: | [Arena] [Moxfield] [Archidekt] … |
+| Compatible with:    | [Arena] [Moxfield] [Archidekt] … |
+| (for export to)     | [Melee.gg] [MTGGoldfish] [TappedOut] … |
 ```
 
-- **Label** — "Display:" on the left. Center-aligns vertically when chips wrap on mobile.
+- **Label** — "Compatible with:" on the left. Help text "(for export to)" below, smaller and muted. Label block center-aligns vertically when chips wrap.
 - **Chips** — Same styling as MenuDrawer chips: `min-h-11`, `rounded`, `bg-gray-100`/`bg-blue-500` for unselected/selected. Selecting a chip changes the output format and persists to localStorage.
 - **Init mode:** Bar not shown (list is empty).
 - **Edit mode:** Bar not shown; format is shown in the status line ("Editing: … (Moxfield)").
@@ -119,7 +120,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 
 1. Layout: TOOLBAR | STATUS | [DISPLAY FORMATS] | DECK LIST — three sections always; four when in Display mode.
 2. Toolbar is a flush bar: single border, buttons contiguous to edges (no bordered-box illusion).
-3. Display mode: Toolbar shows `[ Edit * ]` … `[ Copy ]`. Status shows card count. Display Formats bar shows `| Display: | [Arena] [Moxfield] … |`.
+3. Display mode: Toolbar shows `[ Edit * ]` … `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
 4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
 5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error table.
 6. Edit mode, changes, valid: Toolbar shows `[ Revert ]` … `[ Apply * ]` `[ Copy ]`. Status shows diff summary.
@@ -128,7 +129,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 9. Apply commits changes; on success, draft cleared, editor returns to Display or Init.
 10. Apply popover is removed; Apply commits directly from the toolbar.
 11. Baseline is correctly set on Edit and on restore from cache.
-12. Format chips appear in the Display Formats bar in Display mode only; chips use MenuDrawer styling.
+12. Format chips appear in the Compatible With bar in Display mode only; chips use MenuDrawer styling (outline when selected).
 13. Status box turns red on validation errors; toolbar remains neutral.
 
 ## Implementation Notes
@@ -140,3 +141,4 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 - 2026-03-10: Initial design — toolbar Edit+Copy only; Cancel, Revert, Apply in Status box.
 - 2026-03-10: Revised — all actions moved to toolbar; Status box content-only; flush toolbar (single border, contiguous buttons); three-part layout TOOLBAR | STATUS | DECK LIST with shared borders.
 - 2026-03-10: Display Formats bar — format chips moved below Status box in Display mode; two-column layout (Display: | chips); chips use MenuDrawer styling; Status box shows card count only in Display mode.
+- 2026-03-10: Compatible With bar — label changed to "Compatible with:" with "(for export to)" help text; selected chip uses outline style (de-emphasized vs Edit button).
