@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, tcgplayerToScryfallSetCode } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -440,6 +440,26 @@ describe("serializeTcgplayer", () => {
     const i = inst("bolt-oracle", "default", "bolt-promo", "nonfoil");
     const result = serializeTcgplayer([i], display, printingWithSuffix);
     expect(result).toBe("1 Lightning Bolt [PM21] 141p");
+  });
+});
+
+describe("tcgplayerToScryfallSetCode", () => {
+  it("maps TCGPlayer promo pack codes to Scryfall", () => {
+    expect(tcgplayerToScryfallSetCode("PPTHB")).toBe("pthb");
+    expect(tcgplayerToScryfallSetCode("PPDSK")).toBe("pdsk");
+    expect(tcgplayerToScryfallSetCode("PPSNC")).toBe("psnc");
+    expect(tcgplayerToScryfallSetCode("PPMKM")).toBe("pmkm");
+  });
+
+  it("maps LIST and UMP to Scryfall", () => {
+    expect(tcgplayerToScryfallSetCode("LIST")).toBe("plst");
+    expect(tcgplayerToScryfallSetCode("UMP")).toBe("pmei");
+  });
+
+  it("passes through standard codes as lowercase", () => {
+    expect(tcgplayerToScryfallSetCode("M21")).toBe("m21");
+    expect(tcgplayerToScryfallSetCode("MH2")).toBe("mh2");
+    expect(tcgplayerToScryfallSetCode("MUL")).toBe("mul");
   });
 });
 

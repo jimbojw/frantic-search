@@ -427,6 +427,67 @@ describe("lexDeckList", () => {
       { type: "ETCHED_PAREN", value: "(E)" },
     ]);
   });
+
+  test("TCGPlayer: quantity name [SET] collector", () => {
+    const tokens = lexDeckList("1 Atraxa, Praetors' Voice [MUL] 33");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Atraxa, Praetors' Voice" },
+      { type: "SET_CODE_BRACKET", value: "MUL" },
+      { type: "COLLECTOR_NUMBER", value: "33" },
+    ]);
+  });
+
+  test("TCGPlayer: collector number with letter suffix", () => {
+    const tokens = lexDeckList("1 Assassin's Trophy [PPMKM] 187p");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Assassin's Trophy" },
+      { type: "SET_CODE_BRACKET", value: "PPMKM" },
+      { type: "COLLECTOR_NUMBER", value: "187p" },
+    ]);
+  });
+
+  test("TCGPlayer: LIST set with C18-138 style collector", () => {
+    const tokens = lexDeckList("1 Cultivate [LIST] C18-138");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Cultivate" },
+      { type: "SET_CODE_BRACKET", value: "LIST" },
+      { type: "COLLECTOR_NUMBER", value: "C18-138" },
+    ]);
+  });
+
+  test("TCGPlayer: LIST set with E02-3 style collector", () => {
+    const tokens = lexDeckList("1 Path to Exile [LIST] E02-3");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Path to Exile" },
+      { type: "SET_CODE_BRACKET", value: "LIST" },
+      { type: "COLLECTOR_NUMBER", value: "E02-3" },
+    ]);
+  });
+
+  test("TCGPlayer: collector with s suffix (showcase)", () => {
+    const tokens = lexDeckList("1 Oath of Ajani [PAER] 131s");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Oath of Ajani" },
+      { type: "SET_CODE_BRACKET", value: "PAER" },
+      { type: "COLLECTOR_NUMBER", value: "131s" },
+    ]);
+  });
+
+  test("MTGGoldfish [SET] (F) does not match TCGPlayer pattern", () => {
+    const tokens = lexDeckList("2 Disdainful Stroke [KTK] (F)");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "2" },
+      { type: "CARD_NAME", value: "Disdainful Stroke" },
+      { type: "SET_CODE_BRACKET", value: "KTK" },
+      { type: "FOIL_PAREN", value: "(F)" },
+    ]);
+    expect(tokens.some((t) => t.type === "COLLECTOR_NUMBER")).toBe(false);
+  });
 });
 
 describe("buildListSpans", () => {
@@ -540,6 +601,14 @@ describe("buildListSpans", () => {
     const foilSpan = spans.find((s) => s.text === "(F)");
     expect(setSpan?.role).toBe("set-code");
     expect(foilSpan?.role).toBe("foil-marker");
+  });
+
+  test("TCGPlayer line produces set-code and collector-number spans", () => {
+    const spans = buildListSpans("1 Atraxa, Praetors' Voice [MUL] 33");
+    const setSpan = spans.find((s) => s.text === "MUL");
+    const collectorSpan = spans.find((s) => s.text === "33");
+    expect(setSpan?.role).toBe("set-code");
+    expect(collectorSpan?.role).toBe("collector-number");
   });
 
   test("validation error overrides role for overlapping span", () => {

@@ -7,6 +7,7 @@ import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
 import type { ParsedEntry } from "./list-lexer";
 export type { LineValidation, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
+import { tcgplayerToScryfallSetCode } from "./list-serialize";
 
 function normalize(s: string): string {
   return s
@@ -424,7 +425,8 @@ export function validateDeckList(
         collectorOrVariant &&
         printingDisplay
       ) {
-        const pi = findPrintingRow(setTokForCase3.value, collectorOrVariant, printingDisplay);
+        const effectiveSetCodeCase3 = tcgplayerToScryfallSetCode(setTokForCase3.value);
+        const pi = findPrintingRow(effectiveSetCodeCase3, collectorOrVariant, printingDisplay);
         if (pi >= 0) {
           const printingCanonicalFace = printingDisplay.canonical_face_ref[pi];
           const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
@@ -483,9 +485,9 @@ export function validateDeckList(
 
     if (setTok && printingDisplay) {
       const setCode = setTok.value;
+      const effectiveSetCode = tcgplayerToScryfallSetCode(setCode);
       const setCodes = printingDisplay.set_codes;
-      const setLower = setCode.toLowerCase();
-      const setExists = setCodes.some((s) => s.toLowerCase() === setLower);
+      const setExists = setCodes.some((s) => s.toLowerCase() === effectiveSetCode);
       if (!setExists) {
         hasPrintingError = true;
         errorSpan = { start: lineStart + setTok.start, end: lineStart + setTok.end };
@@ -514,12 +516,12 @@ export function validateDeckList(
       } else if (variantTok && setTok.type === ListTokenType.SET_CODE_BRACKET) {
         const variant = variantTok.value;
         if (isNumericCollectorNumber(variant)) {
-          const pi = findPrintingRow(setCode, variant, printingDisplay);
+          const pi = findPrintingRow(effectiveSetCode, variant, printingDisplay);
           if (pi < 0) {
             hasPrintingError = true;
             errorSpan = { start: lineStart + variantTok.start, end: lineStart + variantTok.end };
             errorMessage = `Collector number doesn't match — \`${variant}\` in \`${setCode}\``;
-            const printingsInSet = findPrintingsInSet(setCode, card.canonicalFace, printingDisplay);
+            const printingsInSet = findPrintingsInSet(effectiveSetCode, card.canonicalFace, printingDisplay);
             if (printingsInSet.length > 0) {
               errorQuickFixes = printingsInSet.map((rowIdx) => {
                 const cn = printingDisplay.collector_numbers[rowIdx]!;
@@ -568,7 +570,7 @@ export function validateDeckList(
           }
         } else {
           const pi = findPrintingBySetAndVariant(
-            setCode,
+            effectiveSetCode,
             variant,
             card.canonicalFace,
             printingDisplay,
@@ -578,7 +580,7 @@ export function validateDeckList(
             scryfallId = printingDisplay.scryfall_ids[pi] ?? null;
           } else if (isKnownGoldfishVariant(variant)) {
             const fallbackPi = findAnyPrintingInSet(
-              setCode, card.canonicalFace, printingDisplay, preferFoil
+              effectiveSetCode, card.canonicalFace, printingDisplay, preferFoil
             );
             if (fallbackPi >= 0) {
               scryfallId = printingDisplay.scryfall_ids[fallbackPi] ?? null;
@@ -598,12 +600,12 @@ export function validateDeckList(
         }
       } else if (collectorTok) {
         const collectorNumber = collectorTok.value;
-        const pi = findPrintingRow(setCode, collectorNumber, printingDisplay);
+        const pi = findPrintingRow(effectiveSetCode, collectorNumber, printingDisplay);
         if (pi < 0) {
           hasPrintingError = true;
           errorSpan = { start: lineStart + collectorTok.start, end: lineStart + collectorTok.end };
           errorMessage = `Collector number doesn't match — \`${collectorNumber}\` in \`${setCode}\``;
-          const printingsInSet = findPrintingsInSet(setCode, card.canonicalFace, printingDisplay);
+          const printingsInSet = findPrintingsInSet(effectiveSetCode, card.canonicalFace, printingDisplay);
           if (printingsInSet.length > 0) {
             errorQuickFixes = printingsInSet.map((rowIdx) => {
               const cn = printingDisplay.collector_numbers[rowIdx]!;
@@ -653,7 +655,7 @@ export function validateDeckList(
       } else if (foilPrereleaseMarkerTok) {
         // TappedOut *f-pre*: prerelease variant fallback (like MTGGoldfish <prerelease>)
         const fallbackPi = findAnyPrintingInSet(
-          setCode,
+          effectiveSetCode,
           card.canonicalFace,
           printingDisplay,
           preferFoil
@@ -677,7 +679,7 @@ export function validateDeckList(
       } else {
         // TappedOut (SET) without collector: pick any printing in set
         const fallbackPi = findAnyPrintingInSet(
-          setCode,
+          effectiveSetCode,
           card.canonicalFace,
           printingDisplay,
           preferFoil

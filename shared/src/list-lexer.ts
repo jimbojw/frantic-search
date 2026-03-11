@@ -136,6 +136,9 @@ const MTGGOLDFISH_CARD_LINE_RE =
 /** MTGGoldfish MTGO / no-variant: Qty Name [SET] (F|E)? — no <variant> angle brackets */
 const MTGGOLDFISH_NO_VARIANT_RE =
   /^(\d+x?)\s+(.+?)\s+\[([A-Za-z0-9_-]+)\]\s*(?:\((F|E)\))?\s*$/;
+/** TCGPlayer Mass Entry: Qty Name [SET] collector — no foil/etched markers. Collector excludes (F)/(E) and ^ (Archidekt). */
+const TCGPLAYER_CARD_LINE_RE =
+  /^(\d+x?)\s+(.+?)\s+\[([A-Za-z0-9_-]+)\]\s+([^(\s^]+)\s*$/;
 const SECTION_HEADER_RE = /^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
@@ -374,6 +377,42 @@ function parseLine(line: string, lineStart: number): ListToken[] {
       }
       return tokens;
     }
+  }
+
+  // TCGPlayer Mass Entry: quantity name [SET] collector — before Moxfield (SET) pattern
+  const tcgplayerMatch = trimmed.match(TCGPLAYER_CARD_LINE_RE);
+  if (tcgplayerMatch) {
+    const [, qty, name, setCode, collectorNum] = tcgplayerMatch;
+    const qtyStart = lineStart + trimmed.search(/\d/);
+    tokens.push({
+      type: ListTokenType.QUANTITY,
+      value: qty!,
+      start: qtyStart,
+      end: qtyStart + qty!.length,
+    });
+    const nameStart = lineStart + trimmed.indexOf(name!.trimStart());
+    const nameEnd = nameStart + name!.trim().length;
+    tokens.push({
+      type: ListTokenType.CARD_NAME,
+      value: name!.trim(),
+      start: nameStart,
+      end: nameEnd,
+    });
+    const bracketStart = trimmed.indexOf("[" + setCode + "]");
+    tokens.push({
+      type: ListTokenType.SET_CODE_BRACKET,
+      value: setCode!,
+      start: lineStart + bracketStart + 1,
+      end: lineStart + bracketStart + 1 + setCode!.length,
+    });
+    const numStart = trimmed.indexOf(collectorNum!, bracketStart);
+    tokens.push({
+      type: ListTokenType.COLLECTOR_NUMBER,
+      value: collectorNum!,
+      start: lineStart + numStart,
+      end: lineStart + numStart + collectorNum!.length,
+    });
+    return tokens;
   }
 
   const cardMatch = trimmed.match(CARD_LINE_RE);

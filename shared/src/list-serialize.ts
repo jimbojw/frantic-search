@@ -456,9 +456,20 @@ const SCRYFALL_TO_TCGPLAYER_SET: Record<string, string> = {
   pstx: "PPSTX", // Promo Pack: Strixhaven
 };
 
+/** Reverse map for validation: TCGPlayer set code → Scryfall set code. */
+const TCGPLAYER_TO_SCRYFALL_SET: Record<string, string> = Object.fromEntries(
+  Object.entries(SCRYFALL_TO_TCGPLAYER_SET).map(([k, v]) => [v, k])
+);
+
 function tcgplayerSetCode(scryfallCode: string): string {
   const mapped = SCRYFALL_TO_TCGPLAYER_SET[scryfallCode.toLowerCase()];
   return mapped ?? scryfallCode.toUpperCase();
+}
+
+/** Normalize TCGPlayer set code to Scryfall code for printing lookup. Used by validation. */
+export function tcgplayerToScryfallSetCode(setCode: string): string {
+  const mapped = TCGPLAYER_TO_SCRYFALL_SET[setCode.toUpperCase()];
+  return mapped ?? setCode.toLowerCase();
 }
 
 /**

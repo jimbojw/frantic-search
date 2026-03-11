@@ -194,6 +194,16 @@ describe("validateDeckListWithEngine", () => {
     expect(err!.quickFixes![0]!.replacement).toBe("1 Lightning Bolt");
   });
 
+  test("TCGPlayer set code PPTHB maps to pthb for known-set check (no pthb in fixtures, so unknown set)", () => {
+    // Engine fixtures lack pthb; PPTHB maps to pthb and pthb is unknown → error
+    const result = validate("1 Lightning Bolt [PPTHB] 13p");
+    const err = result.lines.find((l) => l.kind === "error");
+    expect(err).toBeDefined();
+    expect(err!.message).toContain("Unknown set");
+    // Error message shows user's input (PPTHB), not internal Scryfall code
+    expect(err!.message).toContain("PPTHB");
+  });
+
   // ---------------------------------------------------------------------------
   // § 3e with printing data: set present but no collector
   // ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ import {
   variantLabelForPrinting,
   isKnownGoldfishVariant,
 } from "./list-validate";
+import { tcgplayerToScryfallSetCode } from "./list-serialize";
 
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
@@ -208,6 +209,7 @@ export function validateDeckListWithEngine(
     const preferFoil = !!(foilParenTok || foilMarkerTok || foilPrereleaseMarkerTok);
 
     const setCode = setTok?.value;
+    const effectiveSetCode = setCode ? tcgplayerToScryfallSetCode(setCode) : "";
     let collectorNum: string | undefined;
     let isVariantCollector = false;
     if (collectorTok) {
@@ -255,8 +257,8 @@ export function validateDeckListWithEngine(
       continue;
     }
 
-    // Check set existence
-    if (!printingIndex!.knownSetCodes.has(setCode.toLowerCase())) {
+    // Check set existence (use effectiveSetCode for lookup; TCGPlayer codes map to Scryfall)
+    if (!printingIndex!.knownSetCodes.has(effectiveSetCode)) {
       const finishToks = [
         foilParenTok, foilMarkerTok, etchedMarkerTok, etchedParenTok,
         foilPrereleaseMarkerTok, alterMarkerTok,
@@ -310,7 +312,7 @@ export function validateDeckListWithEngine(
       }
       const canonicalFace = display.canonical_face[nameResult.indices[0]!] ?? nameResult.indices[0]!;
       const fallbackPi = findAnyPrintingInSetEngine(
-        setCode, canonicalFace, printingDisplay!, preferFoil,
+        effectiveSetCode, canonicalFace, printingDisplay!, preferFoil,
       );
       const variantMarkerTok = variantTok ?? foilPrereleaseMarkerTok;
       if (fallbackPi >= 0) {
@@ -346,9 +348,9 @@ export function validateDeckListWithEngine(
       continue;
     }
 
-    // § 3a–3d: Cascading resolution
+    // § 3a–3d: Cascading resolution (effectiveSetCode for lookup; setCode for error messages)
     const cascadeResult = resolveCascade(
-      nameTok, setCode, collectorNum, finish, finishNodes, variantIsNodes,
+      nameTok, effectiveSetCode, setCode, collectorNum, finish, finishNodes, variantIsNodes,
       cardIndex, printingIndex!, cache, display, printingDisplay!,
       line, lineIndex, lineStart, lineEnd,
       quantityTok, setTok!, collectorTok, variantTok, isVariantCollector,
@@ -525,7 +527,8 @@ function tryApproximateNameMatch(
 
 function resolveCascade(
   nameTok: ListToken,
-  setCode: string,
+  setCodeForLookup: string,
+  setCodeForDisplay: string,
   collectorNum: string | undefined,
   finish: "foil" | "etched" | null,
   finishNodes: ASTNode[],
@@ -553,7 +556,7 @@ function resolveCascade(
   preferFoil: boolean,
 ): { line: LineValidation; entry?: ParsedEntry } {
   const nameExact = exactNode(nameTok.value);
-  const setField = fieldNode("set", setCode.toLowerCase());
+  const setField = fieldNode("set", setCodeForLookup.toLowerCase());
   const collectorField = collectorNum ? fieldNode("cn", collectorNum) : null;
   const uniquePrints = fieldNode("unique", "prints");
   const effectiveCollectorTok = isVariantCollector ? variantTok : collectorTok;
@@ -585,7 +588,7 @@ function resolveCascade(
         line: {
           lineIndex, lineStart, lineEnd, kind: "error",
           span: { start: lineStart + effectiveCollectorTok!.start, end: lineStart + effectiveCollectorTok!.end },
-          message: `Collector number doesn't match — \`${collectorNum}\` in \`${setCode}\``,
+          message: `Collector number doesn't match — \`${collectorNum}\` in \`${setCodeForDisplay}\``,
           ...(quickFixes.length > 0 ? { quickFixes } : {}),
         },
       };
@@ -628,7 +631,7 @@ function resolveCascade(
           line: {
             lineIndex, lineStart, lineEnd, kind: "error",
             span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
-            message: `Card name "${nameTok.value}" doesn't match \`${setCode}\` collector number \`${collectorNum}\``,
+            message: `Card name "${nameTok.value}" doesn't match \`${setCodeForDisplay}\` collector number \`${collectorNum}\``,
             quickFixes: [
               { label: "Remove set/collector, use name only", replacement: removeSetReplacement.trimEnd() },
               { label: `Use "${correctName}"`, replacement: (line.slice(0, nameTok.start) + correctName + line.slice(nameTok.end)).trimEnd() },
@@ -648,7 +651,7 @@ function resolveCascade(
     if (!collectorField) {
       // Set present but no collector (TappedOut format)
       const fallbackPi = findAnyPrintingInSetEngine(
-        setCode, canonicalFace, printingDisplay, preferFoil,
+        setCodeForLookup, canonicalFace, printingDisplay, preferFoil,
       );
       if (fallbackPi >= 0) {
         return makeSuccess(

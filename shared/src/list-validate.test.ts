@@ -148,6 +148,22 @@ describe("validateDeckList", () => {
     expect(errorLine).toBeUndefined();
   });
 
+  test("TCGPlayer set code PPTHB maps to pthb and resolves", () => {
+    const display = makeDisplay();
+    const printing = makePrintingDisplay({
+      scryfall_ids: ["p1", "p2", "p3", "p4"],
+      collector_numbers: ["159", "273", "1", "13p"],
+      set_codes: ["M21", "DMU", "MH2", "pthb"],
+      set_names: ["Core Set 2021", "Dominaria United", "Modern Horizons 2", "Promo Pack: Theros Beyond Death"],
+      canonical_face_ref: [4, 5, 1, 4],
+    });
+    const result = validateDeckList("1 Shock [PPTHB] 13p", display, printing);
+    const errorLine = result.lines.find((l) => l.kind === "error");
+    expect(errorLine).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBe("p4");
+  });
+
   test("mismatched collector number produces error", () => {
     const display = makeDisplay();
     const printing = makePrintingDisplay();
