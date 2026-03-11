@@ -1,6 +1,6 @@
 # Spec 113: Deck Editor Toolbar and Status Box Redesign
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 110 (Hybrid Deck Editor), Spec 112 (Deck Editor Quick Fixes)
 
