@@ -455,6 +455,29 @@ export default function DeckEditor(props: {
     }, 50)
   }
 
+  function applyAllQuickFixes() {
+    const errors = validationErrors().filter(
+      (e) => e.quickFixes && e.quickFixes.length > 0
+    )
+    if (errors.length === 0) return
+    const sorted = [...errors].sort((a, b) => b.lineStart - a.lineStart)
+    let text = draftText()
+    if (text == null) return
+    setQuickFixApplying({ lineIndex: -1, fixIndex: -1 })
+    for (const err of sorted) {
+      const fix = err.quickFixes![0]!
+      text = text.slice(0, err.lineStart) + fix.replacement + text.slice(err.lineEnd)
+    }
+    setDraftText(text)
+    setDebouncedDraft(text)
+    writeDraftToStorage(props.listId, text)
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = undefined
+    }
+    setTimeout(() => setQuickFixApplying(null), 100)
+  }
+
   async function handleApply() {
     const text = draftText()
     if (text == null || !props.display) return
@@ -582,6 +605,7 @@ export default function DeckEditor(props: {
     handleFormatSelect,
     handleInput,
     applyQuickFix,
+    applyAllQuickFixes,
     registerTextareaRef: setTextareaEl,
     handleDeckReport,
     handleViewInSearch,

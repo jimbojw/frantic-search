@@ -50,6 +50,7 @@ export interface DeckEditorContextValue {
   handleFormatSelect: (format: DeckFormat) => void
   handleInput: (e: Event) => void
   applyQuickFix: (err: LineValidation, fix: QuickFix, fixIndex: number) => void
+  applyAllQuickFixes: () => void
   registerTextareaRef: (el: HTMLTextAreaElement | null) => void
   handleDeckReport: () => void
   handleViewInSearch: () => void

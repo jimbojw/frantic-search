@@ -59,18 +59,24 @@ Editing: No changes (Moxfield)
 
 #### 2b. Edit mode, changes, validation errors
 
-```
-Editing: N error(s) (Moxfield)
-<error table as currently rendered>
-```
-
-- **Error table** — Unchanged from Spec 112: line number, syntax-highlighted card line, error message, quick fix buttons.
+When validation reports errors, the Status box shows a collapsible accordion. See § 2d.
 
 #### 2c. Edit mode, changes, valid
 
 ```
 Editing: +100 cards / −135 cards (Moxfield)
 ```
+
+#### 2d. Edit mode, changes, validation errors — Accordion
+
+When there are validation errors, the error section is collapsible to keep the Status box height stable and avoid shifting the textarea as the user types.
+
+- **Header row (fixed height):** Chevron (left) + status text ("Editing: N error(s) (Moxfield)") + right-aligned control.
+- **Right-aligned control:**
+  - If any error has `quickFixes?.length > 0`: Button "Apply all quick fixes". On click: `stopPropagation()`, then apply the first fix for each fixable error (sorted by `lineStart` descending).
+  - If no errors have quick fixes: Text "No quick fixes available" (not a button). Tapping the bar expands the accordion (same as tapping the chevron).
+- **Expand/collapse:** Whole header row is tappable to toggle. Chevron indicates state (▼ expanded, ▶ collapsed). Default: collapsed. User preference persisted in `localStorage` (`frantic-deck-editor-errors-expanded`), same pattern as breakdown/options accordions. When collapsed, error list is hidden; Status box height is stable.
+- **Error table:** Unchanged from Spec 112 when expanded — line number, syntax-highlighted line, message, per-error quick fix buttons.
 
 ### 3. Revert vs Cancel Semantics
 
@@ -124,7 +130,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 2. Toolbar is a flush bar: single border, buttons contiguous to edges (no bordered-box illusion).
 3. Display mode: Toolbar shows `[ View * ]` `[ Edit ]` … `[ Bug ]` `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
 4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
-5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error table.
+5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error accordion (collapsible header with chevron; "Apply all quick fixes" or "No quick fixes available"; error table when expanded).
 6. Edit mode, changes, valid: Toolbar shows `[ Revert ]` … `[ Apply * ]` `[ Copy ]`. Status shows diff summary.
 7. Cancel exits Edit mode (clears draft, returns to Display or Init).
 8. Revert resets draft to baseline; user stays in Edit mode; UI switches to "no changes" state.
@@ -133,6 +139,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 11. Baseline is correctly set on Edit and on restore from cache.
 12. Format chips appear in the Compatible With bar in Display mode only; chips use MenuDrawer styling (outline when selected).
 13. Status box turns red on validation errors; toolbar remains neutral.
+14. Error accordion defaults to collapsed; expand/collapse preference persisted in `localStorage` (`frantic-deck-editor-errors-expanded`).
 
 ## Implementation Notes
 
@@ -145,3 +152,4 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 - 2026-03-10: Display Formats bar — format chips moved below Status box in Display mode; two-column layout (Display: | chips); chips use MenuDrawer styling; Status box shows card count only in Display mode.
 - 2026-03-10: Compatible With bar — label changed to "Compatible with:" with "(for export to)" help text; selected chip uses outline style (de-emphasized vs Edit button).
 - 2026-03-11: View button — Display mode left group extended to `[ View * ]` `[ Edit ]`. View navigates to search with `v:images unique:prints include:extras my:list` (or `my:trash`). View is primary; Edit demoted to secondary.
+- 2026-03-11: Error accordion — Validation errors folded under collapsible header; "Apply all quick fixes" button; "No quick fixes available" when none; preference persisted in localStorage.
