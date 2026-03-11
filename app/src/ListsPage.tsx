@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createMemo, createSignal } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import type { DisplayColumns, InstanceState, LineValidationResult, PrintingDisplayColumns } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { DEFAULT_LIST_ID } from '@frantic-search/shared'
@@ -13,6 +14,7 @@ export default function ListsPage(props: {
   listVersion: number
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
+  workerStatus: Accessor<'loading' | 'ready' | 'error'>
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onBack: () => void
@@ -64,6 +66,7 @@ export default function ListsPage(props: {
         metadata={metadata()}
         display={props.display}
         printingDisplay={props.printingDisplay}
+        workerStatus={props.workerStatus}
         cardListStore={props.cardListStore}
         onApplySuccess={undefined}
         onSerializeRequest={props.onSerializeRequest}

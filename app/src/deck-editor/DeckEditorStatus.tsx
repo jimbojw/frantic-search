@@ -26,20 +26,26 @@ export default function DeckEditorStatus() {
       <Show when={ctx.mode() === 'edit'} fallback={null}>
         <div class="flex flex-col gap-2">
           <div class="text-gray-500 dark:text-gray-400">
-            <Show when={ctx.isValidating()} fallback={null}>
+            <Show when={ctx.workerStatus() === 'error' && ctx.draftText()?.trim()} fallback={null}>
+              Validation unavailable
+            </Show>
+            <Show when={ctx.workerStatus() === 'loading' && ctx.draftText()?.trim()} fallback={null}>
+              Loading…
+            </Show>
+            <Show when={ctx.workerStatus() === 'ready' && ctx.isValidating()} fallback={null}>
               Validating…
             </Show>
-            <Show when={!ctx.isValidating() && !ctx.hasChanges()} fallback={null}>
+            <Show when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && !ctx.hasChanges()} fallback={null}>
               Editing: No changes ({ctx.editFormatLabel()})
             </Show>
-            <Show when={!ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length > 0} fallback={null}>
+            <Show when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length > 0} fallback={null}>
               <span class="text-red-800 dark:text-red-200">
                 Editing: {ctx.validationErrors().length} error{ctx.validationErrors().length !== 1 ? 's' : ''} ({ctx.editFormatLabel()})
               </span>
             </Show>
             <Show
-              when={!ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 && ctx.editDiffSummary()}
-              fallback={!ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 ? <span>Editing: changes pending ({ctx.editFormatLabel()})</span> : null}
+              when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 && ctx.editDiffSummary()}
+              fallback={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 ? <span>Editing: changes pending ({ctx.editFormatLabel()})</span> : null}
             >
               {(summary) => (
                 <>

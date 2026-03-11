@@ -26,6 +26,7 @@ export interface DeckEditorContextValue {
   textareaValue: Accessor<string>
   highlightText: Accessor<string>
   highlightValidation: Accessor<ListValidationResult | null>
+  workerStatus: Accessor<'loading' | 'ready' | 'error'>
   isValidating: Accessor<boolean>
   applyInProgress: Accessor<boolean>
   copied: Accessor<boolean>

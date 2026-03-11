@@ -53,6 +53,7 @@ export default function DeckEditor(props: {
   metadata: ListMetadata | null
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
+  workerStatus: () => 'loading' | 'ready' | 'error'
   cardListStore: CardListStore
   onApplySuccess?: () => void
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
@@ -214,9 +215,10 @@ export default function DeckEditor(props: {
               }
             }
           }
-        } else if (props.onValidateRequest) {
+        } else if (props.onValidateRequest && props.workerStatus() !== 'error') {
           const toValidate = baseLines.map((l) => l.trim()).filter((trimmed) => trimmed !== '' && !lineCache.has(trimmed))
           if (toValidate.length > 0) {
+            setValidationResult(buildValidationResult(t))
             const version = ++validationVersion
             props.onValidateRequest(toValidate).then(({ result, indices }) => {
               if (version !== validationVersion) return
@@ -236,6 +238,13 @@ export default function DeckEditor(props: {
             })
             return
           }
+        } else if (props.workerStatus() === 'error') {
+          for (const line of baseLines) {
+            const trimmed = line.trim()
+            if (trimmed && !lineCache.has(trimmed)) {
+              lineCache.set(trimmed, { kind: 'error', message: 'Validation unavailable' })
+            }
+          }
         }
       }
       setValidationResult(buildValidationResult(t))
@@ -254,7 +263,13 @@ export default function DeckEditor(props: {
       return
     }
 
-    if (props.onValidateRequest) {
+    if (props.workerStatus() === 'error' || !props.onValidateRequest) {
+      for (const trimmed of toValidate) {
+        lineCache.set(trimmed, { kind: 'error', message: 'Validation unavailable' })
+      }
+      setValidationResult(buildValidationResult(t))
+    } else {
+      setValidationResult(buildValidationResult(t))
       const version = ++validationVersion
       props.onValidateRequest(toValidate).then(({ result, indices }) => {
         if (version !== validationVersion) return
@@ -277,11 +292,6 @@ export default function DeckEditor(props: {
         }
         setValidationResult(buildValidationResult(t))
       })
-    } else {
-      for (const trimmed of toValidate) {
-        lineCache.set(trimmed, { kind: 'error', message: 'Validation unavailable' })
-      }
-      setValidationResult(buildValidationResult(t))
     }
   })
 
@@ -349,6 +359,7 @@ export default function DeckEditor(props: {
   const isValidating = createMemo(
     () =>
       mode() === 'edit' &&
+      props.workerStatus() !== 'error' &&
       debouncedDraft().trim() !== '' &&
       validationResult() === null &&
       !!props.onValidateRequest,
@@ -538,6 +549,7 @@ export default function DeckEditor(props: {
     textareaValue,
     highlightText,
     highlightValidation,
+    workerStatus: props.workerStatus,
     isValidating,
     applyInProgress,
     copied,

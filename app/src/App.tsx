@@ -1187,6 +1187,7 @@ function App() {
           listVersion={listVersion()}
           display={display()}
           printingDisplay={printingDisplay()}
+          workerStatus={workerStatus}
           onSerializeRequest={serializeDeckList}
           onValidateRequest={validateLines}
           onBack={() => history.back()}
