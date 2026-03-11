@@ -6,11 +6,13 @@ import type { ParsedEntry } from "./list-lexer";
 import type { DeckFormat } from "./list-format";
 
 /**
- * Resolve an oracle_id to the full card name (including " // " for DFCs).
+ * Resolve an oracle_id to the card name.
+ * @param frontFaceOnly - When true, DFCs return only the front face (TCGPlayer compatibility).
  */
 function resolveCardName(
   oracleId: string,
-  display: DisplayColumns
+  display: DisplayColumns,
+  frontFaceOnly?: boolean
 ): string | null {
   let canonicalFace = -1;
   for (let i = 0; i < display.oracle_ids.length; i++) {
@@ -24,6 +26,9 @@ function resolveCardName(
   const faces: number[] = [];
   for (let i = 0; i < display.canonical_face.length; i++) {
     if (display.canonical_face[i] === canonicalFace) faces.push(i);
+  }
+  if (frontFaceOnly && faces.length > 0) {
+    return display.names[faces[0]!]!;
   }
   return faces.map((i) => display.names[i]).join(" // ");
 }
@@ -83,6 +88,8 @@ function groupKey(
 interface AggregateOptions {
   preserveTagsAndStatus?: boolean;
   preserveZone?: boolean;
+  /** When true, DFCs use only the front face name (e.g. TCGPlayer Mass Entry). */
+  frontFaceOnly?: boolean;
 }
 
 function aggregateInstances(
@@ -139,9 +146,10 @@ function aggregateInstances(
   }
 
   const entries: AggregatedEntry[] = [];
+  const frontFaceOnly = options?.frontFaceOnly ?? false;
   for (const key of order) {
     const g = groups.get(key)!;
-    const name = resolveCardName(g.oracleId, display);
+    const name = resolveCardName(g.oracleId, display, frontFaceOnly);
     if (!name) continue;
 
     let setCode: string | null = null;
@@ -223,7 +231,9 @@ interface ZoneGroup {
 
 interface GroupByZoneOptions {
   preserveTagsAndStatus?: boolean;
+  preserveZone?: boolean;
   zoneOrder?: readonly (string | null)[];
+  frontFaceOnly?: boolean;
 }
 
 /** Zone order for Arena/MTGGoldfish/Moxfield: Commander first, then main deck, then sideboard block. */
@@ -417,6 +427,67 @@ export function serializeMtggoldfish(
       }
       if (e.finish === "foil") line += " (F)";
       else if (e.finish === "etched") line += " (E)";
+      return line;
+    });
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else {
+      postLines.push(...cardLines);
+    }
+  }
+
+  const main = mainLines.join("\n");
+  const post = postLines.join("\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
+}
+
+/** Scryfall set codes that differ from TCGPlayer Mass Entry set codes. */
+const SCRYFALL_TO_TCGPLAYER_SET: Record<string, string> = {
+  pmei: "UMP",   // Unique and Miscellaneous Promos
+  plst: "LIST",  // The List Reprints
+  psnc: "PPSNC", // Promo Pack: Streets of New Capenna
+  pmkm: "PPMKM", // Promo Pack: Murders at Karlov Manor
+  pthb: "PPTHB", // Promo Pack: Theros Beyond Death
+  pdsk: "PPDSK", // Promo Pack: Duskmourn: House of Horror
+  pone: "PPONE", // Promo Pack: Phyrexia: All Will Be One
+  pkhm: "PPKHM", // Promo Pack: Kaldheim
+  pblb: "PPBLB", // Promo Pack: Bloomburrow
+  pstx: "PPSTX", // Promo Pack: Strixhaven
+};
+
+function tcgplayerSetCode(scryfallCode: string): string {
+  const mapped = SCRYFALL_TO_TCGPLAYER_SET[scryfallCode.toLowerCase()];
+  return mapped ?? scryfallCode.toUpperCase();
+}
+
+/**
+ * Serialize instances in TCGPlayer Mass Entry format: `quantity cardname [SET] collector`
+ * Per TCGPlayer docs: Quantity → Card Name → Set Code → Card Number Within Set.
+ * Falls back to name-only when printing data is unavailable. No foil/etched markers.
+ * Commander first, then deck, then two newlines, then Sideboard and other zones. No headings.
+ */
+export function serializeTcgplayer(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): string {
+  if (instances.length === 0) return "";
+
+  const groups = groupByZone(instances, display, printingDisplay, {
+    zoneOrder: COMMANDER_FIRST_ORDER,
+    frontFaceOnly: true,
+  });
+  const mainZones = ["Commander", "Deck", null];
+  const mainLines: string[] = [];
+  const postLines: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const cardLines = entries.map((e) => {
+      let line = `${e.quantity} ${e.name}`;
+      if (e.setCode && e.collectorNumber) {
+        line += ` [${tcgplayerSetCode(e.setCode)}] ${e.collectorNumber}`;
+      }
       return line;
     });
     if (mainZones.includes(zone)) {

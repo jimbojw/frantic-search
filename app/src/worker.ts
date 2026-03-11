@@ -19,6 +19,7 @@ import {
   serializeMtggoldfish,
   serializeMelee,
   serializeTappedOut,
+  serializeTcgplayer,
   validateLines,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
@@ -302,6 +303,8 @@ async function init(): Promise<void> {
         return serializeMelee(instances, displayRef)
       case 'tappedout':
         return serializeTappedOut(instances, displayRef, printingDisplayRef)
+      case 'tcgplayer':
+        return serializeTcgplayer(instances, displayRef, printingDisplayRef)
       case 'arena':
       default:
         return serializeArena(instances, displayRef)

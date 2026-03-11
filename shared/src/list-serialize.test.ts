@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -346,6 +346,100 @@ describe("serializeMtggoldfish", () => {
     expect(lines).toHaveLength(2);
     expect(lines).toContainEqual("1 Lightning Bolt");
     expect(lines).toContainEqual("1 Lightning Bolt <141> [M21]");
+  });
+});
+
+describe("serializeTcgplayer", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeTcgplayer([], display, null)).toBe("");
+  });
+
+  it("falls back to name-only for generic instances", () => {
+    const result = serializeTcgplayer([inst("bolt-oracle")], display, null);
+    expect(result).toBe("1 Lightning Bolt");
+  });
+
+  it("includes set code and collector number for printing-level instances", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt [M21] 141");
+  });
+
+  it("aggregates same-printing instances", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeTcgplayer(instances, display, printingDisplay);
+    expect(result).toBe("3 Lightning Bolt [M21] 141");
+  });
+
+  it("separates lines for different printings of the same card", () => {
+    const instances = [
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+      inst("bolt-oracle", "default", "bolt-print-b", "foil"),
+    ];
+    const result = serializeTcgplayer(instances, display, printingDisplay);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1 Lightning Bolt [M21] 141");
+    expect(lines).toContainEqual("1 Lightning Bolt [2XM] 141");
+  });
+
+  it("handles mix of generic and printing-level instances", () => {
+    const instances = [
+      inst("bolt-oracle"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeTcgplayer(instances, display, printingDisplay);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1 Lightning Bolt");
+    expect(lines).toContainEqual("1 Lightning Bolt [M21] 141");
+  });
+
+  it("outputs only front face for double-faced cards (TCGPlayer compatibility)", () => {
+    const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingDisplay);
+    expect(result).toBe("1 Delver of Secrets [ISD] 51");
+  });
+
+  it("orders Commander first, then deck, then two newlines, then Sideboard", () => {
+    const instances = [
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+      inst("bolt-oracle", "default", null, null, "Commander"),
+      inst("bolt-oracle", "default", null, null, "Deck"),
+    ];
+    const result = serializeTcgplayer(instances, display, null);
+    const sections = result.split("\n\n");
+    expect(sections[0]).toContain("Lightning Bolt");
+    expect(sections[0]).not.toContain("Delver");
+    expect(sections[1]).toContain("Delver of Secrets");
+  });
+
+  it("maps Scryfall set codes to TCGPlayer set codes for known promo/list sets", () => {
+    const printingWithPlst: PrintingDisplayColumns = {
+      ...printingDisplay,
+      scryfall_ids: ["bolt-list"],
+      collector_numbers: ["C18-138"],
+      set_codes: ["plst"],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-list", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithPlst);
+    expect(result).toBe("1 Lightning Bolt [LIST] C18-138");
+  });
+
+  it("outputs collector numbers verbatim without stripping suffixes", () => {
+    const printingWithSuffix: PrintingDisplayColumns = {
+      ...printingDisplay,
+      scryfall_ids: ["bolt-promo"],
+      collector_numbers: ["141p"],
+      set_codes: ["pm21"],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-promo", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithSuffix);
+    expect(result).toBe("1 Lightning Bolt [PM21] 141p");
   });
 });
 
