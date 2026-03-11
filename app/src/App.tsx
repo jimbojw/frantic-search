@@ -7,6 +7,8 @@ import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
+import DeckBugReport from './DeckBugReport'
+import type { DeckReportContext } from './deck-editor/DeckEditorContext'
 import ListsPage from './ListsPage'
 import UnifiedBreakdown from './UnifiedBreakdown'
 import MenuDrawer from './MenuDrawer'
@@ -68,6 +70,7 @@ function App() {
   const [listTab, setListTab] = createSignal<'default' | 'trash'>(parseListTab(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [reportingPane, setReportingPane] = createSignal<'left' | 'right'>('left')
+  const [deckReportContext, setDeckReportContext] = createSignal<DeckReportContext | null>(null)
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [dataProgress, setDataProgress] = createSignal(0)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
@@ -829,6 +832,18 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  function navigateToDeckReport(context: DeckReportContext) {
+    cancelPendingCommit()
+    saveScrollPosition()
+    setDeckReportContext(context)
+    const params = new URLSearchParams()
+    params.set('report', '')
+    params.set('deck', '1')
+    history.pushState(null, '', `?${params}`)
+    setView('report')
+    window.scrollTo(0, 0)
+  }
+
   function navigateToLists(tab: 'default' | 'trash' = 'default') {
     cancelPendingCommit()
     saveScrollPosition()
@@ -1172,12 +1187,20 @@ function App() {
         })()}
       </Show>
       <Show when={view() === 'report'}>
-        <BugReport
-          query={reportQuery()}
-          breakdown={reportBreakdown()}
-          resultCount={reportResultCount()}
-          printingCount={reportPrintingCount()}
-        />
+        {(() => {
+          const params = new URLSearchParams(location.search)
+          const isDeckReport = params.get('deck') === '1'
+          return isDeckReport ? (
+            <DeckBugReport context={deckReportContext()} />
+          ) : (
+            <BugReport
+              query={reportQuery()}
+              breakdown={reportBreakdown()}
+              resultCount={reportResultCount()}
+              printingCount={reportPrintingCount()}
+            />
+          )
+        })()}
       </Show>
       <Show when={view() === 'lists'}>
         <ListsPage
@@ -1191,6 +1214,7 @@ function App() {
           onSerializeRequest={serializeDeckList}
           onValidateRequest={validateLines}
           onBack={() => history.back()}
+          onDeckReportClick={navigateToDeckReport}
         />
       </Show>
       <Show when={view() === 'search'}>

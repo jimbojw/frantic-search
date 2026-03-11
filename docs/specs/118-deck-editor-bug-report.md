@@ -1,6 +1,6 @@
 # Spec 118: Deck Editor Bug Report
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State & History), Spec 016 (Bug Report Page), Spec 110 (Hybrid Deck Editor), Spec 113 (Deck Editor Toolbar)
 
@@ -145,12 +145,6 @@ When "Omit deck list" is unchecked (default):
 
 <user's description from the textarea>
 
-## Deck List
-
-```
-<list content — full text, not truncated>
-```
-
 ## Context
 
 - Format: <format>
@@ -168,6 +162,12 @@ When "Omit deck list" is unchecked (default):
 - App version: <version or git hash>
 - User agent: <navigator.userAgent>
 - Date: <ISO date>
+
+## Deck List
+
+```
+<list content — full text, not truncated>
+```
 ```
 
 When "Omit deck list" is checked, omit the "## Deck List" section entirely. The report body contains Description, Context, Validation Errors, and Environment only.
@@ -223,3 +223,9 @@ Same as Spec 016: the form is filled out offline. "Review on GitHub" requires ne
 11. The Bug button uses the same visual style as Copy (transparent, gray, border-l).
 12. An "Omit deck list from bug report" checkbox excludes the deck list from the report when checked. Default: unchecked.
 13. The Bug button has `aria-label="Report deck problem"`.
+
+## Implementation Notes
+
+- 2026-03-11: Implemented per spec. Bug button uses `IconBug` from `app/src/Icons.tsx`. `instanceCount` uses `instances.length` (each InstanceState is one card; the model has no quantity field).
+- 2026-03-11: Reordered layout: List Content section moved after Review/Copy buttons so the CTA (description + buttons) appears above the fold.
+- 2026-03-11: Reordered report body: Deck List section moved to end (after Environment) so the GitHub issue/copied Markdown leads with description, context, validation, environment; raw deck list is last for investigation.

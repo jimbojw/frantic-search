@@ -3,8 +3,9 @@ import { createMemo, createSignal } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type { DisplayColumns, InstanceState, LineValidationResult, PrintingDisplayColumns } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
-import { DEFAULT_LIST_ID } from '@frantic-search/shared'
+import { DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
+import type { DeckReportContext } from './deck-editor/DeckEditorContext'
 import { DeckEditor } from './deck-editor'
 
 export default function ListsPage(props: {
@@ -18,10 +19,11 @@ export default function ListsPage(props: {
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onBack: () => void
+  onDeckReportClick?: (context: DeckReportContext) => void
 }) {
   const [_isDraftActive, setIsDraftActive] = createSignal(false)
 
-  const listId = () => DEFAULT_LIST_ID
+  const listId = () => (props.listTab === 'trash' ? TRASH_LIST_ID : DEFAULT_LIST_ID)
 
   const instances = createMemo<InstanceState[]>(() => {
     props.listVersion
@@ -72,6 +74,7 @@ export default function ListsPage(props: {
         onSerializeRequest={props.onSerializeRequest}
         onValidateRequest={props.onValidateRequest}
         onDraftActiveChange={setIsDraftActive}
+        onDeckReportClick={props.onDeckReportClick}
       />
     </div>
   )

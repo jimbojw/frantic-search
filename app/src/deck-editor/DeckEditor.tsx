@@ -36,7 +36,7 @@ import {
   type CachedError,
   type ResolvedCacheEntry,
 } from './validation-cache'
-import { DeckEditorContext, type DeckEditorContextValue } from './DeckEditorContext'
+import { DeckEditorContext, type DeckEditorContextValue, type DeckReportContext } from './DeckEditorContext'
 import DeckEditorToolbar from './DeckEditorToolbar'
 import DeckEditorStatus from './DeckEditorStatus'
 import DeckEditorFormatChips from './DeckEditorFormatChips'
@@ -59,6 +59,7 @@ export default function DeckEditor(props: {
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onDraftActiveChange?: (active: boolean) => void
+  onDeckReportClick?: (context: DeckReportContext) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
   const [baselineText, setBaselineText] = createSignal<string | null>(null)
@@ -533,6 +534,18 @@ export default function DeckEditor(props: {
     writeFormatToStorage(format)
   }
 
+  function handleDeckReport() {
+    props.onDeckReportClick?.({
+      listContent: mode() === 'display' ? serializedText() : draftText() ?? '',
+      format: editFormatLabel(),
+      listName: props.metadata?.name ?? 'My List',
+      listId: props.listId,
+      mode: mode() === 'display' ? 'display' : 'edit',
+      validationErrors: validation()?.lines.filter((l) => l.kind !== 'ok') ?? [],
+      instanceCount: mode() === 'display' ? props.instances.length : undefined,
+    })
+  }
+
   const contextValue: DeckEditorContextValue = {
     mode,
     instances: () => props.instances,
@@ -563,6 +576,7 @@ export default function DeckEditor(props: {
     handleInput,
     applyQuickFix,
     registerTextareaRef: setTextareaEl,
+    handleDeckReport,
   }
 
   return (

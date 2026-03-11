@@ -10,6 +10,17 @@ import type {
 } from '@frantic-search/shared'
 import type { EditorMode } from './types'
 
+/** Spec 118: context captured when user taps Bug in deck editor toolbar */
+export interface DeckReportContext {
+  listContent: string
+  format: string
+  listName: string
+  listId: string
+  mode: 'display' | 'edit'
+  validationErrors: LineValidation[]
+  instanceCount?: number
+}
+
 export interface DeckEditorContextValue {
   mode: Accessor<EditorMode>
   instances: Accessor<InstanceState[]>
@@ -40,6 +51,7 @@ export interface DeckEditorContextValue {
   handleInput: (e: Event) => void
   applyQuickFix: (err: LineValidation, fix: QuickFix, fixIndex: number) => void
   registerTextareaRef: (el: HTMLTextAreaElement | null) => void
+  handleDeckReport: () => void
 }
 
 export const DeckEditorContext = createContext<DeckEditorContextValue | undefined>(undefined)
