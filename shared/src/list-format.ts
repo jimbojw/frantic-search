@@ -8,7 +8,10 @@ export type DeckFormat =
   | "archidekt"
   | "mtggoldfish"
   | "melee"
-  | "tappedout";
+  | "tappedout"
+  | "mtgsalvation"
+  | "tcgplayer"
+  | "manapool";
 
 const ARCHIDEKT_TOKENS: ReadonlySet<string> = new Set([
   ListTokenType.CATEGORY,

@@ -94,10 +94,13 @@ const VALIDATION_DEBOUNCE_MS = 150
 const ALL_FORMATS: { id: DeckFormat; label: string }[] = [
   { id: 'archidekt', label: 'Archidekt' },
   { id: 'arena', label: 'Arena' },
+  { id: 'manapool', label: 'Mana Pool' },
   { id: 'melee', label: 'Melee.gg' },
   { id: 'moxfield', label: 'Moxfield' },
   { id: 'mtggoldfish', label: 'MTGGoldfish' },
+  { id: 'mtgsalvation', label: 'MTG Salvation' },
   { id: 'tappedout', label: 'TappedOut' },
+  { id: 'tcgplayer', label: 'TCGPlayer' },
 ]
 
 function draftKey(listId: string): string {
