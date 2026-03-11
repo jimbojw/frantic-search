@@ -29,16 +29,18 @@ The toolbar contains all actions. Layout: left group … right group. Copy is al
 
 | Mode | Left | Right |
 |------|------|-------|
-| **Display** | `[ Edit * ]` (pencil icon) | `[ Copy ]` |
-| **Edit, no changes** | `[ Cancel ]` (X icon) | `[ Copy ]` |
-| **Edit, with changes** | `[ Revert ]` (↶ icon) | `[ Apply * ]` `[ Copy ]` |
+| **Display** | `[ View * ]` `[ Edit ]` (eye, pencil icons) | `[ Bug ]` `[ Copy ]` |
+| **Edit, no changes** | `[ Cancel ]` (X icon) | `[ Bug ]` `[ Copy ]` |
+| **Edit, with changes** | `[ Revert ]` (↶ icon) | `[ Apply * ]` `[ Bug ]` `[ Copy ]` |
 
 `*` = primary/attention styling.
 
-- **Edit** — Display mode only. Enters Edit mode.
+- **View** — Display mode only. Navigates to search with `v:images unique:prints include:extras my:list` (or `my:trash` for trash). Primary action; users discover Edit when they see View emphasized. Eye icon. `aria-label="View list in search"`.
+- **Edit** — Display mode only. Enters Edit mode. Secondary styling (transparent, gray).
 - **Cancel** — Edit mode, no changes. Exits Edit mode (clears draft, returns to Display or Init).
 - **Revert** — Edit mode, has changes. Resets draft to baseline; user stays in Edit mode.
 - **Apply** — Edit mode, has changes, no validation errors. Commits changes.
+- **Bug** — Display and Edit modes (disabled in Init). Opens deck report (Spec 118).
 - **Copy** — Display and Edit modes (disabled in Init). Copies rendered or draft text.
 
 **Flush bar:** Single border around the toolbar. Buttons have no individual borders; they fill the bar edge-to-edge. Right-group buttons are separated from the left by a flex spacer; Apply and Copy share a `border-l` between them. Avoids "bordered button within bordered box."
@@ -120,7 +122,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 
 1. Layout: TOOLBAR | STATUS | [DISPLAY FORMATS] | DECK LIST — three sections always; four when in Display mode.
 2. Toolbar is a flush bar: single border, buttons contiguous to edges (no bordered-box illusion).
-3. Display mode: Toolbar shows `[ Edit * ]` … `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
+3. Display mode: Toolbar shows `[ View * ]` `[ Edit ]` … `[ Bug ]` `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
 4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
 5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error table.
 6. Edit mode, changes, valid: Toolbar shows `[ Revert ]` … `[ Apply * ]` `[ Copy ]`. Status shows diff summary.
@@ -142,3 +144,4 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 - 2026-03-10: Revised — all actions moved to toolbar; Status box content-only; flush toolbar (single border, contiguous buttons); three-part layout TOOLBAR | STATUS | DECK LIST with shared borders.
 - 2026-03-10: Display Formats bar — format chips moved below Status box in Display mode; two-column layout (Display: | chips); chips use MenuDrawer styling; Status box shows card count only in Display mode.
 - 2026-03-10: Compatible With bar — label changed to "Compatible with:" with "(for export to)" help text; selected chip uses outline style (de-emphasized vs Edit button).
+- 2026-03-11: View button — Display mode left group extended to `[ View * ]` `[ Edit ]`. View navigates to search with `v:images unique:prints include:extras my:list` (or `my:trash`). View is primary; Edit demoted to secondary.

@@ -60,6 +60,7 @@ export default function DeckEditor(props: {
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onDraftActiveChange?: (active: boolean) => void
   onDeckReportClick?: (context: DeckReportContext) => void
+  onViewInSearch?: (listId: string) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
   const [baselineText, setBaselineText] = createSignal<string | null>(null)
@@ -534,6 +535,10 @@ export default function DeckEditor(props: {
     writeFormatToStorage(format)
   }
 
+  function handleViewInSearch() {
+    props.onViewInSearch?.(props.listId)
+  }
+
   function handleDeckReport() {
     props.onDeckReportClick?.({
       listContent: mode() === 'display' ? serializedText() : draftText() ?? '',
@@ -577,6 +582,7 @@ export default function DeckEditor(props: {
     applyQuickFix,
     registerTextareaRef: setTextareaEl,
     handleDeckReport,
+    handleViewInSearch,
   }
 
   return (

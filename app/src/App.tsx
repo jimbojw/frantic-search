@@ -832,6 +832,11 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  function navigateToViewList(listId: string) {
+    const q = `v:images unique:prints include:extras my:${listId === 'trash' ? 'trash' : 'list'}`
+    navigateToQuery(q)
+  }
+
   function navigateToDeckReport(context: DeckReportContext) {
     cancelPendingCommit()
     saveScrollPosition()
@@ -1215,6 +1220,7 @@ function App() {
           onValidateRequest={validateLines}
           onBack={() => history.back()}
           onDeckReportClick={navigateToDeckReport}
+          onViewInSearch={navigateToViewList}
         />
       </Show>
       <Show when={view() === 'search'}>

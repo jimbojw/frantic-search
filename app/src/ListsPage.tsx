@@ -20,6 +20,7 @@ export default function ListsPage(props: {
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onBack: () => void
   onDeckReportClick?: (context: DeckReportContext) => void
+  onViewInSearch?: (listId: string) => void
 }) {
   const [_isDraftActive, setIsDraftActive] = createSignal(false)
 
@@ -75,6 +76,7 @@ export default function ListsPage(props: {
         onValidateRequest={props.onValidateRequest}
         onDraftActiveChange={setIsDraftActive}
         onDeckReportClick={props.onDeckReportClick}
+        onViewInSearch={props.onViewInSearch}
       />
     </div>
   )

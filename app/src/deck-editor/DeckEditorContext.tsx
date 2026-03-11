@@ -52,6 +52,7 @@ export interface DeckEditorContextValue {
   applyQuickFix: (err: LineValidation, fix: QuickFix, fixIndex: number) => void
   registerTextareaRef: (el: HTMLTextAreaElement | null) => void
   handleDeckReport: () => void
+  handleViewInSearch: () => void
 }
 
 export const DeckEditorContext = createContext<DeckEditorContextValue | undefined>(undefined)
