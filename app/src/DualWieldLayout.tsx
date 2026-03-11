@@ -16,6 +16,7 @@ import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
+import { IconList } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import UnifiedBreakdown from './UnifiedBreakdown'
@@ -583,6 +584,14 @@ export function DualWieldLayout(props: {
         </button>
         <button
           type="button"
+          onClick={props.onListsClick}
+          class="mt-2 flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="My list"
+        >
+          <IconList class="size-5" />
+        </button>
+        <button
+          type="button"
           onClick={props.onLeaveDualWield}
           class="mt-2 flex h-8 min-w-8 items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Leave split view"
@@ -612,7 +621,6 @@ export function DualWieldLayout(props: {
                 onSetQuery={(q) => { props.leftState.flushPendingCommit(); props.leftState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.leftState.navigateToReport}
-                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>
@@ -638,7 +646,6 @@ export function DualWieldLayout(props: {
                 onSetQuery={(q) => { props.rightState.flushPendingCommit(); props.rightState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.rightState.navigateToReport}
-                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>

@@ -431,7 +431,6 @@ export default function MenuDrawer(props: {
   onSetQuery: (query: string) => void
   onHelpClick: () => void
   onReportClick: () => void
-  onListsClick: () => void
   onClose: () => void
 }) {
   const ctx = useSearchContext()
@@ -605,13 +604,6 @@ export default function MenuDrawer(props: {
                 Tools
               </h2>
               <div class="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={props.onListsClick}
-                  class="text-left whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
-                >
-                  My List
-                </button>
                 <Outlink
                   href={ctx.scryfallUrl()}
                   class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"

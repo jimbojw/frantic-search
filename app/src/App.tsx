@@ -49,6 +49,7 @@ import {
   applyCompletion,
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
+import { IconList } from './Icons'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -1279,29 +1280,41 @@ function App() {
           </>
         }>
           <div class="flex h-11 items-center justify-between mb-2">
-            <button
-              type="button"
-              onClick={() => navigateHome()}
-              aria-label="Go to home"
-              class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
-            </button>
             <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigateHome()}
+                aria-label="Go to home"
+                class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
+              </button>
               <Show when={viewportWide()}>
                 <button
                   type="button"
                   onClick={enterDualWield}
                   aria-label="Split view"
                   title="Split view"
-                  class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
                     <rect x="3" y="3" width="9" height="18" rx="1" />
                     <rect x="12" y="3" width="9" height="18" rx="1" />
                   </svg>
+                  <span class="text-sm whitespace-nowrap">Split view</span>
                 </button>
               </Show>
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigateToLists()}
+                aria-label="My list"
+                class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <IconList class="size-5 shrink-0" />
+                <span class="text-sm whitespace-nowrap">My list</span>
+              </button>
               <button
                 type="button"
                 onClick={toggleTerms}
@@ -1333,7 +1346,6 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
-                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>
@@ -1348,7 +1360,6 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
-                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>
