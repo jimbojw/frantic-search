@@ -646,6 +646,14 @@ export default function DeckEditor(props: {
     writeBaselineToStorage(props.listId, text)
     // Defer debounced draft so UI can paint edit mode before validation fires
     setTimeout(() => setDebouncedDraft(text), 0)
+    // Focus textarea after mode switch so user can type immediately; brings up keyboard on mobile
+    setTimeout(() => {
+      const el = textareaRef
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(0, 0)
+      el.scrollTop = 0
+    }, 0)
   }
 
   function handleCancel() {
@@ -775,9 +783,10 @@ export default function DeckEditor(props: {
   }
 
   return (
-    <div class="flex flex-col">
-      {/* TOOLBAR — flush bar, all actions (Spec 113 revised) */}
-      <div class="flex items-stretch border border-gray-200 dark:border-gray-600 rounded-t-lg overflow-hidden bg-gray-50 dark:bg-gray-800/50">
+    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+      <div class="flex flex-col">
+        {/* TOOLBAR — flush bar, all actions (Spec 113 revised) */}
+        <div class="flex items-stretch border-b border-gray-200 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-900">
         {/* Left group */}
         <div class="flex">
           <Show when={mode() === 'display'} fallback={null}>
@@ -797,7 +806,7 @@ export default function DeckEditor(props: {
             <button
               type="button"
               onClick={handleCancel}
-              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
               aria-label="Cancel editing"
             >
               <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -865,9 +874,9 @@ export default function DeckEditor(props: {
       {/* STATUS — mode-appropriate info only (no buttons) */}
       <div
         classList={{
-          'px-3 py-2 border-x border-b text-sm min-h-[2.5rem] flex flex-col gap-2': true,
+          'px-3 py-2 border-b border-gray-200 dark:border-gray-600 text-sm min-h-[2.5rem] flex flex-col gap-2': true,
           'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200': mode() === 'edit' && validationErrors().length > 0,
-          'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400': mode() !== 'edit' || validationErrors().length === 0,
+          'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400': mode() !== 'edit' || validationErrors().length === 0,
         }}
       >
         <Show when={mode() === 'init'} fallback={null}>
@@ -992,7 +1001,7 @@ export default function DeckEditor(props: {
 
       {/* COMPATIBLE WITH — format chips (Display mode only) */}
       <Show when={mode() === 'display'} fallback={null}>
-        <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 border-x border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm min-w-0">
+        <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm min-w-0">
           <div class="flex flex-col shrink-0 self-center">
             <span class="text-gray-600 dark:text-gray-400 font-medium">
               Compatible with:
@@ -1025,7 +1034,11 @@ export default function DeckEditor(props: {
       </Show>
 
       {/* DECK LIST — textarea with syntax-highlighting overlay */}
-      <div class="grid overflow-hidden relative rounded-b-lg border border-t-0 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 overscroll-contain">
+      <div
+        class={`grid overflow-hidden relative overscroll-contain ${
+          'bg-white dark:bg-gray-900'
+        }`}
+      >
         <div class="hl-layer overflow-hidden whitespace-pre-wrap break-words p-3 min-h-[200px]">
           <ListHighlight
             text={highlightText()}
@@ -1045,9 +1058,12 @@ export default function DeckEditor(props: {
           spellcheck={false}
           rows={10}
           class={`hl-input w-full bg-transparent p-3 text-sm leading-relaxed font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none overflow-hidden overscroll-contain resize-none min-h-[200px] ${
-            mode() === 'display' ? 'cursor-default' : ''
+            mode() === 'display'
+              ? 'cursor-default'
+              : 'cursor-text focus:ring-2 focus:ring-blue-500 focus:ring-inset'
           }`}
         />
+      </div>
       </div>
     </div>
   )
