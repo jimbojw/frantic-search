@@ -242,6 +242,13 @@ describe("validateDeckListWithEngine", () => {
     expect(result.resolved![0]!.oracle_id).toBe("oid7");
   });
 
+  test("DFC matches by single-slash (Moxfield format)", () => {
+    const result = validate("1 Ayara, Widow of the Realm / Ayara, Furnace Queen");
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.oracle_id).toBe("oid7");
+  });
+
   test("multiple lines resolve independently", () => {
     const result = validate("2 Lightning Bolt\n3 Sol Ring");
     expect(result.lines.filter((l) => l.kind === "error")).toHaveLength(0);

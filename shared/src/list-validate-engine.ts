@@ -44,6 +44,11 @@ function exactNode(name: string): ASTNode {
   return { type: "EXACT", value: name.toLowerCase() };
 }
 
+/** Moxfield uses single slash for DFCs; Scryfall uses double. Accept both. */
+function normalizeDfcNameForLookup(name: string): string {
+  return name.replace(/ \/ /g, " // ");
+}
+
 function fieldNode(field: string, value: string): ASTNode {
   return { type: "FIELD", field, operator: ":", value };
 }
@@ -320,7 +325,7 @@ export function validateDeckListWithEngine(
 
     // Known-but-unresolvable variant fallback (prerelease, promo pack, etc.)
     if (variantFallbackMode === "known") {
-      const nameResult = cache.evaluate(exactNode(nameTok.value));
+      const nameResult = cache.evaluate(exactNode(normalizeDfcNameForLookup(nameTok.value)));
       if (nameResult.indices.length === 0) {
         const lineResult = {
           lineIndex, lineStart, lineEnd, kind: "error" as const,
@@ -457,7 +462,7 @@ function resolveNameOnly(
   variantTok: ListToken | undefined,
   foilPrereleaseMarkerTok: ListToken | undefined,
 ): { line: LineValidation; entry?: ParsedEntry; oracleIndex?: number; scryfallIndex?: number } {
-  const evalResult = cache.evaluate(exactNode(nameTok.value));
+  const evalResult = cache.evaluate(exactNode(normalizeDfcNameForLookup(nameTok.value)));
 
   if (evalResult.indices.length > 0) {
     const faceIdx = evalResult.indices[0]!;
@@ -585,7 +590,7 @@ function resolveCascade(
   alterMarkerTok: ListToken | undefined,
   preferFoil: boolean,
 ): { line: LineValidation; entry?: ParsedEntry; oracleIndex?: number; scryfallIndex?: number } {
-  const nameExact = exactNode(nameTok.value);
+  const nameExact = exactNode(normalizeDfcNameForLookup(nameTok.value));
   const setField = fieldNode("set", setCodeForLookup.toLowerCase());
   const collectorField = collectorNum ? fieldNode("cn", collectorNum) : null;
   const uniquePrints = fieldNode("unique", "prints");
