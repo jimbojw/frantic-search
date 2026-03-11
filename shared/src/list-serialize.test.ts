@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, tcgplayerToScryfallSetCode } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, tcgplayerToScryfallSetCode } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -440,6 +440,61 @@ describe("serializeTcgplayer", () => {
     const i = inst("bolt-oracle", "default", "bolt-promo", "nonfoil");
     const result = serializeTcgplayer([i], display, printingWithSuffix);
     expect(result).toBe("1 Lightning Bolt [PM21] 141p");
+  });
+});
+
+describe("serializeManapool", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeManapool([], display, null)).toBe("");
+  });
+
+  it("serializes with quantity cardname [SET] collector structure", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeManapool([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt [M21] 141");
+  });
+
+  it("uses Scryfall set codes (uppercase) — no TCGPlayer mapping", () => {
+    const printingWithPlst: PrintingDisplayColumns = {
+      ...printingDisplay,
+      scryfall_ids: ["bolt-list"],
+      collector_numbers: ["C18-138"],
+      set_codes: ["plst"],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-list", "nonfoil");
+    const result = serializeManapool([i], display, printingWithPlst);
+    expect(result).toBe("1 Lightning Bolt [PLST] C18-138");
+  });
+
+  it("outputs only front face for double-faced cards", () => {
+    const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
+    const result = serializeManapool([i], display, printingDisplay);
+    expect(result).toBe("1 Delver of Secrets [ISD] 51");
+  });
+
+  it("orders Commander first, then deck, then two newlines, then Sideboard", () => {
+    const instances = [
+      inst("delver-oracle", "default", null, null, "Sideboard"),
+      inst("bolt-oracle", "default", null, null, "Commander"),
+      inst("bolt-oracle", "default", null, null, "Deck"),
+    ];
+    const result = serializeManapool(instances, display, null);
+    const sections = result.split("\n\n");
+    expect(sections[0]).toContain("Lightning Bolt");
+    expect(sections[0]).not.toContain("Delver");
+    expect(sections[1]).toContain("Delver of Secrets");
+  });
+
+  it("falls back to name-only when printing data unavailable", () => {
+    const instances = [
+      inst("bolt-oracle"),
+      inst("bolt-oracle", "default", "bolt-print-a", "nonfoil"),
+    ];
+    const result = serializeManapool(instances, display, printingDisplay);
+    const lines = result.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines).toContainEqual("1 Lightning Bolt");
+    expect(lines).toContainEqual("1 Lightning Bolt [M21] 141");
   });
 });
 

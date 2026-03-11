@@ -20,6 +20,7 @@ import {
   serializeMelee,
   serializeTappedOut,
   serializeTcgplayer,
+  serializeManapool,
   validateLines,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
@@ -305,6 +306,8 @@ async function init(): Promise<void> {
         return serializeTappedOut(instances, displayRef, printingDisplayRef)
       case 'tcgplayer':
         return serializeTcgplayer(instances, displayRef, printingDisplayRef)
+      case 'manapool':
+        return serializeManapool(instances, displayRef, printingDisplayRef)
       case 'arena':
       default:
         return serializeArena(instances, displayRef)

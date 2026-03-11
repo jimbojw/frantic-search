@@ -515,6 +515,49 @@ export function serializeTcgplayer(
 }
 
 /**
+ * Serialize instances in Mana Pool bulk entry format: `quantity cardname [SET] collector`
+ * Same structure as TCGPlayer Mass Entry but uses Scryfall set codes (uppercase) directly —
+ * no TCGPlayer-specific mappings (UMP, LIST, PPTHB, etc.).
+ * Falls back to name-only when printing data is unavailable. No foil/etched markers.
+ * Commander first, then deck, then two newlines, then Sideboard and other zones. No headings.
+ */
+export function serializeManapool(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null
+): string {
+  if (instances.length === 0) return "";
+
+  const groups = groupByZone(instances, display, printingDisplay, {
+    zoneOrder: COMMANDER_FIRST_ORDER,
+    frontFaceOnly: true,
+  });
+  const mainZones = ["Commander", "Deck", null];
+  const mainLines: string[] = [];
+  const postLines: string[] = [];
+
+  for (const { zone, entries } of groups) {
+    const cardLines = entries.map((e) => {
+      let line = `${e.quantity} ${e.name}`;
+      if (e.setCode && e.collectorNumber) {
+        line += ` [${e.setCode.toUpperCase()}] ${e.collectorNumber}`;
+      }
+      return line;
+    });
+    if (mainZones.includes(zone)) {
+      mainLines.push(...cardLines);
+    } else {
+      postLines.push(...cardLines);
+    }
+  }
+
+  const main = mainLines.join("\n");
+  const post = postLines.join("\n");
+  if (post.length === 0) return main;
+  return main + "\n\n" + post;
+}
+
+/**
  * Serialize instances in Melee.gg format: `quantity name`
  * Header MainDeck (no colon), two newlines, then Sideboard (if any) and other zones.
  */

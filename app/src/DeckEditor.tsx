@@ -9,6 +9,7 @@ import {
   serializeMtggoldfish,
   serializeMelee,
   serializeTappedOut,
+  serializeManapool,
   importDeckList,
   diffDeckList,
   parsedEntriesFromInstances,
@@ -195,6 +196,8 @@ function serialize(
       return serializeMelee(instances, display)
     case 'tappedout':
       return serializeTappedOut(instances, display, printingDisplay)
+    case 'manapool':
+      return serializeManapool(instances, display, printingDisplay)
     case 'arena':
     default:
       return serializeArena(instances, display)
