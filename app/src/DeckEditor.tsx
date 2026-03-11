@@ -92,11 +92,11 @@ function StyledValidationText(props: { text: string; class?: string }) {
 const VALIDATION_DEBOUNCE_MS = 150
 
 const ALL_FORMATS: { id: DeckFormat; label: string }[] = [
-  { id: 'arena', label: 'Arena' },
-  { id: 'moxfield', label: 'Moxfield' },
   { id: 'archidekt', label: 'Archidekt' },
-  { id: 'mtggoldfish', label: 'MTGGoldfish' },
+  { id: 'arena', label: 'Arena' },
   { id: 'melee', label: 'Melee.gg' },
+  { id: 'moxfield', label: 'Moxfield' },
+  { id: 'mtggoldfish', label: 'MTGGoldfish' },
   { id: 'tappedout', label: 'TappedOut' },
 ]
 
