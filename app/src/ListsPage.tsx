@@ -4,7 +4,7 @@ import type { DisplayColumns, InstanceState, LineValidationResult, PrintingDispl
 import type { DeckFormat } from '@frantic-search/shared'
 import { DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
-import DeckEditor from './DeckEditor'
+import { DeckEditor } from './deck-editor'
 
 export default function ListsPage(props: {
   listTab: 'default' | 'trash'
