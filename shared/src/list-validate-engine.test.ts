@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { validateDeckListWithEngine } from "./list-validate-engine";
+import { validateDeckListWithEngine, validateLines } from "./list-validate-engine";
 import { NodeCache } from "./search/evaluator";
 import { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
@@ -69,9 +69,26 @@ function validate(text: string, d = display, p: PrintingDisplayColumns | null = 
   return validateDeckListWithEngine(text, index, printingIndex, d, p, cache);
 }
 
+function validateLinesOnly(lines: string[], d = display, p: PrintingDisplayColumns | null = pd) {
+  const cache = new NodeCache(index, printingIndex);
+  return validateLines(lines, index, printingIndex, d, p, cache);
+}
+
 // ---------------------------------------------------------------------------
 // § 3e: Name-only lines
 // ---------------------------------------------------------------------------
+
+describe("validateLines", () => {
+  test("returns only error/warning in result, resolved parallel to request", () => {
+    const { result, resolved } = validateLinesOnly(["1 Lightning Bolt", "1 UnknownCard"]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.lineIndex).toBe(1);
+    expect(result[0]!.kind).toBe("error");
+    expect(resolved).toHaveLength(2);
+    expect(resolved[0]).not.toBeNull();
+    expect(resolved[1]).toBeNull();
+  });
+});
 
 describe("validateDeckListWithEngine", () => {
   test("valid card name passes (name-only)", () => {

@@ -2,6 +2,8 @@
 import type { InstanceState } from "./card-list";
 import { KNOWN_ZONES } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+import type { ParsedEntry } from "./list-lexer";
+import type { DeckFormat } from "./list-format";
 
 /**
  * Resolve an oracle_id to the full card name (including " // " for DFCs).
@@ -51,6 +53,10 @@ interface AggregatedEntry {
   collection_status?: string | null;
   /** Archidekt: zone for deriving tags when tags empty */
   zone?: string | null;
+  /** oracle_id for ParsedEntry derivation (internal) */
+  _oracleId?: string;
+  /** scryfall_id for ParsedEntry derivation (internal) */
+  _scryfallId?: string | null;
 }
 
 type GroupKey = string;
@@ -154,6 +160,8 @@ function aggregateInstances(
       setCode,
       collectorNumber,
       finish: g.finish,
+      _oracleId: g.oracleId,
+      _scryfallId: g.scryfallId,
       ...(preserve && g.tags !== undefined && { tags: g.tags }),
       ...(preserve && "collection_status" in g && { collection_status: g.collection_status }),
       ...(preserveZone && "zone" in g && { zone: g.zone }),
@@ -162,6 +170,50 @@ function aggregateInstances(
 
   entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   return entries;
+}
+
+function zoneOrderForFormat(format: DeckFormat): readonly (string | null)[] {
+  if (format === "melee") return MELEE_ORDER;
+  return COMMANDER_FIRST_ORDER;
+}
+
+/**
+ * Return ParsedEntry[] from instances in the same order as serialized lines.
+ * Used for baseline resolved cache seeding (Spec 115).
+ */
+export function parsedEntriesFromInstances(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null,
+  format: DeckFormat
+): ParsedEntry[] {
+  if (format === "archidekt" || format === "tappedout") {
+    const entries = aggregateInstances(instances, display, printingDisplay, {
+      preserveTagsAndStatus: true,
+      preserveZone: true,
+    });
+    return entries.map((e) => ({
+      oracle_id: (e as AggregatedEntry & { _oracleId?: string })._oracleId ?? "",
+      scryfall_id: (e as AggregatedEntry & { _scryfallId?: string | null })._scryfallId ?? null,
+      quantity: e.quantity,
+      finish: e.finish === "foil" ? "foil" : e.finish === "etched" ? "etched" : undefined,
+    }));
+  }
+  const groups = groupByZone(instances, display, printingDisplay, {
+    zoneOrder: zoneOrderForFormat(format),
+  });
+  const result: ParsedEntry[] = [];
+  for (const { entries } of groups) {
+    for (const e of entries) {
+      result.push({
+        oracle_id: (e as AggregatedEntry & { _oracleId?: string })._oracleId ?? "",
+        scryfall_id: (e as AggregatedEntry & { _scryfallId?: string | null })._scryfallId ?? null,
+        quantity: e.quantity,
+        finish: e.finish === "foil" ? "foil" : e.finish === "etched" ? "etched" : undefined,
+      });
+    }
+  }
+  return result;
 }
 
 interface ZoneGroup {

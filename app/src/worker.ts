@@ -19,7 +19,7 @@ import {
   serializeMtggoldfish,
   serializeMelee,
   serializeTappedOut,
-  validateDeckListWithEngine,
+  validateLines,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -343,10 +343,10 @@ async function init(): Promise<void> {
       return
     }
     if (msg.type === 'validate-list') {
-      const result = validateDeckListWithEngine(
-        msg.text, index, printingIndex, displayRef, printingDisplayRef, cache,
+      const { result, resolved } = validateLines(
+        msg.lines, index, printingIndex, displayRef, printingDisplayRef, cache,
       )
-      post({ type: 'validate-result', requestId: msg.requestId, result })
+      post({ type: 'validate-result', requestId: msg.requestId, result, resolved })
       return
     }
     if (msg.type === 'get-tags-for-card') {

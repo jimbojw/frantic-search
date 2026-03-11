@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lexDeckList, ListTokenType } from "./list-lexer";
-import type { ListToken } from "./list-lexer";
+import type { ListToken, ParsedEntry, ValidationResult } from "./list-lexer";
 import { validateDeckList } from "./list-validate";
-import type { ParsedEntry } from "./list-validate";
 import { KNOWN_ZONES } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -81,7 +80,8 @@ function groupTokensByLine(text: string, tokens: ListToken[]): ListToken[][] {
 export function importDeckList(
   text: string,
   display: DisplayColumns | null,
-  printingDisplay: PrintingDisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null,
+  validationResult?: ValidationResult | null
 ): ImportResult {
   const candidates: ImportCandidate[] = [];
   let deckName: string | null = null;
@@ -92,7 +92,7 @@ export function importDeckList(
   }
 
   const tokens = lexDeckList(text);
-  const validation = validateDeckList(text, display, printingDisplay);
+  const validation = validationResult ?? validateDeckList(text, display, printingDisplay);
   const resolved = validation.resolved ?? [];
 
   const lineGroups = groupTokensByLine(text, tokens);

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createMemo, createEffect, onMount, onCleanup, Show, For } from 'solid-js'
 import {
-  validateDeckList,
   lexDeckList,
   detectDeckFormat,
   serializeArena,
@@ -12,6 +11,8 @@ import {
   serializeTappedOut,
   importDeckList,
   diffDeckList,
+  parsedEntriesFromInstances,
+  validateDeckList,
 } from '@frantic-search/shared'
 import type {
   DisplayColumns,
@@ -22,6 +23,8 @@ import type {
   ListValidationResult,
   ValidationResult,
   LineValidation,
+  LineValidationResult,
+  ParsedEntry,
   QuickFix,
 } from '@frantic-search/shared'
 import ListHighlight from './ListHighlight'
@@ -101,6 +104,10 @@ function draftKey(listId: string): string {
   return `frantic-search-draft:${listId}`
 }
 
+function baselineKey(listId: string): string {
+  return `frantic-search-draft-baseline:${listId}`
+}
+
 const FORMAT_KEY = 'frantic-search-deck-format'
 
 function readDraftFromStorage(listId: string): string | null {
@@ -128,6 +135,23 @@ function writeDraftToStorage(listId: string, text: string): void {
 function clearDraftFromStorage(listId: string): void {
   try {
     localStorage.removeItem(draftKey(listId))
+    localStorage.removeItem(baselineKey(listId))
+  } catch {
+    // ignore
+  }
+}
+
+function readBaselineFromStorage(listId: string): string | null {
+  try {
+    return localStorage.getItem(baselineKey(listId))
+  } catch {
+    return null
+  }
+}
+
+function writeBaselineToStorage(listId: string, text: string): void {
+  try {
+    localStorage.setItem(baselineKey(listId), text)
   } catch {
     // ignore
   }
@@ -182,7 +206,7 @@ export default function DeckEditor(props: {
   printingDisplay: PrintingDisplayColumns | null
   onApply: (draftText: string) => Promise<boolean>
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
-  onValidateRequest?: (text: string) => Promise<ValidationResult>
+  onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; resolved: (ParsedEntry | null)[] }>
   onDraftActiveChange?: (active: boolean) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
@@ -198,12 +222,31 @@ export default function DeckEditor(props: {
 
   let textareaRef: HTMLTextAreaElement | null = null
 
-  // Restore draft from localStorage on mount
+  // Line cache (Spec 115): trimmed line -> 'valid' | error/warning with spanRel
+  type CachedError = {
+    kind: 'error' | 'warning'
+    message?: string
+    quickFixes?: QuickFix[]
+    spanRel?: { start: number; end: number }
+  }
+  const lineCache = new Map<string, 'valid' | CachedError>()
+  const resolvedCache = new Map<string, ParsedEntry>()
+
+  function clearLineCache(): void {
+    lineCache.clear()
+    resolvedCache.clear()
+  }
+
+  // Restore draft and baseline from localStorage on mount
   onMount(() => {
     const cached = readDraftFromStorage(props.listId)
+    const baseline = readBaselineFromStorage(props.listId)
     if (cached !== null) {
       setDraftText(cached)
       setDebouncedDraft(cached)
+    }
+    if (baseline !== null) {
+      setBaselineText(baseline)
     }
   })
 
@@ -221,29 +264,38 @@ export default function DeckEditor(props: {
       return
     }
     if (props.onSerializeRequest) {
-      props.onSerializeRequest(ins, fmt).then((text) => setBaselineText(text))
+      props.onSerializeRequest(ins, fmt).then((text) => {
+        setBaselineText(text)
+        writeBaselineToStorage(props.listId, text)
+      })
     } else {
-      setBaselineText(serialize(fmt, ins, props.display!, props.printingDisplay))
+      const text = serialize(fmt, ins, props.display!, props.printingDisplay)
+      setBaselineText(text)
+      writeBaselineToStorage(props.listId, text)
     }
   })
 
   // Cross-tab draft sync via storage events
   function handleStorageEvent(e: StorageEvent) {
-    if (e.key !== draftKey(props.listId)) return
-    if (e.newValue === null) {
-      setDraftText(null)
-      setDebouncedDraft('')
-      setBaselineText(null)
-    } else {
-      try {
-        const parsed = JSON.parse(e.newValue) as { text?: string }
-        if (typeof parsed.text === 'string') {
-          setDraftText(parsed.text)
-          setDebouncedDraft(parsed.text)
+    if (e.key === draftKey(props.listId)) {
+      if (e.newValue === null) {
+        setDraftText(null)
+        setDebouncedDraft('')
+        setBaselineText(null)
+        clearLineCache()
+      } else {
+        try {
+          const parsed = JSON.parse(e.newValue) as { text?: string }
+          if (typeof parsed.text === 'string') {
+            setDraftText(parsed.text)
+            setDebouncedDraft(parsed.text)
+          }
+        } catch {
+          // ignore malformed
         }
-      } catch {
-        // ignore malformed
       }
+    } else if (e.key === baselineKey(props.listId) && e.newValue !== null) {
+      setBaselineText(e.newValue)
     }
   }
 
@@ -299,7 +351,50 @@ export default function DeckEditor(props: {
     }
   })
 
-  // Validation for Edit mode (debounced, async via worker when available)
+  // Build ValidationResult from draft + line cache (Spec 115 § 8)
+  function buildValidationResultFromCache(text: string): ValidationResult {
+    const lines: LineValidation[] = []
+    const resolved: ParsedEntry[] = []
+    const lineStrings = text.split(/\r?\n/)
+    let offset = 0
+    for (let lineIndex = 0; lineIndex < lineStrings.length; lineIndex++) {
+      const line = lineStrings[lineIndex]!
+      const trimmed = line.trim()
+      const lineStart = offset
+      const lineEnd = offset + line.length
+      const cached = lineCache.get(trimmed)
+      if (cached === 'valid') {
+        lines.push({ lineIndex, lineStart, lineEnd, kind: 'ok' })
+        const entry = resolvedCache.get(trimmed)
+        if (entry) resolved.push(entry)
+      } else if (cached && (cached.kind === 'error' || cached.kind === 'warning')) {
+        const trimmedStartInLine = line.match(/^\s*/)?.[0].length ?? 0
+        const lineVal: LineValidation = {
+          lineIndex,
+          lineStart,
+          lineEnd,
+          kind: cached.kind,
+          message: cached.message,
+          quickFixes: cached.quickFixes,
+        }
+        if (cached.spanRel) {
+          lineVal.span = {
+            start: lineStart + trimmedStartInLine + cached.spanRel.start,
+            end: lineStart + trimmedStartInLine + cached.spanRel.end,
+          }
+        }
+        lines.push(lineVal)
+      } else {
+        lines.push({ lineIndex, lineStart, lineEnd, kind: 'ok' })
+        const entry = resolvedCache.get(trimmed)
+        if (entry) resolved.push(entry)
+      }
+      offset = lineEnd + (lineIndex < lineStrings.length - 1 ? (text[lineEnd] === '\r' && text[lineEnd + 1] === '\n' ? 2 : 1) : 0)
+    }
+    return { lines, resolved }
+  }
+
+  // Validation for Edit mode (debounced, line-centric via worker — Spec 115)
   const [validationResult, setValidationResult] = createSignal<ValidationResult | null>(null)
   let validationVersion = 0
   createEffect(() => {
@@ -308,20 +403,93 @@ export default function DeckEditor(props: {
       setValidationResult(null)
       return
     }
-    // Display→Edit: draft equals baseline (serialized output), known valid — skip worker round-trip
     const draft = draftText()
     const base = baselineText()
+
+    // Display→Edit or refresh: draft === baseline, known valid — no worker call
     if (draft !== null && base !== null && draft === base) {
-      setValidationResult({ lines: [] })
+      // Pre-seed cache from baseline if not already populated
+      const baseLines = base.split(/\r?\n/)
+      let needsSeed = false
+      for (const line of baseLines) {
+        const trimmed = line.trim()
+        if (trimmed && !lineCache.has(trimmed)) {
+          needsSeed = true
+          break
+        }
+      }
+      if (needsSeed && props.display && props.instances.length > 0) {
+        const fmt = selectedFormat()
+        const entries = parsedEntriesFromInstances(props.instances, props.display, props.printingDisplay, fmt)
+        let idx = 0
+        for (const line of baseLines) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed.startsWith('//') || /^\s*[A-Z]+\s*:?\s*$/.test(trimmed)) continue
+          if (!lineCache.has(trimmed)) {
+            lineCache.set(trimmed, 'valid')
+            if (idx < entries.length && /^\d+x?\s/.test(trimmed)) {
+              resolvedCache.set(trimmed, entries[idx]!)
+              idx++
+            }
+          }
+        }
+      }
+      setValidationResult(buildValidationResultFromCache(t))
       return
     }
+
+    // Compute differing lines (trimmed, deduped)
+    const lineStrings = t.split(/\r?\n/)
+    const toValidate = [...new Set(
+      lineStrings
+        .map((l) => l.trim())
+        .filter((trimmed) => trimmed !== '' && !lineCache.has(trimmed))
+    )]
+
+    if (toValidate.length === 0) {
+      setValidationResult(buildValidationResultFromCache(t))
+      return
+    }
+
     if (props.onValidateRequest) {
       const version = ++validationVersion
-      props.onValidateRequest(t).then((result) => {
-        if (version === validationVersion) setValidationResult(result)
+      props.onValidateRequest(toValidate).then(({ result, resolved }) => {
+        if (version !== validationVersion) return
+        for (let i = 0; i < toValidate.length; i++) {
+          const trimmed = toValidate[i]!
+          const err = result.find((r) => r.lineIndex === i)
+          if (err) {
+            lineCache.set(trimmed, {
+              kind: err.kind,
+              message: err.message,
+              quickFixes: err.quickFixes,
+              spanRel: err.spanRel,
+            })
+          } else {
+            lineCache.set(trimmed, 'valid')
+            const entry = resolved[i]
+            if (entry) resolvedCache.set(trimmed, entry)
+          }
+        }
+        setValidationResult(buildValidationResultFromCache(t))
       })
     } else {
-      setValidationResult(validateDeckList(t, props.display, props.printingDisplay))
+      // Fallback when no worker: run validation on main thread and merge into cache
+      const full = validateDeckList(t, props.display, props.printingDisplay)
+      for (let i = 0; i < full.lines.length; i++) {
+        const l = full.lines[i]!
+        const lineStr = lineStrings[i]
+        if (!lineStr) continue
+        const trimmed = lineStr.trim()
+        if (l.kind === 'error' || l.kind === 'warning') {
+          const spanRel = l.span ? { start: l.span.start - l.lineStart, end: l.span.end - l.lineStart } : undefined
+          lineCache.set(trimmed, { kind: l.kind, message: l.message, quickFixes: l.quickFixes, spanRel })
+        } else {
+          lineCache.set(trimmed, 'valid')
+          if (full.resolved?.[i]) resolvedCache.set(trimmed, full.resolved[i]!)
+        }
+      }
+      setValidationResult(buildValidationResultFromCache(t))
     }
   })
   const validation = createMemo<ListValidationResult | null>(() => validationResult())
@@ -351,7 +519,8 @@ export default function DeckEditor(props: {
     if (mode() !== 'edit') return null
     const text = debouncedDraft()
     if (!text.trim() || !props.display || hasValidationErrors()) return null
-    const result = importDeckList(text, props.display, props.printingDisplay)
+    const vr = validationResult()
+    const result = importDeckList(text, props.display, props.printingDisplay, vr ?? undefined)
     const diff = diffDeckList(result.candidates, props.instances)
     return { additions: diff.additions.length, removals: diff.removals.length }
   })
@@ -412,15 +581,18 @@ export default function DeckEditor(props: {
   }
 
   function handleEdit() {
+    clearLineCache()
     const text = serializedText()
     setBaselineText(text)
     setDraftText(text)
     writeDraftToStorage(props.listId, text)
+    writeBaselineToStorage(props.listId, text)
     // Defer debounced draft so UI can paint edit mode before validation fires
     setTimeout(() => setDebouncedDraft(text), 0)
   }
 
   function handleCancel() {
+    clearLineCache()
     setDraftText(null)
     setDebouncedDraft('')
     setBaselineText(null)
@@ -437,6 +609,7 @@ export default function DeckEditor(props: {
     setDraftText(base)
     setDebouncedDraft(base)
     writeDraftToStorage(props.listId, base)
+    writeBaselineToStorage(props.listId, base)
     if (debounceTimer) {
       clearTimeout(debounceTimer)
       debounceTimer = undefined

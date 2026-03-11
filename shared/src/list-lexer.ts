@@ -106,6 +106,15 @@ export interface ValidationResult extends ListValidationResult {
   resolved?: ParsedEntry[];
 }
 
+/** Wire format for line-centric validation (Spec 115). Only error/warning lines. */
+export interface LineValidationResult {
+  lineIndex: number;
+  kind: "error" | "warning";
+  message?: string;
+  quickFixes?: QuickFix[];
+  spanRel?: { start: number; end: number };
+}
+
 const CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
 /** TappedOut inline format: (SET) or (SET:num), *f*|*f-etch*|*e*|*f-pre*|*f-pp*, *CMDR*|*CMPN*, #Tag... */

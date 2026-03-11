@@ -7,6 +7,7 @@ import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 import type {
   ParsedEntry,
   LineValidation,
+  LineValidationResult,
   ValidationResult,
   QuickFix,
 } from "./list-lexer";
@@ -149,7 +150,8 @@ export function validateDeckListWithEngine(
     const lineStart = offset;
     const lineEnd = offset + line.length;
 
-    const cached = lineResultCache.get(line);
+    const cacheKey = line.trim();
+    const cached = lineResultCache.get(cacheKey);
     if (cached !== undefined) {
       lines.push(fromCacheable(cached, lineIndex, lineStart, lineEnd));
       if (cached.entry) resolved.push(cached.entry);
@@ -177,7 +179,7 @@ export function validateDeckListWithEngine(
     if (tokens.some((t) => t.type === ListTokenType.COMMENT)) {
       const lineResult = { lineIndex, lineStart, lineEnd, kind: "ok" as const };
       lines.push(lineResult);
-      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -189,7 +191,7 @@ export function validateDeckListWithEngine(
         message: "Missing card name",
       };
       lines.push(lineResult);
-      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -248,7 +250,7 @@ export function validateDeckListWithEngine(
       );
       lines.push(result.line);
       if (result.entry) resolved.push(result.entry);
-      lineResultCache.set(line, toCacheable(result.line, result.entry, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(result.line, result.entry, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -274,7 +276,7 @@ export function validateDeckListWithEngine(
           : {}),
       };
       lines.push(lineResult);
-      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -287,7 +289,7 @@ export function validateDeckListWithEngine(
         message: "No matching printing",
       };
       lines.push(lineResult);
-      lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -302,7 +304,7 @@ export function validateDeckListWithEngine(
           message: `Unknown card — "${nameTok.value}"`,
         };
         lines.push(lineResult);
-        lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+        lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
         offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
         continue;
       }
@@ -330,7 +332,7 @@ export function validateDeckListWithEngine(
         };
         lines.push(lineResult);
         resolved.push(entry);
-        lineResultCache.set(line, toCacheable(lineResult, entry, lineStart));
+        lineResultCache.set(cacheKey, toCacheable(lineResult, entry, lineStart));
       } else {
         const lineResult = {
           lineIndex, lineStart, lineEnd, kind: "error" as const,
@@ -338,7 +340,7 @@ export function validateDeckListWithEngine(
           message: "No matching printing",
         };
         lines.push(lineResult);
-        lineResultCache.set(line, toCacheable(lineResult, undefined, lineStart));
+        lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
       }
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
@@ -355,12 +357,62 @@ export function validateDeckListWithEngine(
     );
     lines.push(cascadeResult.line);
     if (cascadeResult.entry) resolved.push(cascadeResult.entry);
-    lineResultCache.set(line, toCacheable(cascadeResult.line, cascadeResult.entry, lineStart));
+    lineResultCache.set(cacheKey, toCacheable(cascadeResult.line, cascadeResult.entry, lineStart));
 
     offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
   }
 
   return { lines, resolved };
+}
+
+// ---------------------------------------------------------------------------
+// Line-centric validation (Spec 115) — validates only requested lines
+// ---------------------------------------------------------------------------
+
+export function validateLines(
+  lines: string[],
+  cardIndex: CardIndex,
+  printingIndex: PrintingIndex | null,
+  display: DisplayColumns,
+  printingDisplay: PrintingDisplayColumns | null,
+  cache: NodeCache,
+): { result: LineValidationResult[]; resolved: (ParsedEntry | null)[] } {
+  if (lines.length === 0) return { result: [], resolved: [] };
+
+  const text = lines.join("\n");
+  const fullResult = validateDeckListWithEngine(
+    text,
+    cardIndex,
+    printingIndex,
+    display,
+    printingDisplay,
+    cache,
+  );
+
+  const result: LineValidationResult[] = [];
+  const resolved: (ParsedEntry | null)[] = new Array(lines.length).fill(null);
+  let resolvedIdx = 0;
+
+  for (let i = 0; i < fullResult.lines.length; i++) {
+    const l = fullResult.lines[i]!;
+    if (l.kind === "error" || l.kind === "warning") {
+      const spanRel = l.span
+        ? { start: l.span.start - l.lineStart, end: l.span.end - l.lineStart }
+        : undefined;
+      result.push({
+        lineIndex: i,
+        kind: l.kind,
+        message: l.message,
+        quickFixes: l.quickFixes,
+        spanRel,
+      });
+    } else if (l.kind === "ok" && fullResult.resolved && resolvedIdx < fullResult.resolved.length) {
+      resolved[l.lineIndex] = fullResult.resolved[resolvedIdx]!;
+      resolvedIdx++;
+    }
+  }
+
+  return { result, resolved };
 }
 
 // ---------------------------------------------------------------------------
