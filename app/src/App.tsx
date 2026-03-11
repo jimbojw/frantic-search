@@ -456,6 +456,18 @@ function App() {
     })
   })
 
+  // Sync list masks to worker whenever listVersion or display changes. Ensures the worker
+  // receives list-update even when onChange ran with display null (e.g. before worker ready).
+  createEffect(() => {
+    listVersion()
+    const d = display()
+    if (!d) return
+    const pd = printingDisplay()
+    const view = cardListStore.getView()
+    const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
+    sendListUpdatesFor(worker, listIds, d, pd, cardListStore)
+  })
+
   createEffect(() => {
     if (view() !== 'card') {
       setCardTags(null)
