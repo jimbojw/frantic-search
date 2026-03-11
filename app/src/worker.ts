@@ -349,10 +349,10 @@ async function init(): Promise<void> {
       return
     }
     if (msg.type === 'validate-list') {
-      const { result, resolved } = validateLines(
+      const { result, indices } = validateLines(
         msg.lines, index, printingIndex, displayRef, printingDisplayRef, cache,
       )
-      post({ type: 'validate-result', requestId: msg.requestId, result, resolved })
+      post({ type: 'validate-result', requestId: msg.requestId, result, indices }, [indices.buffer])
       return
     }
     if (msg.type === 'get-tags-for-card') {

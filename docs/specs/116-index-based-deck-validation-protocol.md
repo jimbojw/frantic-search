@@ -1,6 +1,6 @@
 # Spec 116: Index-Based Deck Validation Protocol
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 109 (Deck Instance Model), Spec 114 (Worker-Based Deck List Validation), Spec 115 (Deck Editor Line-Centric Validation)
 
@@ -70,7 +70,11 @@ For error/warning lines, `result` already contains `LineValidationResult` entrie
 - `oracleIndex` = face index into `display.oracle_ids` (DisplayColumns is face-level; each row is a card face).
 - `scryfallIndex` = printing row index into `printingDisplay.scryfall_ids` (PrintingDisplayColumns is printing-row level).
 - For card-level resolution (no specific printing), `scryfallIndex` = -1; the oracle index is the face index used for resolution.
-- Implementation must ensure the worker's index output matches the main thread's column arrays. Document and test this alignment.
+- For DFC / transform cards, `oracleIndex` is the canonical face (front face row). Both face rows share the same `oracle_id`, so lookups via `display.oracle_ids[oracleIndex]` are correct regardless of which face was matched.
+- For printing-level resolution, `oracleIndex` = `printingDisplay.canonical_face_ref[printingRow]` (the canonical face the printing belongs to) and `scryfallIndex` = the printing row index.
+- Comment, empty, and section-header lines produce `-1, -1` in the indices array — the array is always `lines.length * 2` entries.
+- Main-thread conversion: `display.oracle_ids[oracleIndex]` → `oracle_id`, `printingDisplay.scryfall_ids[scryfallIndex]` → `scryfall_id` (when `scryfallIndex ≥ 0`). Finish and variant are derived from lexing on the main thread.
+- Tested in `shared/src/list-validate-engine.test.ts` § "Spec 116 — index alignment".
 
 ### 3. Protocol Change
 

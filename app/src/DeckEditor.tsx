@@ -2,6 +2,7 @@
 import { createSignal, createMemo, createEffect, onMount, onCleanup, Show, For } from 'solid-js'
 import {
   lexDeckList,
+  ListTokenType,
   detectDeckFormat,
   serializeArena,
   serializeMoxfield,
@@ -13,7 +14,6 @@ import {
   importDeckList,
   diffDeckList,
   parsedEntriesFromInstances,
-  validateDeckList,
 } from '@frantic-search/shared'
 import type {
   DisplayColumns,
@@ -28,6 +28,7 @@ import type {
   ParsedEntry,
   QuickFix,
 } from '@frantic-search/shared'
+import type { CardListStore } from './card-list-store'
 import ListHighlight from './ListHighlight'
 
 export type EditorMode = 'init' | 'display' | 'edit'
@@ -210,9 +211,10 @@ export default function DeckEditor(props: {
   metadata: ListMetadata | null
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
-  onApply: (draftText: string) => Promise<boolean>
+  cardListStore: CardListStore
+  onApplySuccess?: () => void
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
-  onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; resolved: (ParsedEntry | null)[] }>
+  onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onDraftActiveChange?: (active: boolean) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
@@ -236,7 +238,34 @@ export default function DeckEditor(props: {
     spanRel?: { start: number; end: number }
   }
   const lineCache = new Map<string, 'valid' | CachedError>()
-  const resolvedCache = new Map<string, ParsedEntry>()
+  /** Spec 116: worker-validated lines store indices; baseline-seeded store ParsedEntry */
+  type ResolvedCacheEntry = ParsedEntry | { oracleIndex: number; scryfallIndex: number }
+  const resolvedCache = new Map<string, ResolvedCacheEntry>()
+
+  /** Spec 116: convert indices to ParsedEntry; finish/variant from line lexing */
+  function indicesToParsedEntry(
+    oracleIndex: number,
+    scryfallIndex: number,
+    display: DisplayColumns,
+    printingDisplay: PrintingDisplayColumns | null,
+    line: string,
+  ): ParsedEntry {
+    const tokens = lexDeckList(line)
+    const quantityTok = tokens.find((t) => t.type === ListTokenType.QUANTITY)
+    const qtyStr = quantityTok?.value.replace(/x$/i, '') ?? '1'
+    const quantity = parseInt(qtyStr, 10) || 1
+    let finish: 'foil' | 'etched' | null = null
+    if (tokens.some((t) => t.type === ListTokenType.ETCHED_MARKER || t.type === ListTokenType.ETCHED_PAREN)) {
+      finish = 'etched'
+    } else if (tokens.some((t) => t.type === ListTokenType.FOIL_MARKER || t.type === ListTokenType.FOIL_PAREN || t.type === ListTokenType.FOIL_PRERELEASE_MARKER)) {
+      finish = 'foil'
+    }
+    const variantTok = tokens.find((t) => t.type === ListTokenType.VARIANT)
+    const variant = variantTok?.value ?? (tokens.some((t) => t.type === ListTokenType.FOIL_PRERELEASE_MARKER) ? 'prerelease' : undefined)
+    const oracle_id = oracleIndex >= 0 && display ? (display.oracle_ids[oracleIndex] ?? '') : ''
+    const scryfall_id = scryfallIndex >= 0 && printingDisplay ? (printingDisplay.scryfall_ids[scryfallIndex] ?? null) : null
+    return { oracle_id, scryfall_id, quantity, finish: finish ?? undefined, variant }
+  }
 
   function clearLineCache(): void {
     lineCache.clear()
@@ -357,7 +386,7 @@ export default function DeckEditor(props: {
     }
   })
 
-  // Build ValidationResult from draft + line cache (Spec 115 § 8)
+  // Build ValidationResult from draft + line cache (Spec 115 § 8, Spec 116 index conversion)
   function buildValidationResultFromCache(text: string): ValidationResult {
     const lines: LineValidation[] = []
     const resolved: ParsedEntry[] = []
@@ -372,7 +401,10 @@ export default function DeckEditor(props: {
       if (cached === 'valid') {
         lines.push({ lineIndex, lineStart, lineEnd, kind: 'ok' })
         const entry = resolvedCache.get(trimmed)
-        if (entry) resolved.push(entry)
+        if (entry) {
+          const pe = 'oracleIndex' in entry ? indicesToParsedEntry(entry.oracleIndex, entry.scryfallIndex, props.display!, props.printingDisplay, line) : entry
+          resolved.push(pe)
+        }
       } else if (cached && (cached.kind === 'error' || cached.kind === 'warning')) {
         const trimmedStartInLine = line.match(/^\s*/)?.[0].length ?? 0
         const lineVal: LineValidation = {
@@ -393,7 +425,10 @@ export default function DeckEditor(props: {
       } else {
         lines.push({ lineIndex, lineStart, lineEnd, kind: 'ok' })
         const entry = resolvedCache.get(trimmed)
-        if (entry) resolved.push(entry)
+        if (entry) {
+          const pe = 'oracleIndex' in entry ? indicesToParsedEntry(entry.oracleIndex, entry.scryfallIndex, props.display!, props.printingDisplay, line) : entry
+          resolved.push(pe)
+        }
       }
       offset = lineEnd + (lineIndex < lineStrings.length - 1 ? (text[lineEnd] === '\r' && text[lineEnd + 1] === '\n' ? 2 : 1) : 0)
     }
@@ -412,9 +447,8 @@ export default function DeckEditor(props: {
     const draft = draftText()
     const base = baselineText()
 
-    // Display→Edit or refresh: draft === baseline, known valid — no worker call
+    // Display→Edit or refresh: draft === baseline, known valid — no worker call (Spec 116 § 4: baseline seeding race)
     if (draft !== null && base !== null && draft === base) {
-      // Pre-seed cache from baseline if not already populated
       const baseLines = base.split(/\r?\n/)
       let needsSeed = false
       for (const line of baseLines) {
@@ -424,19 +458,45 @@ export default function DeckEditor(props: {
           break
         }
       }
-      if (needsSeed && props.display && props.instances.length > 0) {
-        const fmt = selectedFormat()
-        const entries = parsedEntriesFromInstances(props.instances, props.display, props.printingDisplay, fmt)
-        let idx = 0
-        for (const line of baseLines) {
-          const trimmed = line.trim()
-          if (!trimmed || trimmed.startsWith('//') || /^\s*[A-Z]+\s*:?\s*$/.test(trimmed)) continue
-          if (!lineCache.has(trimmed)) {
-            lineCache.set(trimmed, 'valid')
-            if (idx < entries.length && /^\d+x?\s/.test(trimmed)) {
-              resolvedCache.set(trimmed, entries[idx]!)
-              idx++
+      if (needsSeed && props.display) {
+        if (props.instances.length > 0) {
+          // Pre-seed from instances (Display→Edit with instances in memory)
+          const fmt = selectedFormat()
+          const entries = parsedEntriesFromInstances(props.instances, props.display, props.printingDisplay, fmt)
+          let idx = 0
+          for (const line of baseLines) {
+            const trimmed = line.trim()
+            if (!trimmed || trimmed.startsWith('//') || /^\s*[A-Z]+\s*:?\s*$/.test(trimmed)) continue
+            if (!lineCache.has(trimmed)) {
+              lineCache.set(trimmed, 'valid')
+              if (idx < entries.length && /^\d+x?\s/.test(trimmed)) {
+                resolvedCache.set(trimmed, entries[idx]!)
+                idx++
+              }
             }
+          }
+        } else if (props.onValidateRequest) {
+          // Baseline seeding race: instances not yet loaded, validate via worker
+          const toValidate = baseLines.map((l) => l.trim()).filter((trimmed) => trimmed !== '' && !lineCache.has(trimmed))
+          if (toValidate.length > 0) {
+            const version = ++validationVersion
+            props.onValidateRequest(toValidate).then(({ result, indices }) => {
+              if (version !== validationVersion) return
+              for (let i = 0; i < toValidate.length; i++) {
+                const trimmed = toValidate[i]!
+                const err = result.find((r) => r.lineIndex === i)
+                if (err) {
+                  lineCache.set(trimmed, { kind: err.kind, message: err.message, quickFixes: err.quickFixes, spanRel: err.spanRel })
+                } else {
+                  lineCache.set(trimmed, 'valid')
+                  const oracleIndex = indices[i * 2] ?? -1
+                  const scryfallIndex = indices[i * 2 + 1] ?? -1
+                  if (oracleIndex >= 0) resolvedCache.set(trimmed, { oracleIndex, scryfallIndex })
+                }
+              }
+              setValidationResult(buildValidationResultFromCache(t))
+            })
+            return
           }
         }
       }
@@ -459,7 +519,7 @@ export default function DeckEditor(props: {
 
     if (props.onValidateRequest) {
       const version = ++validationVersion
-      props.onValidateRequest(toValidate).then(({ result, resolved }) => {
+      props.onValidateRequest(toValidate).then(({ result, indices }) => {
         if (version !== validationVersion) return
         for (let i = 0; i < toValidate.length; i++) {
           const trimmed = toValidate[i]!
@@ -473,27 +533,17 @@ export default function DeckEditor(props: {
             })
           } else {
             lineCache.set(trimmed, 'valid')
-            const entry = resolved[i]
-            if (entry) resolvedCache.set(trimmed, entry)
+            const oracleIndex = indices[i * 2] ?? -1
+            const scryfallIndex = indices[i * 2 + 1] ?? -1
+            if (oracleIndex >= 0) resolvedCache.set(trimmed, { oracleIndex, scryfallIndex })
           }
         }
         setValidationResult(buildValidationResultFromCache(t))
       })
     } else {
-      // Fallback when no worker: run validation on main thread and merge into cache
-      const full = validateDeckList(t, props.display, props.printingDisplay)
-      for (let i = 0; i < full.lines.length; i++) {
-        const l = full.lines[i]!
-        const lineStr = lineStrings[i]
-        if (!lineStr) continue
-        const trimmed = lineStr.trim()
-        if (l.kind === 'error' || l.kind === 'warning') {
-          const spanRel = l.span ? { start: l.span.start - l.lineStart, end: l.span.end - l.lineStart } : undefined
-          lineCache.set(trimmed, { kind: l.kind, message: l.message, quickFixes: l.quickFixes, spanRel })
-        } else {
-          lineCache.set(trimmed, 'valid')
-          if (full.resolved?.[i]) resolvedCache.set(trimmed, full.resolved[i]!)
-        }
+      // Spec 116: Worker required; no fallback. Mark unvalidated lines as error so Apply is disabled.
+      for (const trimmed of toValidate) {
+        lineCache.set(trimmed, { kind: 'error', message: 'Validation unavailable' })
       }
       setValidationResult(buildValidationResultFromCache(t))
     }
@@ -526,7 +576,8 @@ export default function DeckEditor(props: {
     const text = debouncedDraft()
     if (!text.trim() || !props.display || hasValidationErrors()) return null
     const vr = validationResult()
-    const result = importDeckList(text, props.display, props.printingDisplay, vr ?? undefined)
+    if (!vr) return null
+    const result = importDeckList(text, props.display, props.printingDisplay, vr)
     const diff = diffDeckList(result.candidates, props.instances)
     return { additions: diff.additions.length, removals: diff.removals.length }
   })
@@ -642,18 +693,65 @@ export default function DeckEditor(props: {
 
   async function handleApply() {
     const text = draftText()
-    if (!text) return
+    if (!text || !props.display) return
     setApplyInProgress(true)
     try {
-      const success = await props.onApply(text)
-      if (success) {
-        const detected = detectedFormat()
-        if (detected) {
-          setSelectedFormat(detected)
-          writeFormatToStorage(detected)
+      // Spec 116 § 5: Check coverage — any valid line lacking resolved data → batch validate first
+      const lineStrings = text.split(/\r?\n/)
+      const cardLinesNeedingValidation: string[] = []
+      for (const line of lineStrings) {
+        const trimmed = line.trim()
+        if (!trimmed || trimmed.startsWith('//') || /^\s*[A-Z]+\s*:?\s*$/.test(trimmed)) continue
+        if (!/^\d+x?\s/.test(trimmed)) continue
+        if (lineCache.get(trimmed) === 'valid' && !resolvedCache.has(trimmed)) {
+          cardLinesNeedingValidation.push(trimmed)
         }
-        handleCancel()
       }
+      if (cardLinesNeedingValidation.length > 0) {
+        if (!props.onValidateRequest) return
+        const { result, indices } = await props.onValidateRequest(cardLinesNeedingValidation)
+        for (let i = 0; i < cardLinesNeedingValidation.length; i++) {
+          const trimmed = cardLinesNeedingValidation[i]!
+          const err = result.find((r) => r.lineIndex === i)
+          if (err) {
+            lineCache.set(trimmed, { kind: err.kind, message: err.message, quickFixes: err.quickFixes, spanRel: err.spanRel })
+          } else {
+            lineCache.set(trimmed, 'valid')
+            const oracleIndex = indices[i * 2] ?? -1
+            const scryfallIndex = indices[i * 2 + 1] ?? -1
+            if (oracleIndex >= 0) resolvedCache.set(trimmed, { oracleIndex, scryfallIndex })
+          }
+        }
+        if (cardLinesNeedingValidation.some((trimmed) => lineCache.get(trimmed) !== 'valid')) {
+          setValidationResult(buildValidationResultFromCache(text))
+          return
+        }
+      }
+
+      const validationResult = buildValidationResultFromCache(text)
+      const result = importDeckList(text, props.display, props.printingDisplay, validationResult)
+      const currentInstances = props.instances
+      const diff = diffDeckList(result.candidates, currentInstances)
+
+      await props.cardListStore.applyDiff(props.listId, diff.removals, diff.additions)
+
+      if (result.deckName || Object.keys(result.tagColors).length > 0) {
+        const meta = props.metadata
+        await props.cardListStore.updateListMetadata(props.listId, {
+          name: result.deckName ?? meta?.name ?? 'My List',
+          ...(meta?.description ? { description: meta.description } : {}),
+          ...(meta?.short_name ? { short_name: meta.short_name } : {}),
+          ...(Object.keys(result.tagColors).length > 0 ? { tag_colors: result.tagColors } : {}),
+        })
+      }
+
+      const detected = detectedFormat()
+      if (detected) {
+        setSelectedFormat(detected)
+        writeFormatToStorage(detected)
+      }
+      handleCancel()
+      props.onApplySuccess?.()
     } finally {
       setApplyInProgress(false)
     }

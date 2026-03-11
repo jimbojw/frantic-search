@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult, ParsedEntry } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
@@ -392,7 +392,7 @@ function App() {
   let serializeRequestId = 0
   const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
   let validateRequestId = 0
-  const validatePending = new Map<number, (r: { result: LineValidationResult[]; resolved: (ParsedEntry | null)[] }) => void>()
+  const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
 
   function serializeDeckList(instances: InstanceState[], format: DeckFormat): Promise<string> {
@@ -403,7 +403,7 @@ function App() {
     })
   }
 
-  function validateLines(lines: string[]): Promise<{ result: LineValidationResult[]; resolved: (ParsedEntry | null)[] }> {
+  function validateLines(lines: string[]): Promise<{ result: LineValidationResult[]; indices: Int32Array }> {
     const requestId = ++validateRequestId
     return new Promise((resolve) => {
       validatePending.set(requestId, resolve)
@@ -572,7 +572,7 @@ function App() {
         const cb = validatePending.get(msg.requestId)
         if (cb) {
           validatePending.delete(msg.requestId)
-          cb({ result: msg.result, resolved: msg.resolved })
+          cb({ result: msg.result, indices: msg.indices })
         }
         break
       }

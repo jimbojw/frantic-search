@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createMemo, createSignal } from 'solid-js'
-import type { DisplayColumns, InstanceState, LineValidationResult, ParsedEntry, PrintingDisplayColumns } from '@frantic-search/shared'
+import type { DisplayColumns, InstanceState, LineValidationResult, PrintingDisplayColumns } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
-import { DEFAULT_LIST_ID, importDeckList, diffDeckList } from '@frantic-search/shared'
+import { DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
 import DeckEditor from './DeckEditor'
 
@@ -14,7 +14,7 @@ export default function ListsPage(props: {
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
-  onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; resolved: (ParsedEntry | null)[] }>
+  onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onBack: () => void
 }) {
   const [_isDraftActive, setIsDraftActive] = createSignal(false)
@@ -38,26 +38,6 @@ export default function ListsPage(props: {
     props.listVersion
     return props.cardListStore.getView().lists.get(listId()) ?? null
   })
-
-  async function handleApply(draftText: string): Promise<boolean> {
-    const result = importDeckList(draftText, props.display, props.printingDisplay)
-    const currentInstances = instances()
-    const diff = diffDeckList(result.candidates, currentInstances)
-
-    await props.cardListStore.applyDiff(listId(), diff.removals, diff.additions)
-
-    if (result.deckName || Object.keys(result.tagColors).length > 0) {
-      const meta = metadata()
-      await props.cardListStore.updateListMetadata(listId(), {
-        name: result.deckName ?? meta?.name ?? 'My List',
-        ...(meta?.description ? { description: meta.description } : {}),
-        ...(meta?.short_name ? { short_name: meta.short_name } : {}),
-        ...(Object.keys(result.tagColors).length > 0 ? { tag_colors: result.tagColors } : {}),
-      })
-    }
-
-    return true
-  }
 
   return (
     <div class="mx-auto max-w-2xl px-4 py-6">
@@ -84,7 +64,8 @@ export default function ListsPage(props: {
         metadata={metadata()}
         display={props.display}
         printingDisplay={props.printingDisplay}
-        onApply={handleApply}
+        cardListStore={props.cardListStore}
+        onApplySuccess={undefined}
         onSerializeRequest={props.onSerializeRequest}
         onValidateRequest={props.onValidateRequest}
         onDraftActiveChange={setIsDraftActive}

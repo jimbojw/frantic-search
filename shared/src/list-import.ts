@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lexDeckList, ListTokenType } from "./list-lexer";
 import type { ListToken, ParsedEntry, ValidationResult } from "./list-lexer";
-import { validateDeckList } from "./list-validate";
 import { KNOWN_ZONES } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -80,8 +79,8 @@ function groupTokensByLine(text: string, tokens: ListToken[]): ListToken[][] {
 export function importDeckList(
   text: string,
   display: DisplayColumns | null,
-  printingDisplay: PrintingDisplayColumns | null,
-  validationResult?: ValidationResult | null
+  _printingDisplay: PrintingDisplayColumns | null,
+  validationResult: ValidationResult,
 ): ImportResult {
   const candidates: ImportCandidate[] = [];
   let deckName: string | null = null;
@@ -92,8 +91,7 @@ export function importDeckList(
   }
 
   const tokens = lexDeckList(text);
-  const validation = validationResult ?? validateDeckList(text, display, printingDisplay);
-  const resolved = validation.resolved ?? [];
+  const resolved = validationResult.resolved ?? [];
 
   const lineGroups = groupTokensByLine(text, tokens);
 
@@ -126,7 +124,7 @@ export function importDeckList(
     if (!hasQuantity || !hasName) continue;
 
     // Check if validation marked this line as an error
-    const lineValidation = validation.lines.find((l) => l.lineIndex === lineIdx);
+    const lineValidation = validationResult.lines.find((l) => l.lineIndex === lineIdx);
     if (lineValidation?.kind === "error") continue;
 
     // Consume the next resolved entry

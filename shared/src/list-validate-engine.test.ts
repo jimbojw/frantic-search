@@ -79,14 +79,130 @@ function validateLinesOnly(lines: string[], d = display, p: PrintingDisplayColum
 // ---------------------------------------------------------------------------
 
 describe("validateLines", () => {
-  test("returns only error/warning in result, resolved parallel to request", () => {
-    const { result, resolved } = validateLinesOnly(["1 Lightning Bolt", "1 UnknownCard"]);
+  test("returns only error/warning in result, indices strided per line", () => {
+    const { result, indices } = validateLinesOnly(["1 Lightning Bolt", "1 UnknownCard"]);
     expect(result).toHaveLength(1);
     expect(result[0]!.lineIndex).toBe(1);
     expect(result[0]!.kind).toBe("error");
-    expect(resolved).toHaveLength(2);
-    expect(resolved[0]).not.toBeNull();
-    expect(resolved[1]).toBeNull();
+    expect(indices).toHaveLength(4); // 2 lines * stride 2
+    expect(indices[0]).toBeGreaterThanOrEqual(0); // line 0: valid oracleIndex
+    expect(indices[2]).toBe(-1); // line 1: invalid
+    expect(indices[3]).toBe(-1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// § Spec 116: Index alignment
+// ---------------------------------------------------------------------------
+//
+// oracleIndex = face index into display.oracle_ids (face-level; each row is a card face).
+// scryfallIndex = printing row into printingDisplay.scryfall_ids (printing-row level).
+// For card-level resolution (no specific printing), scryfallIndex = -1.
+// The worker uses the same index space as the main thread's DisplayColumns /
+// PrintingDisplayColumns. Main-thread conversion:
+//   display.oracle_ids[oracleIndex]        → oracle_id string
+//   printingDisplay.scryfall_ids[scryfallIndex] → scryfall_id string (when ≥ 0)
+// ---------------------------------------------------------------------------
+
+describe("Spec 116 — index alignment", () => {
+  test("name-only: oracleIndex matches face row, scryfallIndex is -1", () => {
+    const result = validate("1 Lightning Bolt");
+    const { indices } = result;
+    expect(indices).toHaveLength(2);
+    // Lightning Bolt = face row 1
+    expect(indices[0]).toBe(1);
+    expect(display.oracle_ids[indices[0]!]).toBe("oid1");
+    // No specific printing → -1
+    expect(indices[1]).toBe(-1);
+  });
+
+  test("printing-level: oracleIndex is canonicalFace, scryfallIndex is printing row", () => {
+    const result = validate("1 Lightning Bolt (MH2) 261");
+    const { indices } = result;
+    expect(indices).toHaveLength(2);
+    // canonical_face_ref[0] = 1 (printing row 0 is Bolt MH2 261)
+    expect(indices[0]).toBe(1);
+    expect(display.oracle_ids[indices[0]!]).toBe("oid1");
+    // Printing row 0 → scryfall_id "p-a"
+    expect(indices[1]).toBe(0);
+    expect(pd.scryfall_ids[indices[1]!]).toBe("p-a");
+  });
+
+  test("Sol Ring printing-level indices align with display columns", () => {
+    const result = validate("1 Sol Ring (C21) 280");
+    const { indices } = result;
+    expect(indices[0]).toBe(3); // face row 3
+    expect(display.oracle_ids[indices[0]!]).toBe("oid3");
+    expect(indices[1]).toBe(3); // printing row 3 → "p-d"
+    expect(pd.scryfall_ids[indices[1]!]).toBe("p-d");
+  });
+
+  test("error line yields -1, -1", () => {
+    const result = validate("1 UnknownCard");
+    const { indices } = result;
+    expect(indices[0]).toBe(-1);
+    expect(indices[1]).toBe(-1);
+  });
+
+  test("comment and empty lines yield -1, -1", () => {
+    const result = validate("// comment\n\n1 Lightning Bolt");
+    const { indices } = result;
+    expect(indices).toHaveLength(6); // 3 lines * stride 2
+    // comment
+    expect(indices[0]).toBe(-1);
+    expect(indices[1]).toBe(-1);
+    // empty
+    expect(indices[2]).toBe(-1);
+    expect(indices[3]).toBe(-1);
+    // Lightning Bolt
+    expect(indices[4]).toBe(1);
+    expect(indices[5]).toBe(-1);
+  });
+
+  test("DFC resolves to canonical face (front face index)", () => {
+    const result = validate("1 Ayara, Widow of the Realm // Ayara, Furnace Queen");
+    const { indices } = result;
+    // Ayara: face rows 7 (front) and 8 (back), canonical_face = 7 for both
+    // resolveNameOnly uses faceIdx from evaluator — should be 7 (front) or canonical face
+    expect(indices[0]).toBe(7);
+    expect(display.oracle_ids[indices[0]!]).toBe("oid7");
+  });
+
+  test("multiple lines produce correctly strided indices", () => {
+    const result = validate("2 Lightning Bolt\n3 Sol Ring");
+    const { indices } = result;
+    expect(indices).toHaveLength(4); // 2 lines * stride 2
+    expect(indices[0]).toBe(1);
+    expect(indices[1]).toBe(-1); // name-only
+    expect(indices[2]).toBe(3);
+    expect(indices[3]).toBe(-1); // name-only
+  });
+
+  test("indices from validateLines match validateDeckListWithEngine", () => {
+    const lines = ["1 Lightning Bolt (MH2) 261", "1 Sol Ring"];
+    const { indices: lineIndices } = validateLinesOnly(lines);
+    const { indices: fullIndices } = validate(lines.join("\n"));
+    expect(lineIndices).toHaveLength(fullIndices.length);
+    for (let i = 0; i < lineIndices.length; i++) {
+      expect(lineIndices[i]).toBe(fullIndices[i]);
+    }
+  });
+
+  test("main-thread conversion: indices → oracle_id / scryfall_id", () => {
+    const result = validate("1 Lightning Bolt (MH2) 261\n1 Sol Ring");
+    const { indices } = result;
+    const oracleIdx0 = indices[0]!;
+    const scryfallIdx0 = indices[1]!;
+    const oracleIdx1 = indices[2]!;
+    const scryfallIdx1 = indices[3]!;
+
+    // Line 0: printing-level
+    expect(display.oracle_ids[oracleIdx0]).toBe("oid1");
+    expect(pd.scryfall_ids[scryfallIdx0]).toBe("p-a");
+
+    // Line 1: name-only (no printing)
+    expect(display.oracle_ids[oracleIdx1]).toBe("oid3");
+    expect(scryfallIdx1).toBe(-1);
   });
 });
 

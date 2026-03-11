@@ -71,9 +71,8 @@ export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, 
 export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
-export { lexDeckList, buildListSpans } from "./list-lexer";
-export type { ListToken, ListTokenType, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
-export { validateDeckList } from "./list-validate";
+export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
+export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
 export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";
 export { detectDeckFormat } from "./list-format";
 export type { DeckFormat } from "./list-format";

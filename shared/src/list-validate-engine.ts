@@ -85,6 +85,9 @@ interface CachedLineResult {
   quickFixes?: QuickFix[];
   spanRel?: { start: number; end: number };
   entry?: ParsedEntry;
+  /** Spec 116: indices for worker→main transfer. -1 for invalid. */
+  oracleIndex?: number;
+  scryfallIndex?: number;
 }
 
 const lineResultCache = new Map<string, CachedLineResult>();
@@ -93,6 +96,8 @@ function toCacheable(
   line: LineValidation,
   entry: ParsedEntry | undefined,
   lineStart: number,
+  oracleIndex?: number,
+  scryfallIndex?: number,
 ): CachedLineResult {
   const cached: CachedLineResult = { kind: line.kind };
   if (line.message) cached.message = line.message;
@@ -103,6 +108,8 @@ function toCacheable(
       end: line.span.end - lineStart,
     };
   if (entry) cached.entry = entry;
+  if (oracleIndex !== undefined) cached.oracleIndex = oracleIndex;
+  if (scryfallIndex !== undefined) cached.scryfallIndex = scryfallIndex;
   return cached;
 }
 
@@ -132,6 +139,9 @@ function fromCacheable(
 // Engine-based validation (Spec 114)
 // ---------------------------------------------------------------------------
 
+/** Spec 116: per-line indices for Transferable. Stride 2: [oracleIndex, scryfallIndex]. */
+export type ValidationIndices = Int32Array;
+
 export function validateDeckListWithEngine(
   text: string,
   cardIndex: CardIndex,
@@ -139,9 +149,10 @@ export function validateDeckListWithEngine(
   display: DisplayColumns,
   printingDisplay: PrintingDisplayColumns | null,
   cache: NodeCache,
-): ValidationResult {
+): ValidationResult & { indices: ValidationIndices } {
   const lines: LineValidation[] = [];
   const resolved: ParsedEntry[] = [];
+  const lineIndices: number[] = [];
 
   const lineStrings = text.split(/\r?\n/);
   let offset = 0;
@@ -156,6 +167,10 @@ export function validateDeckListWithEngine(
     if (cached !== undefined) {
       lines.push(fromCacheable(cached, lineIndex, lineStart, lineEnd));
       if (cached.entry) resolved.push(cached.entry);
+      lineIndices.push(
+        cached.oracleIndex ?? -1,
+        cached.scryfallIndex ?? -1,
+      );
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -181,6 +196,7 @@ export function validateDeckListWithEngine(
       const lineResult = { lineIndex, lineStart, lineEnd, kind: "ok" as const };
       lines.push(lineResult);
       lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+      lineIndices.push(-1, -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -193,11 +209,14 @@ export function validateDeckListWithEngine(
       };
       lines.push(lineResult);
       lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+      lineIndices.push(-1, -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
 
     if (!quantityTok || !nameTok) {
+      lines.push({ lineIndex, lineStart, lineEnd, kind: "ok" as const });
+      lineIndices.push(-1, -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -252,7 +271,8 @@ export function validateDeckListWithEngine(
       );
       lines.push(result.line);
       if (result.entry) resolved.push(result.entry);
-      lineResultCache.set(cacheKey, toCacheable(result.line, result.entry, lineStart));
+      lineResultCache.set(cacheKey, toCacheable(result.line, result.entry, lineStart, result.oracleIndex, result.scryfallIndex));
+      lineIndices.push(result.oracleIndex ?? -1, result.scryfallIndex ?? -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -279,6 +299,7 @@ export function validateDeckListWithEngine(
       };
       lines.push(lineResult);
       lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+      lineIndices.push(-1, -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -292,6 +313,7 @@ export function validateDeckListWithEngine(
       };
       lines.push(lineResult);
       lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+      lineIndices.push(-1, -1);
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
     }
@@ -307,10 +329,12 @@ export function validateDeckListWithEngine(
         };
         lines.push(lineResult);
         lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+        lineIndices.push(-1, -1);
         offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
         continue;
       }
-      const canonicalFace = display.canonical_face[nameResult.indices[0]!] ?? nameResult.indices[0]!;
+      const faceIdx = nameResult.indices[0]!;
+      const canonicalFace = display.canonical_face[faceIdx] ?? faceIdx;
       const fallbackPi = findAnyPrintingInSetEngine(
         effectiveSetCode, canonicalFace, printingDisplay!, preferFoil,
       );
@@ -321,7 +345,7 @@ export function validateDeckListWithEngine(
         const quantity = parseInt(qtyStr, 10) || 1;
         const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
         const entry: ParsedEntry = {
-          oracle_id: display.oracle_ids[nameResult.indices[0]!] ?? "",
+          oracle_id: display.oracle_ids[faceIdx] ?? "",
           scryfall_id: scryfallId,
           quantity,
           finish: finish ?? undefined,
@@ -334,7 +358,8 @@ export function validateDeckListWithEngine(
         };
         lines.push(lineResult);
         resolved.push(entry);
-        lineResultCache.set(cacheKey, toCacheable(lineResult, entry, lineStart));
+        lineResultCache.set(cacheKey, toCacheable(lineResult, entry, lineStart, canonicalFace, fallbackPi));
+        lineIndices.push(canonicalFace, fallbackPi);
       } else {
         const lineResult = {
           lineIndex, lineStart, lineEnd, kind: "error" as const,
@@ -343,6 +368,7 @@ export function validateDeckListWithEngine(
         };
         lines.push(lineResult);
         lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+        lineIndices.push(-1, -1);
       }
       offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
       continue;
@@ -359,12 +385,14 @@ export function validateDeckListWithEngine(
     );
     lines.push(cascadeResult.line);
     if (cascadeResult.entry) resolved.push(cascadeResult.entry);
-    lineResultCache.set(cacheKey, toCacheable(cascadeResult.line, cascadeResult.entry, lineStart));
+    lineResultCache.set(cacheKey, toCacheable(cascadeResult.line, cascadeResult.entry, lineStart, cascadeResult.oracleIndex, cascadeResult.scryfallIndex));
+    lineIndices.push(cascadeResult.oracleIndex ?? -1, cascadeResult.scryfallIndex ?? -1);
 
     offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
   }
 
-  return { lines, resolved };
+  const indices = new Int32Array(lineIndices);
+  return { lines, resolved, indices };
 }
 
 // ---------------------------------------------------------------------------
@@ -378,8 +406,8 @@ export function validateLines(
   display: DisplayColumns,
   printingDisplay: PrintingDisplayColumns | null,
   cache: NodeCache,
-): { result: LineValidationResult[]; resolved: (ParsedEntry | null)[] } {
-  if (lines.length === 0) return { result: [], resolved: [] };
+): { result: LineValidationResult[]; indices: Int32Array } {
+  if (lines.length === 0) return { result: [], indices: new Int32Array(0) };
 
   const text = lines.join("\n");
   const fullResult = validateDeckListWithEngine(
@@ -392,9 +420,6 @@ export function validateLines(
   );
 
   const result: LineValidationResult[] = [];
-  const resolved: (ParsedEntry | null)[] = new Array(lines.length).fill(null);
-  let resolvedIdx = 0;
-
   for (let i = 0; i < fullResult.lines.length; i++) {
     const l = fullResult.lines[i]!;
     if (l.kind === "error" || l.kind === "warning") {
@@ -408,13 +433,10 @@ export function validateLines(
         quickFixes: l.quickFixes,
         spanRel,
       });
-    } else if (l.kind === "ok" && fullResult.resolved && resolvedIdx < fullResult.resolved.length) {
-      resolved[l.lineIndex] = fullResult.resolved[resolvedIdx]!;
-      resolvedIdx++;
     }
   }
 
-  return { result, resolved };
+  return { result, indices: fullResult.indices };
 }
 
 // ---------------------------------------------------------------------------
@@ -434,19 +456,21 @@ function resolveNameOnly(
   lineEnd: number,
   variantTok: ListToken | undefined,
   foilPrereleaseMarkerTok: ListToken | undefined,
-): { line: LineValidation; entry?: ParsedEntry } {
+): { line: LineValidation; entry?: ParsedEntry; oracleIndex?: number; scryfallIndex?: number } {
   const evalResult = cache.evaluate(exactNode(nameTok.value));
 
   if (evalResult.indices.length > 0) {
     const faceIdx = evalResult.indices[0]!;
     const oracleId = display.oracle_ids[faceIdx] ?? "";
     let scryfallId: string | null = null;
+    let scryfallIdx = -1;
 
     if (printingDisplay?.alternate_name_to_printing_indices) {
       const altNorm = nameTok.value.toLowerCase().replace(/\s+/g, " ").trim().replace(/[^a-z0-9]/g, "");
       const pis = printingDisplay.alternate_name_to_printing_indices[altNorm];
       if (pis && pis.length > 0) {
-        scryfallId = printingDisplay.scryfall_ids[pis[0]!] ?? null;
+        scryfallIdx = pis[0]!;
+        scryfallId = printingDisplay.scryfall_ids[scryfallIdx] ?? null;
       }
     }
 
@@ -462,6 +486,8 @@ function resolveNameOnly(
         finish: finish ?? undefined,
         variant: variantValue,
       },
+      oracleIndex: faceIdx,
+      scryfallIndex: scryfallIdx >= 0 ? scryfallIdx : -1,
     };
   }
 
@@ -475,6 +501,8 @@ function resolveNameOnly(
         message: `Unknown card — "${nameTok.value}"`,
         quickFixes: [{ label: `Use "${approxName}"`, replacement: `${quantityTok.value} ${approxName}` }],
       },
+      oracleIndex: -1,
+      scryfallIndex: -1,
     };
   }
 
@@ -484,6 +512,8 @@ function resolveNameOnly(
       span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
       message: `Unknown card — "${nameTok.value}"`,
     },
+    oracleIndex: -1,
+    scryfallIndex: -1,
   };
 }
 
@@ -554,7 +584,7 @@ function resolveCascade(
   foilPrereleaseMarkerTok: ListToken | undefined,
   alterMarkerTok: ListToken | undefined,
   preferFoil: boolean,
-): { line: LineValidation; entry?: ParsedEntry } {
+): { line: LineValidation; entry?: ParsedEntry; oracleIndex?: number; scryfallIndex?: number } {
   const nameExact = exactNode(nameTok.value);
   const setField = fieldNode("set", setCodeForLookup.toLowerCase());
   const collectorField = collectorNum ? fieldNode("cn", collectorNum) : null;
@@ -591,6 +621,8 @@ function resolveCascade(
           message: `Collector number doesn't match — \`${collectorNum}\` in \`${setCodeForDisplay}\``,
           ...(quickFixes.length > 0 ? { quickFixes } : {}),
         },
+        oracleIndex: -1,
+        scryfallIndex: -1,
       };
     }
 
@@ -613,6 +645,8 @@ function resolveCascade(
               message: `Card name not recognized; set+collector point to "${correctName}"`,
               quickFixes: [{ label: `Use "${correctName}"`, replacement: replacement.trimEnd() }],
             },
+            oracleIndex: -1,
+            scryfallIndex: -1,
           };
         }
         // Case 2: name valid but doesn't match set+collector
@@ -637,6 +671,8 @@ function resolveCascade(
               { label: `Use "${correctName}"`, replacement: (line.slice(0, nameTok.start) + correctName + line.slice(nameTok.end)).trimEnd() },
             ],
           },
+          oracleIndex: -1,
+          scryfallIndex: -1,
         };
       }
     }
@@ -675,6 +711,8 @@ function resolveCascade(
         finish: finish ?? undefined,
         variant: variantValue,
       },
+      oracleIndex: faceIdx,
+      scryfallIndex: -1,
     };
   }
 
@@ -695,6 +733,8 @@ function resolveCascade(
             message: `Card name not recognized; set+collector point to "${correctName}"`,
             quickFixes: [{ label: `Use "${correctName}"`, replacement: replacement.trimEnd() }],
           },
+          oracleIndex: -1,
+          scryfallIndex: -1,
         };
       }
     }
@@ -710,6 +750,8 @@ function resolveCascade(
         message: `Unknown card — "${nameTok.value}"`,
         quickFixes: [{ label: `Use "${approxName}"`, replacement: (line.slice(0, nameTok.start) + approxName + line.slice(nameTok.end)).trimEnd() }],
       },
+      oracleIndex: -1,
+      scryfallIndex: -1,
     };
   }
 
@@ -719,6 +761,8 @@ function resolveCascade(
       span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
       message: `Unknown card — "${nameTok.value}"`,
     },
+    oracleIndex: -1,
+    scryfallIndex: -1,
   };
 }
 
@@ -737,7 +781,7 @@ function makeSuccess(
   lineEnd: number,
   variantTok: ListToken | undefined,
   foilPrereleaseMarkerTok: ListToken | undefined,
-): { line: LineValidation; entry: ParsedEntry } {
+): { line: LineValidation; entry: ParsedEntry; oracleIndex: number; scryfallIndex: number } {
   const canonicalFace = printingDisplay.canonical_face_ref[printingRow]!;
   const oracleId = display.oracle_ids[canonicalFace] ?? "";
   const scryfallId = printingDisplay.scryfall_ids[printingRow] ?? null;
@@ -753,6 +797,8 @@ function makeSuccess(
       finish: finish ?? undefined,
       variant: variantValue,
     },
+    oracleIndex: canonicalFace,
+    scryfallIndex: printingRow,
   };
 }
 
