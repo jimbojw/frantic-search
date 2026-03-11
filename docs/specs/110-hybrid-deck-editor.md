@@ -95,14 +95,13 @@ Mode is derived from two inputs — whether a draft exists and whether the inter
 
 ### 3. Toolbar
 
-A horizontal bar above the textarea. All four actions are always visible, ordered left-to-right: **Revert**, **Edit**, **Apply**, **Copy** (Copy right-aligned). Buttons are conditionally disabled/deemphasized by mode:
+**Modified by Spec 113.** A horizontal bar above the textarea. Layout and button placement depend on mode — see Spec 113 § 1 for the full design. In brief:
 
-| Action | Init Mode | Display Mode | Edit Mode |
-|--------|-----------|-------------|-----------|
-| **Revert** | Disabled | Disabled | Enabled; discards draft, returns to Display or Init |
-| **Edit** | Disabled | Enabled (pencil icon); enters Edit mode | Disabled |
-| **Apply** | Disabled | Disabled | Enabled when validation reports zero errors, disabled otherwise |
-| **Copy** | Disabled | Enabled; copies rendered text to clipboard | Enabled; copies draft text to clipboard |
+| Mode | Left | Right |
+|------|------|-------|
+| Display | Edit (primary) | Copy |
+| Edit, no changes | Cancel | Copy |
+| Edit, with changes | Revert | Apply (primary), Copy |
 
 Apply invokes an `onApply(draftText: string)` callback. The parent owns the diff/commit logic (follow-on spec). The callback returns a boolean (or Promise) indicating success; on success, the editor clears the draft and transitions to Display or Init depending on whether the resulting list has instances.
 
@@ -286,3 +285,4 @@ interface DeckEditorProps {
 - 2026-03-10: Error lines show 1-based line numbers (L11:) and syntax highlighting; line block uses same background as textarea for visual consistency.
 - 2026-03-10: Error display reorganized into 2-column grid (line number | content); removed border/padding from highlighted lines; added "Error: " prefix to messages.
 - 2026-03-10: Toolbar and Status box redesigned per Spec 113. Toolbar reduced to Edit and Copy only; Revert, Cancel, and Apply moved into the Status box with contextual placement.
+- 2026-03-10: Spec 113 revised. All actions (Edit, Cancel, Revert, Apply, Copy) moved to toolbar. Status box content-only. Flush toolbar (single border, contiguous buttons). Three-part layout TOOLBAR | STATUS | DECK LIST with shared borders.

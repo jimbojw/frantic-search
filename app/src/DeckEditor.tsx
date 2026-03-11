@@ -671,34 +671,76 @@ export default function DeckEditor(props: {
   }
 
   return (
-    <div class="flex flex-col gap-2">
-      {/* Toolbar — Edit, Copy only (Spec 113) */}
-      <div class="flex items-center gap-1.5 min-h-[32px]">
-        {/* Edit — enabled in Display mode; primary (blue) when enabled */}
-        <button
-          type="button"
-          onClick={handleEdit}
-          disabled={mode() !== 'display'}
-          class={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border transition-colors ${
-            mode() === 'display'
-              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600'
-              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent'
-          }`}
-          aria-label="Edit deck list"
-        >
-          <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-          </svg>
-          Edit
-        </button>
-
-        {/* Copy — enabled in Display and Edit modes */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          disabled={mode() === 'init'}
-          class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent ml-auto"
-        >
+    <div class="flex flex-col">
+      {/* TOOLBAR — flush bar, all actions (Spec 113 revised) */}
+      <div class="flex items-stretch border border-gray-200 dark:border-gray-600 rounded-t-lg overflow-hidden bg-gray-50 dark:bg-gray-800/50">
+        {/* Left group */}
+        <div class="flex">
+          <Show when={mode() === 'display'} fallback={null}>
+            <button
+              type="button"
+              onClick={handleEdit}
+              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              aria-label="Edit deck list"
+            >
+              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+              </svg>
+              Edit
+            </button>
+          </Show>
+          <Show when={mode() === 'edit' && !hasChanges()} fallback={null}>
+            <button
+              type="button"
+              onClick={handleCancel}
+              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Cancel editing"
+            >
+              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </button>
+          </Show>
+          <Show when={mode() === 'edit' && hasChanges()} fallback={null}>
+            <button
+              type="button"
+              onClick={handleRevert}
+              disabled={baselineText() === null}
+              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+              aria-label="Revert changes"
+            >
+              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+              </svg>
+              Revert
+            </button>
+          </Show>
+        </div>
+        <div class="flex-1" aria-hidden="true" />
+        {/* Right group — Apply (when valid) + Copy */}
+        <div class="flex">
+          <Show when={mode() === 'edit' && hasChanges() && !hasValidationErrors()} fallback={null}>
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={applyInProgress()}
+              class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500 border-l border-gray-200 dark:border-gray-600"
+              aria-label="Apply changes"
+            >
+              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+              {applyInProgress() ? 'Applying…' : 'Apply'}
+            </button>
+          </Show>
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={mode() === 'init'}
+            class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent border-l border-gray-200 dark:border-gray-600"
+            aria-label="Copy to clipboard"
+          >
             <Show
               when={!copied()}
               fallback={
@@ -712,13 +754,14 @@ export default function DeckEditor(props: {
               </svg>
             </Show>
             {copied() ? 'Copied!' : 'Copy'}
-        </button>
+          </button>
+        </div>
       </div>
 
-      {/* Status box — mode-appropriate info and actions (Spec 113) */}
+      {/* STATUS — mode-appropriate info only (no buttons) */}
       <div
         classList={{
-          'px-3 py-2 rounded border text-sm min-h-[2.5rem] flex flex-col gap-2': true,
+          'px-3 py-2 border-x border-b text-sm min-h-[2.5rem] flex flex-col gap-2': true,
           'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200': mode() === 'edit' && validationErrors().length > 0,
           'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400': mode() !== 'edit' || validationErrors().length === 0,
         }}
@@ -727,73 +770,13 @@ export default function DeckEditor(props: {
           <p>List is empty. Paste a deck list or add cards from search results.</p>
         </Show>
         <Show when={mode() === 'display'} fallback={null}>
-          <div class="flex flex-col gap-2">
-            <div class="flex flex-wrap gap-1.5">
-              <For each={ALL_FORMATS}>
-                {(fmt) => {
-                  const isSelected = () => selectedFormat() === fmt.id
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => handleFormatSelect(fmt.id)}
-                      class={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
-                        isSelected()
-                          ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-                          : 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer'
-                      }`}
-                    >
-                      {fmt.label}
-                    </button>
-                  )
-                }}
-              </For>
-            </div>
-            <p>
-              {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+          <p>
+            {props.instances.length} card{props.instances.length !== 1 ? 's' : ''}
+          </p>
         </Show>
         <Show when={mode() === 'edit'} fallback={null}>
           <div class="flex flex-col gap-2">
-            {/* Edit mode: buttons on top row */}
-            <div class="flex flex-wrap items-center gap-2">
-              <Show when={!hasChanges()} fallback={null}>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </Show>
-              <Show when={hasChanges()} fallback={null}>
-                <button
-                  type="button"
-                  onClick={handleRevert}
-                  disabled={baselineText() === null}
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                  </svg>
-                  Revert
-                </button>
-              </Show>
-              <Show when={hasChanges() && !hasValidationErrors()} fallback={null}>
-                <button
-                  type="button"
-                  onClick={handleApply}
-                  disabled={applyInProgress()}
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded border bg-blue-600 text-white border-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  {applyInProgress() ? 'Applying…' : 'Apply'}
-                </button>
-              </Show>
-            </div>
-            {/* Edit mode: status message on second row */}
+            {/* Edit mode: status message */}
             <div class="text-gray-500 dark:text-gray-400">
               <Show when={isValidating()} fallback={null}>
                 Validating…
@@ -903,8 +886,37 @@ export default function DeckEditor(props: {
         </Show>
       </div>
 
-      {/* Textarea with syntax-highlighting overlay — auto-grows to avoid scroll (keeps overlay in sync) */}
-      <div class="grid overflow-hidden relative rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 overscroll-contain">
+      {/* DISPLAY FORMATS — format chips (Display mode only) */}
+      <Show when={mode() === 'display'} fallback={null}>
+        <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 border-x border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm min-w-0">
+          <span class="text-gray-600 dark:text-gray-400 font-medium shrink-0 self-center">
+            Display:
+          </span>
+          <div class="flex flex-wrap gap-2 min-w-0">
+            <For each={ALL_FORMATS}>
+              {(fmt) => {
+                const isSelected = () => selectedFormat() === fmt.id
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleFormatSelect(fmt.id)}
+                    class={`inline-flex items-center justify-center min-h-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
+                      isSelected()
+                        ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
+                        : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    {fmt.label}
+                  </button>
+                )
+              }}
+            </For>
+          </div>
+        </div>
+      </Show>
+
+      {/* DECK LIST — textarea with syntax-highlighting overlay */}
+      <div class="grid overflow-hidden relative rounded-b-lg border border-t-0 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 overscroll-contain">
         <div class="hl-layer overflow-hidden whitespace-pre-wrap break-words p-3 min-h-[200px]">
           <ListHighlight
             text={highlightText()}

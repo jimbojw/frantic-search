@@ -6,61 +6,69 @@
 
 ## Goal
 
-Simplify the Deck Editor toolbar to two persistent actions (Edit, Copy) and move all edit-mode–specific actions (Cancel, Revert, Apply) into the Status box. The Status box becomes the single place for contextual feedback and actions during editing.
+Unify the Deck Editor layout into three contiguous parts: **TOOLBAR** | **STATUS** | **DECK LIST**. All actions live in a flush toolbar (no bordered-box illusion). The Status box displays mode-appropriate information only — no buttons.
 
 ## Background
 
-Spec 110 placed Revert, Edit, Apply, and Copy in the toolbar. The Status box displayed validation errors and diff summary but no actions. This predates the Status box as the natural home for contextual controls. Consolidating edit-mode actions into the Status box reduces toolbar clutter and keeps actions co-located with the feedback they affect.
+Spec 110 placed Revert, Edit, Apply, and Copy in the toolbar. A prior revision of this spec moved Cancel, Revert, and Apply into the Status box. The current design returns all actions to the toolbar for a cleaner separation: toolbar = actions, status = feedback. The toolbar uses a flush, segmented-control style (single border, buttons contiguous to edges) to avoid the optical illusion of bordered buttons within a bordered box.
+
+## Layout
+
+Three or four contiguous sections with shared borders (no gaps):
+
+1. **TOOLBAR** — Flush bar of action buttons. Rounded top corners.
+2. **STATUS** — Mode-appropriate info (help text, card count, edit messages, error table). Connects to toolbar and deck list (or Display Formats when in Display mode).
+3. **DISPLAY FORMATS** — Display mode only. Two-column bar: `| Display: | [Arena] [Moxfield] … |`. Chips use MenuDrawer styling (min-h-11, rounded, gray/blue). Label center-aligns vertically when chips wrap on mobile.
+4. **DECK LIST** — Textarea with syntax-highlight overlay. Rounded bottom corners.
 
 ## Design
 
 ### 1. Toolbar
 
-The toolbar contains **only** two buttons, always visible (when not Init):
+The toolbar contains all actions. Layout: left group … right group. Copy is always on the right; Apply (when shown) sits immediately left of Copy. Primary actions (Edit, Apply) use attention styling (blue fill).
 
-| Button | Init | Display | Edit |
-|--------|------|---------|------|
-| **Edit** | Disabled | Enabled (primary/blue); enters Edit mode | Disabled |
-| **Copy** | Disabled | Enabled; copies rendered text | Enabled; copies draft text |
+| Mode | Left | Right |
+|------|------|-------|
+| **Display** | `[ Edit * ]` (pencil icon) | `[ Copy ]` |
+| **Edit, no changes** | `[ Cancel ]` (X icon) | `[ Copy ]` |
+| **Edit, with changes** | `[ Revert ]` (↶ icon) | `[ Apply * ]` `[ Copy ]` |
 
-Layout: `[ Edit ]` … `[ Copy ]` — Copy is right-aligned (e.g. `ml-auto`) to create visual separation.
+`*` = primary/attention styling.
 
-Revert, Cancel, and Apply are **removed** from the toolbar.
+- **Edit** — Display mode only. Enters Edit mode.
+- **Cancel** — Edit mode, no changes. Exits Edit mode (clears draft, returns to Display or Init).
+- **Revert** — Edit mode, has changes. Resets draft to baseline; user stays in Edit mode.
+- **Apply** — Edit mode, has changes, no validation errors. Commits changes.
+- **Copy** — Display and Edit modes (disabled in Init). Copies rendered or draft text.
 
-### 2. Status Box — Edit Mode States
+**Flush bar:** Single border around the toolbar. Buttons have no individual borders; they fill the bar edge-to-edge. Right-group buttons are separated from the left by a flex spacer; Apply and Copy share a `border-l` between them. Avoids "bordered button within bordered box."
 
-In Edit mode, the Status box shows different content and buttons depending on whether the user has made changes and whether validation passes.
+**Error state:** Toolbar styling is unchanged when validation fails. The Status box turns red; Apply is simply hidden (errors block apply). Industry standard: keep toolbar neutral, surface errors in the feedback area.
+
+### 2. Status Box — Content Only (No Buttons)
+
+In Edit mode, the Status box shows messages and the error table. No buttons.
 
 #### 2a. Edit mode, no changes
 
 ```
-[ Cancel ]
-Editing: No changes
+Editing: No changes (Moxfield)
 ```
-
-- **Cancel** — Exits Edit mode (clears draft, returns to Display or Init). Same semantics as current Revert when there is nothing to revert.
-- **Message** — "Editing: No changes" (colon, not ellipsis; ellipsis implies a background process).
 
 #### 2b. Edit mode, changes, validation errors
 
 ```
-[ Revert ]
+Editing: N error(s) (Moxfield)
 <error table as currently rendered>
 ```
 
-- **Revert** — Resets the draft text to the committed state (last Apply or initial Edit). User stays in Edit mode. After Revert, the state becomes "no changes" and the UI switches to 2a.
 - **Error table** — Unchanged from Spec 112: line number, syntax-highlighted card line, error message, quick fix buttons.
 
 #### 2c. Edit mode, changes, valid
 
 ```
-[ Revert ] … [ Apply ]
-Editing: +100 cards / −135 cards
+Editing: +100 cards / −135 cards (Moxfield)
 ```
-
-- **Revert** — Same as 2b.
-- **Apply** — Commits the changes. On success, draft is cleared and editor returns to Display or Init.
-- **Message** — Diff summary: "+N cards / −M cards" (or "No changes" if diff is empty, though that would imply we're in 2a).
 
 ### 3. Revert vs Cancel Semantics
 
@@ -81,7 +89,7 @@ To determine "has changes" and to implement Revert, the editor needs a **baselin
 
 ### 5. Apply Flow
 
-The Apply button in the Status box (2c) commits directly. The diff summary is already visible inline ("Editing: +N cards / −M cards"), so a confirmation popover is not required. The current Apply popover is removed.
+The Apply button in the toolbar commits directly when validation passes. The diff summary is visible in the Status box ("Editing: +N cards / −M cards"), so a confirmation popover is not required. The Apply popover is removed.
 
 If a confirmation step is desired later, it can be reintroduced without changing this spec.
 
@@ -90,33 +98,45 @@ If a confirmation step is desired later, it can be reintroduced without changing
 | Mode | Content |
 |------|---------|
 | **Init** | "List is empty. Paste a deck list or add cards from search results." |
-| **Display** | Format chips on first row, card count on second row: `[Moxfield] [Archidekt] [Arena] …` then `N card(s)` |
+| **Display** | Card count only: `N card(s)` |
 
-No buttons in Init or Display.
+No buttons in Init or Display. Format chips are in the Display Formats bar (§ 7), not the Status box.
 
-### 7. Format Chips
+### 7. Display Formats Bar
 
-Format chips move into the status box. Visible only in Display mode (when the list has content).
+A separate bar below the Status box, **visible only in Display mode**. Two-column layout:
 
-- **Init mode:** No chips (list is empty).
-- **Edit mode:** No chips; format is shown in the status line ("Editing: … (Moxfield)").
-- **Display mode:** Chips are interactive; selecting one changes the output format and persists to localStorage. Same behavior as Spec 110 § 5 for Display mode.
+```
+| Display: | [Arena] [Moxfield] [Archidekt] … |
+```
+
+- **Label** — "Display:" on the left. Center-aligns vertically when chips wrap on mobile.
+- **Chips** — Same styling as MenuDrawer chips: `min-h-11`, `rounded`, `bg-gray-100`/`bg-blue-500` for unselected/selected. Selecting a chip changes the output format and persists to localStorage.
+- **Init mode:** Bar not shown (list is empty).
+- **Edit mode:** Bar not shown; format is shown in the status line ("Editing: … (Moxfield)").
 
 ## Acceptance Criteria
 
-1. Toolbar shows only Edit and Copy. Copy is right-aligned.
-2. Revert, Cancel, and Apply are removed from the toolbar.
-3. Edit mode, no changes: Status box shows `[ Cancel ]` and "Editing: No changes".
-4. Edit mode, changes, errors: Status box shows `[ Revert ]` and the error table.
-5. Edit mode, changes, valid: Status box shows `[ Revert ]` `[ Apply ]` and "Editing: +N cards / −M cards".
-6. Cancel exits Edit mode (clears draft, returns to Display or Init).
-7. Revert resets draft to baseline; user stays in Edit mode; UI switches to "no changes" state.
-8. Apply commits changes; on success, draft cleared, editor returns to Display or Init.
-9. Apply popover is removed; Apply commits directly from the Status box.
-10. Baseline is correctly set on Edit and on restore from cache.
-11. Format chips appear in the status box in Display mode only.
-12. Format chips are removed from above the toolbar.
+1. Layout: TOOLBAR | STATUS | [DISPLAY FORMATS] | DECK LIST — three sections always; four when in Display mode.
+2. Toolbar is a flush bar: single border, buttons contiguous to edges (no bordered-box illusion).
+3. Display mode: Toolbar shows `[ Edit * ]` … `[ Copy ]`. Status shows card count. Display Formats bar shows `| Display: | [Arena] [Moxfield] … |`.
+4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
+5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error table.
+6. Edit mode, changes, valid: Toolbar shows `[ Revert ]` … `[ Apply * ]` `[ Copy ]`. Status shows diff summary.
+7. Cancel exits Edit mode (clears draft, returns to Display or Init).
+8. Revert resets draft to baseline; user stays in Edit mode; UI switches to "no changes" state.
+9. Apply commits changes; on success, draft cleared, editor returns to Display or Init.
+10. Apply popover is removed; Apply commits directly from the toolbar.
+11. Baseline is correctly set on Edit and on restore from cache.
+12. Format chips appear in the Display Formats bar in Display mode only; chips use MenuDrawer styling.
+13. Status box turns red on validation errors; toolbar remains neutral.
 
 ## Implementation Notes
 
 - Validation runs in the worker per Spec 114 (Worker-Based Deck List Validation). The DeckEditor receives validation results asynchronously via `onValidateRequest`.
+
+## Changelog
+
+- 2026-03-10: Initial design — toolbar Edit+Copy only; Cancel, Revert, Apply in Status box.
+- 2026-03-10: Revised — all actions moved to toolbar; Status box content-only; flush toolbar (single border, contiguous buttons); three-part layout TOOLBAR | STATUS | DECK LIST with shared borders.
+- 2026-03-10: Display Formats bar — format chips moved below Status box in Display mode; two-column layout (Display: | chips); chips use MenuDrawer styling; Status box shows card count only in Display mode.
