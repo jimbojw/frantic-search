@@ -115,11 +115,15 @@ When the set code is not in `knownSetCodes`, the validator does **not** enter th
    ```
    AND [EXACT "name", FIELD cn:NUM, ...finishNodes, ...variantIsNodes, FIELD unique:prints]
    ```
-2. **1 match:** Resolve to that printing. **Done.**
-3. **2+ matches:** Generate error "Unknown set" with quick fixes: "Use [set1]", "Use [set2]" (up to the first two, deduped by replacement), then "Remove set/collector, use name only".
-4. **0 matches:** Generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
+2. **Disaggregate by set code:** The printings schema has separate rows per finish (foil/non-foil). Group result indices by set code. Count unique sets, not raw printing count.
+3. **1 unique set:** Resolve to that printing (prefer foil when line has foil marker, else non-foil) but emit `kind: "warning"` with message "Set resolved to [SET]" (e.g. "Set resolved to DOM") and span on the set token. The user can Apply; the warning signals we inferred the set.
+4. **2+ unique sets:** If set is `000` (no-set placeholder), resolve by name only and succeed. Otherwise, generate error "Unknown set" with quick fixes: "Use [set1]", "Use [set2]" (up to the first two unique sets, deduped by replacement), then "Remove set/collector, use name only".
+5. **0 matches:** If set is `000`, resolve by name only and succeed. Otherwise, generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
+6. **No collector number:** If set is `000`, resolve by name only and succeed. Otherwise, generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
 
-This catches typos like `(DAR)` instead of `(DOM)` when the collector number uniquely identifies the printing. When multiple printings match (e.g. same collector number in different sets), the first two are offered as best guesses.
+**Set code `000`:** TappedOut uses `(000)` as a "no set" placeholder meaning "any printing." When the set is `000`, 0 or 2+ matches (or no collector) cause name-only resolution instead of an error.
+
+This catches typos like `(DAR)` instead of `(DOM)` when the collector number uniquely identifies the printing. The warning ensures the user sees that we inferred the set.
 
 #### 3d. Name only — unknown set
 

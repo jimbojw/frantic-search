@@ -295,6 +295,9 @@ export function validateDeckListWithEngine(
         finishToks,
       );
 
+      const NO_SET_PLACEHOLDER = "000";
+      const isNoSetPlaceholder = effectiveSetCode === NO_SET_PLACEHOLDER;
+
       // § 3d.0: Unknown set — try name+collector before falling back
       if (collectorNum) {
         const nameExact = exactNode(normalizeDfcNameForLookup(nameTok.value));
@@ -309,8 +312,26 @@ export function validateDeckListWithEngine(
         ];
         const nameCnResult = cache.evaluate(andNode(nameCnChildren));
         if (nameCnResult.printingIndices && nameCnResult.printingIndices.length > 0) {
-          if (nameCnResult.printingIndices.length === 1) {
-            const pi = nameCnResult.printingIndices[0]!;
+          // Disaggregate by set code — foil/non-foil share set+cn, count as one match
+          const bySet = new Map<string, number[]>();
+          for (let i = 0; i < nameCnResult.printingIndices.length; i++) {
+            const idx = nameCnResult.printingIndices[i]!;
+            const sc = printingDisplay!.set_codes[idx] ?? "";
+            const arr = bySet.get(sc) ?? [];
+            arr.push(idx);
+            bySet.set(sc, arr);
+          }
+          const uniqueSetCount = bySet.size;
+
+          if (uniqueSetCount === 1) {
+            const indices = bySet.values().next().value as number[];
+            let pi = indices[0]!;
+            if (indices.length > 1) {
+              const wantFoil = preferFoil ? 1 : 0;
+              const match = indices.find((i) => printingDisplay!.finish[i] === wantFoil);
+              if (match !== undefined) pi = match;
+            }
+            const resolvedSet = printingDisplay!.set_codes[pi] ?? "";
             const success = makeSuccess(
               pi,
               display,
@@ -323,19 +344,38 @@ export function validateDeckListWithEngine(
               variantTok,
               foilPrereleaseMarkerTok,
             );
-            lines.push(success.line);
+            const warningLine: LineValidation = {
+              ...success.line,
+              kind: "warning",
+              span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+              message: `Set resolved to ${resolvedSet}`,
+            };
+            lines.push(warningLine);
             if (success.entry) resolved.push(success.entry);
-            lineResultCache.set(cacheKey, toCacheable(success.line, success.entry, lineStart, success.oracleIndex, success.scryfallIndex));
+            lineResultCache.set(cacheKey, toCacheable(warningLine, success.entry, lineStart, success.oracleIndex, success.scryfallIndex));
             lineIndices.push(success.oracleIndex, success.scryfallIndex);
             offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
             continue;
           }
-          // 2+ matches: offer up to 2 "Use [set]" + Remove
+          // 2+ matches: if 000, resolve by name; else error with Use + Remove
+          if (isNoSetPlaceholder) {
+            const result = resolveNameOnly(
+              nameTok, cardIndex, cache, display, printingDisplay!,
+              quantityTok, finish, lineIndex, lineStart, lineEnd,
+              variantTok, foilPrereleaseMarkerTok,
+            );
+            lines.push(result.line);
+            if (result.entry) resolved.push(result.entry);
+            lineResultCache.set(cacheKey, toCacheable(result.line, result.entry, lineStart, result.oracleIndex, result.scryfallIndex));
+            lineIndices.push(result.oracleIndex ?? -1, result.scryfallIndex ?? -1);
+            offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+            continue;
+          }
           const seen = new Set<string>();
           const useFixes: { label: string; replacement: string }[] = [];
-          for (let i = 0; i < Math.min(2, nameCnResult.printingIndices.length); i++) {
-            const rowIdx = nameCnResult.printingIndices[i]!;
-            const correctSet = printingDisplay!.set_codes[rowIdx] ?? "";
+          const setCodes = Array.from(bySet.keys());
+          for (let i = 0; i < Math.min(2, setCodes.length); i++) {
+            const correctSet = setCodes[i]!;
             const replacement = line.slice(0, setTok!.start) + correctSet + line.slice(setTok!.end);
             if (!seen.has(replacement)) {
               seen.add(replacement);
@@ -358,6 +398,21 @@ export function validateDeckListWithEngine(
           offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
           continue;
         }
+      }
+
+      // 0 matches or no collector: if 000, resolve by name; else error
+      if (isNoSetPlaceholder) {
+        const result = resolveNameOnly(
+          nameTok, cardIndex, cache, display, printingDisplay!,
+          quantityTok, finish, lineIndex, lineStart, lineEnd,
+          variantTok, foilPrereleaseMarkerTok,
+        );
+        lines.push(result.line);
+        if (result.entry) resolved.push(result.entry);
+        lineResultCache.set(cacheKey, toCacheable(result.line, result.entry, lineStart, result.oracleIndex, result.scryfallIndex));
+        lineIndices.push(result.oracleIndex ?? -1, result.scryfallIndex ?? -1);
+        offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+        continue;
       }
 
       const lineResult = {

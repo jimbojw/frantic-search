@@ -319,27 +319,64 @@ describe("validateDeckListWithEngine", () => {
     expect(err!.quickFixes![0]!.replacement).toBe("1 Lightning Bolt");
   });
 
-  test("unknown set with unique name+collector resolves to that printing", () => {
+  test("unknown set with unique name+collector resolves to that printing with warning", () => {
     // Lightning Bolt cn 113 is only in A25 (row 2, p-c)
     const result = validate("1 Lightning Bolt (ZZZ) 113");
-    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toBe("Set resolved to A25");
     expect(result.resolved).toHaveLength(1);
     expect(result.resolved![0]!.scryfall_id).toBe("p-c");
   });
 
   test("unknown set with multiple name+collector matches offers Use quick fixes + Remove", () => {
-    // Lightning Bolt cn 261 is in MH2 (rows 0,1,9)
-    const result = validate("1 Lightning Bolt (ZZZ) 261");
+    // Sol Ring cn 280 is in C21 (rows 3,4) and OC21 (row 7) — 2 unique sets
+    const result = validate("1 Sol Ring (ZZZ) 280");
     const err = result.lines.find((l) => l.kind === "error");
     expect(err).toBeDefined();
     expect(err!.message).toContain("Unknown set");
     expect(err!.quickFixes).toBeDefined();
-    const useMh2 = err!.quickFixes!.find((f) => f.label === "Use MH2");
-    expect(useMh2).toBeDefined();
-    expect(useMh2!.replacement).toBe("1 Lightning Bolt (MH2) 261");
+    const useC21 = err!.quickFixes!.find((f) => f.label === "Use C21");
+    expect(useC21).toBeDefined();
+    expect(useC21!.replacement).toBe("1 Sol Ring (C21) 280");
     const removeFix = err!.quickFixes!.find((f) => f.label.includes("Remove set/collector"));
     expect(removeFix).toBeDefined();
-    expect(removeFix!.replacement).toBe("1 Lightning Bolt");
+    expect(removeFix!.replacement).toBe("1 Sol Ring");
+  });
+
+  test("unknown set with foil+non-foil same set resolves with warning", () => {
+    // Lightning Bolt cn 261 is in MH2 only (rows 0,1,9 — foil and non-foil)
+    const result = validate("1 Lightning Bolt (ZZZ) 261");
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toBe("Set resolved to MH2");
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBeDefined();
+  });
+
+  test("(000) with multiple unique sets resolves by name only", () => {
+    // Sol Ring cn 280 is in C21 and OC21 — 000 means no set, resolve by name
+    const result = validate("1 Sol Ring (000) 280");
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBeNull();
+  });
+
+  test("(000) with no collector resolves by name only", () => {
+    // TappedOut format: (000) without :num, #Tag forces TappedOut parsing
+    const result = validate("1 Lightning Bolt (000) #Test");
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBeNull();
+  });
+
+  test("(000) with unique name+collector resolves to that printing with warning", () => {
+    // Lightning Bolt cn 113 is only in A25
+    const result = validate("1 Lightning Bolt (000) 113");
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toBe("Set resolved to A25");
+    expect(result.resolved![0]!.scryfall_id).toBe("p-c");
   });
 
   test("TCGPlayer set code PPTHB maps to pthb for known-set check (no pthb in fixtures, so unknown set)", () => {

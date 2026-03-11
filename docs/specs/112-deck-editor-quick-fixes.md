@@ -72,7 +72,7 @@ Card name does not resolve, but set and collector number are valid and point to 
 
 | Error Type | Fix |
 |------------|-----|
-| **Unknown set** | When name+collector matches 1 printing: resolve to that printing (no error). When 2+ match: offer "Use [set]" for up to the first two (deduped), then "Remove set/collector, use name only". When 0 match: "Remove set/collector, use name only" only. |
+| **Unknown set** | When name+collector matches 1 printing: resolve to that printing with `kind: "warning"` and message "Set resolved to [SET]" (span on set token). When 2+ match: offer "Use [set]" for up to the first two (deduped), then "Remove set/collector". When 0 match: "Remove set/collector" only. When set is `000`: 0 or 2+ matches (or no collector) resolve by name only. |
 | **No matching printing** (variant) | Remove variant spec. |
 | **Unknown card** (no set+collector) | — Out of scope (would require fuzzy "Did you mean?"). |
 | **Missing card name** | — No fix; user must type the name. |
@@ -96,7 +96,7 @@ For each error path that will support quick fixes:
 
 **Case 3 (name not recognized, set+collector valid):** As above, when name fails but printing resolves: one fix — replace the name with the card from the printing.
 
-**Unknown set:** When a collector number is present, try resolving by name+collector before falling back. If exactly one printing matches, resolve to that printing (success). If 2+ match, offer "Use [set]" for up to the first two (deduped by replacement), then "Remove set/collector, use name only". If 0 match, reconstruct the line without the `(SET)` or `(SET:num)` token. Preserve quantity, name, foil markers, tags, etc. The card must resolve by name.
+**Unknown set:** When a collector number is present, try resolving by name+collector before falling back. If exactly one printing matches, resolve to that printing with `kind: "warning"` and message "Set resolved to [SET]" (span on set token). If 2+ match, offer "Use [set]" for up to the first two (deduped), then "Remove set/collector". If 0 match, reconstruct the line without the `(SET)` or `(SET:num)` token. When set is `000`, 0 or 2+ matches (or no collector) resolve by name only. Preserve quantity, name, foil markers, tags, etc.
 
 **Line reconstruction:** The validator has access to the lexer tokens for the line. Use token positions to splice: e.g., for "Unknown set", omit the range covering `setTok` and `collectorTok` (if present), plus any adjacent punctuation/whitespace. A helper `reconstructLineWithoutSet(line, tokens, setTok, collectorTok)` keeps the logic centralized.
 
