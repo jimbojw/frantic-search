@@ -36,23 +36,23 @@ export default function DeckEditorStatus() {
               Validating…
             </Show>
             <Show when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && !ctx.hasChanges()} fallback={null}>
-              Editing: No changes ({ctx.editFormatLabel()})
+              Editing: No changes{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
             </Show>
             <Show when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length > 0} fallback={null}>
               <span class="text-red-800 dark:text-red-200">
-                Editing: {ctx.validationErrors().length} error{ctx.validationErrors().length !== 1 ? 's' : ''} ({ctx.editFormatLabel()})
+                Editing: {ctx.validationErrors().length} error{ctx.validationErrors().length !== 1 ? 's' : ''}{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
               </span>
             </Show>
             <Show
               when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 && ctx.editDiffSummary()}
-              fallback={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 ? <span>Editing: changes pending ({ctx.editFormatLabel()})</span> : null}
+              fallback={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 ? <span>Editing: changes pending{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}</span> : null}
             >
               {(summary) => (
                 <>
                   Editing: <span class="text-green-700 dark:text-green-400">+{summary().additions} card{summary().additions !== 1 ? 's' : ''}</span>
                   {' / '}
                   <span class="text-red-700 dark:text-red-400">−{summary().removals} card{summary().removals !== 1 ? 's' : ''}</span>
-                  {' '}({ctx.editFormatLabel()})
+                  {(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
                 </>
               )}
             </Show>

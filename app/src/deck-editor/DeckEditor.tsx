@@ -185,7 +185,7 @@ export default function DeckEditor(props: {
   createEffect(() => {
     const t = debouncedDraft()
     if (!t.trim()) {
-      setValidationResult(null)
+      setValidationResult(buildValidationResult(t))
       return
     }
     const draft = draftText()
@@ -320,7 +320,7 @@ export default function DeckEditor(props: {
   const editDiffSummary = createMemo<{ additions: number; removals: number } | null>(() => {
     if (mode() !== 'edit') return null
     const text = debouncedDraft()
-    if (!text.trim() || !props.display || hasValidationErrors()) return null
+    if (!props.display || hasValidationErrors()) return null
     const vr = validationResult()
     if (!vr) return null
     const result = importDeckList(text, props.display, props.printingDisplay, vr)
@@ -334,7 +334,9 @@ export default function DeckEditor(props: {
     return detectDeckFormat(lexDeckList(d))
   })
 
-  const editFormatLabel = createMemo(() => {
+  const editFormatLabel = createMemo<string | null>(() => {
+    const d = draftText()
+    if (d === null || !d.trim()) return null
     const fmt = detectedFormat() ?? selectedFormat()
     return ALL_FORMATS.find((f) => f.id === fmt)?.label ?? 'Unknown'
   })
@@ -455,7 +457,7 @@ export default function DeckEditor(props: {
 
   async function handleApply() {
     const text = draftText()
-    if (!text || !props.display) return
+    if (text == null || !props.display) return
     setApplyInProgress(true)
     try {
       const lineStrings = text.split(/\r?\n/)
@@ -542,7 +544,7 @@ export default function DeckEditor(props: {
   function handleDeckReport() {
     props.onDeckReportClick?.({
       listContent: mode() === 'display' ? serializedText() : draftText() ?? '',
-      format: editFormatLabel(),
+      format: editFormatLabel() ?? 'No format',
       listName: props.metadata?.name ?? 'My List',
       listId: props.listId,
       mode: mode() === 'display' ? 'display' : 'edit',

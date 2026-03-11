@@ -33,7 +33,7 @@ export interface DeckEditorContextValue {
   hasValidationErrors: Accessor<boolean>
   hasChanges: Accessor<boolean>
   editDiffSummary: Accessor<{ additions: number; removals: number } | null>
-  editFormatLabel: Accessor<string>
+  editFormatLabel: Accessor<string | null>
   textareaValue: Accessor<string>
   highlightText: Accessor<string>
   highlightValidation: Accessor<ListValidationResult | null>
