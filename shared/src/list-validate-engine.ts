@@ -294,6 +294,72 @@ export function validateDeckListWithEngine(
         setTok!.type === ListTokenType.SET_CODE_BRACKET ? setTok : undefined,
         finishToks,
       );
+
+      // § 3d.0: Unknown set — try name+collector before falling back
+      if (collectorNum) {
+        const nameExact = exactNode(normalizeDfcNameForLookup(nameTok.value));
+        const collectorField = fieldNode("cn", collectorNum);
+        const uniquePrints = fieldNode("unique", "prints");
+        const nameCnChildren: ASTNode[] = [
+          nameExact,
+          collectorField,
+          ...finishNodes,
+          ...variantIsNodes,
+          uniquePrints,
+        ];
+        const nameCnResult = cache.evaluate(andNode(nameCnChildren));
+        if (nameCnResult.printingIndices && nameCnResult.printingIndices.length > 0) {
+          if (nameCnResult.printingIndices.length === 1) {
+            const pi = nameCnResult.printingIndices[0]!;
+            const success = makeSuccess(
+              pi,
+              display,
+              printingDisplay!,
+              quantityTok,
+              finish,
+              lineIndex,
+              lineStart,
+              lineEnd,
+              variantTok,
+              foilPrereleaseMarkerTok,
+            );
+            lines.push(success.line);
+            if (success.entry) resolved.push(success.entry);
+            lineResultCache.set(cacheKey, toCacheable(success.line, success.entry, lineStart, success.oracleIndex, success.scryfallIndex));
+            lineIndices.push(success.oracleIndex, success.scryfallIndex);
+            offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+            continue;
+          }
+          // 2+ matches: offer up to 2 "Use [set]" + Remove
+          const seen = new Set<string>();
+          const useFixes: { label: string; replacement: string }[] = [];
+          for (let i = 0; i < Math.min(2, nameCnResult.printingIndices.length); i++) {
+            const rowIdx = nameCnResult.printingIndices[i]!;
+            const correctSet = printingDisplay!.set_codes[rowIdx] ?? "";
+            const replacement = line.slice(0, setTok!.start) + correctSet + line.slice(setTok!.end);
+            if (!seen.has(replacement)) {
+              seen.add(replacement);
+              useFixes.push({ label: `Use ${correctSet}`, replacement: replacement.trimEnd() });
+            }
+          }
+          const quickFixes: { label: string; replacement: string }[] = [
+            ...useFixes,
+            ...(removeSetReplacement ? [{ label: "Remove set/collector, use name only", replacement: removeSetReplacement }] : []),
+          ];
+          const lineResult = {
+            lineIndex, lineStart, lineEnd, kind: "error" as const,
+            span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+            message: `Unknown set — \`${setCode}\``,
+            quickFixes,
+          };
+          lines.push(lineResult);
+          lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+          lineIndices.push(-1, -1);
+          offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+          continue;
+        }
+      }
+
       const lineResult = {
         lineIndex, lineStart, lineEnd, kind: "error" as const,
         span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },

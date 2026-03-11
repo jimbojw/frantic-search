@@ -304,17 +304,42 @@ describe("validateDeckListWithEngine", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // § 3d: Unknown set
+  // § 3d / § 3d.0: Unknown set
   // ---------------------------------------------------------------------------
 
-  test("unknown set produces error with quick fix to remove set/collector", () => {
-    const result = validate("1 Lightning Bolt (ZZZ) 1");
+  test("unknown set with no name+collector match produces error with Remove set/collector only", () => {
+    // cn 999 does not exist for Lightning Bolt
+    const result = validate("1 Lightning Bolt (ZZZ) 999");
     const err = result.lines.find((l) => l.kind === "error");
     expect(err).toBeDefined();
     expect(err!.message).toContain("Unknown set");
     expect(err!.quickFixes).toBeDefined();
+    expect(err!.quickFixes!.length).toBe(1);
     expect(err!.quickFixes![0]!.label).toContain("Remove set/collector");
     expect(err!.quickFixes![0]!.replacement).toBe("1 Lightning Bolt");
+  });
+
+  test("unknown set with unique name+collector resolves to that printing", () => {
+    // Lightning Bolt cn 113 is only in A25 (row 2, p-c)
+    const result = validate("1 Lightning Bolt (ZZZ) 113");
+    expect(result.lines.find((l) => l.kind === "error")).toBeUndefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBe("p-c");
+  });
+
+  test("unknown set with multiple name+collector matches offers Use quick fixes + Remove", () => {
+    // Lightning Bolt cn 261 is in MH2 (rows 0,1,9)
+    const result = validate("1 Lightning Bolt (ZZZ) 261");
+    const err = result.lines.find((l) => l.kind === "error");
+    expect(err).toBeDefined();
+    expect(err!.message).toContain("Unknown set");
+    expect(err!.quickFixes).toBeDefined();
+    const useMh2 = err!.quickFixes!.find((f) => f.label === "Use MH2");
+    expect(useMh2).toBeDefined();
+    expect(useMh2!.replacement).toBe("1 Lightning Bolt (MH2) 261");
+    const removeFix = err!.quickFixes!.find((f) => f.label.includes("Remove set/collector"));
+    expect(removeFix).toBeDefined();
+    expect(removeFix!.replacement).toBe("1 Lightning Bolt");
   });
 
   test("TCGPlayer set code PPTHB maps to pthb for known-set check (no pthb in fixtures, so unknown set)", () => {

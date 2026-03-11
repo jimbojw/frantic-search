@@ -107,6 +107,20 @@ AND [FIELD set:SET, FIELD cn:NUM, FIELD is:foil, FIELD unique:prints]
 
 If this matches exactly one printing: the set+collector combination is valid but points to a different card. Read the canonical face from `printingIndex.canonicalFaceRef[printingRow]` and look up the correct name from `display.names`. Generate **quick fixes**: "Use `CorrectName`" and "Remove set/collector, use name only".
 
+#### 3d.0. Unknown set gate — name+collector fallback (before cascade)
+
+When the set code is not in `knownSetCodes`, the validator does **not** enter the cascade. Instead, it tries to resolve by name+collector before falling back to "Remove set/collector":
+
+1. If a collector number is present, evaluate:
+   ```
+   AND [EXACT "name", FIELD cn:NUM, ...finishNodes, ...variantIsNodes, FIELD unique:prints]
+   ```
+2. **1 match:** Resolve to that printing. **Done.**
+3. **2+ matches:** Generate error "Unknown set" with quick fixes: "Use [set1]", "Use [set2]" (up to the first two, deduped by replacement), then "Remove set/collector, use name only".
+4. **0 matches:** Generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
+
+This catches typos like `(DAR)` instead of `(DOM)` when the collector number uniquely identifies the printing. When multiple printings match (e.g. same collector number in different sets), the first two are offered as best guesses.
+
 #### 3d. Name only — unknown set
 
 If neither 3b nor 3c produced matches, evaluate the EXACT node alone:
