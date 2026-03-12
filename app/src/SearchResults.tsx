@@ -180,6 +180,14 @@ export default function SearchResults() {
                       if (idx === undefined || !pd) return null
                       return pd.set_codes[idx]
                     }
+                    const collectorNumber = () => {
+                      if (!ctx.hasPrintingConditions() && ctx.uniqueMode() === 'cards') return null
+                      const idx = pi()
+                      const pd = pdc()
+                      if (idx === undefined || !pd) return null
+                      const cn = pd.collector_numbers[idx]
+                      return cn && cn.trim() ? cn : null
+                    }
                     const aggCount = () => ctx.showPrintingResults() ? ctx.aggregationCountForCard(ci) : undefined
                     return (
                       <Show when={ctx.viewMode() === 'full'} fallback={
@@ -197,7 +205,7 @@ export default function SearchResults() {
                           <div class="min-w-0 flex-1">
                             <Show when={faces().length > 1} fallback={
                               <>
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={ctx.showOracleText()} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} />
+                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={ctx.showOracleText()} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
                               </>
                             }>
                               <div class="flex items-center gap-1.5 min-w-0">
@@ -208,8 +216,8 @@ export default function SearchResults() {
                                 >
                                   {name()}
                                 </button>
-                                <Show when={setBadge()}>
-                                  {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
+                                  {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                 </Show>
                                 <CopyButton text={name()} />
                               </div>
@@ -238,7 +246,7 @@ export default function SearchResults() {
                             </div>
                             <div class="min-w-0 flex-1 w-full">
                               <Show when={faces().length > 1} fallback={
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} />
+                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
                               }>
                                 <div class="flex items-center gap-1.5 min-w-0">
                                   <button
@@ -248,8 +256,8 @@ export default function SearchResults() {
                                   >
                                     {name()}
                                   </button>
-                                  <Show when={setBadge()}>
-                                    {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                  <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
+                                    {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                   </Show>
                                   <CopyButton text={name()} />
                                 </div>
@@ -401,6 +409,7 @@ export default function SearchResults() {
                             return fullCardName(d()!, faces)
                           }
                           const setCode = pd.set_codes[pi]
+                          const collectorNum = pd.collector_numbers[pi]?.trim() ?? ''
                           const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
                           const sid = pd.scryfall_ids[pi]
                           const isFoil = pd.finish[pi] === Finish.Foil
@@ -426,6 +435,7 @@ export default function SearchResults() {
                               />
                               <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words ${metaClass()}`}>
                                 <span class="uppercase">{setCode}</span>
+                                {collectorNum ? <>{' · '}{collectorNum}</> : null}
                                 {' · '}
                                 {rarityLabel}
                                 <Show when={finishLabel()}>
