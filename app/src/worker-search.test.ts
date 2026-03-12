@@ -367,12 +367,9 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
 // Spec 121: Pinned my:list + live unique:prints (printing-only, no override)
 // ---------------------------------------------------------------------------
 describe('pinned my:list + live unique:prints (Spec 121)', () => {
-  const getListMask = () => {
-    const printingMask = new Uint8Array(printingIndex.printingCount)
-    printingMask[1] = 1 // Bolt foil (printing-level)
-    printingMask[3] = 1 // Sol Ring canonical nonfoil (generic)
-    return { printingMask }
-  }
+  const getListMask = () => ({
+    printingIndices: new Uint32Array([1, 3]), // Bolt foil (printing-level) + Sol Ring canonical nonfoil (generic)
+  })
   const cacheWithList = new NodeCache(index, printingIndex, getListMask)
 
   it('pinned my:list + live unique:prints returns 2 printings', () => {

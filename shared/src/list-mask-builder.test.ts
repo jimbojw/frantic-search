@@ -165,7 +165,7 @@ describe("buildMasksForList", () => {
   const printingDisplay = makePrintingDisplay();
   const printingLookup = buildPrintingLookup(printingDisplay);
 
-  it("returns printingMask undefined when printingCount not provided", () => {
+  it("returns printingIndices undefined when printingCount not provided", () => {
     const view = makeView();
     view.instancesByList.set("default", new Set());
     const result = buildMasksForList({
@@ -173,10 +173,10 @@ describe("buildMasksForList", () => {
       listId: "default",
       oracleToCanonicalFace: oracleMap,
     });
-    expect(result.printingMask).toBeUndefined();
+    expect(result.printingIndices).toBeUndefined();
   });
 
-  it("returns zeroed printingMask for empty list when printingCount > 0 (Spec 121)", () => {
+  it("returns empty printingIndices for empty list when printingCount > 0 (Spec 121)", () => {
     const view = makeView();
     view.instancesByList.set("default", new Set());
     const result = buildMasksForList({
@@ -186,13 +186,11 @@ describe("buildMasksForList", () => {
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(result.printingMask).toBeDefined();
-    expect(result.printingMask![0]).toBe(0);
-    expect(result.printingMask![1]).toBe(0);
-    expect(result.printingMask![2]).toBe(0);
+    expect(result.printingIndices).toBeDefined();
+    expect(result.printingIndices!.length).toBe(0);
   });
 
-  it("sets printingMask for generic entries when canonicalPrintingPerFace present (Spec 121)", () => {
+  it("sets printingIndices for generic entries when canonicalPrintingPerFace present (Spec 121)", () => {
     const view = makeView();
     const uuids = new Set<string>();
     const uuid1 = "uuid-1";
@@ -209,7 +207,7 @@ describe("buildMasksForList", () => {
       }),
     );
     const canonicalPrintingPerFace = buildCanonicalPrintingPerFace(printingDisplay);
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
@@ -217,13 +215,11 @@ describe("buildMasksForList", () => {
       printingLookup,
       canonicalPrintingPerFace,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(1); // Bolt canonical nonfoil (face 0 → printing 0)
-    expect(printingMask![1]).toBe(0);
-    expect(printingMask![2]).toBe(0);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([0])); // Bolt canonical nonfoil (face 0 → printing 0)
   });
 
-  it("sets printingMask for printing-level entries", () => {
+  it("sets printingIndices for printing-level entries", () => {
     const view = makeView();
     const uuids = new Set<string>();
     const uuid1 = "uuid-1";
@@ -239,20 +235,18 @@ describe("buildMasksForList", () => {
         list_id: "default",
       }),
     );
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(0);
-    expect(printingMask![1]).toBe(1);
-    expect(printingMask![2]).toBe(0);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([1]));
   });
 
-  it("sets printingMask when scryfall_id present and finish null (treat as nonfoil)", () => {
+  it("sets printingIndices when scryfall_id present and finish null (treat as nonfoil)", () => {
     const view = makeView();
     const uuids = new Set<string>();
     const uuid1 = "uuid-1";
@@ -268,20 +262,18 @@ describe("buildMasksForList", () => {
         list_id: "default",
       }),
     );
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(1);
-    expect(printingMask![1]).toBe(0);
-    expect(printingMask![2]).toBe(0);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([0]));
   });
 
-  it("printing-only: printingMask set when oracle_id not in map (printing-level entry)", () => {
+  it("printing-only: printingIndices set when oracle_id not in map (printing-level entry)", () => {
     const view = makeView();
     const uuids = new Set<string>();
     const uuid1 = "uuid-1";
@@ -297,15 +289,15 @@ describe("buildMasksForList", () => {
         list_id: "default",
       }),
     );
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![1]).toBe(1);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([1]));
   });
 
   it("handles mixed generic and printing entries (Spec 121)", () => {
@@ -337,7 +329,7 @@ describe("buildMasksForList", () => {
       }),
     );
     const canonicalPrintingPerFace = buildCanonicalPrintingPerFace(printingDisplay);
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
@@ -345,8 +337,7 @@ describe("buildMasksForList", () => {
       printingLookup,
       canonicalPrintingPerFace,
     });
-    expect(printingMask![0]).toBe(1); // Bolt generic → canonical nonfoil
-    expect(printingMask![2]).toBe(1); // Sol printing-level p-c
+    expect(printingIndices).toEqual(new Uint32Array([0, 2])); // Bolt generic → 0, Sol printing-level p-c → 2
   });
 
   it("handles unknown oracle_id in list (skips when no canonicalPrintingPerFace)", () => {
@@ -365,17 +356,15 @@ describe("buildMasksForList", () => {
         list_id: "default",
       }),
     );
-    const { printingMask } = buildMasksForList({
+    const { printingIndices } = buildMasksForList({
       view,
       listId: "default",
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(0);
-    expect(printingMask![1]).toBe(0);
-    expect(printingMask![2]).toBe(0);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices!.length).toBe(0);
   });
 });
 
@@ -385,33 +374,30 @@ describe("buildMasksFromParsedEntries", () => {
   const printingDisplay = makePrintingDisplay();
   const printingLookup = buildPrintingLookup(printingDisplay);
 
-  it("returns printingMask undefined for empty entries when printingCount not provided", () => {
+  it("returns printingIndices undefined for empty entries when printingCount not provided", () => {
     const result = buildMasksFromParsedEntries([], {
       oracleToCanonicalFace: oracleMap,
     });
-    expect(result.printingMask).toBeUndefined();
+    expect(result.printingIndices).toBeUndefined();
   });
 
-  it("sets printingMask for generic entries when canonicalPrintingPerFace present (Spec 121)", () => {
+  it("sets printingIndices for generic entries when canonicalPrintingPerFace present (Spec 121)", () => {
     const entries = [
       { oracle_id: "oid-bolt", scryfall_id: null, quantity: 1 },
       { oracle_id: "oid-sol", scryfall_id: null, quantity: 2 },
     ];
     const canonicalPrintingPerFace = buildCanonicalPrintingPerFace(printingDisplay);
-    const { printingMask } = buildMasksFromParsedEntries(entries, {
+    const { printingIndices } = buildMasksFromParsedEntries(entries, {
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
       canonicalPrintingPerFace,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(1); // Bolt canonical nonfoil
-    // Sol (face 1) has no printings in makePrintingDisplay
-    expect(printingMask![1]).toBe(0);
-    expect(printingMask![2]).toBe(0);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([0])); // Bolt canonical nonfoil; Sol (face 1) has no printings in makePrintingDisplay
   });
 
-  it("sets printingMask for printing-level entries", () => {
+  it("sets printingIndices for printing-level entries", () => {
     const entries = [
       {
         oracle_id: "oid-bolt",
@@ -420,13 +406,13 @@ describe("buildMasksFromParsedEntries", () => {
         finish: "foil" as const,
       },
     ];
-    const { printingMask } = buildMasksFromParsedEntries(entries, {
+    const { printingIndices } = buildMasksFromParsedEntries(entries, {
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![1]).toBe(1);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([1]));
   });
 
   it("treats null finish as nonfoil for printing-level entries", () => {
@@ -437,13 +423,13 @@ describe("buildMasksFromParsedEntries", () => {
         quantity: 1,
       },
     ];
-    const { printingMask } = buildMasksFromParsedEntries(entries, {
+    const { printingIndices } = buildMasksFromParsedEntries(entries, {
       printingCount: 3,
       oracleToCanonicalFace: oracleMap,
       printingLookup,
     });
-    expect(printingMask).toBeDefined();
-    expect(printingMask![0]).toBe(1);
+    expect(printingIndices).toBeDefined();
+    expect(printingIndices).toEqual(new Uint32Array([0]));
   });
 });
 

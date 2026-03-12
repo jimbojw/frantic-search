@@ -99,12 +99,12 @@ export interface BuildMasksFromParsedEntriesOptions {
 }
 
 export interface BuildMasksResult {
-  printingMask?: Uint8Array;
+  printingIndices?: Uint32Array;
 }
 
 /**
- * Builds printingMask for a list from the materialized view.
- * Spec 121: My List is printing-domain only. Printing-level entries set printingMask bits;
+ * Builds printingIndices for a list from the materialized view.
+ * Spec 121: My List is printing-domain only. Printing-level entries add indices;
  * generic entries resolve to canonical printing when canonicalPrintingPerFace is present.
  */
 export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult {
@@ -117,14 +117,14 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
     canonicalPrintingPerFace,
   } = options;
 
-  let printingMask: Uint8Array | undefined;
-  if (printingCount > 0) {
-    printingMask = new Uint8Array(printingCount);
+  if (printingCount === 0) {
+    return {};
   }
 
+  const indices = new Set<number>();
   const uuids = view.instancesByList.get(listId);
   if (!uuids || uuids.size === 0) {
-    return { printingMask };
+    return { printingIndices: new Uint32Array(0) };
   }
 
   for (const uuid of uuids) {
@@ -134,28 +134,28 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
     const { oracle_id, scryfall_id, finish } = instance;
 
     // Printing-level: scryfall_id identifies a specific printing.
-    if (scryfall_id && printingLookup && printingMask) {
+    if (scryfall_id && printingLookup) {
       const enc = encodeFinish(finish ?? "nonfoil");
       if (enc !== undefined) {
         const key = `${scryfall_id}:${enc}`;
         const pi = printingLookup.get(key);
-        if (pi !== undefined) printingMask[pi] = 1;
+        if (pi !== undefined) indices.add(pi);
       }
     }
 
     // Generic: resolve to canonical printing when map available (Spec 121).
     const cf = oracleToCanonicalFace.get(oracle_id);
-    if (cf !== undefined && !scryfall_id && canonicalPrintingPerFace && printingMask) {
+    if (cf !== undefined && !scryfall_id && canonicalPrintingPerFace) {
       const pi = canonicalPrintingPerFace.get(cf);
-      if (pi !== undefined) printingMask[pi] = 1;
+      if (pi !== undefined) indices.add(pi);
     }
   }
 
-  return { printingMask };
+  return { printingIndices: new Uint32Array(indices) };
 }
 
 /**
- * Builds printingMask from ParsedEntry[] (e.g. from deck list validation).
+ * Builds printingIndices from ParsedEntry[] (e.g. from deck list validation).
  * Used by CLI for search --list and list-diff when no MaterializedView is available.
  * Spec 121: printing-domain only; generic entries resolve to canonical printing when map present.
  */
@@ -170,31 +170,31 @@ export function buildMasksFromParsedEntries(
     canonicalPrintingPerFace,
   } = options;
 
-  let printingMask: Uint8Array | undefined;
-  if (printingCount > 0) {
-    printingMask = new Uint8Array(printingCount);
+  if (printingCount === 0) {
+    return {};
   }
 
+  const indices = new Set<number>();
   for (const entry of entries) {
     const { oracle_id, scryfall_id, finish } = entry;
 
-    if (scryfall_id && printingLookup && printingMask) {
+    if (scryfall_id && printingLookup) {
       const enc = encodeFinish(finish ?? "nonfoil");
       if (enc !== undefined) {
         const key = `${scryfall_id}:${enc}`;
         const pi = printingLookup.get(key);
-        if (pi !== undefined) printingMask[pi] = 1;
+        if (pi !== undefined) indices.add(pi);
       }
     }
 
     const cf = oracleToCanonicalFace.get(oracle_id);
-    if (cf !== undefined && !scryfall_id && canonicalPrintingPerFace && printingMask) {
+    if (cf !== undefined && !scryfall_id && canonicalPrintingPerFace) {
       const pi = canonicalPrintingPerFace.get(cf);
-      if (pi !== undefined) printingMask[pi] = 1;
+      if (pi !== undefined) indices.add(pi);
     }
   }
 
-  return { printingMask };
+  return { printingIndices: new Uint32Array(indices) };
 }
 
 /**

@@ -25,10 +25,10 @@ Spec 121 simplifies by making My List always printing-domain. Generic entries (e
 
 ### Mask Semantics
 
-My List is represented by a single `printingMask`. No `faceMask`.
+My List is represented by a single `printingIndices` (sparse inverted index). No `faceMask`.
 
-- **Printing-level entries** (e.g. `1x Dawn of Hope (ltc) 164 [Draw]`): Set `printingMask[printingIndex] = 1` for that printing. Unchanged from current behavior.
-- **Generic entries** (e.g. `1x Lightning Bolt`): Resolve to the canonical printing at mask-build time. Set `printingMask[canonicalPrintingIndex] = 1`.
+- **Printing-level entries** (e.g. `1x Dawn of Hope (ltc) 164 [Draw]`): Add that printing index to the indices array.
+- **Generic entries** (e.g. `1x Lightning Bolt`): Resolve to the canonical printing at mask-build time. Add `canonicalPrintingIndex` to the indices array.
 
 **Data model note:** In Frantic Search, "printing" includes finish — each printing row is a distinct (scryfall_id, finish) pair. Unlike Scryfall (where different finishes share the same scryfall_id), we have unique rows per finish. When a deck list entry omits finish (e.g. `1x Dawn of Hope (ltc) 164` with no foil marker), it resolves to the first printing row with that scryfall_id — almost always nonfoil, but foil-only printings would resolve to foil. So printing-level entries always resolve to a specific row.
 
@@ -53,19 +53,19 @@ export function buildCanonicalPrintingPerFace(
 **buildMasksForList** and **buildMasksFromParsedEntries**:
 
 - Add `canonicalPrintingPerFace?: Map<number, number>` to options.
-- Always allocate `printingMask` when `printingCount > 0` (required for My List).
+- Collect unique printing indices into a `Set<number>` (instead of allocating `Uint8Array(printingCount)` and setting bits).
 - For each instance:
-  - **Printing-level** (`scryfall_id` + finish): `printingMask[printingLookup.get(key)] = 1`.
-  - **Generic** (no `scryfall_id`): `printingMask[canonicalPrintingPerFace.get(cf)] = 1` when `cf` is in map; skip if not (e.g. printings not loaded).
-- **Remove** all `faceMask[cf] = 1` assignments. Return `faceMask` as zeroed for protocol compatibility during transition, or omit per protocol update.
+  - **Printing-level** (`scryfall_id` + finish): add `printingLookup.get(key)` to the set when present.
+  - **Generic** (no `scryfall_id`): add `canonicalPrintingPerFace.get(cf)` to the set when `cf` is in map; skip if not (e.g. printings not loaded).
+- Convert the set to `Uint32Array` for return. Empty list: return `printingIndices: Uint32Array(0)` or omit.
 
-When `canonicalPrintingPerFace` is absent (printings not loaded): generic entries contribute nothing; only explicit printing-level entries set bits. Empty list or oracle-only list before printings load: zeroed `printingMask`.
+When `canonicalPrintingPerFace` is absent (printings not loaded): generic entries contribute nothing; only explicit printing-level entries add indices. Empty list or oracle-only list before printings load: `Uint32Array(0)` or omit.
 
 ### Protocol
 
-**list-update:** `printingMask` required when `printingCount > 0` (printings loaded). When printings are not loaded (`printingCount === 0`), omit `printingMask` — evaluator treats as empty list. `faceMask` optional (zeroed) for backward compatibility during transition; can be removed once evaluator no longer expects it.
+**list-update:** `printingIndices?: Uint32Array` replaces `printingMask`. Sparse: indices only. When `printingCount > 0` (printings loaded), include `printingIndices`. When printings are not loaded (`printingCount === 0`), omit — evaluator treats as empty list. Empty list: omit or send `Uint32Array(0)`.
 
-**getListMask:** Returns `{ printingMask: Uint8Array }` (or `{ faceMask, printingMask }` with zeroed faceMask for transition). Evaluator uses only `printingMask`.
+**getListMask:** Returns `{ printingIndices?: Uint32Array } | null`. Evaluator expands indices to mask when evaluating `my:` leaf.
 
 ### Evaluator
 
@@ -73,10 +73,10 @@ When `canonicalPrintingPerFace` is absent (printings not loaded): generic entrie
 
 1. Call `getListMask(listId)`. If null → error node.
 2. If `_printingIndex` is null → error "printing data not loaded".
-3. Copy `printingMask` into printing-domain buffer. Domain = printing.
+3. If returns `printingIndices`, allocate `Uint8Array(printingCount)`, set `buf[idx] = 1` for each index in `printingIndices`; return buffer. If null/omitted, return zeroed mask. Domain = printing.
 4. Remove: face-only branch, mixed-mode branch.
 
-`_hasPrintingLeaves`: `my:` always implies printing conditions (printingMask is always present).
+`_hasPrintingLeaves`: `my:` always implies printing conditions (`printingIndices` is present when list is known).
 
 ### Override removal (dead code)
 
@@ -89,10 +89,10 @@ The `unique:prints` override and its supporting machinery become dead with print
 
 ### Startup and printings-ready
 
-- **On list load (before printings-ready):** Build mask with `canonicalPrintingPerFace` undefined. Generic entries contribute nothing; printing-level entries set bits. Oracle-only list → zeroed printingMask. Send `list-update`.
-- **On printings-ready:** Rebuild masks for **all** lists with `canonicalPrintingPerFace` now available. Re-send `list-update` for each. Generic entries now resolve to canonical printing.
+- **On list load (before printings-ready):** Build indices with `canonicalPrintingPerFace` undefined. Generic entries contribute nothing; printing-level entries add indices. Oracle-only list → `Uint32Array(0)` or omit. Send `list-update`.
+- **On printings-ready:** Rebuild indices for **all** lists with `canonicalPrintingPerFace` now available. Re-send `list-update` for each. Generic entries now resolve to canonical printing.
 
-**App integration:** The printings-ready handler must rebuild masks for **all** lists (or all non-empty lists), not just those with printing-level entries. Today it filters by `hasPrintingLevelEntries`; that filter must be removed or broadened, since generic entries now contribute to `printingMask`.
+**App integration:** The printings-ready handler must rebuild indices for **all** lists (or all non-empty lists), not just those with printing-level entries. Today it filters by `hasPrintingLevelEntries`; that filter must be removed or broadened, since generic entries now contribute to `printingIndices`.
 
 Brief window: oracle-only list may show nothing in `my:list` until printings load. Acceptable; printings typically load with or shortly after main data.
 
@@ -106,10 +106,10 @@ Brief window: oracle-only list may show nothing in `my:list` until printings loa
 
 - [ ] Printing-only list (e.g. `1x Dawn of Hope (ltc) 164`) returns exactly that printing; no extra printings (fixes Dawn of Hope bug).
 - [ ] Generic entry (e.g. `1x Lightning Bolt`) resolves to canonical nonfoil (or first available if no nonfoil).
-- [ ] Mixed list: generic entries + explicit printings both contribute to printingMask correctly.
+- [ ] Mixed list: generic entries + explicit printings both contribute to printingIndices correctly.
 - [ ] `my:list is:foil` with only generic entries in list returns 0 results.
 - [ ] `my:list is:foil` with explicit foil printing in list matches.
-- [ ] Empty list sends zeroed printingMask; `my:list` returns 0.
+- [ ] Empty list sends `Uint32Array(0)` or omits `printingIndices`; `my:list` returns 0.
 - [ ] list-diff passes for Dawn of Hope case: Expected 1, Actual 1, Only in Search 0.
 - [ ] Evaluator has no face-domain or mixed-mode branches for `my:`.
 - [ ] `unique:prints` no longer affects `my:` evaluation (no override).
@@ -123,8 +123,8 @@ list-diff's expected set (`buildExpectedFromParsedEntries`) already uses canonic
 ## Test Updates
 
 - **evaluator-my.test.ts:** Update fixtures to pass printing-only masks. The "oracle-only list + my:list is:foil matches" test must change — it should now expect 0 results (behavioral change). Remove or repurpose the "my:list unique:prints override" and "effectiveAst: pinned my:list + live unique:prints applies override" tests; the override no longer exists.
-- **list-mask-builder.test.ts:** Add `canonicalPrintingPerFace` to options; expect `faceMask` zeroed and `printingMask` set for generic entries. Update or add tests for printing-only output.
+- **list-mask-builder.test.ts:** Add `canonicalPrintingPerFace` to options; expect `printingIndices` set for generic entries. Update or add tests for printing-only output.
 
 ## Implementation Notes
 
-(To be added during implementation.)
+- 2026-03-12: Replaced `printingMask` with `printingIndices`. Sparse representation reduces transfer size and worker storage.

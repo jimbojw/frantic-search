@@ -80,7 +80,7 @@ cli
       const { loadListText, parseListAndBuildMasks, createGetListMask } =
         await import("./list-utils");
       const listText = loadListText(options.list);
-      const { printingMask, validationLines } = parseListAndBuildMasks(
+      const { printingIndices, validationLines } = parseListAndBuildMasks(
         listText,
         data,
         printingData,
@@ -92,7 +92,7 @@ cli
           process.stderr.write(`Validation: ${line.message}\n`);
         }
       }
-      const getListMask = createGetListMask(printingMask);
+      const getListMask = createGetListMask(printingIndices);
       cache = new NodeCache(index, printingIndex, getListMask);
     } else {
       cache = new NodeCache(index, printingIndex);

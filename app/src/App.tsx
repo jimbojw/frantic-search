@@ -433,7 +433,7 @@ function App() {
     const printingLookup = pd ? buildPrintingLookup(pd) : undefined
     const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
     for (const listId of affectedListIds) {
-      const { printingMask } = buildMasksForList({
+      const { printingIndices } = buildMasksForList({
         view,
         listId,
         printingCount,
@@ -442,8 +442,8 @@ function App() {
         canonicalPrintingPerFace,
       })
       const transfer: Transferable[] = []
-      if (printingMask) transfer.push(printingMask.buffer)
-      workerRef.postMessage({ type: 'list-update', listId, printingMask }, transfer)
+      if (printingIndices) transfer.push(printingIndices.buffer)
+      workerRef.postMessage({ type: 'list-update', listId, printingIndices }, transfer)
     }
   }
 
@@ -540,7 +540,7 @@ function App() {
                 const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
                 const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
                 for (const listId of listIds) {
-                  const { printingMask } = buildMasksForList({
+                  const { printingIndices } = buildMasksForList({
                     view,
                     listId,
                     printingCount,
@@ -549,8 +549,8 @@ function App() {
                     canonicalPrintingPerFace,
                   })
                   const transfer: Transferable[] = []
-                  if (printingMask) transfer.push(printingMask.buffer)
-                  worker.postMessage({ type: 'list-update', listId, printingMask }, transfer)
+                  if (printingIndices) transfer.push(printingIndices.buffer)
+                  worker.postMessage({ type: 'list-update', listId, printingIndices }, transfer)
                 }
                 setWorkerStatus('ready')
               })

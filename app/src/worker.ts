@@ -220,7 +220,7 @@ async function init(): Promise<void> {
   const printingIndex = printingData
     ? new PrintingIndex(printingData, data.scryfall_ids)
     : null
-  const listMaskCache = new Map<string, { printingMask?: Uint8Array }>()
+  const listMaskCache = new Map<string, { printingIndices?: Uint32Array }>()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
   let faceToOtags: Map<number, string[]> | null = null
   let printingToAtags: Map<number, string[]> | null = null
@@ -288,7 +288,7 @@ async function init(): Promise<void> {
     const msg = e.data
     if (msg.type === 'list-update') {
       listMaskCache.set(msg.listId, {
-        printingMask: msg.printingMask,
+        printingIndices: msg.printingIndices,
       })
       cache.clearAllComputed()
       return

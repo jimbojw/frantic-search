@@ -215,7 +215,7 @@ export function runListDiff(
   }
 
   const listText = loadListText(listPath);
-  const { resolved, printingMask, validationLines } =
+  const { resolved, printingIndices, validationLines } =
     parseListAndBuildMasks(listText, data, printingData, index, printingIndex);
 
   for (const line of validationLines) {
@@ -233,7 +233,7 @@ export function runListDiff(
     ? buildPrintingLookup(printingDisplay)
     : undefined;
 
-  const getListMask = createGetListMask(printingMask);
+  const getListMask = createGetListMask(printingIndices);
   const cache = new NodeCache(index, printingIndex, getListMask);
   const evalOut = cache.evaluate(ast);
 

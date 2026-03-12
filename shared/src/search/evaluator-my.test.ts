@@ -8,22 +8,16 @@ import { index, printingIndex } from "./evaluator.test-fixtures";
 // Spec 077 / Spec 121: my:list query field
 //
 // Spec 121: My List is printing-domain only. All getListMask fixtures return
-// printingMask only. Face 1 = Bolt, Face 3 = Sol Ring.
+// printingIndices only. Face 1 = Bolt, Face 3 = Sol Ring.
 // Printing 0 = Bolt nonfoil, Printing 1 = Bolt foil, Printing 3 = Sol Ring nonfoil.
 // ---------------------------------------------------------------------------
 
-function printingMask(indices: number[], printingCount: number): Uint8Array {
-  const buf = new Uint8Array(printingCount);
-  for (const i of indices) buf[i] = 1;
-  return buf;
+function printingIndices(indices: number[]): { printingIndices: Uint32Array } {
+  return { printingIndices: new Uint32Array(indices) };
 }
 
-const PRINTING_COUNT = 11;
-
 describe("my:list list ID mapping", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0], PRINTING_COUNT), // Bolt canonical nonfoil
-  });
+  const getListMask = () => printingIndices([0]); // Bolt canonical nonfoil
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list maps to listId default", () => {
@@ -46,9 +40,7 @@ describe("my:list list ID mapping", () => {
 });
 
 describe("my:list negation", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0], PRINTING_COUNT), // Bolt
-  });
+  const getListMask = () => printingIndices([0]); // Bolt
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("-my:list returns only cards not in list", () => {
@@ -59,9 +51,7 @@ describe("my:list negation", () => {
 });
 
 describe("my:list composition", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0], PRINTING_COUNT), // Bolt
-  });
+  const getListMask = () => printingIndices([0]); // Bolt
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list t:creature composes (AND)", () => {
@@ -83,9 +73,7 @@ describe("my:list composition", () => {
 });
 
 describe("my:list empty list", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([], PRINTING_COUNT), // zeroed
-  });
+  const getListMask = () => printingIndices([]); // empty
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list returns 0 results when list is empty", () => {
@@ -102,9 +90,7 @@ describe("my:list empty list", () => {
 describe("my:trash", () => {
   const getListMask = (listId: string) =>
     listId === "trash"
-      ? {
-          printingMask: printingMask([3], PRINTING_COUNT), // Sol Ring canonical nonfoil
-        }
+      ? printingIndices([3]) // Sol Ring canonical nonfoil
       : null;
   const cache = new NodeCache(index, printingIndex, getListMask);
 
@@ -123,9 +109,7 @@ describe("my:trash", () => {
   test("empty trash: my:trash returns 0 results", () => {
     const emptyTrash = (listId: string) =>
       listId === "trash"
-        ? {
-            printingMask: printingMask([], PRINTING_COUNT),
-          }
+        ? printingIndices([])
         : null;
     const emptyCache = new NodeCache(index, printingIndex, emptyTrash);
     const out = emptyCache.evaluate(parse("my:trash"));
@@ -135,9 +119,7 @@ describe("my:trash", () => {
   test("empty trash: -my:trash returns all cards", () => {
     const emptyTrash = (listId: string) =>
       listId === "trash"
-        ? {
-            printingMask: printingMask([], PRINTING_COUNT),
-          }
+        ? printingIndices([])
         : null;
     const emptyCache = new NodeCache(index, printingIndex, emptyTrash);
     const out = emptyCache.evaluate(parse("-my:trash"));
@@ -153,9 +135,7 @@ describe("my:trash", () => {
 describe("my:list unknown list", () => {
   const getListMask = (listId: string) =>
     listId === "default"
-      ? {
-          printingMask: printingMask([0], PRINTING_COUNT),
-        }
+      ? printingIndices([0])
       : null;
   const cache = new NodeCache(index, printingIndex, getListMask);
 
@@ -172,9 +152,7 @@ describe("my:list unknown list", () => {
 });
 
 describe("my:list generic entries (Spec 121)", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0, 3], PRINTING_COUNT), // Bolt + Sol Ring canonical nonfoil
-  });
+  const getListMask = () => printingIndices([0, 3]); // Bolt + Sol Ring canonical nonfoil
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list produces printing-domain result", () => {
@@ -192,9 +170,7 @@ describe("my:list generic entries (Spec 121)", () => {
 });
 
 describe("my:list printing-only (printing-domain)", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([1], PRINTING_COUNT), // Bolt foil
-  });
+  const getListMask = () => printingIndices([1]); // Bolt foil
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list produces printing-domain result", () => {
@@ -220,9 +196,7 @@ describe("my:list printing-only (printing-domain)", () => {
 });
 
 describe("my:list mixed (generic + printing entries, Spec 121)", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([1, 3], PRINTING_COUNT), // Bolt foil + Sol Ring canonical nonfoil
-  });
+  const getListMask = () => printingIndices([1, 3]); // Bolt foil + Sol Ring canonical nonfoil
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list produces printing-domain result", () => {
@@ -257,9 +231,7 @@ describe("my:list without getListMask (CLI)", () => {
 });
 
 describe("my:list printing data not loaded", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0], PRINTING_COUNT),
-  });
+  const getListMask = () => printingIndices([0]);
   const cache = new NodeCache(index, null, getListMask);
 
   test("my:list produces error when printingIndex is null", () => {
@@ -270,9 +242,7 @@ describe("my:list printing data not loaded", () => {
 });
 
 describe("my:list invalid operator", () => {
-  const getListMask = () => ({
-    printingMask: printingMask([0], PRINTING_COUNT),
-  });
+  const getListMask = () => printingIndices([0]);
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my: with != operator produces error", () => {

@@ -121,7 +121,7 @@ export function nodeKey(ast: ASTNode): string {
   }
 }
 
-export type GetListMask = (listId: string) => { printingMask?: Uint8Array } | null;
+export type GetListMask = (listId: string) => { printingIndices?: Uint32Array } | null;
 
 export type TagDataRef = {
   oracle: OracleTagData | null;
@@ -301,7 +301,7 @@ export class NodeCache {
           const listId = this._resolveListId(ast.value || "list");
           const masks = this._getListMask?.(listId) ?? null;
           if (masks === null) return false;
-          return masks.printingMask !== undefined;
+          return masks.printingIndices !== undefined;
         }
         if (canonical === "is") {
           if (!PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase())) return false;
@@ -515,10 +515,12 @@ export class NodeCache {
           const pIdx = this._printingIndex;
           const pn = pIdx.printingCount;
           const buf = new Uint8Array(pn);
-          const printingMask = masks.printingMask;
-          if (printingMask !== undefined) {
-            const copyLen = Math.min(printingMask.length, pn);
-            for (let i = 0; i < copyLen; i++) buf[i] = printingMask[i];
+          const printingIndices = masks.printingIndices;
+          if (printingIndices !== undefined) {
+            for (let i = 0; i < printingIndices.length; i++) {
+              const idx = printingIndices[i];
+              if (idx < pn) buf[idx] = 1;
+            }
           }
           const t0 = performance.now();
           const ms = performance.now() - t0;
