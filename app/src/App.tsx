@@ -36,7 +36,7 @@ import {
   buildMasksForList,
   hasPrintingLevelEntries,
   countListEntriesPerCard,
-} from './list-mask-builder'
+} from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
 import { createPaneState } from './pane-state-factory'

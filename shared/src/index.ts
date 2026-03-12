@@ -81,3 +81,14 @@ export { importDeckList } from "./list-import";
 export type { ImportCandidate, ImportResult } from "./list-import";
 export { diffDeckList } from "./list-diff";
 export type { DiffResult } from "./list-diff";
+export { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-columns";
+export {
+  buildOracleToCanonicalFaceMap,
+  buildPrintingLookup,
+  buildMasksForList,
+  buildMasksFromParsedEntries,
+  getMatchingCount,
+  countListEntriesPerCard,
+  hasPrintingLevelEntries,
+} from "./list-mask-builder";
+export type { BuildMasksOptions, BuildMasksResult } from "./list-mask-builder";

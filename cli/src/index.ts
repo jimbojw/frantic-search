@@ -18,19 +18,31 @@ const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "dist", "columns.json");
 const PRINTINGS_PATH = path.join(PROJECT_ROOT, "data", "dist", "printings.json");
 const ORACLE_CARDS_PATH = path.join(PROJECT_ROOT, "data", "raw", "oracle-cards.json");
 
-function loadIndex(dataPath: string): { data: ColumnarData; index: CardIndex; printingIndex: PrintingIndex | null } {
+function loadIndex(
+  dataPath: string,
+  printingsPath?: string,
+): {
+  data: ColumnarData;
+  index: CardIndex;
+  printingIndex: PrintingIndex | null;
+  printingData: PrintingColumnarData | null;
+} {
   if (!fs.existsSync(dataPath)) {
-    process.stderr.write(`Error: ${dataPath} not found. Run 'npm run etl -- download' and 'npm run etl -- process' first.\n`);
+    process.stderr.write(
+      `Error: ${dataPath} not found. Run 'npm run etl -- download' and 'npm run etl -- process' first.\n`,
+    );
     process.exit(1);
   }
   const raw = fs.readFileSync(dataPath, "utf-8");
   const data: ColumnarData = JSON.parse(raw);
+  const path = printingsPath ?? PRINTINGS_PATH;
   let printingIndex: PrintingIndex | null = null;
-  if (fs.existsSync(PRINTINGS_PATH)) {
-    const printingData: PrintingColumnarData = JSON.parse(fs.readFileSync(PRINTINGS_PATH, "utf-8"));
+  let printingData: PrintingColumnarData | null = null;
+  if (fs.existsSync(path)) {
+    printingData = JSON.parse(fs.readFileSync(path, "utf-8")) as PrintingColumnarData;
     printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
   }
-  return { data, index: new CardIndex(data), printingIndex };
+  return { data, index: new CardIndex(data), printingIndex, printingData };
 }
 
 function loadRawCards(rawPath: string): unknown[] {
@@ -53,26 +65,69 @@ cli
 cli
   .command("search <query>", "Parse and evaluate a Scryfall query against the card dataset")
   .option("--data <path>", "Path to columns.json", { default: COLUMNS_PATH })
+  .option("--printings <path>", "Path to printings.json", { default: PRINTINGS_PATH })
   .option("--raw <path>", "Path to oracle-cards.json (for --output cards)", { default: ORACLE_CARDS_PATH })
+  .option("--list <path>", "Deck list file (or - for stdin) for my:list queries")
   .option("--output <format>", "Output format: tree, names, cards", { default: "tree" })
-  .action((query: string, options: { data: string; raw: string; output: string }) => {
-    const { data, index, printingIndex } = loadIndex(options.data);
-    const cache = new NodeCache(index, printingIndex);
+  .action(async (query: string, options: { data: string; printings: string; raw: string; list?: string; output: string }) => {
+    const { data, index, printingIndex, printingData } = loadIndex(
+      options.data,
+      options.printings,
+    );
+
+    let cache: NodeCache;
+    if (options.list) {
+      const { loadListText, parseListAndBuildMasks, createGetListMask } =
+        await import("./list-utils");
+      const listText = loadListText(options.list);
+      const { faceMask, printingMask, validationLines } = parseListAndBuildMasks(
+        listText,
+        data,
+        printingData,
+        index,
+        printingIndex,
+      );
+      for (const line of validationLines) {
+        if (line.kind === "error" && line.message) {
+          process.stderr.write(`Validation: ${line.message}\n`);
+        }
+      }
+      const getListMask = createGetListMask(faceMask, printingMask);
+      cache = new NodeCache(index, printingIndex, getListMask);
+    } else {
+      cache = new NodeCache(index, printingIndex);
+    }
+
     const ast = parse(query);
-    const { result, indices } = cache.evaluate(ast);
+    const evalOut = cache.evaluate(ast);
+    const { result, indices, printingIndices } = evalOut;
+
     const cardFaces = Array.from(indices);
+    const usePrintings = printingIndices && printingIndices.length > 0;
 
     switch (options.output) {
-      case "names":
-        for (const i of cardFaces) {
-          process.stdout.write(data.names[i] + "\n");
+      case "names": {
+        if (usePrintings && printingIndex && printingData) {
+          for (const pi of printingIndices!) {
+            const cf = printingData.canonical_face_ref[pi];
+            const name = index.combinedNames?.[cf] ?? data.names[cf] ?? "";
+            process.stdout.write(name + "\n");
+          }
+        } else {
+          for (const i of cardFaces) {
+            process.stdout.write(data.names[i] + "\n");
+          }
         }
         break;
+      }
       case "cards": {
         const rawCards = loadRawCards(options.raw);
         const seen = new Set<number>();
         const cards: unknown[] = [];
-        for (const i of cardFaces) {
+        const indicesToUse = usePrintings && printingIndex && printingData
+          ? printingIndices!.map((pi) => printingData.canonical_face_ref[pi])
+          : cardFaces;
+        for (const i of indicesToUse) {
           const ci = data.card_index[i];
           if (!seen.has(ci)) {
             seen.add(ci);
@@ -96,6 +151,28 @@ cli
   .action(async (options: { verify?: boolean; data: string }) => {
     const { runCompliance } = await import("./compliance/run");
     await runCompliance({ verify: !!options.verify, data: options.data });
+  });
+
+cli
+  .command("list-diff <query>", "Compare list contents against search results for my:list queries")
+  .option("--list <path>", "Deck list file (or - for stdin)")
+  .option("--data <path>", "Path to columns.json", { default: COLUMNS_PATH })
+  .option("--printings <path>", "Path to printings.json", { default: PRINTINGS_PATH })
+  .option("--raw <path>", "Path to oracle-cards.json (improves comparison keys)", { default: ORACLE_CARDS_PATH })
+  .option("-q, --quiet", "Show only comparison keys for discrepancies")
+  .action(async (query: string, options: { list?: string; data: string; printings: string; raw: string; quiet?: boolean }) => {
+    if (!options.list) {
+      process.stderr.write("Error: --list is required. Use --list <path> or --list=- for stdin.\n");
+      process.exit(1);
+    }
+    const { runListDiff } = await import("./list-diff/run");
+    runListDiff(query, {
+      dataPath: options.data,
+      printingsPath: options.printings,
+      listPath: options.list,
+      rawPath: options.raw,
+      verbose: !options.quiet,
+    });
   });
 
 cli

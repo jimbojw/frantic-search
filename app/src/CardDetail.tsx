@@ -12,7 +12,7 @@ import {
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
-import { getMatchingCount } from './list-mask-builder'
+import { getMatchingCount } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
