@@ -60,6 +60,7 @@ export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
 export { NodeCache, nodeKey, FIELD_ALIASES, getUniqueModeFromQuery } from "./search/evaluator";
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
+export { levenshteinDistance } from "./levenshtein";
 export { IS_KEYWORDS } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";

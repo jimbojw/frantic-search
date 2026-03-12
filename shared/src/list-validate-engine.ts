@@ -19,6 +19,7 @@ import {
   isKnownGoldfishVariant,
 } from "./list-validate";
 import { tcgplayerToScryfallSetCode } from "./list-serialize";
+import { levenshteinDistance } from "./levenshtein";
 
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
@@ -733,19 +734,76 @@ function resolveCascade(
     const dropCnChildren: ASTNode[] = [nameExact, setField, ...finishNodes, ...variantIsNodes, uniquePrints];
     const dropCnResult = cache.evaluate(andNode(dropCnChildren));
     if (dropCnResult.printingIndices && dropCnResult.printingIndices.length > 0) {
-      const quickFixes = Array.from(dropCnResult.printingIndices).map((rowIdx) => {
+      const withDistance = Array.from(dropCnResult.printingIndices).map((rowIdx) => {
         const cn = printingDisplay.collector_numbers[rowIdx]!;
+        const dist = levenshteinDistance(collectorNum!, cn);
+        return { rowIdx, cn, dist };
+      });
+      const distanceOneCns = new Set(
+        withDistance.filter((x) => x.dist === 1).map((x) => x.cn),
+      );
+      if (distanceOneCns.size === 1) {
+        const resolvedCn = distanceOneCns.values().next().value!;
+        const candidates = withDistance.filter((x) => x.cn === resolvedCn);
+        let pi = candidates[0]!.rowIdx;
+        if (candidates.length > 1) {
+          const wantFoil = preferFoil ? 1 : 0;
+          const match = candidates.find(
+            (c) => printingDisplay.finish[c.rowIdx] === wantFoil,
+          );
+          if (match !== undefined) pi = match.rowIdx;
+        }
+        const success = makeSuccess(
+          pi,
+          display,
+          printingDisplay,
+          quantityTok,
+          finish,
+          lineIndex,
+          lineStart,
+          lineEnd,
+          variantTok,
+          foilPrereleaseMarkerTok,
+        );
+        const resolvedCnDisplay = printingDisplay.collector_numbers[pi]!;
+        const warningLine: LineValidation = {
+          ...success.line,
+          kind: "warning",
+          span: {
+            start: lineStart + effectiveCollectorTok!.start,
+            end: lineStart + effectiveCollectorTok!.end,
+          },
+          message: `Collector number resolved to ${resolvedCnDisplay}`,
+        };
+        return {
+          line: warningLine,
+          entry: success.entry,
+          oracleIndex: success.oracleIndex,
+          scryfallIndex: success.scryfallIndex,
+        };
+      }
+      withDistance.sort((a, b) => a.dist - b.dist || a.cn.localeCompare(b.cn));
+      const quickFixes = withDistance.map(({ rowIdx, cn }) => {
         const variantLabel = variantLabelForPrinting(printingDisplay, rowIdx);
         const tok = effectiveCollectorTok!;
         const replacement = line.slice(0, tok.start) + cn + line.slice(tok.end);
-        return { label: `Use ${cn}${variantLabel}`, replacement: replacement.trimEnd() };
+        return {
+          label: `Use ${cn}${variantLabel}`,
+          replacement: replacement.trimEnd(),
+        };
       });
       return {
         line: {
-          lineIndex, lineStart, lineEnd, kind: "error",
-          span: { start: lineStart + effectiveCollectorTok!.start, end: lineStart + effectiveCollectorTok!.end },
+          lineIndex,
+          lineStart,
+          lineEnd,
+          kind: "error",
+          span: {
+            start: lineStart + effectiveCollectorTok!.start,
+            end: lineStart + effectiveCollectorTok!.end,
+          },
           message: `Collector number doesn't match — \`${collectorNum}\` in \`${setCodeForDisplay}\``,
-          ...(quickFixes.length > 0 ? { quickFixes } : {}),
+          quickFixes,
         },
         oracleIndex: -1,
         scryfallIndex: -1,

@@ -289,6 +289,36 @@ describe("validateDeckListWithEngine", () => {
     expect(err!.quickFixes!.length).toBeGreaterThan(0);
   });
 
+  test("collector number off by 1 (e.g. 261e) auto-resolves with warning", () => {
+    // MH2 Bolt has 261, 262; "261e" has Levenshtein distance 1 to "261"
+    const result = validate("1 Lightning Bolt (MH2) 261e");
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toBe("Collector number resolved to 261");
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBeDefined();
+  });
+
+  test("collector number off by 1 with foil marker prefers foil printing", () => {
+    // MH2 Bolt: row 0 = 261 nonfoil, row 1 = 261 foil
+    const result = validate("1 Lightning Bolt (MH2) 261e *F*");
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBe("p-b"); // foil
+  });
+
+  test("quick fixes for wrong collector number sorted by Levenshtein distance", () => {
+    // MH2 Bolt has 261, 262; "26" has dist 2 to both (no single dist-1 → no auto-resolve)
+    const result = validate("1 Lightning Bolt (MH2) 26");
+    const err = result.lines.find((l) => l.kind === "error");
+    expect(err).toBeDefined();
+    expect(err!.quickFixes).toBeDefined();
+    const labels = err!.quickFixes!.map((f) => f.label);
+    // 261 and 262 both dist 2 from "26"; 261 < 262 lexicographically, so 261 first
+    expect(labels[0]).toMatch(/Use 261/);
+  });
+
   // ---------------------------------------------------------------------------
   // § 3c: Name mismatch (set+collector points to different card)
   // ---------------------------------------------------------------------------

@@ -47,6 +47,11 @@ Errors are ordered by likelihood: collector number wrong (most common), then set
 **Case 1: Collector number wrong (card in set)**  
 Card name is valid, set is valid, card has printings in that set, but the given collector number doesn't match any of them.
 
+| Behavior | Description |
+|----------|-------------|
+| **Auto-resolve (distance 1)** | When exactly one valid collector number has Levenshtein distance 1 from the input (e.g. `37e` → `37`), resolve to that printing with `kind: "warning"` and message "Collector number resolved to [cn]". Prefer foil when user has *F* and multiple printings share that cn. |
+| **Quick fixes** | When no single distance-1 match: suggest each valid collector number, sorted by Levenshtein distance (closest first), then lexicographically. |
+
 | Fix | Label Example |
 |-----|---------------|
 | Suggest each valid collector number | `Use 281`, `Use 282 (borderless)`, `Use 337 (extended art)` |
@@ -90,7 +95,7 @@ For each error path that will support quick fixes:
 
 **Flow change for Case 3:** When `findCardByName` returns null, do not immediately return. If `setTok` and `collectorTok` (or numeric variant) are present and `printingDisplay` exists, try `findPrintingRow`. If a printing is found, we have the card from `canonical_face_ref`. Report "Card name not recognized; set+collector point to \"Foo\"" (or similar) with one quick fix: replace the name with that card's name.
 
-**Case 1 (collector number wrong):** When `findPrintingRow` returns -1 but the card (by name) has printings in that set: iterate `printingDisplay` for rows with matching `setCode` and `canonical_face_ref === card.canonicalFace`. For each, produce a fix with `collector_numbers[i]` and variant info from `printing_flags` / `promo_types_flags_*` (e.g. "extended art", "borderless").
+**Case 1 (collector number wrong):** When `findPrintingRow` returns -1 but the card (by name) has printings in that set: compute Levenshtein distance from input to each valid collector number. If exactly one distinct cn has distance 1, resolve to that printing with warning. Otherwise, produce one fix per printing, sorted by distance (closest first), then by cn. Include variant info from `printing_flags` / `promo_types_flags_*`.
 
 **Case 2 (name vs. printing mismatch):** When `findCardByCanonicalFace` returns null but we have a valid printing: two fixes. (1) Remove set/collector from the line. (2) Replace the card name with `display.names[faceIndex]` for the printing's canonical face.
 
@@ -153,3 +158,4 @@ When reconstructing a line for a fix, preserve the format of the rest of the lin
 - 2026-03-10: Error messages and fix labels use syntax-highlight styling: "..." content (card names) → card-name color (gray-900 dark:gray-100) + font-mono; \`...\` content (set-code, collector) → set-code color (blue-600 dark:blue-400) + font-mono. Validator uses backticks for set/collector consistently.
 - 2026-03-10: "Remove set/collector" fix also removes foil/etched/alter markers — they only apply to specific printings; resolving by name has no finish. Fixed off-by-one: end expansion no longer consumes trailing space, preserving gap before next token.
 - 2026-03-11: Apply all quick fixes — Button in Status header applies first fix per error; accordion UX in Spec 113.
+- 2026-03-12: Collector number near-match: when exactly one valid cn has Levenshtein distance 1 from input, auto-resolve with warning (like unknown set). Quick fixes sorted by distance so closest matches appear first (e.g. `1 Claim the Firstborn (STA) 37e` → 37 before 100).
