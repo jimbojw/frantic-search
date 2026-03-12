@@ -399,6 +399,130 @@ export function validateDeckListWithEngine(
           offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
           continue;
         }
+
+        // § 3d.0 Levenshtein-on-set: 0 name+collector matches, try set typo resolution
+        const effectiveCollectorTok = isVariantCollector ? variantTok : collectorTok;
+        const setLower = effectiveSetCode.toLowerCase();
+        const levSets: string[] = [];
+        for (const known of printingIndex!.knownSetCodes) {
+          if (levenshteinDistance(setLower, known, 1) <= 1) levSets.push(known);
+        }
+
+        if (levSets.length === 1) {
+          const resolvedSet = levSets[0]!;
+          const setField = fieldNode("set", resolvedSet);
+          const dropCnChildren: ASTNode[] = [
+            nameExact,
+            setField,
+            ...finishNodes,
+            ...variantIsNodes,
+            uniquePrints,
+          ];
+          const dropCnResult = cache.evaluate(andNode(dropCnChildren));
+          if (dropCnResult.printingIndices && dropCnResult.printingIndices.length > 0) {
+            const withDistance = Array.from(dropCnResult.printingIndices).map((rowIdx) => {
+              const cn = printingDisplay!.collector_numbers[rowIdx]!;
+              const dist = levenshteinDistance(collectorNum!, cn);
+              return { rowIdx, cn, dist };
+            });
+            const distanceOneCns = new Set(
+              withDistance.filter((x) => x.dist === 1).map((x) => x.cn),
+            );
+            if (distanceOneCns.size === 1) {
+              const resolvedCn = distanceOneCns.values().next().value!;
+              const candidates = withDistance.filter((x) => x.cn === resolvedCn);
+              let pi = candidates[0]!.rowIdx;
+              if (candidates.length > 1) {
+                const wantFoil = preferFoil ? 1 : 0;
+                const match = candidates.find(
+                  (c) => printingDisplay!.finish[c.rowIdx] === wantFoil,
+                );
+                if (match !== undefined) pi = match.rowIdx;
+              }
+              const success = makeSuccess(
+                pi,
+                display,
+                printingDisplay!,
+                quantityTok,
+                finish,
+                lineIndex,
+                lineStart,
+                lineEnd,
+                variantTok,
+                foilPrereleaseMarkerTok,
+              );
+              const resolvedCnDisplay = printingDisplay!.collector_numbers[pi]!;
+              const resolvedSetDisplay = printingDisplay!.set_codes[pi] ?? resolvedSet;
+              const warningLine: LineValidation = {
+                ...success.line,
+                kind: "warning",
+                span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+                message: `Set and collector number resolved to ${resolvedSetDisplay} ${resolvedCnDisplay}`,
+              };
+              lines.push(warningLine);
+              if (success.entry) resolved.push(success.entry);
+              lineResultCache.set(cacheKey, toCacheable(warningLine, success.entry, lineStart, success.oracleIndex, success.scryfallIndex));
+              lineIndices.push(success.oracleIndex, success.scryfallIndex);
+              offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+              continue;
+            }
+            withDistance.sort((a, b) => a.dist - b.dist || a.cn.localeCompare(b.cn));
+            const quickFixes: { label: string; replacement: string }[] = [];
+            const setDisplay = printingDisplay!.set_codes.find((sc) => sc.toLowerCase() === resolvedSet) ?? resolvedSet;
+            for (const { rowIdx, cn } of withDistance) {
+              const variantLabel = variantLabelForPrinting(printingDisplay!, rowIdx);
+              const replacement =
+                line.slice(0, setTok!.start) + setDisplay +
+                line.slice(setTok!.end, effectiveCollectorTok!.start) + cn +
+                line.slice(effectiveCollectorTok!.end);
+              quickFixes.push({
+                label: `Use ${setDisplay} ${cn}${variantLabel}`,
+                replacement: replacement.trimEnd(),
+              });
+            }
+            const lineResult = {
+              lineIndex, lineStart, lineEnd, kind: "error" as const,
+              span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+              message: `Unknown set — \`${setCode}\``,
+              quickFixes,
+            };
+            lines.push(lineResult);
+            lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+            lineIndices.push(-1, -1);
+            offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+            continue;
+          }
+        }
+
+        if (levSets.length >= 2) {
+          const seen = new Set<string>();
+          const useFixes: { label: string; replacement: string }[] = [];
+          for (let i = 0; i < Math.min(2, levSets.length); i++) {
+            const correctSet = printingDisplay!.set_codes.find(
+              (sc) => sc.toLowerCase() === levSets[i],
+            ) ?? levSets[i]!;
+            const replacement = line.slice(0, setTok!.start) + correctSet + line.slice(setTok!.end);
+            if (!seen.has(replacement)) {
+              seen.add(replacement);
+              useFixes.push({ label: `Use ${correctSet}`, replacement: replacement.trimEnd() });
+            }
+          }
+          const quickFixes: { label: string; replacement: string }[] = [
+            ...useFixes,
+            ...(removeSetReplacement ? [{ label: "Remove set/collector, use name only", replacement: removeSetReplacement }] : []),
+          ];
+          const lineResult = {
+            lineIndex, lineStart, lineEnd, kind: "error" as const,
+            span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+            message: `Unknown set — \`${setCode}\``,
+            quickFixes,
+          };
+          lines.push(lineResult);
+          lineResultCache.set(cacheKey, toCacheable(lineResult, undefined, lineStart));
+          lineIndices.push(-1, -1);
+          offset = advanceOffset(text, lineEnd, lineIndex, lineStrings.length);
+          continue;
+        }
       }
 
       // 0 matches or no collector: if 000, resolve by name; else error

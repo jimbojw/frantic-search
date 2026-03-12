@@ -77,7 +77,7 @@ Card name does not resolve, but set and collector number are valid and point to 
 
 | Error Type | Fix |
 |------------|-----|
-| **Unknown set** | When name+collector matches 1 printing: resolve to that printing with `kind: "warning"` and message "Set resolved to [SET]" (span on set token). When 2+ match: offer "Use [set]" for up to the first two (deduped), then "Remove set/collector". When 0 match: "Remove set/collector" only. When set is `000`: 0 or 2+ matches (or no collector) resolve by name only. |
+| **Unknown set** | When name+collector matches 1 printing: resolve to that printing with `kind: "warning"` and message "Set resolved to [SET]" (span on set token). When 2+ match: offer "Use [set]" for up to the first two (deduped), then "Remove set/collector". When 0 match: try Levenshtein-on-set (Spec 114 § 3d.0). If exactly 1 set at distance 1: resolve set, then apply collector logic — auto-resolve both when exactly 1 cn at distance 1, else quick fixes for set+collector (both replaced, sorted by cn distance). If 2+ sets at distance 1: "Use [set]" for first two only (set replacement only). If 0 sets: "Remove set/collector" only. When set is `000`: 0 or 2+ matches (or no collector) resolve by name only. |
 | **No matching printing** (variant) | Remove variant spec. |
 | **Unknown card** (no set+collector) | — Out of scope (would require fuzzy "Did you mean?"). |
 | **Missing card name** | — No fix; user must type the name. |
@@ -159,3 +159,4 @@ When reconstructing a line for a fix, preserve the format of the rest of the lin
 - 2026-03-10: "Remove set/collector" fix also removes foil/etched/alter markers — they only apply to specific printings; resolving by name has no finish. Fixed off-by-one: end expansion no longer consumes trailing space, preserving gap before next token.
 - 2026-03-11: Apply all quick fixes — Button in Status header applies first fix per error; accordion UX in Spec 113.
 - 2026-03-12: Collector number near-match: when exactly one valid cn has Levenshtein distance 1 from input, auto-resolve with warning (like unknown set). Quick fixes sorted by distance so closest matches appear first (e.g. `1 Claim the Firstborn (STA) 37e` → 37 before 100).
+- 2026-03-12: Levenshtein-on-set: when both set and collector are wrong (0 name+collector matches), search provided set against known sets at distance 1. Exactly 1 set: resolve set, then collector logic (auto-resolve or set+collector quick fixes). 2+ sets: "Use [set]" for first two (set only). See Spec 114 § 3d.0.

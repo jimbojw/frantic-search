@@ -118,12 +118,20 @@ When the set code is not in `knownSetCodes`, the validator does **not** enter th
 2. **Disaggregate by set code:** The printings schema has separate rows per finish (foil/non-foil). Group result indices by set code. Count unique sets, not raw printing count.
 3. **1 unique set:** Resolve to that printing (prefer foil when line has foil marker, else non-foil) but emit `kind: "warning"` with message "Set resolved to [SET]" (e.g. "Set resolved to DOM") and span on the set token. The user can Apply; the warning signals we inferred the set.
 4. **2+ unique sets:** If set is `000` (no-set placeholder), resolve by name only and succeed. Otherwise, generate error "Unknown set" with quick fixes: "Use [set1]", "Use [set2]" (up to the first two unique sets, deduped by replacement), then "Remove set/collector, use name only".
-5. **0 matches:** If set is `000`, resolve by name only and succeed. Otherwise, generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
+5. **0 matches:** If set is `000`, resolve by name only and succeed. Otherwise, before falling back to "Remove set/collector", try **Levenshtein-on-set resolution** (below). If that yields no improvement, generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
 6. **No collector number:** If set is `000`, resolve by name only and succeed. Otherwise, generate error "Unknown set" with "Remove set/collector, use name only" quick fix.
 
 **Set code `000`:** TappedOut uses `(000)` as a "no set" placeholder meaning "any printing." When the set is `000`, 0 or 2+ matches (or no collector) cause name-only resolution instead of an error.
 
 This catches typos like `(DAR)` instead of `(DOM)` when the collector number uniquely identifies the printing. The warning ensures the user sees that we inferred the set.
+
+**Levenshtein-on-set (0 matches, collector present):** When name+collector returns 0 matches and a collector number is present, search the provided set code against `knownSetCodes` using Levenshtein distance with cap 1. Case-insensitive comparison.
+
+- **Exactly 1 set at distance ≤1:** Treat the resolved set as known. Query `AND [EXACT "name", FIELD set:RESOLVED_SET, ...finishNodes, ...variantIsNodes, FIELD unique:prints]` to get printings for that card in that set. Compare the provided collector number to each printing's collector number via Levenshtein (cap 1).
+  - **Exactly 1 collector at distance 1:** Auto-resolve to that printing with `kind: "warning"` and message "Set and collector number resolved to [SET] [cn]" (span on set token). Prefer foil when line has foil marker.
+  - **0 or 2+ collectors at distance 1:** Generate error "Unknown set" with quick fixes that replace **both** set and collector: one fix per valid collector number in that set, sorted by distance (closest first), then lexicographically. Each replacement corrects the set code and the collector number in the line.
+- **2+ sets at distance ≤1:** Generate error "Unknown set" with quick fixes for the first 2 matching sets only. Each fix replaces **only** the set code (not the collector). After the user applies a fix, re-validation runs; if the collector is within Levenshtein cap of a valid one, it auto-resolves (§ 3b). Otherwise, a new collector-number error appears with its own quick fixes.
+- **0 sets at distance ≤1:** Fall through to "Remove set/collector, use name only".
 
 #### 3d. Name only — unknown set
 

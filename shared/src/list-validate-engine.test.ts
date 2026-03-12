@@ -338,7 +338,7 @@ describe("validateDeckListWithEngine", () => {
   // ---------------------------------------------------------------------------
 
   test("unknown set with no name+collector match produces error with Remove set/collector only", () => {
-    // cn 999 does not exist for Lightning Bolt
+    // cn 999 does not exist for Lightning Bolt; ZZZ matches no known set at distance 1
     const result = validate("1 Lightning Bolt (ZZZ) 999");
     const err = result.lines.find((l) => l.kind === "error");
     expect(err).toBeDefined();
@@ -347,6 +347,44 @@ describe("validateDeckListWithEngine", () => {
     expect(err!.quickFixes!.length).toBe(1);
     expect(err!.quickFixes![0]!.label).toContain("Remove set/collector");
     expect(err!.quickFixes![0]!.replacement).toBe("1 Lightning Bolt");
+  });
+
+  test("Levenshtein-on-set: 1 set + 1 collector at distance 1 auto-resolves with warning", () => {
+    // MH1 is 1 from MH2; 261e is 1 from 261. Lightning Bolt in MH2 has cn 261
+    const result = validate("1 Lightning Bolt (MH1) 261e");
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toContain("Set and collector number resolved to MH2 261");
+    expect(result.resolved).toHaveLength(1);
+    expect(result.resolved![0]!.scryfall_id).toBe("p-a");
+  });
+
+  test("Levenshtein-on-set: 1 set at distance 1, wrong collector offers set+collector quick fixes", () => {
+    // MH1 -> MH2; 37e doesn't match 261,262,1. Quick fixes replace both set and collector
+    const result = validate("1 Lightning Bolt (MH1) 37e");
+    const err = result.lines.find((l) => l.kind === "error");
+    expect(err).toBeDefined();
+    expect(err!.message).toContain("Unknown set");
+    expect(err!.quickFixes).toBeDefined();
+    const use261 = err!.quickFixes!.find((f) => f.label.startsWith("Use MH2 261"));
+    expect(use261).toBeDefined();
+    expect(use261!.replacement).toContain("(MH2)");
+    expect(use261!.replacement).toContain("261");
+  });
+
+  test("Levenshtein-on-set: 2+ sets at distance 1 offers Use [set] for first two only", () => {
+    // C2R is 1 from C21 and CMR. Sol Ring cn 999 doesn't exist
+    const result = validate("1 Sol Ring (C2R) 999");
+    const err = result.lines.find((l) => l.kind === "error");
+    expect(err).toBeDefined();
+    expect(err!.message).toContain("Unknown set");
+    expect(err!.quickFixes).toBeDefined();
+    const useC21 = err!.quickFixes!.find((f) => f.label === "Use C21");
+    const useCMR = err!.quickFixes!.find((f) => f.label === "Use CMR");
+    expect(useC21).toBeDefined();
+    expect(useCMR).toBeDefined();
+    // Set replacement only — collector 999 stays; re-validation will produce collector error
+    expect(useC21!.replacement).toBe("1 Sol Ring (C21) 999");
   });
 
   test("unknown set with unique name+collector resolves to that printing with warning", () => {
