@@ -85,6 +85,7 @@ export { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-
 export {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
   buildMasksForList,
   buildMasksFromParsedEntries,
   getMatchingCount,

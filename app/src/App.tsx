@@ -33,8 +33,8 @@ import { CardListStore } from './card-list-store'
 import {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
   buildMasksForList,
-  hasPrintingLevelEntries,
   countListEntriesPerCard,
 } from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
@@ -432,6 +432,7 @@ function App() {
     const faceCount = d.oracle_ids.length
     const printingCount = pd?.scryfall_ids.length ?? 0
     const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+    const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
     for (const listId of affectedListIds) {
       const { faceMask, printingMask } = buildMasksForList({
         view,
@@ -440,6 +441,7 @@ function App() {
         printingCount,
         oracleToCanonicalFace: oracleMap,
         printingLookup,
+        canonicalPrintingPerFace,
       })
       const transfer: Transferable[] = [faceMask.buffer]
       if (printingMask) transfer.push(printingMask.buffer)
@@ -516,22 +518,11 @@ function App() {
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()
-          const listsWithPrintings = [...new Set([...view.lists.keys(), TRASH_LIST_ID])].filter((lid) =>
-            hasPrintingLevelEntries(view, lid)
-          )
-          if (listsWithPrintings.length > 0) {
-            const d = display()
-            if (d) {
-              sendListUpdatesFor(
-                worker,
-                listsWithPrintings,
-                d,
-                msg.printingDisplay,
-                cardListStore
-              )
-              // Re-run search so my:list + unique:prints override applies with full masks
-              setListVersion((v) => v + 1)
-            }
+          const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
+          const d = display()
+          if (d && listIds.length > 0) {
+            sendListUpdatesFor(worker, listIds, d, msg.printingDisplay, cardListStore)
+            setListVersion((v) => v + 1)
           }
         } else {
           if (msg.status === 'ready') {
@@ -549,6 +540,7 @@ function App() {
                 const faceCount = d.oracle_ids.length
                 const printingCount = pd?.scryfall_ids.length ?? 0
                 const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+                const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
                 const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
                 for (const listId of listIds) {
                   const { faceMask, printingMask } = buildMasksForList({
@@ -558,6 +550,7 @@ function App() {
                     printingCount,
                     oracleToCanonicalFace: oracleMap,
                     printingLookup,
+                    canonicalPrintingPerFace,
                   })
                   const transfer: Transferable[] = [faceMask.buffer]
                   if (printingMask) transfer.push(printingMask.buffer)

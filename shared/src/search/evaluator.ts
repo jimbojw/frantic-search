@@ -9,7 +9,7 @@ import {
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
-import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, promoteFaceToPrintingCanonicalNonfoil, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
+import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
 import { evalKeyword } from "./eval-keywords";
@@ -139,8 +139,6 @@ export class NodeCache {
   private _getListMask: GetListMask | null = null;
   private _tagDataRef: TagDataRef | null = null;
   private _keywordDataRef: KeywordDataRef | null = null;
-  /** Root AST during evaluate(); used for my: + unique:prints override. */
-  private _rootAstForOverride: ASTNode | undefined = undefined;
 
   constructor(
     index: CardIndex,
@@ -212,10 +210,9 @@ export class NodeCache {
     return interned;
   }
 
-  evaluate(ast: ASTNode, options?: { effectiveAst?: ASTNode }): EvalOutput {
+  evaluate(ast: ASTNode): EvalOutput {
     const timings = new Map<string, EvalTiming>();
     const root = this.internTree(ast);
-    this._rootAstForOverride = options?.effectiveAst ?? ast;
     this.computeTree(root, timings);
     const result = this.buildResult(root, timings);
 
@@ -304,8 +301,7 @@ export class NodeCache {
           const listId = this._resolveListId(ast.value || "list");
           const masks = this._getListMask?.(listId) ?? null;
           if (masks === null) return false;
-          const pm = masks.printingMask;
-          return pm !== undefined && popcount(pm, pm.length) > 0;
+          return masks.printingMask !== undefined;
         }
         if (canonical === "is") {
           if (!PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase())) return false;
@@ -436,18 +432,8 @@ export class NodeCache {
   private computeTree(interned: InternedNode, timings: Map<string, EvalTiming>): void {
     const ast = interned.ast;
     if (interned.computed) {
-      if (ast.type === "FIELD" && FIELD_ALIASES[ast.field?.toLowerCase()] === "my" && this._rootAstForOverride && getUniqueModeFromAst(this._rootAstForOverride) === "prints") {
-        const masks = this._getListMask?.(this._resolveListId(ast.value || "list")) ?? null;
-        if (masks?.faceMask && masks?.printingMask) {
-          const fBits = popcount(masks.faceMask, Math.min(masks.faceMask.length, this.index.faceCount));
-          const pBits = popcount(masks.printingMask, masks.printingMask.length);
-          if (fBits > 0 && pBits > 0) interned.computed = undefined;
-        }
-      }
-      if (interned.computed) {
-        this.markCached(interned, timings);
-        return;
-      }
+      this.markCached(interned, timings);
+      return;
     }
     const n = this.index.faceCount;
 
@@ -518,58 +504,7 @@ export class NodeCache {
             timings.set(interned.key, { cached: false, evalMs: 0 });
             break;
           }
-          const faceMask = masks.faceMask;
-          const printingMask = masks.printingMask;
-          const faceHasBits = popcount(faceMask, Math.min(faceMask.length, n)) > 0;
-          const printingHasBits = printingMask !== undefined && popcount(printingMask, printingMask.length) > 0;
-
-          if (faceHasBits && !printingHasBits) {
-            const t0 = performance.now();
-            const buf = new Uint8Array(n);
-            const len = Math.min(faceMask.length, n);
-            for (let i = 0; i < len; i++) buf[i] = faceMask[i];
-            const ms = performance.now() - t0;
-            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
-            timings.set(interned.key, { cached: false, evalMs: ms });
-            break;
-          }
-          if (!faceHasBits && printingHasBits && this._printingIndex) {
-            const t0 = performance.now();
-            const pIdx = this._printingIndex;
-            const pn = pIdx.printingCount;
-            const buf = new Uint8Array(pn);
-            const copyLen = Math.min(printingMask!.length, pn);
-            for (let i = 0; i < copyLen; i++) buf[i] = printingMask![i];
-            const ms = performance.now() - t0;
-            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
-            timings.set(interned.key, { cached: false, evalMs: ms });
-            break;
-          }
-          if (faceHasBits && printingHasBits && this._printingIndex) {
-            const t0 = performance.now();
-            const pIdx = this._printingIndex;
-            const pn = pIdx.printingCount;
-            const buf = new Uint8Array(pn);
-            const useMatchesOverride = this._rootAstForOverride && getUniqueModeFromAst(this._rootAstForOverride) === "prints";
-            if (useMatchesOverride) {
-              promoteFaceToPrintingCanonicalNonfoil(faceMask, buf, pIdx);
-            } else {
-              promoteFaceToPrinting(faceMask, buf, pIdx);
-            }
-            const copyLen = Math.min(printingMask!.length, pn);
-            for (let i = 0; i < copyLen; i++) buf[i] |= printingMask![i];
-            const ms = performance.now() - t0;
-            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
-            timings.set(interned.key, { cached: false, evalMs: ms });
-            break;
-          }
-          if (!faceHasBits && !printingHasBits) {
-            const buf = new Uint8Array(n);
-            interned.computed = { buf, domain: "face", matchCount: 0, productionMs: 0 };
-            timings.set(interned.key, { cached: false, evalMs: 0 });
-            break;
-          }
-          if (!faceHasBits && printingHasBits && !this._printingIndex) {
+          if (!this._printingIndex) {
             interned.computed = {
               buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
               error: "printing data not loaded",
@@ -577,6 +512,18 @@ export class NodeCache {
             timings.set(interned.key, { cached: false, evalMs: 0 });
             break;
           }
+          const pIdx = this._printingIndex;
+          const pn = pIdx.printingCount;
+          const buf = new Uint8Array(pn);
+          const printingMask = masks.printingMask;
+          if (printingMask !== undefined) {
+            const copyLen = Math.min(printingMask.length, pn);
+            for (let i = 0; i < copyLen; i++) buf[i] = printingMask[i];
+          }
+          const t0 = performance.now();
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
           break;
         }
 
@@ -760,10 +707,21 @@ export class NodeCache {
           break;
         }
         if (childInterned.computed!.domain === "printing" && this._printingIndex) {
-          // Spec 080/095: Negated usd with non-null value, or percentile-capable field with
-          // percentile value → operator inversion (excludes nulls).
+          // Spec 121: -my:list = "cards not in list". Promote to face first, then NOT.
           const childField = ast.child.type === "FIELD" ? ast.child : null;
           const canonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
+          if (canonical === "my") {
+            const faceBuf = this._promoteBufToFace(childInterned.computed!.buf);
+            const buf = new Uint8Array(n);
+            for (let i = 0; i < n; i++) buf[i] = faceBuf[i] ^ 1;
+            const t0 = performance.now();
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          // Spec 080/095: Negated usd with non-null value, or percentile-capable field with
+          // percentile value → operator inversion (excludes nulls).
           const useOpInversion =
             childField
             && (canonical === "usd" && childField.value.toLowerCase() !== "null"

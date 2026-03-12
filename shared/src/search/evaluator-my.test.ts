@@ -5,11 +5,11 @@ import { parse } from "./parser";
 import { index, printingIndex } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
-// Spec 077: my:list query field
+// Spec 077 / Spec 121: my:list query field
 //
-// Uses index (10 face rows) and printingIndex (11 printing rows).
-// Face 1 = Lightning Bolt, Face 3 = Sol Ring (have printings).
-// Printing 1 = Bolt foil, Printing 4 = Sol Ring foil.
+// Spec 121: My List is printing-domain only. All getListMask fixtures must
+// return printingMask (faceMask zeroed). Face 1 = Bolt, Face 3 = Sol Ring.
+// Printing 0 = Bolt nonfoil, Printing 1 = Bolt foil, Printing 3 = Sol Ring nonfoil.
 // ---------------------------------------------------------------------------
 
 function faceMask(indices: number[], faceCount: number): Uint8Array {
@@ -28,8 +28,11 @@ const FACE_COUNT = 10;
 const PRINTING_COUNT = 11;
 
 describe("my:list list ID mapping", () => {
-  const getListMask = () => ({ faceMask: faceMask([1], FACE_COUNT), printingMask: undefined });
-  const cache = new NodeCache(index, null, getListMask);
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0], PRINTING_COUNT), // Bolt canonical nonfoil
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list maps to listId default", () => {
     const out = cache.evaluate(parse("my:list"));
@@ -51,19 +54,25 @@ describe("my:list list ID mapping", () => {
 });
 
 describe("my:list negation", () => {
-  const getListMask = () => ({ faceMask: faceMask([1], FACE_COUNT), printingMask: undefined });
-  const cache = new NodeCache(index, null, getListMask);
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0], PRINTING_COUNT), // Bolt
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("-my:list returns only cards not in list", () => {
     const out = cache.evaluate(parse("-my:list"));
-    expect(out.indices.length).toBe(9 - 1); // 9 canonical cards minus Bolt
+    expect(out.indices.length).toBe(9); // 10 face rows minus Bolt (face 1)
     expect(out.indices.includes(1)).toBe(false);
   });
 });
 
 describe("my:list composition", () => {
-  const getListMask = () => ({ faceMask: faceMask([1], FACE_COUNT), printingMask: undefined });
-  const cache = new NodeCache(index, null, getListMask);
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0], PRINTING_COUNT), // Bolt
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list t:creature composes (AND)", () => {
     const out = cache.evaluate(parse("my:list t:creature"));
@@ -84,8 +93,11 @@ describe("my:list composition", () => {
 });
 
 describe("my:list empty list", () => {
-  const getListMask = () => ({ faceMask: faceMask([], FACE_COUNT), printingMask: undefined });
-  const cache = new NodeCache(index, null, getListMask);
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([], PRINTING_COUNT), // zeroed
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list returns 0 results when list is empty", () => {
     const out = cache.evaluate(parse("my:list"));
@@ -94,14 +106,19 @@ describe("my:list empty list", () => {
 
   test("-my:list returns all cards when list is empty", () => {
     const out = cache.evaluate(parse("-my:list"));
-    expect(out.indices.length).toBe(9);
+    expect(out.indices.length).toBe(10); // all 10 face rows
   });
 });
 
 describe("my:trash", () => {
   const getListMask = (listId: string) =>
-    listId === "trash" ? { faceMask: faceMask([3], FACE_COUNT), printingMask: undefined as undefined } : null;
-  const cache = new NodeCache(index, null, getListMask);
+    listId === "trash"
+      ? {
+          faceMask: faceMask([], FACE_COUNT),
+          printingMask: printingMask([3], PRINTING_COUNT), // Sol Ring canonical nonfoil
+        }
+      : null;
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:trash returns only cards in trash", () => {
     const out = cache.evaluate(parse("my:trash"));
@@ -111,24 +128,34 @@ describe("my:trash", () => {
 
   test("-my:trash returns only cards not in trash", () => {
     const out = cache.evaluate(parse("-my:trash"));
-    expect(out.indices.length).toBe(8);
+    expect(out.indices.length).toBe(9); // 10 face rows minus Sol Ring (face 3)
     expect(out.indices.includes(3)).toBe(false);
   });
 
   test("empty trash: my:trash returns 0 results", () => {
     const emptyTrash = (listId: string) =>
-      listId === "trash" ? { faceMask: faceMask([], FACE_COUNT), printingMask: undefined as undefined } : null;
-    const emptyCache = new NodeCache(index, null, emptyTrash);
+      listId === "trash"
+        ? {
+            faceMask: faceMask([], FACE_COUNT),
+            printingMask: printingMask([], PRINTING_COUNT),
+          }
+        : null;
+    const emptyCache = new NodeCache(index, printingIndex, emptyTrash);
     const out = emptyCache.evaluate(parse("my:trash"));
     expect(out.indices.length).toBe(0);
   });
 
   test("empty trash: -my:trash returns all cards", () => {
     const emptyTrash = (listId: string) =>
-      listId === "trash" ? { faceMask: faceMask([], FACE_COUNT), printingMask: undefined as undefined } : null;
-    const emptyCache = new NodeCache(index, null, emptyTrash);
+      listId === "trash"
+        ? {
+            faceMask: faceMask([], FACE_COUNT),
+            printingMask: printingMask([], PRINTING_COUNT),
+          }
+        : null;
+    const emptyCache = new NodeCache(index, printingIndex, emptyTrash);
     const out = emptyCache.evaluate(parse("-my:trash"));
-    expect(out.indices.length).toBe(9);
+    expect(out.indices.length).toBe(10); // all 10 face rows
   });
 
   test("my:trash t:creature composes (AND)", () => {
@@ -139,8 +166,13 @@ describe("my:trash", () => {
 
 describe("my:list unknown list", () => {
   const getListMask = (listId: string) =>
-    listId === "default" ? { faceMask: faceMask([1], FACE_COUNT), printingMask: undefined as undefined } : null;
-  const cache = new NodeCache(index, null, getListMask);
+    listId === "default"
+      ? {
+          faceMask: faceMask([], FACE_COUNT),
+          printingMask: printingMask([0], PRINTING_COUNT),
+        }
+      : null;
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:foo produces error node", () => {
     const { result } = cache.evaluate(parse("my:foo"));
@@ -150,26 +182,28 @@ describe("my:list unknown list", () => {
 
   test("unknown list is transparent to filtering in AND", () => {
     const out = cache.evaluate(parse("my:foo t:creature"));
-    expect(out.indices.length).toBe(4); // t:creature alone matches 4 (Birds, Tarmogoyf, Thalia, Ayara)
+    expect(out.indices.length).toBe(4); // t:creature alone matches 4
   });
 });
 
-describe("my:list oracle-only (face-domain)", () => {
-  const getListMask = () => ({ faceMask: faceMask([1, 3], FACE_COUNT), printingMask: undefined });
-  const cache = new NodeCache(index, null, getListMask);
+describe("my:list generic entries (Spec 121)", () => {
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0, 3], PRINTING_COUNT), // Bolt + Sol Ring canonical nonfoil
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
-  test("my:list produces face-domain result", () => {
+  test("my:list produces printing-domain result", () => {
     const out = cache.evaluate(parse("my:list"));
     expect(out.indices.length).toBe(2);
     expect(out.indices).toContain(1);
     expect(out.indices).toContain(3);
-    expect(out.hasPrintingConditions).toBe(false);
+    expect(out.hasPrintingConditions).toBe(true);
   });
 
-  test("oracle-only list + my:list is:foil matches (generic card has foil printings)", () => {
-    const cacheWithPrintings = new NodeCache(index, printingIndex, getListMask);
-    const out = cacheWithPrintings.evaluate(parse("my:list is:foil"));
-    expect(out.indices.length).toBe(2); // Bolt and Sol Ring both have foil printings
+  test("generic list + my:list is:foil returns 0 (Spec 121: generic = canonical nonfoil only)", () => {
+    const out = cache.evaluate(parse("my:list is:foil"));
+    expect(out.indices.length).toBe(0); // Both canonical nonfoil, neither is foil
   });
 });
 
@@ -202,45 +236,31 @@ describe("my:list printing-only (printing-domain)", () => {
   });
 });
 
-describe("my:list mixed (face + printing entries)", () => {
+describe("my:list mixed (generic + printing entries, Spec 121)", () => {
   const getListMask = () => ({
-    faceMask: faceMask([3], FACE_COUNT), // Sol Ring (oracle-level)
-    printingMask: printingMask([1], PRINTING_COUNT), // Bolt foil (printing-level)
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([1, 3], PRINTING_COUNT), // Bolt foil + Sol Ring canonical nonfoil
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my:list produces printing-domain result", () => {
     const out = cache.evaluate(parse("my:list"));
     expect(out.hasPrintingConditions).toBe(true);
-    expect(out.indices.length).toBe(2); // Bolt (1 foil) + Sol Ring (all printings)
+    expect(out.indices.length).toBe(2); // Bolt foil + Sol Ring
   });
 
-  test("mixed list + my:list is:nonfoil matches (generic Sol Ring expands to all printings)", () => {
+  test("mixed list + my:list is:nonfoil matches (Sol Ring canonical nonfoil)", () => {
     const out = cache.evaluate(parse("my:list is:nonfoil"));
-    expect(out.indices.length).toBe(1); // Bolt foil excluded; Sol Ring has nonfoil printings
+    expect(out.indices.length).toBe(1); // Bolt foil excluded; Sol Ring nonfoil (3) included
   });
 
-  test("my:list unique:prints override: generic entries show only canonical nonfoil", () => {
+  test("my:list unique:prints shows exactly list printings (no override, Spec 121)", () => {
     const out = cache.evaluate(parse("my:list unique:prints"));
     expect(out.hasPrintingConditions).toBe(true);
     expect(out.printingIndices).toBeDefined();
-    // Without override: Bolt foil (1) + all Sol Ring printings (3,4,7) = 4 printings
-    // With override: Bolt foil (1) + Sol Ring canonical nonfoil only (3) = 2 printings
-    expect(out.printingIndices!.length).toBe(2);
-    expect(out.printingIndices).toContain(1); // Bolt foil (explicit)
-    expect(out.printingIndices).toContain(3); // Sol Ring canonical nonfoil (generic)
-  });
-
-  test("effectiveAst: pinned my:list + live unique:prints applies override (Issue #96)", () => {
-    // Simulate pinned "my:list", live "unique:prints" — effective query has both
-    const pinnedAst = parse("my:list");
-    const effectiveAst = parse("my:list unique:prints");
-    const out = cache.evaluate(pinnedAst, { effectiveAst });
-    expect(out.hasPrintingConditions).toBe(true);
-    expect(out.printingIndices).toBeDefined();
-    expect(out.printingIndices!.length).toBe(2);
-    expect(out.printingIndices).toContain(1); // Bolt foil (explicit)
-    expect(out.printingIndices).toContain(3); // Sol Ring canonical nonfoil (generic)
+    expect(out.printingIndices!.length).toBe(2); // Bolt foil (1) + Sol Ring nonfoil (3)
+    expect(out.printingIndices).toContain(1);
+    expect(out.printingIndices).toContain(3);
   });
 });
 
@@ -254,9 +274,26 @@ describe("my:list without getListMask (CLI)", () => {
   });
 });
 
-describe("my:list invalid operator", () => {
-  const getListMask = () => ({ faceMask: faceMask([1], FACE_COUNT), printingMask: undefined });
+describe("my:list printing data not loaded", () => {
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0], PRINTING_COUNT),
+  });
   const cache = new NodeCache(index, null, getListMask);
+
+  test("my:list produces error when printingIndex is null", () => {
+    const { result } = cache.evaluate(parse("my:list"));
+    expect(result.error).toBe("printing data not loaded");
+    expect(result.matchCount).toBe(-1);
+  });
+});
+
+describe("my:list invalid operator", () => {
+  const getListMask = () => ({
+    faceMask: faceMask([], FACE_COUNT),
+    printingMask: printingMask([0], PRINTING_COUNT),
+  });
+  const cache = new NodeCache(index, printingIndex, getListMask);
 
   test("my: with != operator produces error", () => {
     const { result } = cache.evaluate(parse("my!=foo"));

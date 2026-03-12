@@ -1,6 +1,6 @@
 # Spec 121: My List Printing-Domain Only
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 076 (Worker Protocol and List Caching), Spec 077 (Query Engine — my:list), Spec 046 (Printing Data Model), Spec 048 (Printing-Aware Display), Spec 075 (Card List Data Model and Persistence), Spec 120 (CLI list-diff)
 

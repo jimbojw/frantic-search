@@ -9,6 +9,7 @@ import {
   extractPrintingDisplayColumns,
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
   buildMasksFromParsedEntries,
 } from "@frantic-search/shared";
 import type {
@@ -69,12 +70,16 @@ export function parseListAndBuildMasks(
   const printingLookup = printingDisplay
     ? buildPrintingLookup(printingDisplay)
     : undefined;
+  const canonicalPrintingPerFace = printingDisplay
+    ? buildCanonicalPrintingPerFace(printingDisplay)
+    : undefined;
 
   const { faceMask, printingMask } = buildMasksFromParsedEntries(resolved, {
     faceCount,
     printingCount: printingCount > 0 ? printingCount : undefined,
     oracleToCanonicalFace,
     printingLookup,
+    canonicalPrintingPerFace,
   });
 
   return {
