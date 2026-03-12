@@ -116,7 +116,7 @@ export interface LineValidationResult {
 }
 
 const CARD_LINE_RE =
-  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?\s*$/;
+  /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)\)\s+(\S+))?(?:\s+(\*F\*))?(?:\s+(\*A\*))?(?:\s+(\*E\*))?(?:\s+\[([^\]]*)\])?(?:\s+\^([^^]+)\^)?((?:\s+#\S+)*)\s*$/;
 /** TappedOut inline format: (SET) or (SET:num), *f*|*f-etch*|*e*|*f-pre*|*f-pp*, *CMDR*|*CMPN*, #Tag... */
 const TAPPEDOUT_CARD_LINE_RE =
   /^(\d+x?)\s+([^(]+?)(?:\s+\(([A-Za-z0-9]+)(?::(\S+))?\))?(?:\s+(\*f\*|\*f-etch\*|\*e\*|\*f-pre\*|\*f-pp\*))?(?:\s+(\*CMDR\*|\*CMPN\*))?((?:\s+#\S+)*)\s*$/;
@@ -417,7 +417,7 @@ function parseLine(line: string, lineStart: number): ListToken[] {
 
   const cardMatch = trimmed.match(CARD_LINE_RE);
   if (cardMatch) {
-    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, etchedMarker, categoryContent, collectionMarkerContent] =
+    const [, qty, name, setCode, collectorNum, foilMarker, alterMarker, etchedMarker, categoryContent, collectionMarkerContent, tagsPart] =
       cardMatch;
     const qtyStart = lineStart + trimmed.search(/\d/);
     tokens.push({
@@ -539,6 +539,21 @@ function parseLine(line: string, lineStart: number): ListToken[] {
           value: color,
           start: colorStart,
           end: colorStart + color.length,
+        });
+      }
+    }
+
+    if (tagsPart) {
+      const tagMatches = tagsPart.matchAll(/#(\S+)/g);
+      for (const m of tagMatches) {
+        const full = m[0]!;
+        const tagValue = m[1]!;
+        const pos = trimmed.indexOf(full);
+        tokens.push({
+          type: ListTokenType.HASH_TAG,
+          value: tagValue,
+          start: lineStart + pos,
+          end: lineStart + pos + full.length,
         });
       }
     }

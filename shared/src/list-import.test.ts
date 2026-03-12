@@ -221,6 +221,14 @@ describe("importDeckList", () => {
     expect(result.candidates[0]!.tags).toEqual(["Ramp/Reduction"]);
   });
 
+  test("extracts tags from Moxfield (SET) collector #Tag format", () => {
+    const text = "1 Biomancer's Familiar (RNA) 158 #Reduction";
+    const vr = makeValidationResult(text, [{ oracle_id: "oid1", scryfall_id: null, quantity: 1 }]);
+    const result = importDeckList(text, display, null, vr);
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0]!.tags).toEqual(["Reduction"]);
+  });
+
   test("extracts tag_colors from collection status markers", () => {
     const text =
       "1 Lightning Bolt [Ramp] ^Have,#37d67a^\n1 Counterspell [Control] ^Don't Have,#f47373^";

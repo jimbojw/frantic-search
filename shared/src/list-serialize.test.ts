@@ -183,6 +183,22 @@ describe("serializeMoxfield", () => {
     const result = serializeMoxfield([i], display, printingDisplay);
     expect(result).toBe("1 Delver of Secrets // Insectile Aberration (ISD) 51");
   });
+
+  it("appends #Tag for custom tags (Moxfield format)", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil", null, {
+      tags: ["Reduction"],
+    });
+    const result = serializeMoxfield([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt (M21) 141 #Reduction");
+  });
+
+  it("appends multiple #Tags", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil", null, {
+      tags: ["Ramp", "Artifact"],
+    });
+    const result = serializeMoxfield([i], display, printingDisplay);
+    expect(result).toBe("1 Lightning Bolt (M21) 141 #Ramp #Artifact");
+  });
 });
 
 describe("serializeArchidekt", () => {

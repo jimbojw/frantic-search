@@ -417,6 +417,25 @@ describe("lexDeckList", () => {
     expect(tokens.some((t) => t.type === "HASH_TAG")).toBe(false);
   });
 
+  test("Moxfield: (SET) collector with #Tag (custom tags per moxfield.com/help)", () => {
+    const tokens = lexDeckList("1 Biomancer's Familiar (RNA) 158 #Reduction");
+    expect(tokens).toMatchObject([
+      { type: "QUANTITY", value: "1" },
+      { type: "CARD_NAME", value: "Biomancer's Familiar" },
+      { type: "SET_CODE", value: "RNA" },
+      { type: "COLLECTOR_NUMBER", value: "158" },
+      { type: "HASH_TAG", value: "Reduction" },
+    ]);
+  });
+
+  test("Moxfield: multiple #Tags", () => {
+    const tokens = lexDeckList("1 Sol Ring (C21) 1 #Ramp #Artifact");
+    expect(tokens.filter((t) => t.type === "HASH_TAG").map((t) => t.value)).toEqual([
+      "Ramp",
+      "Artifact",
+    ]);
+  });
+
   test("MTGGoldfish Tabletop: (E) etched modifier with variant", () => {
     const tokens = lexDeckList("1 Sol Ring <etched> [CMM] (E)");
     expect(tokens).toMatchObject([

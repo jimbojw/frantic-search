@@ -128,7 +128,7 @@ for each line:
       5. Else → null
 
     build tags[]:
-      if HASH_TAG tokens present (TappedOut): each HASH_TAG.value becomes one tag (slash preserved, e.g. "Ramp/Reduction")
+      if HASH_TAG tokens present (TappedOut or Moxfield): each HASH_TAG.value becomes one tag (slash preserved, e.g. "Ramp/Reduction")
       else from CATEGORY token value, split on commas
       each segment becomes one tag entry, stored verbatim
       (e.g. "[Maybeboard{noDeck}{noPrice},Proliferate]" → ["Maybeboard{noDeck}{noPrice}", "Proliferate"])
@@ -184,6 +184,7 @@ Each comma-separated segment within `[...]` becomes one entry in `tags[]`. Modif
 | `[Blight,Creature]` | `["Blight", "Creature"]` |
 | `[Maybeboard{noDeck}{noPrice},Proliferate]` | `["Maybeboard{noDeck}{noPrice}", "Proliferate"]` |
 | `#Land #Ramp/Reduction` (TappedOut HASH_TAG) | `["Land", "Ramp/Reduction"]` |
+| `1 Card (SET) 158 #Reduction` (Moxfield HASH_TAG) | `["Reduction"]` |
 
 #### Zone inference from brackets
 
@@ -331,6 +332,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 - 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. Uses DisplayColumns (type_lines, oracle_texts) for the check; no worker changes. `importDeckList` accepts optional `format` parameter.
 - 2026-03-11: Moxfield plain-text export: when a card line is preceded by a blank line and matches `is:commander`, set zone to Commander (Moxfield puts commander alone at end in plain-text export). Applied to both Moxfield and Arena since plain text lacks Moxfield markers and is often detected as Arena.
 - 2026-03-12: Spec 075 Instance granularity invariant: when `ParsedEntry` has `scryfall_id` but `finish` is null (no foil/etched marker), import sets `finish` to `"nonfoil"` so the stored Instance satisfies the invariant. `list-mask-builder` retains a fallback for legacy data (scryfall_id + null finish → treat as nonfoil).
+- 2026-03-12: Moxfield custom tags: HASH_TAG tokens from Moxfield-style lines (Spec 108 CARD_LINE_RE with trailing `#Tag`) populate `tags[]` same as TappedOut. Import extracts tags from HASH_TAG regardless of format.
 
 ## Out of Scope
 

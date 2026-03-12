@@ -60,13 +60,13 @@ Reuse the Spec 053 overlay technique:
 | `SET_CODE_BRACKET` | `THB`, `OTJ` | MTGGoldfish: set code from `[SET]` brackets |
 | `FOIL_PAREN` | `(F)` | MTGGoldfish: foil marker |
 | `ETCHED_PAREN` | `(E)` | MTGGoldfish: etched marker (foil-etched) |
-| `HASH_TAG` | `Land`, `Ramp/Reduction` | TappedOut: inline `#Tag` (slash preserved in tag name) |
+| `HASH_TAG` | `Land`, `Ramp/Reduction`, `Reduction` | TappedOut or Moxfield: inline `#Tag` (slash preserved in tag name) |
 | `ROLE_MARKER` | `*CMDR*`, `*CMPN*` | TappedOut: Commander or Companion role |
 | `FOIL_PRERELEASE_MARKER` | `*f-pre*` | TappedOut: prerelease variant (like MTGGoldfish `<prerelease>`) |
 
 **Line patterns:**
 
-- **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`, optional `^Status,#hex^` (Archidekt collection marker)
+- **Card line:** quantity, name, optional `(SET) number`, optional `*F*`, optional `*A*`, optional `*E*`, optional `[Category]` or `[Category{tag}]`, optional `^Status,#hex^` (Archidekt collection marker), optional `#Tag` (multiple; Moxfield custom tags per [moxfield.com/help](https://moxfield.com/help/managing-custom-tags))
 - **MTGGoldfish card line:** quantity, name, `<variant>`, `[SET]`, optional `(F)` or `(E)` — e.g. `6 Island <251> [THB]`, `4 Spirebluff Canal <prerelease> [OTJ] (F)`
 - **MTGGoldfish MTGO / no-variant:** quantity, name, `[SET]`, optional `(F)` or `(E)` — no `<variant>`; e.g. `2 Disdainful Stroke [KTK] (F)`, `1 Flashfreeze [M10]`
 - **TappedOut inline:** quantity, name, optional `(SET)` or `(SET:num)`, optional `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional `*CMDR*`/`*CMPN*`, optional `#Tag` (multiple). E.g. `1x Sol Ring (SLD:589) *f* #Land #Ramp/Reduction`. Tried when line has `#Tag`, `*f*`, `*CMDR*`, or `(SET:num)`; `#` inside Archidekt `^...#hex^` is excluded.
@@ -153,6 +153,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-09: Added MTGGoldfish variant fallback. Known MTGGoldfish variations (14 values from [help page](https://www.mtggoldfish.com/help/import_formats)) that cannot resolve to a distinct Scryfall printing now fall back to best-match-in-set (prefer foil when `(F)` present) instead of erroring. `LineValidation.kind` extended with `"warning"`; new `variant-approx` highlight role with amber wavy underline (mirrors query highlighter `value-zero` style). Variant string preserved on `ParsedEntry.variant` for round-trip fidelity. `findPrintingBySetAndVariant` now returns -1 when `variantToFlags` cannot interpret the variant, preventing unrecognized variants from silently matching all printings.
 - 2026-03-09: Added Melee.gg support. Section header regex now recognizes `MainDeck` and `Main Deck` (with optional space) as synonyms for `Deck`. Token value is the verbatim matched text; zone normalization (`MainDeck` → `Deck`) is handled by the importer (Spec 109).
 - 2026-03-10: Added TappedOut inline format. New tokens: HASH_TAG (`#Tag`), ROLE_MARKER (`*CMDR*`, `*CMPN*`), FOIL_PRERELEASE_MARKER (`*f-pre*`). Card line pattern: `(SET)` or `(SET:num)`, `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional role, optional `#Tag` (multiple). Tried when line has TappedOut markers; `#` inside Archidekt `^...#hex^` excluded to avoid misparse. Validator: `*f-pre*` uses variant fallback; `(SET)` without collector uses `findAnyPrintingInSet`.
+- 2026-03-12: Added Moxfield custom tag support. CARD_LINE_RE extended with optional trailing `((?:\s+#\S+)*)` for `#Tag` (multiple per [moxfield.com/help/managing-custom-tags](https://moxfield.com/help/managing-custom-tags)). Moxfield uses `(SET) collector` (space after paren); TappedOut uses `(SET:num)` (colon inside paren). Lines like `1 Biomancer's Familiar (RNA) 158 #Reduction` now parse via the generic card pattern (fallthrough when TappedOut pattern fails) and emit HASH_TAG tokens.
 
 ## Acceptance Criteria
 

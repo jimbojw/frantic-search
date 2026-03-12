@@ -324,9 +324,10 @@ export function serializeArena(
 }
 
 /**
- * Serialize instances in Moxfield format: `quantity cardname (SET) collector [*F*|*E*]`
+ * Serialize instances in Moxfield format: `quantity cardname (SET) collector [*F*|*E*] [#Tag...]`
  * Falls back to name-only when printing data is unavailable.
  * Commander first, then deck, then two newlines, then SIDEBOARD: on own line, etc.
+ * Custom tags (per moxfield.com/help/managing-custom-tags) emitted as #Tag when present.
  */
 export function serializeMoxfield(
   instances: InstanceState[],
@@ -337,6 +338,7 @@ export function serializeMoxfield(
 
   const groups = groupByZone(instances, display, printingDisplay, {
     zoneOrder: COMMANDER_FIRST_ORDER,
+    preserveTagsAndStatus: true,
   });
   const mainZones = ["Commander", "Deck", null];
   const mainLines: string[] = [];
@@ -350,6 +352,9 @@ export function serializeMoxfield(
       }
       if (e.finish === "foil") line += " *F*";
       else if (e.finish === "etched") line += " *E*";
+      if (e.tags && e.tags.length > 0) {
+        line += e.tags.map((t) => ` #${t}`).join("");
+      }
       return line;
     });
     if (mainZones.includes(zone)) {
