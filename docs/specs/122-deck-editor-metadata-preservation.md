@@ -1,6 +1,6 @@
 # Spec 122: Deck Editor Metadata Preservation
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 109 (Deck Instance Model), Spec 119 (Deck Editor Review Step)
 

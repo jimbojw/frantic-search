@@ -12,6 +12,10 @@ export function baselineKey(listId: string): string {
 
 export const FORMAT_KEY = 'frantic-search-deck-format'
 
+export const PRESERVE_TAGS_KEY = 'frantic-deck-editor-preserve-tags'
+export const PRESERVE_COLLECTION_STATUS_KEY = 'frantic-deck-editor-preserve-collection-status'
+export const PRESERVE_VARIANTS_KEY = 'frantic-deck-editor-preserve-variants'
+
 export function readDraftFromStorage(listId: string): string | null {
   try {
     const raw = localStorage.getItem(draftKey(listId))
@@ -75,4 +79,46 @@ export function writeFormatToStorage(format: DeckFormat): void {
   } catch {
     // ignore
   }
+}
+
+function readPreserveBoolean(key: string): boolean {
+  try {
+    const v = localStorage.getItem(key)
+    if (v === null) return true
+    return v === 'true'
+  } catch {
+    return true
+  }
+}
+
+function writePreserveBoolean(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // ignore
+  }
+}
+
+export function readPreserveTags(): boolean {
+  return readPreserveBoolean(PRESERVE_TAGS_KEY)
+}
+
+export function writePreserveTags(value: boolean): void {
+  writePreserveBoolean(PRESERVE_TAGS_KEY, value)
+}
+
+export function readPreserveCollectionStatus(): boolean {
+  return readPreserveBoolean(PRESERVE_COLLECTION_STATUS_KEY)
+}
+
+export function writePreserveCollectionStatus(value: boolean): void {
+  writePreserveBoolean(PRESERVE_COLLECTION_STATUS_KEY, value)
+}
+
+export function readPreserveVariants(): boolean {
+  return readPreserveBoolean(PRESERVE_VARIANTS_KEY)
+}
+
+export function writePreserveVariants(value: boolean): void {
+  writePreserveBoolean(PRESERVE_VARIANTS_KEY, value)
 }

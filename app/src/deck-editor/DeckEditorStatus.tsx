@@ -44,15 +44,92 @@ export default function DeckEditorStatus() {
           {ctx.instances().length} card{ctx.instances().length !== 1 ? 's' : ''}
         </p>
       </Show>
-      <Show when={ctx.mode() === 'review'} fallback={null}>
-        <div class="flex flex-wrap gap-2 items-center">
-          <span class="shrink-0">Reviewing list edits:</span>
+      <Show when={(ctx.mode() === 'edit' || ctx.mode() === 'review') && ctx.instances().length > 0} fallback={null}>
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-2">
+          <span class="shrink-0">Preserve when merging:</span>
+          <div class="flex flex-wrap gap-2">
           {(() => {
-            const diff = ctx.reviewDiff()
-            const matched = ctx.reviewMatchedInstances()
-            const n = diff?.additions.length ?? 0
-            const m = diff?.removals.length ?? 0
-            const k = matched.length
+            const counts = ctx.preserveCounts()
+            const preserveChip = (
+              label: string,
+              count: number,
+              active: boolean,
+              disabled: boolean,
+              tooltip: string,
+              onClick: () => void
+            ) => (
+              <button
+                type="button"
+                onClick={onClick}
+                disabled={disabled}
+                title={disabled ? tooltip : undefined}
+                classList={{
+                  'inline-flex items-center justify-center min-h-7 px-2 py-1 rounded text-xs font-medium transition-colors': true,
+                  'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 text-blue-800 dark:text-blue-200':
+                    active && !disabled,
+                  'bg-gray-100 dark:bg-gray-800 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300':
+                    !active && !disabled,
+                  'opacity-50 cursor-not-allowed pointer-events-none': disabled,
+                }}
+                aria-pressed={active}
+                aria-label={`${label} (${count})`}
+              >
+                {label} ({count})
+              </button>
+            )
+            return (
+              <>
+                {preserveChip(
+                  'Tags',
+                  counts.tagsCount,
+                  ctx.preserveTags(),
+                  counts.tagsCount === 0,
+                  'No tags in this list to preserve',
+                  () => ctx.setPreserveTags(!ctx.preserveTags())
+                )}
+                {preserveChip(
+                  'Collection',
+                  counts.collectionCount,
+                  ctx.preserveCollectionStatus(),
+                  counts.collectionCount === 0,
+                  'No collection status in this list to preserve',
+                  () => ctx.setPreserveCollectionStatus(!ctx.preserveCollectionStatus())
+                )}
+                {preserveChip(
+                  'Variants',
+                  counts.variantsCount,
+                  ctx.preserveVariants(),
+                  counts.variantsCount === 0,
+                  'No variants in this list to preserve',
+                  () => ctx.setPreserveVariants(!ctx.preserveVariants())
+                )}
+              </>
+            )
+          })()}
+          </div>
+        </div>
+      </Show>
+      <Show when={ctx.mode() === 'review'} fallback={null}>
+        <Show
+          when={
+            (() => {
+              const diff = ctx.reviewDiff()
+              const n = diff?.additions.length ?? 0
+              const m = diff?.removals.length ?? 0
+              return n > 0 || m > 0
+            })()
+          }
+          fallback={<p>No changes to review</p>}
+        >
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-2">
+            <span class="shrink-0">Reviewing list edits:</span>
+            <div class="flex flex-wrap gap-2">
+            {(() => {
+              const diff = ctx.reviewDiff()
+              const matched = ctx.reviewMatchedInstances()
+              const n = diff?.additions.length ?? 0
+              const m = diff?.removals.length ?? 0
+              const k = matched.length
             const chip = (
               label: string,
               count: number,
@@ -90,7 +167,9 @@ export default function DeckEditorStatus() {
               </>
             )
           })()}
-        </div>
+            </div>
+          </div>
+        </Show>
       </Show>
       <Show when={ctx.mode() === 'edit'} fallback={null}>
         <div class="flex flex-col gap-2">

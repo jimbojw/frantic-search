@@ -16,9 +16,9 @@ export default function DeckEditorFormatChips() {
           <span class="hidden min-[580px]:block text-gray-600 dark:text-gray-400 font-medium">
             Compatible with:
           </span>
-          <span class="hidden min-[580px]:block text-xs text-gray-500 dark:text-gray-400">
+          <em class="hidden min-[580px]:block font-normal italic text-xs text-gray-500 dark:text-gray-400">
             (for export to)
-          </span>
+          </em>
         </div>
         <div class="flex flex-wrap gap-2 min-w-0">
           <For each={ALL_FORMATS}>

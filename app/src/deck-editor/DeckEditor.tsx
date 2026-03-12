@@ -5,6 +5,7 @@ import {
   detectDeckFormat,
   importDeckList,
   diffDeckList,
+  enrichDiffForPreserve,
   parsedEntriesFromInstances,
 } from '@frantic-search/shared'
 import type {
@@ -30,6 +31,12 @@ import {
   writeBaselineToStorage,
   readFormatFromStorage,
   writeFormatToStorage,
+  readPreserveTags,
+  writePreserveTags,
+  readPreserveCollectionStatus,
+  writePreserveCollectionStatus,
+  readPreserveVariants,
+  writePreserveVariants,
 } from './storage'
 import { serialize, ALL_FORMATS } from './serialization'
 import {
@@ -69,8 +76,6 @@ export default function DeckEditor(props: {
   const [selectedFormat, setSelectedFormat] = createSignal<DeckFormat>(readFormatFromStorage())
   const [saveInProgress, setSaveInProgress] = createSignal(false)
   const [reviewModeActive, setReviewModeActive] = createSignal(false)
-  const [reviewDiff, setReviewDiff] = createSignal<DiffResult | null>(null)
-  const [reviewMatchedInstances, setReviewMatchedInstances] = createSignal<InstanceState[]>([])
   const [reviewFilterAdded, setReviewFilterAdded] = createSignal(true)
   const [reviewFilterRemoved, setReviewFilterRemoved] = createSignal(true)
   const [reviewFilterUnchanged, setReviewFilterUnchanged] = createSignal(false)
@@ -78,6 +83,9 @@ export default function DeckEditor(props: {
   const [quickFixApplying, setQuickFixApplying] = createSignal<{ lineIndex: number; fixIndex: number } | null>(null)
   const [debouncedDraft, setDebouncedDraft] = createSignal<string>('')
   const [textareaEl, setTextareaEl] = createSignal<HTMLTextAreaElement | null>(null)
+  const [preserveTags, setPreserveTags] = createSignal(readPreserveTags())
+  const [preserveCollectionStatus, setPreserveCollectionStatus] = createSignal(readPreserveCollectionStatus())
+  const [preserveVariants, setPreserveVariants] = createSignal(readPreserveVariants())
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -136,6 +144,33 @@ export default function DeckEditor(props: {
   })
 
   const hasInstances = () => props.instances.length > 0
+
+  const preserveCounts = createMemo(() => {
+    const ins = props.instances
+    let tagsCount = 0
+    let collectionCount = 0
+    let variantsCount = 0
+    for (const i of ins) {
+      if (i.tags.length > 0) tagsCount++
+      if (i.collection_status && i.collection_status !== '') collectionCount++
+      if (i.variant && i.variant !== '') variantsCount++
+    }
+    return { tagsCount, collectionCount, variantsCount }
+  })
+
+  function setPreserveTagsWithStorage(v: boolean) {
+    setPreserveTags(v)
+    writePreserveTags(v)
+  }
+  function setPreserveCollectionStatusWithStorage(v: boolean) {
+    setPreserveCollectionStatus(v)
+    writePreserveCollectionStatus(v)
+  }
+  function setPreserveVariantsWithStorage(v: boolean) {
+    setPreserveVariants(v)
+    writePreserveVariants(v)
+  }
+
   const mode = createMemo<EditorMode>(() => {
     if (reviewModeActive()) return 'review'
     if (draftText() !== null) return 'edit'
@@ -335,7 +370,36 @@ export default function DeckEditor(props: {
     const fmt = detectedFormat() ?? selectedFormat()
     const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
     const diff = diffDeckList(result.candidates, props.instances)
-    return { additions: diff.additions.length, removals: diff.removals.length }
+    const enriched = enrichDiffForPreserve(diff, {
+      preserveTags: preserveTags(),
+      preserveCollectionStatus: preserveCollectionStatus(),
+      preserveVariants: preserveVariants(),
+    })
+    return { additions: enriched.additions.length, removals: enriched.removals.length }
+  })
+
+  const enrichedReviewDiff = createMemo<DiffResult | null>(() => {
+    if (!reviewModeActive()) return null
+    const text = draftText()
+    if (text === null || !props.display) return null
+    const vr = buildValidationResult(text)
+    if (vr.lines.some((l) => l.kind === 'error')) return null
+    const fmt = detectedFormat() ?? selectedFormat()
+    const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
+    const diff = diffDeckList(result.candidates, props.instances)
+    const enriched = enrichDiffForPreserve(diff, {
+      preserveTags: preserveTags(),
+      preserveCollectionStatus: preserveCollectionStatus(),
+      preserveVariants: preserveVariants(),
+    })
+    return enriched
+  })
+
+  const reviewMatchedInstances = createMemo(() => {
+    const diff = enrichedReviewDiff()
+    if (!diff) return []
+    const removalUuids = new Set(diff.removals.map((r) => r.uuid))
+    return props.instances.filter((i) => !removalUuids.has(i.uuid))
   })
 
   const detectedFormat = createMemo<DeckFormat | null>(() => {
@@ -428,8 +492,6 @@ export default function DeckEditor(props: {
     setDebouncedDraft('')
     setBaselineText(null)
     setReviewModeActive(false)
-    setReviewDiff(null)
-    setReviewMatchedInstances([])
     clearDraftFromStorage(props.listId)
     if (debounceTimer) {
       clearTimeout(debounceTimer)
@@ -492,16 +554,6 @@ export default function DeckEditor(props: {
   }
 
   function handleReview() {
-    const text = draftText()
-    if (text == null || !props.display) return
-    const vr = buildValidationResult(text)
-    const fmt = detectedFormat() ?? selectedFormat()
-    const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
-    const diff = diffDeckList(result.candidates, props.instances)
-    const removalUuids = new Set(diff.removals.map((r) => r.uuid))
-    const matched = props.instances.filter((i) => !removalUuids.has(i.uuid))
-    setReviewDiff(diff)
-    setReviewMatchedInstances(matched)
     setReviewModeActive(true)
   }
 
@@ -550,8 +602,13 @@ export default function DeckEditor(props: {
       const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
       const currentInstances = props.instances
       const diff = diffDeckList(result.candidates, currentInstances)
+      const enriched = enrichDiffForPreserve(diff, {
+        preserveTags: preserveTags(),
+        preserveCollectionStatus: preserveCollectionStatus(),
+        preserveVariants: preserveVariants(),
+      })
 
-      await props.cardListStore.applyDiff(props.listId, diff.removals, diff.additions)
+      await props.cardListStore.applyDiff(props.listId, enriched.removals, enriched.additions)
 
       if (result.deckName || Object.keys(result.tagColors).length > 0) {
         const meta = props.metadata
@@ -576,7 +633,7 @@ export default function DeckEditor(props: {
   }
 
   function getWouldBeCommittedText(): string {
-    const diff = reviewDiff()
+    const diff = enrichedReviewDiff()
     const matched = reviewMatchedInstances()
     if (!diff || !props.display) return ''
     const additionsAsInstances: InstanceState[] = diff.additions.map((c: ImportCandidate) => ({
@@ -659,6 +716,13 @@ export default function DeckEditor(props: {
     hasChanges,
     editDiffSummary,
     editFormatLabel,
+    preserveTags,
+    preserveCollectionStatus,
+    preserveVariants,
+    preserveCounts,
+    setPreserveTags: setPreserveTagsWithStorage,
+    setPreserveCollectionStatus: setPreserveCollectionStatusWithStorage,
+    setPreserveVariants: setPreserveVariantsWithStorage,
     textareaValue,
     highlightText,
     highlightValidation,
@@ -667,7 +731,7 @@ export default function DeckEditor(props: {
     saveInProgress,
     copied,
     quickFixApplying,
-    reviewDiff,
+    reviewDiff: enrichedReviewDiff,
     reviewMatchedInstances,
     reviewFilterAdded,
     reviewFilterRemoved,
@@ -701,9 +765,16 @@ export default function DeckEditor(props: {
           <Show when={mode() !== 'review'} fallback={null}>
             <DeckEditorTextarea />
           </Show>
-          <Show when={mode() === 'review' && reviewDiff() !== null} fallback={null}>
+          <Show
+            when={
+              mode() === 'review' &&
+              enrichedReviewDiff() !== null &&
+              (enrichedReviewDiff()!.additions.length > 0 || enrichedReviewDiff()!.removals.length > 0)
+            }
+            fallback={null}
+          >
             <DeckEditorReviewView
-              diff={reviewDiff()!}
+              diff={enrichedReviewDiff()!}
               matchedInstances={reviewMatchedInstances()}
               format={selectedFormat()}
               display={props.display!}

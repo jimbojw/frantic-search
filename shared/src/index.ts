@@ -82,6 +82,8 @@ export { importDeckList } from "./list-import";
 export type { ImportCandidate, ImportResult } from "./list-import";
 export { diffDeckList } from "./list-diff";
 export type { DiffResult } from "./list-diff";
+export { enrichDiffForPreserve } from "./enrich-diff-for-preserve";
+export type { PreserveOptions } from "./enrich-diff-for-preserve";
 export { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-columns";
 export {
   buildOracleToCanonicalFaceMap,

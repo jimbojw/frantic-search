@@ -101,7 +101,10 @@ export default function DeckEditorToolbar() {
           <button
             type="button"
             onClick={ctx.handleSave}
-            disabled={ctx.saveInProgress()}
+            disabled={
+              ctx.saveInProgress() ||
+              (ctx.reviewDiff()?.additions.length === 0 && ctx.reviewDiff()?.removals.length === 0)
+            }
             class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500 border-l border-gray-200 dark:border-gray-600"
             aria-label="Save changes"
           >

@@ -35,6 +35,13 @@ export interface DeckEditorContextValue {
   hasChanges: Accessor<boolean>
   editDiffSummary: Accessor<{ additions: number; removals: number } | null>
   editFormatLabel: Accessor<string | null>
+  preserveTags: Accessor<boolean>
+  preserveCollectionStatus: Accessor<boolean>
+  preserveVariants: Accessor<boolean>
+  preserveCounts: Accessor<{ tagsCount: number; collectionCount: number; variantsCount: number }>
+  setPreserveTags: (v: boolean) => void
+  setPreserveCollectionStatus: (v: boolean) => void
+  setPreserveVariants: (v: boolean) => void
   textareaValue: Accessor<string>
   highlightText: Accessor<string>
   highlightValidation: Accessor<ListValidationResult | null>
