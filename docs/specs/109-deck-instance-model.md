@@ -124,6 +124,7 @@ for each line:
       2. Else if CATEGORY token's primary segment matches KNOWN_ZONES → use it
       3. Else if format is Moxfield and currentZone is null and this is the first card line in the main block (before SIDEBOARD:) and the card matches `is:commander` (Spec 032: Legendary + Creature/Planeswalker in type line, or "can be your commander" in oracle text) → set zone to Commander
       3a. Else if format is Moxfield or Arena and this card line is preceded by a blank line and the card matches `is:commander` → set zone to Commander (Moxfield plain-text export puts commander alone at end; plain text lacks Moxfield markers so is often detected as Arena)
+      3b. Else if format is Moxfield and currentZone is Sideboard and this is the first card line in the sideboard and the card matches `is:companion` (Spec 032: oracle text contains "Companion —") → set zone to Companion (Moxfield "Copy for Moxfield" puts companions in SIDEBOARD:)
       4. Else if currentZone is set → use currentZone
       5. Else → null
 

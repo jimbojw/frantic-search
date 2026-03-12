@@ -450,4 +450,83 @@ describe("importDeckList", () => {
     const resultArena = importDeckList(text, displayWithCommander, null, vr, "arena");
     expect(resultArena.candidates[3]!.zone).toBe("Commander");
   });
+
+  test("Moxfield: first card in SIDEBOARD: is Companion when card matches is:companion", () => {
+    const displayWithCompanion = makeDisplay({
+      names: ["Birds of Paradise", "Lightning Bolt", "Zirda, the Dawnwaker"],
+      type_lines: ["Creature", "Instant", "Legendary Creature — Elemental"],
+      oracle_texts: [
+        "",
+        "",
+        "Companion — Each permanent card in your starting deck has mana value 2 or less.\nFirst strike, haste",
+      ],
+      oracle_ids: ["oid0", "oid1", "oid-zirda"],
+      mana_costs: ["{G}", "{R}", "{1}{R}{W}"],
+      powers: [0, 0, 2],
+      toughnesses: [0, 0, 2],
+      loyalties: [0, 0, 0],
+      defenses: [0, 0, 0],
+      color_identity: [0, 0, 0],
+      scryfall_ids: ["", "", ""],
+      art_crop_thumb_hashes: ["", "", ""],
+      card_thumb_hashes: ["", "", ""],
+      layouts: ["normal", "normal", "normal"],
+      legalities_legal: [0, 0, 0],
+      legalities_banned: [0, 0, 0],
+      legalities_restricted: [0, 0, 0],
+      canonical_face: [0, 1, 2],
+      edhrec_rank: [null, null, null],
+      edhrec_salt: [null, null, null],
+    });
+    const text = "1 Lightning Bolt (M21) 159\n1 Birds of Paradise\n\nSIDEBOARD:\n1 Zirda, the Dawnwaker (IKO) 233";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid0", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid-zirda", scryfall_id: null, quantity: 1 },
+    ]);
+    const result = importDeckList(text, displayWithCompanion, null, vr, "moxfield");
+    expect(result.candidates).toHaveLength(3);
+    expect(result.candidates[0]!.zone).toBeNull();
+    expect(result.candidates[1]!.zone).toBeNull();
+    expect(result.candidates[2]!.zone).toBe("Companion");
+  });
+
+  test("Moxfield: second card in SIDEBOARD: stays Sideboard when first is companion", () => {
+    const displayWithCompanion = makeDisplay({
+      names: ["Lightning Bolt", "Zirda, the Dawnwaker", "Shock"],
+      type_lines: ["Instant", "Legendary Creature — Elemental", "Instant"],
+      oracle_texts: [
+        "",
+        "Companion — Each permanent card in your starting deck has mana value 2 or less.\nFirst strike",
+        "",
+      ],
+      oracle_ids: ["oid1", "oid-zirda", "oid4"],
+      mana_costs: ["{R}", "{1}{R}{W}", "{R}"],
+      powers: [0, 2, 0],
+      toughnesses: [0, 2, 0],
+      loyalties: [0, 0, 0],
+      defenses: [0, 0, 0],
+      color_identity: [0, 0, 0],
+      scryfall_ids: ["", "", ""],
+      art_crop_thumb_hashes: ["", "", ""],
+      card_thumb_hashes: ["", "", ""],
+      layouts: ["normal", "normal", "normal"],
+      legalities_legal: [0, 0, 0],
+      legalities_banned: [0, 0, 0],
+      legalities_restricted: [0, 0, 0],
+      canonical_face: [0, 1, 2],
+      edhrec_rank: [null, null, null],
+      edhrec_salt: [null, null, null],
+    });
+    const text = "1 Lightning Bolt\n\nSIDEBOARD:\n1 Zirda, the Dawnwaker (IKO) 233\n1 Shock";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid-zirda", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid4", scryfall_id: null, quantity: 1 },
+    ]);
+    const result = importDeckList(text, displayWithCompanion, null, vr, "moxfield");
+    expect(result.candidates).toHaveLength(3);
+    expect(result.candidates[1]!.zone).toBe("Companion");
+    expect(result.candidates[2]!.zone).toBe("Sideboard");
+  });
 });

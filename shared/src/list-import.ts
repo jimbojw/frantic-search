@@ -20,6 +20,16 @@ function isCommander(oracleId: string, display: DisplayColumns): boolean {
   return (isLegendary && isCreatureOrPW) || hasCommanderText;
 }
 
+/**
+ * Check if a card matches is:companion (Spec 032): oracle text contains "Companion —".
+ */
+function isCompanion(oracleId: string, display: DisplayColumns): boolean {
+  const idx = display.oracle_ids.indexOf(oracleId);
+  if (idx < 0) return false;
+  const ot = (display.oracle_texts[idx] ?? "").toLowerCase();
+  return ot.includes("companion —");
+}
+
 export interface ImportCandidate {
   oracle_id: string;
   scryfall_id: string | null;
@@ -115,6 +125,7 @@ export function importDeckList(
   let currentZone: string | null = null;
   let resolvedIdx = 0;
   let seenFirstMainBlockCard = false;
+  let seenFirstSideboardCard = false;
   let previousLineWasBlank = false;
 
   for (let lineIdx = 0; lineIdx < lineGroups.length; lineIdx++) {
@@ -131,6 +142,7 @@ export function importDeckList(
       const normalized = normalizeHeaderValue(lineTokens[0]!.value);
       const zone = canonicalZone(normalized);
       currentZone = zone;
+      if (zone === "Sideboard") seenFirstSideboardCard = false;
       continue;
     }
 
@@ -210,7 +222,17 @@ export function importDeckList(
     ) {
       zone = "Commander";
     }
+    // Moxfield: first card in SIDEBOARD: may be Companion (Spec 109 § 3b)
+    if (
+      format === "moxfield" &&
+      currentZone === "Sideboard" &&
+      !seenFirstSideboardCard &&
+      isCompanion(entry.oracle_id, display)
+    ) {
+      zone = "Companion";
+    }
     if (currentZone === null) seenFirstMainBlockCard = true;
+    if (currentZone === "Sideboard") seenFirstSideboardCard = true;
     previousLineWasBlank = false;
 
     // Extract collection status
