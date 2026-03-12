@@ -105,6 +105,8 @@ Three toggleable chips in the Status area:
 
 **Canonical form:** Each line is serialized using the selected format (from the Compatible with bar). Added lines come from `ImportCandidate[]`; Removed from `InstanceState[]`; Unchanged from the matched subset. Serialization requires `display` and `printingDisplay` for name/set resolution — same as Display mode. This ensures auto-corrections (e.g. wrong set code, `000`, applied quick fixes) appear as their canonical final form. Review is the user's last chance to see the changes before Save.
 
+**Deduplication:** Lines are deduplicated by card identity (oracle_id, scryfall_id, finish, zone, tags, collection_status — per format). Multiple instances of the same card (e.g. 7× Forest) are consolidated into a single line with the aggregated count (e.g. `7x Forest (tmt) 319 [Land]`). The serializers in `list-serialize.ts` use `aggregateInstances` for this; the Review view batches instances by zone before serializing so that aggregation produces the correct counts.
+
 ### 8. Diff Computation
 
 Same as Spec 109 § 5: run `importDeckList` on the draft, then `diffDeckList(candidates, currentInstances)`. The result has `additions` and `removals` only. No "Changed" category — see Out of Scope.
@@ -147,11 +149,12 @@ The filter chips are **persistent** in the Status box — always visible, no col
 7. Filter chips: Added (N), Removed (M), Unchanged (K). Chips with count 0 are disabled (deemphasized, not clickable).
 8. Default: Added and Removed visible, Unchanged hidden.
 9. Diff list is grouped by zone (Commander, Deck, Sideboard, Companion, Maybeboard, other). Within each zone, sorted alphabetically by card name (quantity prefix stripped).
-10. Compatible with bar visible in Review mode. Format selector works; changing format re-renders the diff list in the new format.
-11. Copy in Review mode copies the would-be-committed list (canonical form in selected format).
-12. Apply is renamed to Save in the deck editor. Button label "Save", `aria-label="Save changes"`. `applyInProgress` → `saveInProgress`.
-13. Cancel (Edit, no changes) and Revert (Edit, with changes) behavior unchanged from Spec 113.
+10. Diff lines are deduplicated by card identity (oracle_id, scryfall_id, finish, zone, tags, collection_status, per format). Multiple instances of the same card appear as one line with the aggregated count (e.g. `7x Forest`, not seven separate `1x Forest` lines).
+11. Compatible with bar visible in Review mode. Format selector works; changing format re-renders the diff list in the new format.
+12. Copy in Review mode copies the would-be-committed list (canonical form in selected format).
+13. Apply is renamed to Save in the deck editor. Button label "Save", `aria-label="Save changes"`. `applyInProgress` → `saveInProgress`.
+14. Cancel (Edit, no changes) and Revert (Edit, with changes) behavior unchanged from Spec 113.
 
 ## Implementation Notes
 
-*(To be filled during implementation.)*
+- **Deduplication (AC 10):** `buildDiffLines` in `DeckEditorReviewView.tsx` batches instances by zone before calling `serialize()`. The serializers in `list-serialize.ts` use `aggregateInstances` internally, so passing all instances from a zone produces one line per unique card with the correct count. Previously each instance was serialized individually, yielding `1x` per line.

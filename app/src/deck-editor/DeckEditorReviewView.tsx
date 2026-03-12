@@ -50,6 +50,20 @@ function zoneDisplayName(zone: string | null): string {
   return zone ?? 'Deck'
 }
 
+function groupByZone(instances: InstanceState[]): Map<string | null, InstanceState[]> {
+  const m = new Map<string | null, InstanceState[]>()
+  for (const inst of instances) {
+    const z = inst.zone ?? null
+    let arr = m.get(z)
+    if (!arr) {
+      arr = []
+      m.set(z, arr)
+    }
+    arr.push(inst)
+  }
+  return m
+}
+
 function buildDiffLines(
   diff: DiffResult,
   matched: InstanceState[],
@@ -65,28 +79,30 @@ function buildDiffLines(
   /** Card lines start with quantity (e.g. "1 ", "4x "). Exclude zone headers like "SIDEBOARD:". */
   const isCardLine = (l: string) => /^\d+x?\s/.test(l.trim())
 
-  const add = (kind: DiffLine['kind'], inst: InstanceState) => {
-    const text = serialize(format, [inst], display, printingDisplay)
+  const addGroup = (kind: DiffLine['kind'], instances: InstanceState[]) => {
+    if (instances.length === 0) return
+    const zone = instances[0]!.zone ?? null
+    const text = serialize(format, instances, display, printingDisplay)
     const perLine = text.split(/\r?\n/).filter((l) => l.trim() && isCardLine(l))
     for (const l of perLine) {
-      lines.push({ kind, line: l.trim(), zone: inst.zone ?? null })
+      lines.push({ kind, line: l.trim(), zone })
     }
   }
 
-  if (addedVisible) {
-    for (const c of diff.additions) {
-      const inst = candidateToInstance(c, listId)
-      add('added', inst)
+  if (addedVisible && diff.additions.length > 0) {
+    const added = diff.additions.map((c) => candidateToInstance(c, listId))
+    for (const insts of groupByZone(added).values()) {
+      addGroup('added', insts)
     }
   }
-  if (removedVisible) {
-    for (const inst of diff.removals) {
-      add('removed', inst)
+  if (removedVisible && diff.removals.length > 0) {
+    for (const insts of groupByZone(diff.removals).values()) {
+      addGroup('removed', insts)
     }
   }
-  if (unchangedVisible) {
-    for (const inst of matched) {
-      add('unchanged', inst)
+  if (unchangedVisible && matched.length > 0) {
+    for (const insts of groupByZone(matched).values()) {
+      addGroup('unchanged', insts)
     }
   }
 
@@ -159,7 +175,7 @@ export default function DeckEditorReviewView(props: {
               </div>
             ) : item.kind === 'added' ? (
               <div class="flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-950/20">
-                <span class="shrink-0 text-green-700 dark:text-green-400 font-medium" aria-hidden>
+                <span class="shrink-0 font-mono text-green-700 dark:text-green-400 font-medium" aria-hidden>
                   +
                 </span>
                 <div class="min-w-0 overflow-x-auto">
@@ -168,7 +184,7 @@ export default function DeckEditorReviewView(props: {
               </div>
             ) : item.kind === 'removed' ? (
               <div class="flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-950/20">
-                <span class="shrink-0 text-red-700 dark:text-red-400 font-medium" aria-hidden>
+                <span class="shrink-0 font-mono text-red-700 dark:text-red-400 font-medium" aria-hidden>
                   −
                 </span>
                 <div class="min-w-0 overflow-x-auto">
@@ -176,8 +192,10 @@ export default function DeckEditorReviewView(props: {
                 </div>
               </div>
             ) : (
-              <div class="flex items-start gap-1.5 min-w-0">
-                <span class="shrink-0 min-w-[1.25rem]" aria-hidden />
+              <div class="flex items-start gap-1.5 min-w-0 -mx-1 px-1.5">
+                <span class="shrink-0 font-mono font-medium" aria-hidden>
+                  {'\u00A0'}
+                </span>
                 <div class="min-w-0 overflow-x-auto">
                   <ListHighlight text={item.line} class="text-sm leading-relaxed text-gray-600 dark:text-gray-400" />
                 </div>
