@@ -13,6 +13,7 @@ type HighlightRole =
   | 'bare'
   | 'quoted'
   | 'regex'
+  | 'metadata'
   | 'not'
   | 'paren'
   | 'keyword'
@@ -41,6 +42,7 @@ export const ROLE_CLASSES: Record<HighlightRole, string> = {
   bare:             'text-gray-900 dark:text-gray-100',
   quoted:           'text-emerald-700 dark:text-emerald-400',
   regex:            'text-violet-700 dark:text-violet-400',
+  metadata:         'text-violet-700 dark:text-violet-400',
   not:              'text-red-600 dark:text-red-400',
   paren:            'text-amber-600 dark:text-amber-400',
   keyword:          'text-blue-600 dark:text-blue-400 font-semibold',
@@ -121,6 +123,7 @@ function classifyToken(token: Token, prev: Token | undefined, next: Token | unde
     case TokenType.GTE:
       return 'operator'
     case TokenType.WORD:
+      if (token.value.startsWith('#')) return 'metadata'
       if (prev && OPERATORS.has(prev.type)) return 'value'
       if (next && OPERATORS.has(next.type)) {
         const lower = token.value.toLowerCase()
