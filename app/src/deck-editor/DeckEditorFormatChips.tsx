@@ -8,12 +8,15 @@ export default function DeckEditorFormatChips() {
 
   return (
     <Show when={ctx.mode() === 'display' || ctx.mode() === 'review'} fallback={null}>
-      <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm min-w-0">
+      <div class="grid grid-cols-1 min-[580px]:grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm min-w-0">
         <div class="flex flex-col shrink-0 self-center">
-          <span class="text-gray-600 dark:text-gray-400 font-medium">
+          <span class="min-[580px]:hidden text-gray-600 dark:text-gray-400 font-medium">
+            Compatible with <em class="font-normal text-gray-500 dark:text-gray-400">(for export to)</em>:
+          </span>
+          <span class="hidden min-[580px]:block text-gray-600 dark:text-gray-400 font-medium">
             Compatible with:
           </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400">
+          <span class="hidden min-[580px]:block text-xs text-gray-500 dark:text-gray-400">
             (for export to)
           </span>
         </div>
