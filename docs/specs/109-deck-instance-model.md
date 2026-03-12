@@ -146,6 +146,9 @@ for each line:
       use ParsedEntry.finish which already resolves both Moxfield markers (*F*, *E*)
       and MTGGoldfish markers ((F), (E)):
         "foil" | "etched" | null
+      Per Spec 075 Instance granularity invariant: when scryfall_id is set (specific printing)
+      but finish is null (no foil/etched marker in line), set finish to "nonfoil" so the stored
+      Instance satisfies the invariant (scryfall_id + finish uniquely identifies the piece of cardboard).
 
     determine variant:
       use ParsedEntry.variant — verbatim content of <...> from MTGGoldfish format,
@@ -327,6 +330,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 - 2026-03-10: Added TappedOut import support. ROLE_MARKER (*CMDR*, *CMPN*) sets zone; HASH_TAG tokens populate tags (slash preserved in tag names). TappedOut uses *f*/*f-etch*/*e* for finish (same as Moxfield); *f-pre* uses variant fallback per Spec 108.
 - 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. Uses DisplayColumns (type_lines, oracle_texts) for the check; no worker changes. `importDeckList` accepts optional `format` parameter.
 - 2026-03-11: Moxfield plain-text export: when a card line is preceded by a blank line and matches `is:commander`, set zone to Commander (Moxfield puts commander alone at end in plain-text export). Applied to both Moxfield and Arena since plain text lacks Moxfield markers and is often detected as Arena.
+- 2026-03-12: Spec 075 Instance granularity invariant: when `ParsedEntry` has `scryfall_id` but `finish` is null (no foil/etched marker), import sets `finish` to `"nonfoil"` so the stored Instance satisfies the invariant. `list-mask-builder` retains a fallback for legacy data (scryfall_id + null finish → treat as nonfoil).
 
 ## Out of Scope
 

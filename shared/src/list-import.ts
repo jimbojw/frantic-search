@@ -230,7 +230,9 @@ export function importDeckList(
       }
     }
 
-    const finish = entry.finish ?? null;
+    // Spec 075: when scryfall_id is set (specific printing) but no foil/etched marker,
+    // set finish to "nonfoil" so (scryfall_id, finish) uniquely identifies the piece of cardboard.
+    const finish = entry.finish ?? (entry.scryfall_id ? "nonfoil" : null);
     const variant = entry.variant ?? null;
     const quantity = entry.quantity;
 

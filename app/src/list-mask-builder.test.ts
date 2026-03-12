@@ -205,6 +205,34 @@ describe('buildMasksForList', () => {
     expect(printingMask![2]).toBe(0)
   })
 
+  it('sets printingMask when scryfall_id present and finish null (treat as nonfoil)', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    const uuid1 = 'uuid-1'
+    uuids.add(uuid1)
+    view.instancesByList.set('default', uuids)
+    view.instances.set(uuid1, inst({
+      uuid: uuid1,
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: null,
+      list_id: 'default',
+    }))
+    const { faceMask, printingMask } = buildMasksForList({
+      view,
+      listId: 'default',
+      faceCount: 3,
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+    })
+    expect(faceMask[0]).toBe(1)
+    expect(printingMask).toBeDefined()
+    expect(printingMask![0]).toBe(1)
+    expect(printingMask![1]).toBe(0)
+    expect(printingMask![2]).toBe(0)
+  })
+
   it('printing-only: faceMask zeros when oracle_id not in map, printingMask set', () => {
     const view = makeView()
     const uuids = new Set<string>()
@@ -395,6 +423,21 @@ describe('getMatchingCount', () => {
     }))
     expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(0)
   })
+
+  it('printing-level nonfoil query matches instance with finish null', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', inst({
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: null,
+      list_id: 'default',
+    }))
+    expect(getMatchingCount(view, 'default', 'oid-bolt', 'p-a', 'nonfoil')).toBe(1)
+  })
 })
 
 describe('hasPrintingLevelEntries', () => {
@@ -429,6 +472,21 @@ describe('hasPrintingLevelEntries', () => {
       oracle_id: 'oid-bolt',
       scryfall_id: 'p-a',
       finish: 'nonfoil',
+      list_id: 'default',
+    }))
+    expect(hasPrintingLevelEntries(view, 'default')).toBe(true)
+  })
+
+  it('returns true when entry has scryfall_id and finish null (nonfoil default)', () => {
+    const view = makeView()
+    const uuids = new Set<string>()
+    uuids.add('uuid-1')
+    view.instancesByList.set('default', uuids)
+    view.instances.set('uuid-1', inst({
+      uuid: 'uuid-1',
+      oracle_id: 'oid-bolt',
+      scryfall_id: 'p-a',
+      finish: null,
       list_id: 'default',
     }))
     expect(hasPrintingLevelEntries(view, 'default')).toBe(true)

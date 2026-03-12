@@ -92,8 +92,11 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
 
     const { oracle_id, scryfall_id, finish } = instance
 
-    if (scryfall_id && finish && printingLookup && printingMask) {
-      const enc = encodeFinish(finish)
+    // Printing-level: scryfall_id identifies a specific printing. When finish is null
+    // (e.g. nonfoil with no explicit marker in deck list), treat as nonfoil so
+    // printingMask is set and my:list + unique:prints shows only that printing.
+    if (scryfall_id && printingLookup && printingMask) {
+      const enc = encodeFinish(finish ?? 'nonfoil')
       if (enc !== undefined) {
         const key = `${scryfall_id}:${enc}`
         const pi = printingLookup.get(key)
@@ -111,7 +114,8 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
 /**
  * Counts instances in the list matching the given criteria.
  * - Oracle-level: pass oracleId only (scryfallId and finish undefined/null); matches instances with scryfall_id and finish null.
- * - Printing-level: pass all three; matches instances with exact scryfall_id and finish.
+ * - Printing-level: pass all three; matches instances with exact scryfall_id and finish. When finish is 'nonfoil',
+ *   also matches instances with finish null (treated as nonfoil in buildMasksForList).
  */
 export function getMatchingCount(
   view: MaterializedView,
@@ -130,7 +134,10 @@ export function getMatchingCount(
     if (isOracleLevel) {
       if (instance.scryfall_id == null && instance.finish == null) count++
     } else {
-      if (instance.scryfall_id === scryfallId && instance.finish === finish) count++
+      const finishMatch =
+        instance.finish === finish ||
+        (finish === 'nonfoil' && instance.finish == null)
+      if (instance.scryfall_id === scryfallId && finishMatch) count++
     }
   }
   return count
@@ -160,14 +167,15 @@ export function countListEntriesPerCard(
 }
 
 /**
- * Returns true if any instance in the list has printing-level data (scryfall_id and finish set).
+ * Returns true if any instance in the list has printing-level data (scryfall_id set).
+ * When scryfall_id is present, null finish is treated as nonfoil (see buildMasksForList).
  */
 export function hasPrintingLevelEntries(view: MaterializedView, listId: string): boolean {
   const uuids = view.instancesByList.get(listId)
   if (!uuids) return false
   for (const uuid of uuids) {
     const instance = view.instances.get(uuid)
-    if (instance?.scryfall_id && instance?.finish) return true
+    if (instance?.scryfall_id) return true
   }
   return false
 }

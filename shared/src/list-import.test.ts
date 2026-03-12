@@ -299,6 +299,16 @@ describe("importDeckList", () => {
     expect(result.candidates[0]!.scryfall_id).toBe("p1");
   });
 
+  test("sets finish to nonfoil when scryfall_id present but no foil/etched marker (Spec 075 invariant)", () => {
+    const text = "1 Shock (M21) 159";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid4", scryfall_id: "p1", quantity: 1 },
+    ]);
+    const result = importDeckList(text, display, printingDisplay, vr);
+    expect(result.candidates[0]!.scryfall_id).toBe("p1");
+    expect(result.candidates[0]!.finish).toBe("nonfoil");
+  });
+
   test("preserves finish from Moxfield foil marker", () => {
     const text = "1 Shock (M21) 159 *F*";
     const vr = makeValidationResult(text, [
