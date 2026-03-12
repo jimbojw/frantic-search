@@ -6,6 +6,8 @@ import {
   buildCanonicalPrintingPerFace,
   buildMasksForList,
   buildMasksFromParsedEntries,
+  buildMetadataIndex,
+  buildMetadataIndexFromInstances,
   getMatchingCount,
   hasPrintingLevelEntries,
   countListEntriesPerCard,
@@ -430,6 +432,195 @@ describe("buildMasksFromParsedEntries", () => {
     });
     expect(printingIndices).toBeDefined();
     expect(printingIndices).toEqual(new Uint32Array([0]));
+  });
+});
+
+describe("buildMetadataIndex", () => {
+  const display = makeDisplay();
+  const oracleMap = buildOracleToCanonicalFaceMap(display);
+  const printingDisplay = makePrintingDisplay();
+  const printingLookup = buildPrintingLookup(printingDisplay);
+  const canonicalPrintingPerFace = buildCanonicalPrintingPerFace(printingDisplay);
+
+  it("returns undefined when printingCount is 0", () => {
+    const view = makeView();
+    view.instancesByList.set("default", new Set(["uuid-1"]));
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        tags: ["combo"],
+      }),
+    );
+    const result = buildMetadataIndex(view, {
+      oracleToCanonicalFace: oracleMap,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined for empty list", () => {
+    const view = makeView();
+    view.instancesByList.set("default", new Set());
+    const result = buildMetadataIndex(view, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("excludes trash list", () => {
+    const view = makeView();
+    view.instancesByList.set("trash", new Set(["uuid-1"]));
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "trash",
+        tags: ["combo"],
+      }),
+    );
+    const result = buildMetadataIndex(view, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("indexes zone, tags, collection_status, variant", () => {
+    const view = makeView();
+    const uuids = new Set<string>(["uuid-1"]);
+    view.instancesByList.set("default", uuids);
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        zone: "Commander",
+        tags: ["combo", "ramp"],
+        collection_status: "Have,#37d67a",
+        variant: "prerelease",
+      }),
+    );
+    const result = buildMetadataIndex(view, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeDefined();
+    expect(result!.keys).toContain("commander");
+    expect(result!.keys).toContain("combo");
+    expect(result!.keys).toContain("ramp");
+    expect(result!.keys).toContain("have37d67a");
+    expect(result!.keys).toContain("prerelease");
+    expect(result!.indexArrays.length).toBe(result!.keys.length);
+    const comboIdx = result!.keys.indexOf("combo");
+    expect(result!.indexArrays[comboIdx]).toEqual(new Uint32Array([0]));
+  });
+
+  it("treats zone null as Deck", () => {
+    const view = makeView();
+    const uuids = new Set<string>(["uuid-1"]);
+    view.instancesByList.set("default", uuids);
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        zone: null,
+      }),
+    );
+    const result = buildMetadataIndex(view, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeDefined();
+    expect(result!.keys).toContain("deck");
+  });
+
+  it("normalizes metadata (Don't Have,#334455 → donthave334455)", () => {
+    const view = makeView();
+    const uuids = new Set<string>(["uuid-1"]);
+    view.instancesByList.set("default", uuids);
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        collection_status: "Don't Have,#334455",
+      }),
+    );
+    const result = buildMetadataIndex(view, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeDefined();
+    expect(result!.keys).toContain("donthave334455");
+  });
+});
+
+describe("buildMetadataIndexFromInstances", () => {
+  const display = makeDisplay();
+  const oracleMap = buildOracleToCanonicalFaceMap(display);
+  const printingDisplay = makePrintingDisplay();
+  const printingLookup = buildPrintingLookup(printingDisplay);
+  const canonicalPrintingPerFace = buildCanonicalPrintingPerFace(printingDisplay);
+
+  it("builds index from flat instances", () => {
+    const instances: InstanceState[] = [
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        tags: ["combo"],
+      }),
+    ];
+    const result = buildMetadataIndexFromInstances(instances, {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeDefined();
+    expect(result!.keys).toContain("combo");
+    expect(result!.keys).toContain("deck");
+  });
+
+  it("returns undefined for empty instances", () => {
+    const result = buildMetadataIndexFromInstances([], {
+      printingCount: 3,
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    expect(result).toBeUndefined();
   });
 });
 

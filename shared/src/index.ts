@@ -91,8 +91,15 @@ export {
   buildCanonicalPrintingPerFace,
   buildMasksForList,
   buildMasksFromParsedEntries,
+  buildMetadataIndex,
+  buildMetadataIndexFromInstances,
   getMatchingCount,
   countListEntriesPerCard,
   hasPrintingLevelEntries,
 } from "./list-mask-builder";
-export type { BuildMasksOptions, BuildMasksResult } from "./list-mask-builder";
+export type {
+  BuildMasksOptions,
+  BuildMasksResult,
+  BuildMetadataIndexOptions,
+  MetadataIndexResult,
+} from "./list-mask-builder";

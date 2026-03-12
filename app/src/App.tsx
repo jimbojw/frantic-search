@@ -2,7 +2,7 @@
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
-import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
+import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
@@ -35,6 +35,7 @@ import {
   buildPrintingLookup,
   buildCanonicalPrintingPerFace,
   buildMasksForList,
+  buildMetadataIndex,
   countListEntriesPerCard,
 } from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
@@ -432,6 +433,15 @@ function App() {
     const printingCount = pd?.scryfall_ids.length ?? 0
     const printingLookup = pd ? buildPrintingLookup(pd) : undefined
     const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
+    const metadataIndex =
+      printingCount > 0
+        ? buildMetadataIndex(view, {
+            printingCount,
+            oracleToCanonicalFace: oracleMap,
+            printingLookup,
+            canonicalPrintingPerFace,
+          })
+        : undefined
     for (const listId of affectedListIds) {
       const { printingIndices } = buildMasksForList({
         view,
@@ -443,7 +453,15 @@ function App() {
       })
       const transfer: Transferable[] = []
       if (printingIndices) transfer.push(printingIndices.buffer)
-      workerRef.postMessage({ type: 'list-update', listId, printingIndices }, transfer)
+      const meta =
+        listId === DEFAULT_LIST_ID ? metadataIndex : undefined
+      if (meta?.indexArrays) {
+        for (const arr of meta.indexArrays) transfer.push(arr.buffer)
+      }
+      workerRef.postMessage(
+        { type: 'list-update', listId, printingIndices, metadataIndex: meta },
+        transfer,
+      )
     }
   }
 
@@ -531,27 +549,14 @@ function App() {
             cardListStore
               .init()
               .then(() => {
-                const d = msg.display
-                const pd = printingDisplay()
-                const oracleMap = buildOracleToCanonicalFaceMap(d)
-                const view = cardListStore.getView()
-                const printingCount = pd?.scryfall_ids.length ?? 0
-                const printingLookup = pd ? buildPrintingLookup(pd) : undefined
-                const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
-                const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
-                for (const listId of listIds) {
-                  const { printingIndices } = buildMasksForList({
-                    view,
-                    listId,
-                    printingCount,
-                    oracleToCanonicalFace: oracleMap,
-                    printingLookup,
-                    canonicalPrintingPerFace,
-                  })
-                  const transfer: Transferable[] = []
-                  if (printingIndices) transfer.push(printingIndices.buffer)
-                  worker.postMessage({ type: 'list-update', listId, printingIndices }, transfer)
-                }
+                const listIds = [...new Set([...cardListStore.getView().lists.keys(), TRASH_LIST_ID])]
+                sendListUpdatesFor(
+                  worker,
+                  listIds,
+                  msg.display,
+                  printingDisplay(),
+                  cardListStore,
+                )
                 setWorkerStatus('ready')
               })
               .catch((err) => {

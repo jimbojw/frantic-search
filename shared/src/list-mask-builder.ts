@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
-import type { MaterializedView } from "./card-list";
+import type { MaterializedView, InstanceState } from "./card-list";
 import type { ParsedEntry } from "./list-lexer";
 import { FINISH_FROM_STRING } from "./bits";
+import { TRASH_LIST_ID } from "./card-list";
 
 /**
  * Builds oracle_id → canonical face index map from display columns.
@@ -102,6 +103,76 @@ export interface BuildMasksResult {
   printingIndices?: Uint32Array;
 }
 
+export interface BuildMetadataIndexOptions {
+  printingCount?: number;
+  oracleToCanonicalFace: Map<string, number>;
+  printingLookup?: Map<string, number>;
+  canonicalPrintingPerFace?: Map<number, number>;
+}
+
+export interface MetadataIndexResult {
+  keys: string[];
+  indexArrays: Uint32Array[];
+}
+
+/** Normalize metadata string for index: lowercase, alphanumeric only. Spec 123. */
+function normalizeMetadata(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Resolve instance to printing index(es). Returns empty array when unresolved. */
+function resolveInstanceToPrintingIndices(
+  instance: InstanceState,
+  options: BuildMetadataIndexOptions,
+): number[] {
+  const { oracleToCanonicalFace, printingLookup, canonicalPrintingPerFace } =
+    options;
+  const indices: number[] = [];
+  const { oracle_id, scryfall_id, finish } = instance;
+
+  if (scryfall_id && printingLookup) {
+    const enc = encodeFinish(finish ?? "nonfoil");
+    if (enc !== undefined) {
+      const key = `${scryfall_id}:${enc}`;
+      const pi = printingLookup.get(key);
+      if (pi !== undefined) indices.push(pi);
+    }
+  }
+
+  const cf = oracleToCanonicalFace.get(oracle_id);
+  if (cf !== undefined && !scryfall_id && canonicalPrintingPerFace) {
+    const pi = canonicalPrintingPerFace.get(cf);
+    if (pi !== undefined) indices.push(pi);
+  }
+
+  return indices;
+}
+
+/** Add metadata strings from instance to index map. */
+function addInstanceMetadataToMap(
+  instance: InstanceState,
+  printingIndices: number[],
+  map: Map<string, Set<number>>,
+): void {
+  const sources: string[] = [];
+  const zone = instance.zone ?? "Deck";
+  sources.push(zone);
+  for (const t of instance.tags) sources.push(t);
+  if (instance.collection_status) sources.push(instance.collection_status);
+  if (instance.variant) sources.push(instance.variant);
+
+  for (const s of sources) {
+    const norm = normalizeMetadata(s);
+    if (norm === "") continue;
+    let set = map.get(norm);
+    if (!set) {
+      set = new Set();
+      map.set(norm, set);
+    }
+    for (const pi of printingIndices) set.add(pi);
+  }
+}
+
 /**
  * Builds printingIndices for a list from the materialized view.
  * Spec 121: My List is printing-domain only. Printing-level entries add indices;
@@ -195,6 +266,77 @@ export function buildMasksFromParsedEntries(
   }
 
   return { printingIndices: new Uint32Array(indices) };
+}
+
+/**
+ * Builds pan-list metadata index for # queries. Spec 123.
+ * Iterates all non-trash lists; zone, tags, collection_status, variant contribute.
+ * zone: null → "Deck". Returns omit when empty.
+ */
+export function buildMetadataIndex(
+  view: MaterializedView,
+  options: BuildMetadataIndexOptions,
+): MetadataIndexResult | undefined {
+  const { printingCount = 0 } = options;
+  if (printingCount === 0) return undefined;
+
+  const map = new Map<string, Set<number>>();
+
+  for (const [listId, uuids] of view.instancesByList) {
+    if (listId === TRASH_LIST_ID) continue;
+    if (!uuids || uuids.size === 0) continue;
+
+    for (const uuid of uuids) {
+      const instance = view.instances.get(uuid);
+      if (!instance) continue;
+
+      const printingIndices = resolveInstanceToPrintingIndices(instance, options);
+      if (printingIndices.length === 0) continue;
+
+      addInstanceMetadataToMap(instance, printingIndices, map);
+    }
+  }
+
+  if (map.size === 0) return undefined;
+
+  const keys: string[] = [];
+  const indexArrays: Uint32Array[] = [];
+  for (const [key, set] of map) {
+    keys.push(key);
+    indexArrays.push(new Uint32Array(set));
+  }
+  return { keys, indexArrays };
+}
+
+/**
+ * Builds metadata index from a flat list of instances (e.g. CLI from importDeckList).
+ * Spec 123. Same semantics as buildMetadataIndex but for instances not in a view.
+ */
+export function buildMetadataIndexFromInstances(
+  instances: InstanceState[],
+  options: BuildMetadataIndexOptions,
+): MetadataIndexResult | undefined {
+  const { printingCount = 0 } = options;
+  if (printingCount === 0) return undefined;
+
+  const map = new Map<string, Set<number>>();
+
+  for (const instance of instances) {
+    const printingIndices = resolveInstanceToPrintingIndices(instance, options);
+    if (printingIndices.length === 0) continue;
+
+    addInstanceMetadataToMap(instance, printingIndices, map);
+  }
+
+  if (map.size === 0) return undefined;
+
+  const keys: string[] = [];
+  const indexArrays: Uint32Array[] = [];
+  for (const [key, set] of map) {
+    keys.push(key);
+    indexArrays.push(new Uint32Array(set));
+  }
+  return { keys, indexArrays };
 }
 
 /**

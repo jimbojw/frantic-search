@@ -1,6 +1,6 @@
 # Spec 123: Query Engine — # Metadata Tag Search
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 076 (Worker Protocol and List Caching), Spec 077 (Query Engine — my:list), Spec 109 (Deck Instance Model), Spec 121 (My List Printing-Domain Only), Spec 120 (CLI list-diff)
 
@@ -106,18 +106,18 @@ Thus `list-diff "#combo" --list ./deck.txt` is valid: expected = parsed list ent
 
 ### Metadata (#) queries
 
-- [ ] `#combo` matches Instances with "combo" in zone, any tag, collection_status, or variant (substring, case-insensitive)
-- [ ] `#com` matches both "combo" and "commander"
-- [ ] `#donth` matches Archidekt `^Don't Have,#334455^`
-- [ ] `my:list #combo` composes (AND)
-- [ ] `-#combo` negates metadata match
-- [ ] Main thread builds pan-list metadata index (non-trash lists only); sends with default list-update
-- [ ] Metadata index uses inverted indices (Uint32Array of printing indices per key); evaluator expands to Uint8Array for NodeCache
-- [ ] `#combo` excludes trash (matches only non-trash lists; currently default)
-- [ ] No metadata in list: `#value` returns empty result
-- [ ] Naked `#` returns union of all non-trash list Instances (same as `my:list`)
-- [ ] CLI `list-diff` resolves `#` queries when a list is provided (Spec 120)
-- [ ] Spec 120 updated: list-diff accepts `#` queries without `my:list`; reject only when query has neither `my:` nor `#`
+- [x] `#combo` matches Instances with "combo" in zone, any tag, collection_status, or variant (substring, case-insensitive)
+- [x] `#com` matches both "combo" and "commander"
+- [x] `#donth` matches Archidekt `^Don't Have,#334455^`
+- [x] `my:list #combo` composes (AND)
+- [x] `-#combo` negates metadata match
+- [x] Main thread builds pan-list metadata index (non-trash lists only); sends with default list-update
+- [x] Metadata index uses inverted indices (Uint32Array of printing indices per key); evaluator expands to Uint8Array for NodeCache
+- [x] `#combo` excludes trash (matches only non-trash lists; currently default)
+- [x] No metadata in list: `#value` returns empty result
+- [x] Naked `#` returns union of all non-trash list Instances (same as `my:list`)
+- [x] CLI `list-diff` resolves `#` queries when a list is provided (Spec 120)
+- [x] Spec 120 updated: list-diff accepts `#` queries without `my:list`; reject only when query has neither `my:` nor `#`
 
 ## Implementation Notes
 

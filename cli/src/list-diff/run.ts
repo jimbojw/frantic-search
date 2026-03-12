@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import {
   parse,
   Finish,
@@ -8,8 +9,12 @@ import {
   extractPrintingDisplayColumns,
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
+  buildMetadataIndexFromInstances,
+  importDeckList,
 } from "@frantic-search/shared";
 import type { UniqueMode } from "@frantic-search/shared";
+import type { ImportCandidate, InstanceState } from "@frantic-search/shared";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
@@ -23,6 +28,7 @@ import {
   loadListText,
   parseListAndBuildMasks,
   createGetListMask,
+  createGetMetadataIndex,
 } from "../list-utils";
 import {
   collectLocalCards,
@@ -52,6 +58,75 @@ function hasMyListInQuery(ast: ReturnType<typeof parse>): boolean {
     default:
       return false;
   }
+}
+
+function hasHashInQuery(ast: ReturnType<typeof parse>): boolean {
+  if (!ast) return false;
+  switch (ast.type) {
+    case "BARE":
+      return ast.value.startsWith("#");
+    case "NOT":
+      return hasHashInQuery(ast.child);
+    case "AND":
+    case "OR":
+      return ast.children?.some(hasHashInQuery) ?? false;
+    default:
+      return false;
+  }
+}
+
+function hasListContextInQuery(ast: ReturnType<typeof parse>): boolean {
+  return hasMyListInQuery(ast) || hasHashInQuery(ast);
+}
+
+function normalizeMetadata(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function candidateMatchesMetadataQueries(
+  c: ImportCandidate,
+  queryNorms: string[],
+): boolean {
+  if (queryNorms.length === 0) return true;
+  const sources: string[] = [
+    c.zone ?? "Deck",
+    ...c.tags,
+    c.collection_status ?? "",
+    c.variant ?? "",
+  ];
+  const normalized = sources.map(normalizeMetadata);
+  for (const q of queryNorms) {
+    if (q === "") continue;
+    const matches = normalized.some((n) => n.includes(q));
+    if (!matches) return false;
+  }
+  return true;
+}
+
+function extractMetadataQueriesFromAst(ast: ReturnType<typeof parse>): string[] {
+  const out: string[] = [];
+  function walk(n: ReturnType<typeof parse>): void {
+    if (!n) return;
+    switch (n.type) {
+      case "BARE":
+        if (n.value.startsWith("#")) {
+          const q = normalizeMetadata(n.value.slice(1));
+          if (q !== "" && !out.includes(q)) out.push(q);
+        }
+        return;
+      case "NOT":
+        walk(n.child);
+        return;
+      case "AND":
+      case "OR":
+        for (const c of n.children ?? []) walk(c);
+        return;
+      default:
+        return;
+    }
+  }
+  walk(ast);
+  return out;
 }
 
 function encodeFinish(finish: string | null | undefined): number {
@@ -188,9 +263,9 @@ export function runListDiff(
   const { dataPath, printingsPath, listPath, rawPath, verbose } = options;
 
   const ast = parse(query);
-  if (!hasMyListInQuery(ast)) {
+  if (!hasListContextInQuery(ast)) {
     process.stderr.write(
-      "Error: Query must contain my:list or my:default. Add my:list to the query.\n",
+      "Error: Query must contain my:list, my:default, or a # metadata term. Add one of these.\n",
     );
     process.exit(1);
   }
@@ -215,7 +290,7 @@ export function runListDiff(
   }
 
   const listText = loadListText(listPath);
-  const { resolved, printingIndices, validationLines } =
+  const { resolved, printingIndices, validationLines, validationResult } =
     parseListAndBuildMasks(listText, data, printingData, index, printingIndex);
 
   for (const line of validationLines) {
@@ -232,9 +307,44 @@ export function runListDiff(
   const printingLookup = printingDisplay
     ? buildPrintingLookup(printingDisplay)
     : undefined;
+  const canonicalPrintingPerFace = printingDisplay
+    ? buildCanonicalPrintingPerFace(printingDisplay)
+    : undefined;
+  const printingCount = printingData?.canonical_face_ref?.length ?? 0;
+
+  let metadataIndex: { keys: string[]; indexArrays: Uint32Array[] } | undefined;
+  let getMetadataIndex: (() => { keys: string[]; indexArrays: Uint32Array[] } | null) | null = null;
+
+  if (hasHashInQuery(ast) && display && printingCount > 0) {
+    const importResult = importDeckList(
+      listText,
+      display,
+      printingDisplay,
+      validationResult,
+    );
+    const instances: InstanceState[] = importResult.candidates.map((c) => ({
+      ...c,
+      uuid: randomUUID(),
+      list_id: "default",
+    }));
+    metadataIndex = buildMetadataIndexFromInstances(instances, {
+      printingCount,
+      oracleToCanonicalFace,
+      printingLookup,
+      canonicalPrintingPerFace,
+    });
+    getMetadataIndex = createGetMetadataIndex(metadataIndex);
+  }
 
   const getListMask = createGetListMask(printingIndices);
-  const cache = new NodeCache(index, printingIndex, getListMask);
+  const cache = new NodeCache(
+    index,
+    printingIndex,
+    getListMask,
+    null,
+    null,
+    getMetadataIndex ?? undefined,
+  );
   const evalOut = cache.evaluate(ast);
 
   const normalized = normalizeLocalParity(data, printingData, printingIndex, {
@@ -264,8 +374,34 @@ export function runListDiff(
     rawOracleCards,
   );
 
+  let entriesForExpected: ParsedEntry[];
+  if (hasHashInQuery(ast)) {
+    const importResult = importDeckList(
+      listText,
+      display,
+      printingDisplay,
+      validationResult,
+    );
+    const queryNorms = extractMetadataQueriesFromAst(ast);
+    const filtered = importResult.candidates.filter((c) =>
+      candidateMatchesMetadataQueries(c, queryNorms),
+    );
+    entriesForExpected = filtered.map((c) => ({
+      oracle_id: c.oracle_id,
+      scryfall_id: c.scryfall_id,
+      quantity: 1,
+      finish:
+        c.finish === "foil" || c.finish === "etched"
+          ? c.finish
+          : undefined,
+      variant: c.variant ?? undefined,
+    }));
+  } else {
+    entriesForExpected = resolved;
+  }
+
   const expectedCards = buildExpectedFromParsedEntries(
-    resolved,
+    entriesForExpected,
     normalized.uniqueMode,
     index,
     data,

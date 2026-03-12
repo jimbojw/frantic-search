@@ -443,6 +443,36 @@ export function evalLeafRegex(
   return null;
 }
 
+export type GetMetadataIndex = () =>
+  | { keys: string[]; indexArrays: Uint32Array[] }
+  | null;
+
+/**
+ * Evaluates #value metadata tag query. Spec 123.
+ * Fills buf with 1 for printing indices matching metadata (zone, tags, collection_status, variant).
+ * Naked # (empty value) = union of all indexed printings. No metadata → buf stays zeroed.
+ */
+export function evalLeafMetadataTag(
+  value: string,
+  getMetadataIndex: GetMetadataIndex,
+  buf: Uint8Array,
+): void {
+  const idx = getMetadataIndex();
+  if (!idx || idx.keys.length === 0) return;
+
+  const queryNorm = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  for (let i = 0; i < idx.keys.length; i++) {
+    const key = idx.keys[i]!;
+    if (!key.includes(queryNorm)) continue;
+    const arr = idx.indexArrays[i]!;
+    for (let j = 0; j < arr.length; j++) {
+      const pi = arr[j]!;
+      if (pi < buf.length) buf[pi] = 1;
+    }
+  }
+}
+
 export function evalLeafBareWord(value: string, quoted: boolean, index: CardIndex, buf: Uint8Array): void {
   const cf = index.canonicalFace;
   const altIndex = index.alternateNamesIndex;

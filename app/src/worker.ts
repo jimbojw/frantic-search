@@ -220,8 +220,12 @@ async function init(): Promise<void> {
   const printingIndex = printingData
     ? new PrintingIndex(printingData, data.scryfall_ids)
     : null
-  const listMaskCache = new Map<string, { printingIndices?: Uint32Array }>()
+  const listMaskCache = new Map<
+    string,
+    { printingIndices?: Uint32Array; metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] } }
+  >()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
+  const getMetadataIndex = () => listMaskCache.get("default")?.metadataIndex ?? null
   let faceToOtags: Map<number, string[]> | null = null
   let printingToAtags: Map<number, string[]> | null = null
   const tagDataRef = {
@@ -230,7 +234,14 @@ async function init(): Promise<void> {
   }
   const keywordsIndex = data.keywords_index ?? {}
   const keywordDataRef = { keywords: keywordsIndex }
-  const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef, keywordDataRef)
+  const cache = new NodeCache(
+    index,
+    printingIndex,
+    getListMask,
+    tagDataRef,
+    keywordDataRef,
+    getMetadataIndex,
+  )
   const displayRef = extractDisplayColumns(data)
   const printingDisplayRef = printingData ? extractPrintingDisplayColumns(printingData) : null
 
@@ -289,6 +300,7 @@ async function init(): Promise<void> {
     if (msg.type === 'list-update') {
       listMaskCache.set(msg.listId, {
         printingIndices: msg.printingIndices,
+        metadataIndex: msg.metadataIndex,
       })
       cache.clearAllComputed()
       return

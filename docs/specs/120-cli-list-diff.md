@@ -96,7 +96,7 @@ Discrepancies:
 
 ### Error Handling
 
-- **Query lacks list context:** Exit with error when the query has neither `my:` nor `#`; suggest adding `my:list` or a `#` metadata term.
+- **Query lacks list context:** Exit with error when the query has neither `my:list`/`my:default` nor a `#` metadata term; suggest adding one of these.
 - **List file not found:** Exit with error.
 - **Validation errors in list:** Report validation failures (e.g., unresolved lines) and optionally proceed with resolved lines only, or exit. Implementation choice.
 - **Empty list:** Expected = 0; actual = search result count. Diff reports Only in Search for any results.
@@ -112,15 +112,15 @@ Reuse existing CLI options: `--data`, `--printings`, `--raw` (for oracle IDs in 
 - [x] Output includes Expected (from list), Actual (from search), In Both, Only in List, Only in Search.
 - [x] Discrepancy section lists cards with name, set, collector number by default.
 - [x] `--quiet` shows only comparison keys for discrepancies.
-- [x] Query without `my:list` or `my:default` exits with clear error.
-- [ ] Query with `#` but without `my:list` is accepted when `--list` is provided (Spec 123).
+- [x] Query without `my:list`, `my:default`, or `#` exits with clear error.
+- [x] Query with `#` but without `my:list` is accepted when `--list` is provided (Spec 123).
 - [x] `--list=-` reads from stdin (use `--list=-` as shell may not pass `-` correctly with `--list -`).
 - [x] Comparison respects `unique:prints` / `unique:cards` / `unique:art` from the query.
 - [x] `docs/guides/list-comparison.md` documents when and how to use the tool (analogous to `scryfall-comparison.md`).
 
 ## Implementation Notes
 
-- Spec 123 relaxes the query requirement: list-diff will accept `#` metadata queries without `my:list`. The acceptance criterion above will be satisfied when Spec 123 is implemented.
+- Spec 123: list-diff accepts `#` metadata queries without `my:list`. When the query has `#`, the tool builds a metadata index from `importDeckList` candidates, passes `getMetadataIndex` to `NodeCache`, and filters the expected set by metadata match.
 
 ## Out of Scope
 

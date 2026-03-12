@@ -10,7 +10,8 @@ import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
 import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
-import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact } from "./eval-leaves";
+import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
+import type { GetMetadataIndex } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
 import { evalKeyword } from "./eval-keywords";
 import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
@@ -123,6 +124,8 @@ export function nodeKey(ast: ASTNode): string {
 
 export type GetListMask = (listId: string) => { printingIndices?: Uint32Array } | null;
 
+export type { GetMetadataIndex };
+
 export type TagDataRef = {
   oracle: OracleTagData | null;
   illustration: Map<string, Uint32Array> | null;
@@ -137,6 +140,7 @@ export class NodeCache {
   readonly index: CardIndex;
   private _printingIndex: PrintingIndex | null = null;
   private _getListMask: GetListMask | null = null;
+  private _getMetadataIndex: GetMetadataIndex | null = null;
   private _tagDataRef: TagDataRef | null = null;
   private _keywordDataRef: KeywordDataRef | null = null;
 
@@ -146,12 +150,14 @@ export class NodeCache {
     getListMask?: GetListMask | null,
     tagDataRef?: TagDataRef | null,
     keywordDataRef?: KeywordDataRef | null,
+    getMetadataIndex?: GetMetadataIndex | null,
   ) {
     this.index = index;
     this._printingIndex = printingIndex ?? null;
     this._getListMask = getListMask ?? null;
     this._tagDataRef = tagDataRef ?? null;
     this._keywordDataRef = keywordDataRef ?? null;
+    this._getMetadataIndex = getMetadataIndex ?? null;
   }
 
   /** Maps query value to protocol listId. MVP: "list", "default", "" → "default". */
@@ -323,6 +329,8 @@ export class NodeCache {
         }
         return false;
       }
+      case "BARE":
+        return ast.value.startsWith("#");
       case "NOT": return this._hasPrintingLeaves(ast.child);
       case "AND": case "OR": return ast.children.some(c => this._hasPrintingLeaves(c));
       default: return false;
@@ -348,6 +356,16 @@ export class NodeCache {
           || (canonical !== undefined && isPrintingField(canonical))
           || (canonical === "my");
         if (isPrinting) {
+          const interned = this.intern(ast);
+          if (interned.computed && interned.computed.domain === "printing") {
+            const lb = interned.computed.buf;
+            for (let i = 0; i < printBuf.length; i++) printBuf[i] &= lb[i];
+          }
+        }
+        break;
+      }
+      case "BARE": {
+        if (ast.value.startsWith("#")) {
           const interned = this.intern(ast);
           if (interned.computed && interned.computed.domain === "printing") {
             const lb = interned.computed.buf;
@@ -652,12 +670,27 @@ export class NodeCache {
         break;
       }
       case "BARE": {
-        const buf = new Uint8Array(n);
-        const t0 = performance.now();
-        evalLeafBareWord(ast.value, ast.quoted, this.index, buf);
-        const ms = performance.now() - t0;
-        interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
-        timings.set(interned.key, { cached: false, evalMs: ms });
+        if (ast.value.startsWith("#")) {
+          const value = ast.value.slice(1);
+          const pn = this._printingIndex?.printingCount ?? 0;
+          const buf = new Uint8Array(pn);
+          if (this._getMetadataIndex && pn > 0) {
+            const t0 = performance.now();
+            evalLeafMetadataTag(value, this._getMetadataIndex, buf);
+            const ms = performance.now() - t0;
+            interned.computed = { buf, domain: "printing", matchCount: popcount(buf, pn), productionMs: ms };
+          } else {
+            interned.computed = { buf, domain: "printing", matchCount: 0, productionMs: 0 };
+          }
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+        } else {
+          const buf = new Uint8Array(n);
+          const t0 = performance.now();
+          evalLeafBareWord(ast.value, ast.quoted, this.index, buf);
+          const ms = performance.now() - t0;
+          interned.computed = { buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+        }
         break;
       }
       case "EXACT": {

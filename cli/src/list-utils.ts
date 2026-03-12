@@ -16,6 +16,7 @@ import type {
   ColumnarData,
   PrintingColumnarData,
   ParsedEntry,
+  ValidationResult,
 } from "@frantic-search/shared";
 
 export function loadListText(path: string): string {
@@ -33,6 +34,7 @@ export interface ParseListResult {
   resolved: ParsedEntry[];
   printingIndices?: Uint32Array;
   validationLines: { kind: string; message?: string }[];
+  validationResult: ValidationResult;
 }
 
 export function parseListAndBuildMasks(
@@ -83,6 +85,7 @@ export function parseListAndBuildMasks(
     resolved,
     printingIndices,
     validationLines,
+    validationResult,
   };
 }
 
@@ -93,4 +96,10 @@ export function createGetListMask(
     if (listId !== "default") return null;
     return { printingIndices };
   };
+}
+
+export function createGetMetadataIndex(
+  metadataIndex: { keys: string[]; indexArrays: Uint32Array[] } | undefined,
+): () => { keys: string[]; indexArrays: Uint32Array[] } | null {
+  return () => metadataIndex ?? null;
 }
