@@ -22,7 +22,7 @@ Example: List contains `1x Dawn of Hope (ltc) 164 [Draw]`. Query `v:images uniqu
 
 1. **Syntax:** `frantic-search list-diff "<query>" --list <path|->` (or `npm run cli -- list-diff "<query>" --list <path|->`).
 2. **List input:** `--list <path>` reads deck list from file; `--list -` reads from stdin.
-3. **Query must contain `my:list` (or `my:default`):** The tool is for list-vs-search comparison. Reject queries without `my:`.
+3. **Query must use list context:** The tool is for list-vs-search comparison. Accept queries that contain `my:list` (or `my:default`) **or** `#` metadata queries (Spec 123). Reject only when the query has neither `my:` nor `#`.
 4. **Parse deck list:** Use `validateDeckListWithEngine` (or equivalent) to produce `ParsedEntry[]` with oracle_id, scryfall_id, finish, quantity.
 5. **Build masks:** Convert `ParsedEntry[]` to `faceMask` and `printingMask` for `getListMask`.
 6. **Run search:** Execute the query through the Frantic Search engine with `getListMask` returning the built masks.
@@ -96,7 +96,7 @@ Discrepancies:
 
 ### Error Handling
 
-- **Query lacks `my:list` / `my:default`:** Exit with error; suggest adding `my:list` to the query.
+- **Query lacks list context:** Exit with error when the query has neither `my:` nor `#`; suggest adding `my:list` or a `#` metadata term.
 - **List file not found:** Exit with error.
 - **Validation errors in list:** Report validation failures (e.g., unresolved lines) and optionally proceed with resolved lines only, or exit. Implementation choice.
 - **Empty list:** Expected = 0; actual = search result count. Diff reports Only in Search for any results.
@@ -113,9 +113,14 @@ Reuse existing CLI options: `--data`, `--printings`, `--raw` (for oracle IDs in 
 - [x] Discrepancy section lists cards with name, set, collector number by default.
 - [x] `--quiet` shows only comparison keys for discrepancies.
 - [x] Query without `my:list` or `my:default` exits with clear error.
+- [ ] Query with `#` but without `my:list` is accepted when `--list` is provided (Spec 123).
 - [x] `--list=-` reads from stdin (use `--list=-` as shell may not pass `-` correctly with `--list -`).
 - [x] Comparison respects `unique:prints` / `unique:cards` / `unique:art` from the query.
 - [x] `docs/guides/list-comparison.md` documents when and how to use the tool (analogous to `scryfall-comparison.md`).
+
+## Implementation Notes
+
+- Spec 123 relaxes the query requirement: list-diff will accept `#` metadata queries without `my:list`. The acceptance criterion above will be satisfied when Spec 123 is implemented.
 
 ## Out of Scope
 
