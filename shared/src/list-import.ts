@@ -115,14 +115,19 @@ export function importDeckList(
   let currentZone: string | null = null;
   let resolvedIdx = 0;
   let seenFirstMainBlockCard = false;
+  let previousLineWasBlank = false;
 
   for (let lineIdx = 0; lineIdx < lineGroups.length; lineIdx++) {
     const lineTokens = lineGroups[lineIdx]!;
-    if (lineTokens.length === 0) continue;
+    if (lineTokens.length === 0) {
+      previousLineWasBlank = true;
+      continue;
+    }
 
     const firstType = lineTokens[0]!.type;
 
     if (firstType === ListTokenType.SECTION_HEADER) {
+      previousLineWasBlank = false;
       const normalized = normalizeHeaderValue(lineTokens[0]!.value);
       const zone = canonicalZone(normalized);
       currentZone = zone;
@@ -130,12 +135,16 @@ export function importDeckList(
     }
 
     if (firstType === ListTokenType.METADATA) {
+      previousLineWasBlank = false;
       const match = lineTokens[0]!.value.match(/^\s*Name\s+(.+)$/);
       if (match) deckName = match[1]!.trim();
       continue;
     }
 
-    if (firstType === ListTokenType.COMMENT) continue;
+    if (firstType === ListTokenType.COMMENT) {
+      previousLineWasBlank = false;
+      continue;
+    }
 
     const hasQuantity = lineTokens.some((t) => t.type === ListTokenType.QUANTITY);
     const hasName = lineTokens.some((t) => t.type === ListTokenType.CARD_NAME);
@@ -192,7 +201,17 @@ export function importDeckList(
     ) {
       zone = "Commander";
     }
+    // Moxfield/Arena plain-text export: commander alone at end, preceded by blank line
+    // (Plain text lacks Moxfield markers so is often detected as Arena)
+    if (
+      (format === "moxfield" || format === "arena") &&
+      previousLineWasBlank &&
+      isCommander(entry.oracle_id, display)
+    ) {
+      zone = "Commander";
+    }
     if (currentZone === null) seenFirstMainBlockCard = true;
+    previousLineWasBlank = false;
 
     // Extract collection status
     let collectionStatus: string | null = null;

@@ -123,6 +123,7 @@ for each line:
       1. If ROLE_MARKER token (*CMDR* or *CMPN*) → set zone to Commander or Companion (TappedOut)
       2. Else if CATEGORY token's primary segment matches KNOWN_ZONES → use it
       3. Else if format is Moxfield and currentZone is null and this is the first card line in the main block (before SIDEBOARD:) and the card matches `is:commander` (Spec 032: Legendary + Creature/Planeswalker in type line, or "can be your commander" in oracle text) → set zone to Commander
+      3a. Else if format is Moxfield or Arena and this card line is preceded by a blank line and the card matches `is:commander` → set zone to Commander (Moxfield plain-text export puts commander alone at end; plain text lacks Moxfield markers so is often detected as Arena)
       4. Else if currentZone is set → use currentZone
       5. Else → null
 
@@ -325,6 +326,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 
 - 2026-03-10: Added TappedOut import support. ROLE_MARKER (*CMDR*, *CMPN*) sets zone; HASH_TAG tokens populate tags (slash preserved in tag names). TappedOut uses *f*/*f-etch*/*e* for finish (same as Moxfield); *f-pre* uses variant fallback per Spec 108.
 - 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. Uses DisplayColumns (type_lines, oracle_texts) for the check; no worker changes. `importDeckList` accepts optional `format` parameter.
+- 2026-03-11: Moxfield plain-text export: when a card line is preceded by a blank line and matches `is:commander`, set zone to Commander (Moxfield puts commander alone at end in plain-text export). Applied to both Moxfield and Arena since plain text lacks Moxfield markers and is often detected as Arena.
 
 ## Out of Scope
 

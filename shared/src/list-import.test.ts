@@ -390,4 +390,46 @@ describe("importDeckList", () => {
     expect(result.candidates[0]!.zone).toBeNull();
     expect(result.candidates[1]!.zone).toBeNull();
   });
+
+  test("Moxfield or Arena plain-text: commander alone at end preceded by blank line", () => {
+    const displayWithCommander = makeDisplay({
+      names: ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Sliver Overlord"],
+      type_lines: ["Creature", "Instant", "Instant", "Artifact", "Instant", "Land", "Legendary Creature — Sliver"],
+      oracle_texts: ["", "", "", "", "", "", ""],
+      oracle_ids: ["oid0", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-sliver"],
+      mana_costs: ["{G}", "{R}", "{U}{U}", "{1}", "{R}", "{G}", "{W}{U}{B}{R}{G}"],
+      powers: [0, 0, 0, 0, 0, 0, 7],
+      toughnesses: [0, 0, 0, 0, 0, 0, 7],
+      loyalties: [0, 0, 0, 0, 0, 0, 0],
+      defenses: [0, 0, 0, 0, 0, 0, 0],
+      color_identity: [0, 0, 0, 0, 0, 0, 0],
+      scryfall_ids: ["", "", "", "", "", "", ""],
+      art_crop_thumb_hashes: ["", "", "", "", "", "", ""],
+      card_thumb_hashes: ["", "", "", "", "", "", ""],
+      layouts: ["normal", "normal", "normal", "normal", "normal", "normal", "normal"],
+      legalities_legal: [0, 0, 0, 0, 0, 0, 0],
+      legalities_banned: [0, 0, 0, 0, 0, 0, 0],
+      legalities_restricted: [0, 0, 0, 0, 0, 0, 0],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      edhrec_rank: [null, null, null, null, null, null, null],
+      edhrec_salt: [null, null, null, null, null, null, null],
+    });
+    const text = "1 Lightning Bolt\n1 Counterspell\n\nSIDEBOARD:\n1 Shock\n\n1 Sliver Overlord";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid2", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid4", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid-sliver", scryfall_id: null, quantity: 1 },
+    ]);
+    const resultMoxfield = importDeckList(text, displayWithCommander, null, vr, "moxfield");
+    expect(resultMoxfield.candidates).toHaveLength(4);
+    expect(resultMoxfield.candidates[0]!.zone).toBeNull();
+    expect(resultMoxfield.candidates[1]!.zone).toBeNull();
+    expect(resultMoxfield.candidates[2]!.zone).toBe("Sideboard");
+    expect(resultMoxfield.candidates[3]!.zone).toBe("Commander");
+
+    // Plain text lacks Moxfield markers so is often detected as Arena
+    const resultArena = importDeckList(text, displayWithCommander, null, vr, "arena");
+    expect(resultArena.candidates[3]!.zone).toBe("Commander");
+  });
 });
