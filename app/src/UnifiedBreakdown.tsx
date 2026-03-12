@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
+import { IconChevronRight, IconPin } from './Icons'
 import {
   getBreakdownCase,
   countErrors,
@@ -8,7 +9,6 @@ import {
   reconstructWithout,
   BreakdownChip,
   ChipTreeNode,
-  PinIcon,
 } from './InlineBreakdown'
 
 // ---------------------------------------------------------------------------
@@ -136,18 +136,13 @@ export default function UnifiedBreakdown(props: {
         class={`flex items-center gap-2 min-h-11 md:min-h-0 px-3 py-2 md:py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
       >
         <div class="flex items-center shrink-0">
-          <svg
-            class={`size-2.5 fill-current transition-transform ${props.expanded ? '-rotate-90' : ''}`}
-            viewBox="0 0 24 24"
-          >
-            <path d="M8 5l8 7-8 7z" />
-          </svg>
+          <IconChevronRight class={`size-2.5 transition-transform ${props.expanded ? '-rotate-90' : ''}`} />
         </div>
         <div class="flex flex-col justify-center gap-0.5 min-w-0 flex-1">
           <Show when={hasPinned()}>
             <div class="flex items-center justify-between gap-4 font-mono text-xs text-gray-500 dark:text-gray-400">
               <span class="flex items-center gap-1.5">
-                <PinIcon pinned={true} />
+                <IconPin pinned={true} />
                 PINNED
                 <Show when={pinnedErrorCount() > 0}>
                   <span class="text-red-500 dark:text-red-400">

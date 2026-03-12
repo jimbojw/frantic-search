@@ -49,7 +49,12 @@ import {
   applyCompletion,
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
-import { IconList } from './Icons'
+import {
+  IconAdjustmentsHorizontal,
+  IconBars3,
+  IconList,
+  IconMagnifyingGlass,
+} from './Icons'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -1333,9 +1338,7 @@ function App() {
                 aria-label="Menu"
                 class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
+                <IconBars3 class="size-6" />
               </button>
             </div>
           </div>
@@ -1378,9 +1381,7 @@ function App() {
           </Show>
           <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() && !headerCollapsed() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
+              <IconMagnifyingGlass class="size-5" />
             </div>
             <div
               class="grid overflow-hidden relative"
@@ -1449,9 +1450,7 @@ function App() {
                 class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                 aria-label="Toggle search filters"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
-                </svg>
+                <IconAdjustmentsHorizontal class="size-5" />
               </button>
             </Show>
           </div>

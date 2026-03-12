@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import type { Histograms, BreakdownNode } from '@frantic-search/shared'
+import { IconMinus, IconXMark } from './Icons'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
 import {
   findFieldNode,
@@ -103,9 +104,7 @@ function BarRow(props: {
         }`}
         aria-label="Less"
       >
-        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M5 12h14" />
-        </svg>
+        <IconMinus class="size-3.5" />
       </button>
       <div class="w-11 md:w-6 shrink-0 flex items-center justify-center text-sm">
         {props.label()}
@@ -283,9 +282,7 @@ export default function ResultsBreakdown(props: {
               class="min-h-11 min-w-11 shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
               aria-label="Collapse histograms"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <IconXMark class="size-5" />
             </button>
           </Show>
         </div>

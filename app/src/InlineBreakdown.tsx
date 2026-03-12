@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
+import { IconChevronRight, IconPin, IconXMark } from './Icons'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 
 type BreakdownCase = 'single' | 'flat-and' | 'nested'
@@ -97,27 +98,6 @@ function chipLabel(node: BreakdownNode): string {
 }
 
 // ---------------------------------------------------------------------------
-// Pin icon SVG — always visible, filled (pinned) vs outlined (live)
-// ---------------------------------------------------------------------------
-
-export function PinIcon(props: { pinned: boolean }) {
-  return (
-    <svg
-      class={`size-3 shrink-0 ${props.pinned ? 'text-blue-500 dark:text-blue-400' : 'opacity-40'}`}
-      viewBox="0 0 24 24"
-      fill={props.pinned ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M12 17v5" />
-      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z" />
-    </svg>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // BreakdownChip — universal chip for all breakdown nodes (Spec 054, 082)
 // ---------------------------------------------------------------------------
 
@@ -165,7 +145,7 @@ export function BreakdownChip(props: {
     >
       <div class="flex justify-between items-center gap-1.5 pl-2 pt-1 pb-0.5">
         <Show when={!isNop()} fallback={<span class="shrink-0 w-3" />}>
-          <PinIcon pinned={props.pinned} />
+          <IconPin pinned={props.pinned} />
         </Show>
         <span class="truncate min-w-0 flex-1">
           <Show when={useHighlight()} fallback={props.label}>
@@ -185,9 +165,7 @@ export function BreakdownChip(props: {
             class="size-5 shrink-0 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
             aria-label={`Remove ${props.label}`}
           >
-            <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            <IconXMark class="size-3" />
           </button>
         </Show>
       </div>
@@ -281,9 +259,7 @@ export function BreakdownLip(props: {
       class={`flex items-center justify-between gap-4 min-h-11 md:min-h-0 px-3 py-2 md:py-1.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${props.expanded ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
     >
       <span class="font-mono text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-        <svg class={`size-2.5 fill-current transition-transform ${props.expanded ? '-rotate-90' : ''}`} viewBox="0 0 24 24">
-          <path d="M8 5l8 7-8 7z" />
-        </svg>
+        <IconChevronRight class={`size-2.5 transition-transform ${props.expanded ? '-rotate-90' : ''}`} />
         {props.label}
         <Show when={(props.errorCount ?? 0) > 0}>
           <span class="text-red-500 dark:text-red-400">{`\u00b7 ${props.errorCount} ignored`}</span>

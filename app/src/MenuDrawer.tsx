@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-js'
-import { IconBug, IconInfoCircle } from './Icons'
+import { IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit'
@@ -501,9 +501,7 @@ export default function MenuDrawer(props: {
           class="min-h-11 min-w-11 flex items-center justify-center p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded"
           aria-label="Close filters"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <IconXMark class="size-3.5" />
         </button>
       </div>
 

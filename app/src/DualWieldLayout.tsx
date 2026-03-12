@@ -16,7 +16,7 @@ import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
-import { IconList } from './Icons'
+import { IconBars3, IconList, IconMagnifyingGlass, IconXMark } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import UnifiedBreakdown from './UnifiedBreakdown'
@@ -343,9 +343,7 @@ export function SearchPane(props: {
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
           <div class="relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
+              <IconMagnifyingGlass class="size-5" />
             </div>
             <div
               class="grid overflow-hidden relative"
@@ -511,9 +509,7 @@ export function DualWieldLayout(props: {
           class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Menu (left pane)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <IconBars3 class="size-6" />
         </button>
         <button
           type="button"
@@ -578,9 +574,7 @@ export function DualWieldLayout(props: {
           class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Menu (right pane)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <IconBars3 class="size-6" />
         </button>
         <button
           type="button"
@@ -597,9 +591,7 @@ export function DualWieldLayout(props: {
           aria-label="Leave split view"
           title="Leave split view"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <IconXMark class="size-4" />
         </button>
       </div>
 

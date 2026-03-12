@@ -10,7 +10,7 @@ import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { IconBug } from './Icons'
+import { IconBug, IconChevronRight, IconXMark } from './Icons'
 import { HighlightedLabel } from './InlineBreakdown'
 import { Outlink } from './Outlink'
 
@@ -61,9 +61,7 @@ export default function SearchResults() {
             >
               <Show when={ctx.histogramsExpanded()} fallback={
                 <>
-                  <svg class="size-2.5 shrink-0 fill-current text-gray-500 dark:text-gray-400 transition-transform duration-150" viewBox="0 0 24 24">
-                    <path d="M8 5l8 7-8 7z" />
-                  </svg>
+                  <IconChevronRight class="size-2.5 shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150" />
                   <div class="grid grid-cols-3 gap-4 flex-1 min-w-0 pr-3">
                     <div class="flex items-center gap-1 min-w-0">
                       <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
@@ -91,9 +89,7 @@ export default function SearchResults() {
                   class="hidden md:flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
                   aria-label="Collapse histograms"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <IconXMark class="size-5" />
                 </button>
               </Show>
             </div>

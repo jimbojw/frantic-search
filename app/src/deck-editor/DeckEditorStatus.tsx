@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, Show, For } from 'solid-js'
+import { IconChevronRight } from '../Icons'
 import ListHighlight from '../ListHighlight'
 import { StyledValidationText } from './StyledValidationText'
 import { useDeckEditorContext } from './DeckEditorContext'
@@ -167,13 +168,9 @@ export default function DeckEditorStatus() {
                 aria-label={expanded() ? 'Collapse errors' : 'Expand errors'}
               >
                 <span class="flex items-center gap-1.5 shrink-0">
-                  <svg
-                    class={`size-2.5 fill-current transition-transform text-red-800 dark:text-red-200 ${expanded() ? 'rotate-90' : ''}`}
-                    viewBox="0 0 24 24"
-                    aria-hidden
-                  >
-                    <path d="M8 5l8 7-8 7z" />
-                  </svg>
+                  <IconChevronRight
+                    class={`size-2.5 transition-transform text-red-800 dark:text-red-200 ${expanded() ? 'rotate-90' : ''}`}
+                  />
                   <span class="text-red-800 dark:text-red-200">
                     Editing: {ctx.validationErrors().length} error{ctx.validationErrors().length !== 1 ? 's' : ''}{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
                   </span>

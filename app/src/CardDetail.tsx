@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import {
+  IconArrowTopRightOnSquare,
+  IconCheck,
+  IconChevronLeft,
+  IconClipboardDocument,
+  IconMinus,
+  IconPlus,
+} from './Icons'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
@@ -176,9 +184,7 @@ function ListControls(props: {
         class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-0.5"
         aria-label={props.removeLabel}
       >
-        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
-        </svg>
+        <IconMinus class="size-4" />
       </button>
       <span class="min-w-[1.5rem] text-center text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">{props.count}</span>
       <button
@@ -187,9 +193,7 @@ function ListControls(props: {
         class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-0.5"
         aria-label={props.addLabel}
       >
-        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
+        <IconPlus class="size-4" />
       </button>
     </span>
   )
@@ -251,17 +255,8 @@ function TagChip(props: {
           class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
           aria-label={`Copy ${query()} to clipboard`}
         >
-          <Show
-            when={copied()}
-            fallback={
-              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-              </svg>
-            }
-          >
-            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
+          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
+            <IconCheck class="size-3.5 text-green-500" />
           </Show>
         </button>
       </div>
@@ -342,9 +337,7 @@ export default function CardDetail(props: {
           class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
           aria-label="Back to search results"
         >
-          <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <IconChevronLeft class="size-5" />
         </button>
         <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
         <div class="flex items-center gap-1 shrink-0">
@@ -353,9 +346,7 @@ export default function CardDetail(props: {
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
             aria-label="View on Scryfall"
           >
-            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
+            <IconArrowTopRightOnSquare class="size-5" />
           </Outlink>
         </div>
       </div>
@@ -577,14 +568,8 @@ export default function CardDetail(props: {
                           class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
                           aria-label="Copy Slack bot reference"
                         >
-                          <Show when={copied()} fallback={
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-                            </svg>
-                          }>
-                            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
+                          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
+                            <IconCheck class="size-3.5 text-green-500" />
                           </Show>
                         </button>
                       </div>
