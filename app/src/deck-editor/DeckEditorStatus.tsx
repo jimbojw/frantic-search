@@ -103,12 +103,48 @@ export default function DeckEditorStatus() {
             <Show when={ctx.workerStatus() === 'ready' && ctx.isValidating()} fallback={null}>
               Validating…
             </Show>
-            <Show when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && !ctx.hasChanges()} fallback={null}>
+            <Show
+              when={
+                ctx.workerStatus() === 'ready' &&
+                !ctx.isValidating() &&
+                (!ctx.hasChanges() ||
+                  (ctx.editDiffSummary() &&
+                    ctx.editDiffSummary()!.additions === 0 &&
+                    ctx.editDiffSummary()!.removals === 0))
+              }
+              fallback={null}
+            >
               Editing: No changes{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
             </Show>
             <Show
-              when={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 && ctx.editDiffSummary()}
-              fallback={ctx.workerStatus() === 'ready' && !ctx.isValidating() && ctx.hasChanges() && ctx.validationErrors().length === 0 ? <span>Editing: changes pending{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}</span> : null}
+              when={(() => {
+                const s = ctx.editDiffSummary()
+                if (
+                  ctx.workerStatus() !== 'ready' ||
+                  ctx.isValidating() ||
+                  !ctx.hasChanges() ||
+                  ctx.validationErrors().length > 0 ||
+                  !s ||
+                  (s.additions === 0 && s.removals === 0)
+                )
+                  return false
+                return s
+              })()}
+              fallback={(() => {
+                const s = ctx.editDiffSummary()
+                const ready =
+                  ctx.workerStatus() === 'ready' &&
+                  !ctx.isValidating() &&
+                  ctx.hasChanges() &&
+                  ctx.validationErrors().length === 0
+                if (!ready) return null
+                if (s && s.additions === 0 && s.removals === 0) return null
+                return (
+                  <span>
+                    Editing: changes pending{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
+                  </span>
+                )
+              })()}
             >
               {(summary) => (
                 <>
