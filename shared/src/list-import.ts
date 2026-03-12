@@ -2,7 +2,23 @@
 import { lexDeckList, ListTokenType } from "./list-lexer";
 import type { ListToken, ParsedEntry, ValidationResult } from "./list-lexer";
 import { KNOWN_ZONES } from "./card-list";
+import type { DeckFormat } from "./list-format";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+
+/**
+ * Check if a card matches is:commander (Spec 032): Legendary + (Creature or Planeswalker)
+ * in type line, OR "can be your commander" in oracle text.
+ */
+function isCommander(oracleId: string, display: DisplayColumns): boolean {
+  const idx = display.oracle_ids.indexOf(oracleId);
+  if (idx < 0) return false;
+  const tl = (display.type_lines[idx] ?? "").toLowerCase();
+  const ot = (display.oracle_texts[idx] ?? "").toLowerCase();
+  const isLegendary = tl.includes("legendary");
+  const isCreatureOrPW = tl.includes("creature") || tl.includes("planeswalker");
+  const hasCommanderText = ot.includes("can be your commander");
+  return (isLegendary && isCreatureOrPW) || hasCommanderText;
+}
 
 export interface ImportCandidate {
   oracle_id: string;
@@ -81,6 +97,7 @@ export function importDeckList(
   display: DisplayColumns | null,
   _printingDisplay: PrintingDisplayColumns | null,
   validationResult: ValidationResult,
+  format?: DeckFormat | null,
 ): ImportResult {
   const candidates: ImportCandidate[] = [];
   let deckName: string | null = null;
@@ -97,6 +114,7 @@ export function importDeckList(
 
   let currentZone: string | null = null;
   let resolvedIdx = 0;
+  let seenFirstMainBlockCard = false;
 
   for (let lineIdx = 0; lineIdx < lineGroups.length; lineIdx++) {
     const lineTokens = lineGroups[lineIdx]!;
@@ -163,6 +181,18 @@ export function importDeckList(
       const bracketZone = canonicalZone(primaryBase);
       if (bracketZone) zone = bracketZone;
     }
+
+    // Moxfield: first card line in main block (before SIDEBOARD:) may be Commander
+    if (
+      format === "moxfield" &&
+      currentZone === null &&
+      zone === null &&
+      !seenFirstMainBlockCard &&
+      isCommander(entry.oracle_id, display)
+    ) {
+      zone = "Commander";
+    }
+    if (currentZone === null) seenFirstMainBlockCard = true;
 
     // Extract collection status
     let collectionStatus: string | null = null;

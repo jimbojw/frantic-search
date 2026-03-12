@@ -342,4 +342,52 @@ describe("importDeckList", () => {
     const result = importDeckList(text, display, null, vr);
     expect(result.candidates[0]!.zone).toBe("Sideboard");
   });
+
+  test("Moxfield: first line is commander when card matches is:commander", () => {
+    const displayWithCommander = makeDisplay({
+      names: ["Birds of Paradise", "Lightning Bolt", "Counterspell", "Sol Ring", "Shock", "Forest", "Thalia, Guardian of Thraben"],
+      type_lines: ["Creature", "Instant", "Instant", "Artifact", "Instant", "Land", "Legendary Creature — Human Soldier"],
+      oracle_texts: ["", "", "", "", "", "", ""],
+      oracle_ids: ["oid0", "oid1", "oid2", "oid3", "oid4", "oid5", "oid-cmdr"],
+      mana_costs: ["{G}", "{R}", "{U}{U}", "{1}", "{R}", "{G}", "{1}{W}"],
+      powers: [0, 0, 0, 0, 0, 0, 2],
+      toughnesses: [0, 0, 0, 0, 0, 0, 2],
+      loyalties: [0, 0, 0, 0, 0, 0, 0],
+      defenses: [0, 0, 0, 0, 0, 0, 0],
+      color_identity: [0, 0, 0, 0, 0, 0, 0],
+      scryfall_ids: ["", "", "", "", "", "", ""],
+      art_crop_thumb_hashes: ["", "", "", "", "", "", ""],
+      card_thumb_hashes: ["", "", "", "", "", "", ""],
+      layouts: ["normal", "normal", "normal", "normal", "normal", "normal", "normal"],
+      legalities_legal: [0, 0, 0, 0, 0, 0, 0],
+      legalities_banned: [0, 0, 0, 0, 0, 0, 0],
+      legalities_restricted: [0, 0, 0, 0, 0, 0, 0],
+      canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      edhrec_rank: [null, null, null, null, null, null, null],
+      edhrec_salt: [null, null, null, null, null, null, null],
+    });
+    const text = "1 Thalia, Guardian of Thraben (DMU) 30\n1 Lightning Bolt (M21) 159\n1 Counterspell";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid-cmdr", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid2", scryfall_id: null, quantity: 1 },
+    ]);
+    const result = importDeckList(text, displayWithCommander, null, vr, "moxfield");
+    expect(result.candidates).toHaveLength(3);
+    expect(result.candidates[0]!.zone).toBe("Commander");
+    expect(result.candidates[1]!.zone).toBeNull();
+    expect(result.candidates[2]!.zone).toBeNull();
+  });
+
+  test("Moxfield: first line is non-commander when card does not match is:commander", () => {
+    const text = "1 Lightning Bolt (M21) 159\n1 Counterspell";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid2", scryfall_id: null, quantity: 1 },
+    ]);
+    const result = importDeckList(text, display, null, vr, "moxfield");
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates[0]!.zone).toBeNull();
+    expect(result.candidates[1]!.zone).toBeNull();
+  });
 });

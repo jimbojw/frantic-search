@@ -90,6 +90,7 @@ The import procedure consumes the output of `lexDeckList()` and `validateDeckLis
 
 - Lexer tokens from `lexDeckList(text)` — full-document token stream.
 - Validation result from `validateDeckList(text, display, printingDisplay)` — resolved `ParsedEntry[]` with oracle_id, optional scryfall_id, optional finish (`"foil" | "etched" | null`), and optional variant (verbatim `<...>` content from MTGGoldfish format). Lines with `kind: "error"` have no resolved entry. Lines with `kind: "warning"` (approximate variant resolution) have valid resolved entries and should be imported normally.
+- Optional `format` (DeckFormat) — used for format-specific zone inference (e.g. Moxfield first-line Commander check). When absent, format-specific rules are skipped.
 
 #### State machine
 
@@ -121,8 +122,9 @@ for each line:
     determine zone:
       1. If ROLE_MARKER token (*CMDR* or *CMPN*) → set zone to Commander or Companion (TappedOut)
       2. Else if CATEGORY token's primary segment matches KNOWN_ZONES → use it
-      3. Else if currentZone is set → use currentZone
-      4. Else → null
+      3. Else if format is Moxfield and currentZone is null and this is the first card line in the main block (before SIDEBOARD:) and the card matches `is:commander` (Spec 032: Legendary + Creature/Planeswalker in type line, or "can be your commander" in oracle text) → set zone to Commander
+      4. Else if currentZone is set → use currentZone
+      5. Else → null
 
     build tags[]:
       if HASH_TAG tokens present (TappedOut): each HASH_TAG.value becomes one tag (slash preserved, e.g. "Ramp/Reduction")
@@ -322,6 +324,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 ## Implementation Notes
 
 - 2026-03-10: Added TappedOut import support. ROLE_MARKER (*CMDR*, *CMPN*) sets zone; HASH_TAG tokens populate tags (slash preserved in tag names). TappedOut uses *f*/*f-etch*/*e* for finish (same as Moxfield); *f-pre* uses variant fallback per Spec 108.
+- 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. Uses DisplayColumns (type_lines, oracle_texts) for the check; no worker changes. `importDeckList` accepts optional `format` parameter.
 
 ## Out of Scope
 

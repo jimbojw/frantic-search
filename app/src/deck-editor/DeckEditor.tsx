@@ -332,7 +332,8 @@ export default function DeckEditor(props: {
     if (!props.display || hasValidationErrors()) return null
     const vr = validationResult()
     if (!vr) return null
-    const result = importDeckList(text, props.display, props.printingDisplay, vr)
+    const fmt = detectedFormat() ?? selectedFormat()
+    const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
     const diff = diffDeckList(result.candidates, props.instances)
     return { additions: diff.additions.length, removals: diff.removals.length }
   })
@@ -494,7 +495,8 @@ export default function DeckEditor(props: {
     const text = draftText()
     if (text == null || !props.display) return
     const vr = buildValidationResult(text)
-    const result = importDeckList(text, props.display, props.printingDisplay, vr)
+    const fmt = detectedFormat() ?? selectedFormat()
+    const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
     const diff = diffDeckList(result.candidates, props.instances)
     const removalUuids = new Set(diff.removals.map((r) => r.uuid))
     const matched = props.instances.filter((i) => !removalUuids.has(i.uuid))
@@ -544,7 +546,8 @@ export default function DeckEditor(props: {
       }
 
       const vr = buildValidationResult(text)
-      const result = importDeckList(text, props.display, props.printingDisplay, vr)
+      const fmt = detectedFormat() ?? selectedFormat()
+      const result = importDeckList(text, props.display, props.printingDisplay, vr, fmt)
       const currentInstances = props.instances
       const diff = diffDeckList(result.candidates, currentInstances)
 
