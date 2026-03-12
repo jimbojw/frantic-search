@@ -46,6 +46,7 @@ export default function DeckEditorStatus() {
       </Show>
       <Show when={ctx.mode() === 'review'} fallback={null}>
         <div class="flex flex-wrap gap-2 items-center">
+          <span class="shrink-0">Reviewing list edits:</span>
           {(() => {
             const diff = ctx.reviewDiff()
             const matched = ctx.reviewMatchedInstances()
