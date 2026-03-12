@@ -37,6 +37,7 @@ import {
   buildMasksForList,
   buildMetadataIndex,
   countListEntriesPerCard,
+  getMatchingCount,
 } from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
@@ -1166,6 +1167,29 @@ function App() {
     navigateToCard,
     appendTerm,
     parseBreakdown,
+    cardListStore,
+    listVersion,
+    paneId: 'main',
+    listCountForCard: (ci: number) => {
+      listVersion()
+      const d = display()
+      const oid = d?.oracle_ids?.[ci]
+      if (!oid) return 0
+      return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid)
+    },
+    listCountForPrinting: (pi: number, scryfallId?: string, finish?: string) => {
+      listVersion()
+      const pd = printingDisplay()
+      const d = display()
+      if (!pd || !d) return 0
+      const cf = pd.canonical_face_ref[pi]
+      const oid = d.oracle_ids?.[cf]
+      if (!oid) return 0
+      if (scryfallId != null && finish != null) {
+        return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+      }
+      return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid)
+    },
   }
 
   return (
@@ -1246,6 +1270,8 @@ function App() {
             onListsClick={navigateToLists}
             onNavigateHome={navigateHome}
             onLeaveDualWield={leaveDualWield}
+            cardListStore={cardListStore}
+            listVersion={listVersion}
           />
         </Show>
         <Show when={!showDualWield()}>
