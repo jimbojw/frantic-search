@@ -1,6 +1,6 @@
 # Spec 119: Deck Editor Review Step
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 110 (Hybrid Deck Editor), Spec 113 (Deck Editor Toolbar), Spec 109 (Deck Instance Model)
 

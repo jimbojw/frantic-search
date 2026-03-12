@@ -31,7 +31,8 @@ The toolbar contains all actions. Layout: left group … right group. Copy is al
 |------|------|-------|
 | **Display** | `[ View * ]` `[ Edit ]` (eye, pencil icons) | `[ Bug ]` `[ Copy ]` |
 | **Edit, no changes** | `[ Cancel ]` (X icon) | `[ Bug ]` `[ Copy ]` |
-| **Edit, with changes** | `[ Revert ]` (↶ icon) | `[ Apply * ]` `[ Bug ]` `[ Copy ]` |
+| **Edit, with changes** | `[ Revert ]` (↶ icon) | `[ Review * ]` `[ Bug ]` `[ Copy ]` |
+| **Review** | `[ Edit ]` (↶ icon) | `[ Save * ]` `[ Bug ]` `[ Copy ]` |
 
 `*` = primary/attention styling.
 
@@ -39,13 +40,14 @@ The toolbar contains all actions. Layout: left group … right group. Copy is al
 - **Edit** — Display mode only. Enters Edit mode. Secondary styling (transparent, gray).
 - **Cancel** — Edit mode, no changes. Exits Edit mode (clears draft, returns to Display or Init).
 - **Revert** — Edit mode, has changes. Resets draft to baseline; user stays in Edit mode.
-- **Apply** — Edit mode, has changes, no validation errors. Commits changes.
+- **Review** — Edit mode, has changes, no validation errors, diff has additions or removals. Enters Review mode (Spec 119).
+- **Save** — Review mode only. Commits changes (same as former Apply).
 - **Bug** — Display and Edit modes (disabled in Init). Opens deck report (Spec 118).
 - **Copy** — Display and Edit modes (disabled in Init). Copies rendered or draft text.
 
-**Flush bar:** Single border around the toolbar. Buttons have no individual borders; they fill the bar edge-to-edge. Right-group buttons are separated from the left by a flex spacer; Apply and Copy share a `border-l` between them. Avoids "bordered button within bordered box."
+**Flush bar:** Single border around the toolbar. Buttons have no individual borders; they fill the bar edge-to-edge. Right-group buttons are separated from the left by a flex spacer; Review/Save and Copy share a `border-l` between them. Avoids "bordered button within bordered box."
 
-**Error state:** Toolbar styling is unchanged when validation fails. The Status box turns red; Apply is simply hidden (errors block apply). Industry standard: keep toolbar neutral, surface errors in the feedback area.
+**Error state:** Toolbar styling is unchanged when validation fails. The Status box turns red; Review is simply hidden (errors block review). Industry standard: keep toolbar neutral, surface errors in the feedback area.
 
 ### 2. Status Box — Content Only (No Buttons)
 
@@ -95,11 +97,9 @@ To determine "has changes" and to implement Revert, the editor needs a **baselin
 - **On Revert:** Draft = baseline. Debounce and storage are updated.
 - **On restore from cache (Edit on mount):** Baseline = serialized form of `props.instances` (sync `serialize()` or async `onSerializeRequest`). Populated when entering Edit mode with cached draft.
 
-### 5. Apply Flow
+### 5. Review and Save Flow (Spec 119)
 
-The Apply button in the toolbar commits directly when validation passes. The diff summary is visible in the Status box ("Editing: +N cards / −M cards"), so a confirmation popover is not required. The Apply popover is removed.
-
-If a confirmation step is desired later, it can be reintroduced without changing this spec.
+The Review button in Edit mode enters Review mode when validation passes and the diff has additions or removals. In Review mode, the Save button commits changes. The diff summary is visible in the Status box ("Editing: +N cards / −M cards"); a confirmation popover is not required. See Spec 119 for the full Review step design.
 
 ### 6. Status Box — Init and Display Modes
 
@@ -131,11 +131,11 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 3. Display mode: Toolbar shows `[ View * ]` `[ Edit ]` … `[ Bug ]` `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
 4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
 5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error accordion (collapsible header with chevron; "Apply all quick fixes" or "No quick fixes available"; error table when expanded).
-6. Edit mode, changes, valid: Toolbar shows `[ Revert ]` … `[ Apply * ]` `[ Copy ]`. Status shows diff summary.
+6. Edit mode, changes, valid, diff has additions/removals: Toolbar shows `[ Revert ]` … `[ Review * ]` `[ Bug ]` `[ Copy ]`. Status shows diff summary.
 7. Cancel exits Edit mode (clears draft, returns to Display or Init).
 8. Revert resets draft to baseline; user stays in Edit mode; UI switches to "no changes" state.
-9. Apply commits changes; on success, draft cleared, editor returns to Display or Init.
-10. Apply popover is removed; Apply commits directly from the toolbar.
+9. Save (in Review mode) commits changes; on success, draft cleared, editor returns to Display or Init.
+10. Review enters Review mode; Save commits directly from the toolbar.
 11. Baseline is correctly set on Edit and on restore from cache.
 12. Format chips appear in the Compatible With bar in Display mode only; chips use MenuDrawer styling (outline when selected).
 13. Status box turns red on validation errors; toolbar remains neutral.

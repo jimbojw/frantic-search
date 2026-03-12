@@ -61,21 +61,58 @@ export default function DeckEditorToolbar() {
             Revert
           </button>
         </Show>
+        <Show when={ctx.mode() === 'review'} fallback={null}>
+          <button
+            type="button"
+            onClick={ctx.handleBackToEdit}
+            class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            aria-label="Edit deck list"
+          >
+            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+            </svg>
+            Edit
+          </button>
+        </Show>
       </div>
       <div class="flex-1" aria-hidden="true" />
       <div class="flex">
-        <Show when={ctx.mode() === 'edit' && ctx.hasChanges() && !ctx.hasValidationErrors()} fallback={null}>
+        <Show
+          when={
+            ctx.mode() === 'edit' &&
+            ctx.hasChanges() &&
+            !ctx.hasValidationErrors() &&
+            (() => {
+              const s = ctx.editDiffSummary()
+              return s !== null && (s.additions > 0 || s.removals > 0)
+            })()
+          }
+          fallback={null}
+        >
           <button
             type="button"
-            onClick={ctx.handleApply}
-            disabled={ctx.applyInProgress()}
-            class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500 border-l border-gray-200 dark:border-gray-600"
-            aria-label="Apply changes"
+            onClick={ctx.handleReview}
+            class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 border-l border-gray-200 dark:border-gray-600"
+            aria-label="Review changes"
           >
             <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            {ctx.applyInProgress() ? 'Applying…' : 'Apply'}
+            Review
+          </button>
+        </Show>
+        <Show when={ctx.mode() === 'review'} fallback={null}>
+          <button
+            type="button"
+            onClick={ctx.handleSave}
+            disabled={ctx.saveInProgress()}
+            class="inline-flex items-center justify-center gap-1.5 min-h-11 px-3 py-2 text-xs font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 dark:disabled:hover:bg-blue-500 border-l border-gray-200 dark:border-gray-600"
+            aria-label="Save changes"
+          >
+            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            {ctx.saveInProgress() ? 'Saving…' : 'Save'}
           </button>
         </Show>
         <button

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createMemo, createEffect, onMount, onCleanup } from 'solid-js'
+import { createSignal, createMemo, createEffect, onMount, onCleanup, Show } from 'solid-js'
 import {
   lexDeckList,
   detectDeckFormat,
@@ -18,6 +18,7 @@ import type {
   QuickFix,
   ValidationResult,
 } from '@frantic-search/shared'
+import type { DiffResult, ImportCandidate } from '@frantic-search/shared'
 import type { CardListStore } from '../card-list-store'
 import {
   draftKey,
@@ -41,6 +42,7 @@ import DeckEditorToolbar from './DeckEditorToolbar'
 import DeckEditorStatus from './DeckEditorStatus'
 import DeckEditorFormatChips from './DeckEditorFormatChips'
 import DeckEditorTextarea from './DeckEditorTextarea'
+import DeckEditorReviewView from './DeckEditorReviewView'
 import type { EditorMode } from './types'
 
 export type { EditorMode } from './types'
@@ -65,7 +67,13 @@ export default function DeckEditor(props: {
   const [draftText, setDraftText] = createSignal<string | null>(null)
   const [baselineText, setBaselineText] = createSignal<string | null>(null)
   const [selectedFormat, setSelectedFormat] = createSignal<DeckFormat>(readFormatFromStorage())
-  const [applyInProgress, setApplyInProgress] = createSignal(false)
+  const [saveInProgress, setSaveInProgress] = createSignal(false)
+  const [reviewModeActive, setReviewModeActive] = createSignal(false)
+  const [reviewDiff, setReviewDiff] = createSignal<DiffResult | null>(null)
+  const [reviewMatchedInstances, setReviewMatchedInstances] = createSignal<InstanceState[]>([])
+  const [reviewFilterAdded, setReviewFilterAdded] = createSignal(true)
+  const [reviewFilterRemoved, setReviewFilterRemoved] = createSignal(true)
+  const [reviewFilterUnchanged, setReviewFilterUnchanged] = createSignal(false)
   const [copied, setCopied] = createSignal(false)
   const [quickFixApplying, setQuickFixApplying] = createSignal<{ lineIndex: number; fixIndex: number } | null>(null)
   const [debouncedDraft, setDebouncedDraft] = createSignal<string>('')
@@ -129,6 +137,7 @@ export default function DeckEditor(props: {
 
   const hasInstances = () => props.instances.length > 0
   const mode = createMemo<EditorMode>(() => {
+    if (reviewModeActive()) return 'review'
     if (draftText() !== null) return 'edit'
     if (hasInstances()) return 'display'
     return 'init'
@@ -417,6 +426,9 @@ export default function DeckEditor(props: {
     setDraftText(null)
     setDebouncedDraft('')
     setBaselineText(null)
+    setReviewModeActive(false)
+    setReviewDiff(null)
+    setReviewMatchedInstances([])
     clearDraftFromStorage(props.listId)
     if (debounceTimer) {
       clearTimeout(debounceTimer)
@@ -478,10 +490,27 @@ export default function DeckEditor(props: {
     setTimeout(() => setQuickFixApplying(null), 100)
   }
 
-  async function handleApply() {
+  function handleReview() {
     const text = draftText()
     if (text == null || !props.display) return
-    setApplyInProgress(true)
+    const vr = buildValidationResult(text)
+    const result = importDeckList(text, props.display, props.printingDisplay, vr)
+    const diff = diffDeckList(result.candidates, props.instances)
+    const removalUuids = new Set(diff.removals.map((r) => r.uuid))
+    const matched = props.instances.filter((i) => !removalUuids.has(i.uuid))
+    setReviewDiff(diff)
+    setReviewMatchedInstances(matched)
+    setReviewModeActive(true)
+  }
+
+  function handleBackToEdit() {
+    setReviewModeActive(false)
+  }
+
+  async function handleSave() {
+    const text = draftText()
+    if (text == null || !props.display) return
+    setSaveInProgress(true)
     try {
       const lineStrings = text.split(/\r?\n/)
       const cardLinesNeedingValidation: string[] = []
@@ -539,12 +568,38 @@ export default function DeckEditor(props: {
       handleCancel()
       props.onApplySuccess?.()
     } finally {
-      setApplyInProgress(false)
+      setSaveInProgress(false)
     }
   }
 
+  function getWouldBeCommittedText(): string {
+    const diff = reviewDiff()
+    const matched = reviewMatchedInstances()
+    if (!diff || !props.display) return ''
+    const additionsAsInstances: InstanceState[] = diff.additions.map((c: ImportCandidate) => ({
+      uuid: '',
+      list_id: props.listId,
+      oracle_id: c.oracle_id,
+      scryfall_id: c.scryfall_id,
+      finish: c.finish,
+      zone: c.zone,
+      tags: c.tags,
+      collection_status: c.collection_status,
+      variant: c.variant,
+    }))
+    const wouldBe = [...matched, ...additionsAsInstances]
+    return serialize(selectedFormat(), wouldBe, props.display, props.printingDisplay)
+  }
+
   async function handleCopy() {
-    const text = mode() === 'edit' ? draftText()! : serializedText()
+    let text: string
+    if (mode() === 'review') {
+      text = getWouldBeCommittedText()
+    } else if (mode() === 'edit') {
+      text = draftText()!
+    } else {
+      text = serializedText()
+    }
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
@@ -555,7 +610,7 @@ export default function DeckEditor(props: {
   }
 
   function handleFormatSelect(format: DeckFormat) {
-    if (mode() !== 'display') return
+    if (mode() !== 'display' && mode() !== 'review') return
     setSelectedFormat(format)
     writeFormatToStorage(format)
   }
@@ -565,12 +620,24 @@ export default function DeckEditor(props: {
   }
 
   function handleDeckReport() {
+    let listContent: string
+    let reportMode: 'display' | 'edit' | 'review'
+    if (mode() === 'display') {
+      listContent = serializedText()
+      reportMode = 'display'
+    } else if (mode() === 'review') {
+      listContent = getWouldBeCommittedText()
+      reportMode = 'review'
+    } else {
+      listContent = draftText() ?? ''
+      reportMode = 'edit'
+    }
     props.onDeckReportClick?.({
-      listContent: mode() === 'display' ? serializedText() : draftText() ?? '',
+      listContent,
       format: editFormatLabel() ?? 'No format',
       listName: props.metadata?.name ?? 'My List',
       listId: props.listId,
-      mode: mode() === 'display' ? 'display' : 'edit',
+      mode: reportMode,
       validationErrors: validation()?.lines.filter((l) => l.kind !== 'ok') ?? [],
       instanceCount: mode() === 'display' ? props.instances.length : undefined,
     })
@@ -594,13 +661,23 @@ export default function DeckEditor(props: {
     highlightValidation,
     workerStatus: props.workerStatus,
     isValidating,
-    applyInProgress,
+    saveInProgress,
     copied,
     quickFixApplying,
+    reviewDiff,
+    reviewMatchedInstances,
+    reviewFilterAdded,
+    reviewFilterRemoved,
+    reviewFilterUnchanged,
+    setReviewFilterAdded,
+    setReviewFilterRemoved,
+    setReviewFilterUnchanged,
     handleEdit,
     handleCancel,
     handleRevert,
-    handleApply,
+    handleSave,
+    handleReview,
+    handleBackToEdit,
     handleCopy,
     handleFormatSelect,
     handleInput,
@@ -618,7 +695,22 @@ export default function DeckEditor(props: {
           <DeckEditorToolbar />
           <DeckEditorStatus />
           <DeckEditorFormatChips />
-          <DeckEditorTextarea />
+          <Show when={mode() !== 'review'} fallback={null}>
+            <DeckEditorTextarea />
+          </Show>
+          <Show when={mode() === 'review' && reviewDiff() !== null} fallback={null}>
+            <DeckEditorReviewView
+              diff={reviewDiff()!}
+              matchedInstances={reviewMatchedInstances()}
+              format={selectedFormat()}
+              display={props.display!}
+              printingDisplay={props.printingDisplay}
+              listId={props.listId}
+              addedVisible={reviewFilterAdded()}
+              removedVisible={reviewFilterRemoved()}
+              unchangedVisible={reviewFilterUnchanged()}
+            />
+          </Show>
         </div>
       </div>
     </DeckEditorContext.Provider>

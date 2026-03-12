@@ -20,13 +20,14 @@ By using a **separate** `DeckBugReport` component, we keep the report body focus
 
 ### Primary: Deck Editor toolbar
 
-A persistent `[ Bug ]` button in the Deck Editor toolbar, positioned **immediately left of Copy** (Spec 113). Copy stays at the corner (easiest to find); Bug maintains a constant position; when Apply appears in Edit mode, it goes to the left of Bug. Visible in Display and Edit modes; disabled in Init mode (no list content to report). Same styling as Copy — transparent background, gray text, `border-l` separator. `aria-label="Report deck problem"`.
+A persistent `[ Bug ]` button in the Deck Editor toolbar, positioned **immediately left of Copy** (Spec 113). Copy stays at the corner (easiest to find); Bug maintains a constant position; when Review or Save appears, it goes to the left of Bug. Visible in Display, Edit, and Review modes; disabled in Init mode (no list content to report). Same styling as Copy — transparent background, gray text, `border-l` separator. `aria-label="Report deck problem"`.
 
 | Mode | Right group |
 |------|-------------|
 | Display | `[ Bug ]` `[ Copy ]` |
 | Edit, no changes | `[ Bug ]` `[ Copy ]` |
-| Edit, with changes | `[ Apply * ]` `[ Bug ]` `[ Copy ]` |
+| Edit, with changes | `[ Review * ]` `[ Bug ]` `[ Copy ]` |
+| Review | `[ Save * ]` `[ Bug ]` `[ Copy ]` |
 
 Tapping the Bug button navigates to the deck report page via `pushState` (Spec 013).
 
@@ -53,11 +54,11 @@ Captured at the moment the user taps the Bug button. Passed from DeckEditor → 
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `listContent` | string | The deck list text. In Display mode: serialized output. In Edit mode: current draft text. |
+| `listContent` | string | The deck list text. In Display mode: serialized output. In Edit mode: current draft text. In Review mode: would-be-committed list (canonical form). |
 | `format` | string | Detected or selected format label (e.g. `"Arena"`, `"Moxfield"`, `"TappedOut"`). |
 | `listName` | string | List metadata name (e.g. `"My List"`). |
 | `listId` | string | List ID (e.g. `"default"`, `"trash"`). Extensible when additional tabs are added. |
-| `mode` | `'display' \| 'edit'` | Editor mode when Bug was tapped. Init mode does not show Bug button. |
+| `mode` | `'display' \| 'edit' \| 'review'` | Editor mode when Bug was tapped. Init mode does not show Bug button. |
 | `validationErrors` | `LineValidation[]` | Any validation errors (Edit mode). Empty when valid. Derived from `validation()?.lines.filter(l => l.kind !== 'ok') ?? []`. |
 | `instanceCount` | number \| undefined | Total card count (sum of quantities across instances). Display mode only. Omitted in Edit mode. |
 
@@ -67,7 +68,7 @@ interface DeckReportContext {
   format: string
   listName: string
   listId: string
-  mode: 'display' | 'edit'
+  mode: 'display' | 'edit' | 'review'
   validationErrors: LineValidation[]
   instanceCount?: number
 }
@@ -95,7 +96,7 @@ An **"Omit deck list from bug report"** checkbox allows the user to exclude the 
 #### Format & Mode
 
 - **Format:** e.g. "Moxfield"
-- **Mode:** "Display" or "Editing"
+- **Mode:** "Display", "Editing", or "Review"
 - **List:** e.g. "My List" (default) or "Trash"
 
 #### Validation Errors (when present)
@@ -148,7 +149,7 @@ When "Omit deck list" is unchecked (default):
 ## Context
 
 - Format: <format>
-- Mode: <display | edit>
+- Mode: <display | edit | review>
 - List: <listName> (<listId>)
 - Instance count: <N> (Display mode only; omit in Edit)
 

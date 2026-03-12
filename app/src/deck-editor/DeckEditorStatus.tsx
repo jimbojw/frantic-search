@@ -43,6 +43,53 @@ export default function DeckEditorStatus() {
           {ctx.instances().length} card{ctx.instances().length !== 1 ? 's' : ''}
         </p>
       </Show>
+      <Show when={ctx.mode() === 'review'} fallback={null}>
+        <div class="flex flex-wrap gap-2 items-center">
+          {(() => {
+            const diff = ctx.reviewDiff()
+            const matched = ctx.reviewMatchedInstances()
+            const n = diff?.additions.length ?? 0
+            const m = diff?.removals.length ?? 0
+            const k = matched.length
+            const chip = (
+              label: string,
+              count: number,
+              active: boolean,
+              disabled: boolean,
+              onClick: () => void
+            ) => (
+              <button
+                type="button"
+                onClick={onClick}
+                disabled={disabled}
+                classList={{
+                  'inline-flex items-center justify-center min-h-8 px-2 py-1.5 rounded text-xs font-medium transition-colors': true,
+                  'bg-green-100 dark:bg-green-900/30 border-2 border-green-500 text-green-800 dark:text-green-200':
+                    label === 'Added' && active && !disabled,
+                  'bg-red-100 dark:bg-red-900/30 border-2 border-red-500 text-red-800 dark:text-red-200':
+                    label === 'Removed' && active && !disabled,
+                  'bg-gray-100 dark:bg-gray-800 border-2 border-gray-400 text-gray-700 dark:text-gray-300':
+                    label === 'Unchanged' && active && !disabled,
+                  'bg-gray-100 dark:bg-gray-800 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300':
+                    !active && !disabled,
+                  'opacity-50 cursor-not-allowed pointer-events-none': disabled,
+                }}
+                aria-pressed={active}
+                aria-label={`${label} (${count})`}
+              >
+                {label} ({count})
+              </button>
+            )
+            return (
+              <>
+                {chip('Added', n, ctx.reviewFilterAdded(), n === 0, () => ctx.setReviewFilterAdded(!ctx.reviewFilterAdded()))}
+                {chip('Removed', m, ctx.reviewFilterRemoved(), m === 0, () => ctx.setReviewFilterRemoved(!ctx.reviewFilterRemoved()))}
+                {chip('Unchanged', k, ctx.reviewFilterUnchanged(), k === 0, () => ctx.setReviewFilterUnchanged(!ctx.reviewFilterUnchanged()))}
+              </>
+            )
+          })()}
+        </div>
+      </Show>
       <Show when={ctx.mode() === 'edit'} fallback={null}>
         <div class="flex flex-col gap-2">
           <Show when={ctx.validationErrors().length === 0} fallback={null}>
