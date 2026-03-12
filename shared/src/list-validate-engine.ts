@@ -456,7 +456,10 @@ export function validateDeckListWithEngine(
               const warningLine: LineValidation = {
                 ...success.line,
                 kind: "warning",
-                span: { start: lineStart + setTok!.start, end: lineStart + setTok!.end },
+                span: {
+                  start: lineStart + setTok!.start,
+                  end: lineStart + effectiveCollectorTok!.end,
+                },
                 message: `Set and collector number resolved to ${resolvedSetDisplay} ${resolvedCnDisplay}`,
               };
               lines.push(warningLine);
