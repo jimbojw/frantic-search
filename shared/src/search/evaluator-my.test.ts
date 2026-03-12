@@ -7,16 +7,10 @@ import { index, printingIndex } from "./evaluator.test-fixtures";
 // ---------------------------------------------------------------------------
 // Spec 077 / Spec 121: my:list query field
 //
-// Spec 121: My List is printing-domain only. All getListMask fixtures must
-// return printingMask (faceMask zeroed). Face 1 = Bolt, Face 3 = Sol Ring.
+// Spec 121: My List is printing-domain only. All getListMask fixtures return
+// printingMask only. Face 1 = Bolt, Face 3 = Sol Ring.
 // Printing 0 = Bolt nonfoil, Printing 1 = Bolt foil, Printing 3 = Sol Ring nonfoil.
 // ---------------------------------------------------------------------------
-
-function faceMask(indices: number[], faceCount: number): Uint8Array {
-  const buf = new Uint8Array(faceCount);
-  for (const i of indices) buf[i] = 1;
-  return buf;
-}
 
 function printingMask(indices: number[], printingCount: number): Uint8Array {
   const buf = new Uint8Array(printingCount);
@@ -24,12 +18,10 @@ function printingMask(indices: number[], printingCount: number): Uint8Array {
   return buf;
 }
 
-const FACE_COUNT = 10;
 const PRINTING_COUNT = 11;
 
 describe("my:list list ID mapping", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0], PRINTING_COUNT), // Bolt canonical nonfoil
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -55,7 +47,6 @@ describe("my:list list ID mapping", () => {
 
 describe("my:list negation", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0], PRINTING_COUNT), // Bolt
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -69,7 +60,6 @@ describe("my:list negation", () => {
 
 describe("my:list composition", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0], PRINTING_COUNT), // Bolt
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -94,7 +84,6 @@ describe("my:list composition", () => {
 
 describe("my:list empty list", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([], PRINTING_COUNT), // zeroed
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -114,7 +103,6 @@ describe("my:trash", () => {
   const getListMask = (listId: string) =>
     listId === "trash"
       ? {
-          faceMask: faceMask([], FACE_COUNT),
           printingMask: printingMask([3], PRINTING_COUNT), // Sol Ring canonical nonfoil
         }
       : null;
@@ -136,7 +124,6 @@ describe("my:trash", () => {
     const emptyTrash = (listId: string) =>
       listId === "trash"
         ? {
-            faceMask: faceMask([], FACE_COUNT),
             printingMask: printingMask([], PRINTING_COUNT),
           }
         : null;
@@ -149,7 +136,6 @@ describe("my:trash", () => {
     const emptyTrash = (listId: string) =>
       listId === "trash"
         ? {
-            faceMask: faceMask([], FACE_COUNT),
             printingMask: printingMask([], PRINTING_COUNT),
           }
         : null;
@@ -168,7 +154,6 @@ describe("my:list unknown list", () => {
   const getListMask = (listId: string) =>
     listId === "default"
       ? {
-          faceMask: faceMask([], FACE_COUNT),
           printingMask: printingMask([0], PRINTING_COUNT),
         }
       : null;
@@ -188,7 +173,6 @@ describe("my:list unknown list", () => {
 
 describe("my:list generic entries (Spec 121)", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0, 3], PRINTING_COUNT), // Bolt + Sol Ring canonical nonfoil
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -209,7 +193,6 @@ describe("my:list generic entries (Spec 121)", () => {
 
 describe("my:list printing-only (printing-domain)", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([1], PRINTING_COUNT), // Bolt foil
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -238,7 +221,6 @@ describe("my:list printing-only (printing-domain)", () => {
 
 describe("my:list mixed (generic + printing entries, Spec 121)", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([1, 3], PRINTING_COUNT), // Bolt foil + Sol Ring canonical nonfoil
   });
   const cache = new NodeCache(index, printingIndex, getListMask);
@@ -276,7 +258,6 @@ describe("my:list without getListMask (CLI)", () => {
 
 describe("my:list printing data not loaded", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0], PRINTING_COUNT),
   });
   const cache = new NodeCache(index, null, getListMask);
@@ -290,7 +271,6 @@ describe("my:list printing data not loaded", () => {
 
 describe("my:list invalid operator", () => {
   const getListMask = () => ({
-    faceMask: faceMask([], FACE_COUNT),
     printingMask: printingMask([0], PRINTING_COUNT),
   });
   const cache = new NodeCache(index, printingIndex, getListMask);

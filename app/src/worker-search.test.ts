@@ -368,11 +368,10 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
 // ---------------------------------------------------------------------------
 describe('pinned my:list + live unique:prints (Spec 121)', () => {
   const getListMask = () => {
-    const faceMask = new Uint8Array(index.faceCount)
     const printingMask = new Uint8Array(printingIndex.printingCount)
     printingMask[1] = 1 // Bolt foil (printing-level)
     printingMask[3] = 1 // Sol Ring canonical nonfoil (generic)
-    return { faceMask, printingMask }
+    return { printingMask }
   }
   const cacheWithList = new NodeCache(index, printingIndex, getListMask)
 

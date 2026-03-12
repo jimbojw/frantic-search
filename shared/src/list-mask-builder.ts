@@ -83,7 +83,6 @@ function encodeFinish(finish: string | null): number | undefined {
 export interface BuildMasksOptions {
   view: MaterializedView;
   listId: string;
-  faceCount: number;
   printingCount?: number;
   oracleToCanonicalFace: Map<string, number>;
   printingLookup?: Map<string, number>;
@@ -92,7 +91,6 @@ export interface BuildMasksOptions {
 }
 
 export interface BuildMasksFromParsedEntriesOptions {
-  faceCount: number;
   printingCount?: number;
   oracleToCanonicalFace: Map<string, number>;
   printingLookup?: Map<string, number>;
@@ -101,12 +99,11 @@ export interface BuildMasksFromParsedEntriesOptions {
 }
 
 export interface BuildMasksResult {
-  faceMask: Uint8Array;
   printingMask?: Uint8Array;
 }
 
 /**
- * Builds faceMask (zeroed) and printingMask for a list from the materialized view.
+ * Builds printingMask for a list from the materialized view.
  * Spec 121: My List is printing-domain only. Printing-level entries set printingMask bits;
  * generic entries resolve to canonical printing when canonicalPrintingPerFace is present.
  */
@@ -114,14 +111,12 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
   const {
     view,
     listId,
-    faceCount,
     printingCount = 0,
     oracleToCanonicalFace,
     printingLookup,
     canonicalPrintingPerFace,
   } = options;
 
-  const faceMask = new Uint8Array(faceCount);
   let printingMask: Uint8Array | undefined;
   if (printingCount > 0) {
     printingMask = new Uint8Array(printingCount);
@@ -129,7 +124,7 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
 
   const uuids = view.instancesByList.get(listId);
   if (!uuids || uuids.size === 0) {
-    return printingMask ? { faceMask, printingMask } : { faceMask };
+    return { printingMask };
   }
 
   for (const uuid of uuids) {
@@ -156,11 +151,11 @@ export function buildMasksForList(options: BuildMasksOptions): BuildMasksResult 
     }
   }
 
-  return printingMask ? { faceMask, printingMask } : { faceMask };
+  return { printingMask };
 }
 
 /**
- * Builds faceMask (zeroed) and printingMask from ParsedEntry[] (e.g. from deck list validation).
+ * Builds printingMask from ParsedEntry[] (e.g. from deck list validation).
  * Used by CLI for search --list and list-diff when no MaterializedView is available.
  * Spec 121: printing-domain only; generic entries resolve to canonical printing when map present.
  */
@@ -169,14 +164,12 @@ export function buildMasksFromParsedEntries(
   options: BuildMasksFromParsedEntriesOptions,
 ): BuildMasksResult {
   const {
-    faceCount,
     printingCount = 0,
     oracleToCanonicalFace,
     printingLookup,
     canonicalPrintingPerFace,
   } = options;
 
-  const faceMask = new Uint8Array(faceCount);
   let printingMask: Uint8Array | undefined;
   if (printingCount > 0) {
     printingMask = new Uint8Array(printingCount);
@@ -201,7 +194,7 @@ export function buildMasksFromParsedEntries(
     }
   }
 
-  return printingMask ? { faceMask, printingMask } : { faceMask };
+  return { printingMask };
 }
 
 /**

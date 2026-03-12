@@ -9,7 +9,7 @@ export type DualWieldSide = 'left' | 'right'
 
 export type ToWorker =
   | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode; side?: DualWieldSide }
-  | { type: 'list-update'; listId: string; faceMask: Uint8Array; printingMask?: Uint8Array }
+  | { type: 'list-update'; listId: string; printingMask?: Uint8Array }
   | { type: 'get-tags-for-card'; canonicalIndex: number; primaryPrintingIndex?: number }
   | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat }
   | { type: 'validate-list'; requestId: number; lines: string[] }

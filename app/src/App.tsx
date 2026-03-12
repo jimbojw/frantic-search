@@ -429,23 +429,21 @@ function App() {
   ): void {
     const oracleMap = buildOracleToCanonicalFaceMap(d)
     const view = store.getView()
-    const faceCount = d.oracle_ids.length
     const printingCount = pd?.scryfall_ids.length ?? 0
     const printingLookup = pd ? buildPrintingLookup(pd) : undefined
     const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
     for (const listId of affectedListIds) {
-      const { faceMask, printingMask } = buildMasksForList({
+      const { printingMask } = buildMasksForList({
         view,
         listId,
-        faceCount,
         printingCount,
         oracleToCanonicalFace: oracleMap,
         printingLookup,
         canonicalPrintingPerFace,
       })
-      const transfer: Transferable[] = [faceMask.buffer]
+      const transfer: Transferable[] = []
       if (printingMask) transfer.push(printingMask.buffer)
-      workerRef.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+      workerRef.postMessage({ type: 'list-update', listId, printingMask }, transfer)
     }
   }
 
@@ -537,24 +535,22 @@ function App() {
                 const pd = printingDisplay()
                 const oracleMap = buildOracleToCanonicalFaceMap(d)
                 const view = cardListStore.getView()
-                const faceCount = d.oracle_ids.length
                 const printingCount = pd?.scryfall_ids.length ?? 0
                 const printingLookup = pd ? buildPrintingLookup(pd) : undefined
                 const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
                 const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
                 for (const listId of listIds) {
-                  const { faceMask, printingMask } = buildMasksForList({
+                  const { printingMask } = buildMasksForList({
                     view,
                     listId,
-                    faceCount,
                     printingCount,
                     oracleToCanonicalFace: oracleMap,
                     printingLookup,
                     canonicalPrintingPerFace,
                   })
-                  const transfer: Transferable[] = [faceMask.buffer]
+                  const transfer: Transferable[] = []
                   if (printingMask) transfer.push(printingMask.buffer)
-                  worker.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+                  worker.postMessage({ type: 'list-update', listId, printingMask }, transfer)
                 }
                 setWorkerStatus('ready')
               })

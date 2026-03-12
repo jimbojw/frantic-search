@@ -121,7 +121,7 @@ export function nodeKey(ast: ASTNode): string {
   }
 }
 
-export type GetListMask = (listId: string) => { faceMask: Uint8Array; printingMask?: Uint8Array } | null;
+export type GetListMask = (listId: string) => { printingMask?: Uint8Array } | null;
 
 export type TagDataRef = {
   oracle: OracleTagData | null;

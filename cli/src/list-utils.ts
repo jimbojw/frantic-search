@@ -31,7 +31,6 @@ export function loadListText(path: string): string {
 
 export interface ParseListResult {
   resolved: ParsedEntry[];
-  faceMask: Uint8Array;
   printingMask?: Uint8Array;
   validationLines: { kind: string; message?: string }[];
 }
@@ -64,7 +63,6 @@ export function parseListAndBuildMasks(
     message: l.message,
   }));
 
-  const faceCount = data.names.length;
   const printingCount = printingData?.canonical_face_ref?.length ?? 0;
   const oracleToCanonicalFace = buildOracleToCanonicalFaceMap(display);
   const printingLookup = printingDisplay
@@ -74,8 +72,7 @@ export function parseListAndBuildMasks(
     ? buildCanonicalPrintingPerFace(printingDisplay)
     : undefined;
 
-  const { faceMask, printingMask } = buildMasksFromParsedEntries(resolved, {
-    faceCount,
+  const { printingMask } = buildMasksFromParsedEntries(resolved, {
     printingCount: printingCount > 0 ? printingCount : undefined,
     oracleToCanonicalFace,
     printingLookup,
@@ -84,18 +81,16 @@ export function parseListAndBuildMasks(
 
   return {
     resolved,
-    faceMask,
     printingMask,
     validationLines,
   };
 }
 
 export function createGetListMask(
-  faceMask: Uint8Array,
   printingMask?: Uint8Array,
-): (listId: string) => { faceMask: Uint8Array; printingMask?: Uint8Array } | null {
+): (listId: string) => { printingMask?: Uint8Array } | null {
   return (listId: string) => {
     if (listId !== "default") return null;
-    return { faceMask, printingMask };
+    return { printingMask };
   };
 }
