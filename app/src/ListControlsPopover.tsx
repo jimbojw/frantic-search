@@ -131,7 +131,10 @@ export default function ListControlsPopover(props: {
                   colorIdentity={card().colorIdentity}
                   thumbHash={card().thumbHash}
                   class="w-full cursor-pointer rounded-lg"
-                  onClick={card().onClick}
+                  onClick={() => {
+                    card().onClick?.()
+                    close()
+                  }}
                 />
               </div>
             )}

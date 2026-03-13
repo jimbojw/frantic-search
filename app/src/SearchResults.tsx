@@ -199,7 +199,12 @@ export default function SearchResults() {
                                   scryfallId: artScryfallId()!,
                                   colorIdentity: d()!.color_identity[ci],
                                   thumbHash: d()!.card_thumb_hashes[ci],
-                                  onClick: () => ctx.navigateToCard(artScryfallId()),
+                                  onClick: () => {
+                                    const n = name()
+                                    const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                    if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
+                                    else ctx.navigateToCard(artScryfallId())
+                                  },
                                 }}
                                 entries={[{
                                   label: 'Any printing',
@@ -271,7 +276,12 @@ export default function SearchResults() {
                                       scryfallId: artScryfallId()!,
                                       colorIdentity: d()!.color_identity[ci],
                                       thumbHash: d()!.card_thumb_hashes[ci],
-                                      onClick: () => ctx.navigateToCard(artScryfallId()),
+                                      onClick: () => {
+                                        const n = name()
+                                        const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                        if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
+                                        else ctx.navigateToCard(artScryfallId())
+                                      },
                                     }}
                                     entries={[{
                                       label: 'Any printing',
@@ -356,7 +366,12 @@ export default function SearchResults() {
                                             scryfallId,
                                             colorIdentity: d()!.color_identity[ci],
                                             thumbHash: d()!.card_thumb_hashes[ci],
-                                            onClick: () => ctx.navigateToCard(scryfallId),
+                                            onClick: () => {
+                                              const n = name()
+                                              const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                              if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
+                                              else ctx.navigateToCard(scryfallId)
+                                            },
                                           }}
                                           entries={[
                                             {
@@ -489,7 +504,12 @@ export default function SearchResults() {
                                   scryfallId: d()!.scryfall_ids[ci],
                                   colorIdentity: d()!.color_identity[ci],
                                   thumbHash: d()!.card_thumb_hashes[ci],
-                                  onClick: () => ctx.navigateToCard(d()!.scryfall_ids[ci]),
+                                  onClick: () => {
+                                    const n = name()
+                                    const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                    if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
+                                    else ctx.navigateToCard(d()!.scryfall_ids[ci])
+                                  },
                                 }}
                                 entries={[{
                                   label: 'Any printing',
@@ -573,7 +593,12 @@ export default function SearchResults() {
                                             scryfallId: scryfallIdImg,
                                             colorIdentity: d()!.color_identity[ci],
                                             thumbHash: d()!.card_thumb_hashes[ci],
-                                            onClick: () => ctx.navigateToCard(scryfallIdImg),
+                                            onClick: () => {
+                                              const n = name()
+                                              const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                              if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
+                                              else ctx.navigateToCard(scryfallIdImg)
+                                            },
                                           }}
                                           entries={[
                                             {

@@ -49,6 +49,7 @@ export interface SearchContextValue {
   setVisibleCount: Setter<number>
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
+  navigateToQuery?: (q: string) => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
   /** List add/remove (Spec 124). When absent, list controls are not rendered. */

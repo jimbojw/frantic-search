@@ -1081,6 +1081,7 @@ function App() {
     flushPendingCommit,
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
+    navigateToQuery,
     listEntryCountPerCard,
   })
 
@@ -1115,6 +1116,7 @@ function App() {
     flushPendingCommit,
     navigateToReport: () => navigateToReport('right'),
     navigateToCard,
+    navigateToQuery,
     listEntryCountPerCard: listEntryCountPerCard2,
   })
 
@@ -1165,6 +1167,7 @@ function App() {
     setVisibleCount,
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
+    navigateToQuery,
     appendTerm,
     parseBreakdown,
     cardListStore,

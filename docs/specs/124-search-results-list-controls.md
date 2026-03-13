@@ -26,7 +26,7 @@ Search results use four view modes (Spec 041): Slim, Detail, Images, and Full. E
 Manual show/hide with state; `position: absolute` relative to a tightly fitted wrapper around the trigger. Light-dismiss via click-outside and Escape. The popover scrolls with the page (not fixed to viewport).
 
 - **Trigger:** A compact button labeled `+ | -` (IconPlus, IconVerticalBar, IconMinus). Height matches menu drawer chips (`min-h-11 min-w-11`). Use unique IDs: `list-popover-${paneId}-card-${ci}` for card-level, `list-popover-${paneId}-print-${pi}` for printing-level.
-- **Popover content:** Fixed width 300px. Card image at top (CardImage with color identity, ThumbHash, rounded corners; click navigates to card). Below that, a 2×2 grid: each row has a label and `[-] N [+]` ListControls. Labels: "Any printing" for oracle-level add/remove; "SET · CN · finish" (e.g. "LTR · 478 · nonfoil") for printing-specific add/remove when printing-expanded.
+- **Popover content:** Fixed width 300px. Card image at top (CardImage with color identity, ThumbHash, rounded corners; click navigates to All Prints query). Below that, a 2×2 grid: each row has a label and `[-] N [+]` ListControls. Labels: "Any printing" for oracle-level add/remove; "SET · CN · finish" (e.g. "LTR · 478 · nonfoil") for printing-specific add/remove when printing-expanded.
 - **Positioning:** Popover is `position: absolute` inside a `position: relative` wrapper that tightly fits the trigger. Popover must have `absolute` in its class from render so the wrapper stays tight (late application would inflate the wrapper). Vertical: if button center Y > 50% viewport height, show above (`bottom: BH + gap`); else show below (`top: BH + gap`). Horizontal: prefer `left: 0` (align left edges) if popover fits in viewport; else `right: 0` (align right edges) if it fits; else center in viewport (`left = VW/2 - PW/2 - BX`). Parent containers need `overflow: visible` (e.g. Images grid container).
 
 **Accessibility:** Trigger has `aria-label="Add or remove from list"`, `aria-expanded`, `aria-haspopup="dialog"`. Popover has `role="dialog"`. ListControls buttons retain their `aria-label` values. Dismiss on Escape or click outside.
@@ -133,5 +133,6 @@ When printing-expanded, the popover shows two rows: "Any printing" (oracle-level
 ## Implementation Notes
 
 - Switched from native Popover API to manual state + `position: absolute` so the popover scrolls with the page.
+- Popover card image click navigates to All Prints query (`!"{name}" unique:prints include:extras v:images`) rather than the card detail page. Rationale: clicking the card in search results already goes to the card page; the popover image offers a different destination — browsing all printings — so users can add a different printing to their list.
 - Added card image and 2×2 grid layout to popover content; labels "Any printing" and "SET · CN · finish".
 - Images grid container changed from `overflow-hidden` to `overflow-visible` so the popover can extend outside.

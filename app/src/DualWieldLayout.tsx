@@ -89,6 +89,7 @@ export type PaneState = {
   changeUniqueMode: (mode: UniqueMode) => void
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
+  navigateToQuery?: (q: string) => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
   /** When my:list is in query, list entry count per canonical face (Spec 087). */
@@ -273,6 +274,7 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     setVisibleCount: state.setVisibleCount,
     navigateToReport: state.navigateToReport,
     navigateToCard: state.navigateToCard,
+    navigateToQuery: state.navigateToQuery,
     appendTerm: state.appendTerm,
     parseBreakdown: state.parseBreakdown,
     ...(store && listVersion && {
