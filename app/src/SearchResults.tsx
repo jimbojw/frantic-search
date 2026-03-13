@@ -336,7 +336,7 @@ export default function SearchResults() {
                         const name = () => fullCardName(d()!, faces())
                         const isFoil = pd.finish[pi] === Finish.Foil
                         const isEtched = pd.finish[pi] === Finish.Etched
-                        const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay ' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay ' : ''
+                        const overlayClass = () => isFoil ? 'foil-overlay ' : isEtched ? 'etched-overlay ' : ''
                         const oracleIdPrint = () => d()?.oracle_ids?.[ci]
                         const showListTriggerPrint = () => ctx.cardListStore && oracleIdPrint()
                         return (
@@ -549,7 +549,7 @@ export default function SearchResults() {
                             if (!group || group.length <= 1) return null
                             return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
                           }
-                          const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay' : ''
+                          const overlayClass = () => isFoil ? 'foil-overlay' : isEtched ? 'etched-overlay' : ''
                           const aggCount = ctx.aggregationCountForPrinting(pi)
                           const oracleIdImgPrint = () => d()?.oracle_ids?.[ci]
                           const showListTriggerImgPrint = () => ctx.cardListStore && oracleIdImgPrint()
