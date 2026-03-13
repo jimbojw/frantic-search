@@ -141,6 +141,17 @@ describe("importDeckList", () => {
     expect(result.candidates[0]!.zone).toBe("Commander");
   });
 
+  test("MTGSalvation: Creature section resets zone to Deck after Commander", () => {
+    const text = "Commander\n1 Sol Ring\n\nCreature\n1 Lightning Bolt";
+    const vr = makeValidationResult(text, [
+      { oracle_id: "oid3", scryfall_id: null, quantity: 1 },
+      { oracle_id: "oid1", scryfall_id: null, quantity: 1 },
+    ]);
+    const result = importDeckList(text, display, null, vr);
+    expect(result.candidates[0]!.zone).toBe("Commander");
+    expect(result.candidates[1]!.zone).toBe(null);
+  });
+
   test("unknown section resets zone to null", () => {
     const text = "Deck\n1 Lightning Bolt\nAbout\n1 Counterspell";
     const vr = makeValidationResult(text, [

@@ -224,6 +224,13 @@ describe("lexDeckList", () => {
     ]);
   });
 
+  test("MTGSalvation type headers produce SECTION_HEADER token", () => {
+    for (const header of ["Creature", "Enchantment", "Land", "Artifact", "Instant", "Sorcery", "Planeswalker", "Tribal"]) {
+      const tokens = lexDeckList(header);
+      expect(tokens).toMatchObject([{ type: "SECTION_HEADER", value: header }]);
+    }
+  });
+
   test("Arena metadata Name produces METADATA token", () => {
     const tokens = lexDeckList("Name The Birds (are rebels)");
     expect(tokens).toMatchObject([

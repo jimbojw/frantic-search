@@ -335,6 +335,7 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 - 2026-03-12: Spec 075 Instance granularity invariant: when `ParsedEntry` has `scryfall_id` but `finish` is null (no foil/etched marker), import sets `finish` to `"nonfoil"` so the stored Instance satisfies the invariant. `list-mask-builder` retains a fallback for legacy data (scryfall_id + null finish → treat as nonfoil).
 - 2026-03-12: Moxfield custom tags: HASH_TAG tokens from Moxfield-style lines (Spec 108 CARD_LINE_RE with trailing `#Tag`) populate `tags[]` same as TappedOut. Import extracts tags from HASH_TAG regardless of format.
 - 2026-03-13: MTGSalvation export (Spec 110): type-based section grouping (Creature, Enchantment, Land, etc.) instead of zone-based. Uses `display.type_lines` for section assignment; multi-type cards (e.g. Artifact Creature) go to Creature section.
+- 2026-03-13: MTGSalvation import: Spec 108 lexer extended to emit SECTION_HEADER for type labels (Creature, Enchantment, Land, Artifact, Instant, Sorcery, Planeswalker, Tribal). These do not match KNOWN_ZONES, so importer sets `currentZone = null` (main deck). Fixes bug where all cards were assigned Commander zone because type headers were previously unrecognized and produced no tokens.
 
 ## Out of Scope
 

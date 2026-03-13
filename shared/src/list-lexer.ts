@@ -139,7 +139,8 @@ const MTGGOLDFISH_NO_VARIANT_RE =
 /** TCGPlayer Mass Entry: Qty Name [SET] collector — no foil/etched markers. Collector excludes (F)/(E) and ^ (Archidekt). */
 const TCGPLAYER_CARD_LINE_RE =
   /^(\d+x?)\s+(.+?)\s+\[([A-Za-z0-9_-]+)\]\s+([^(\s^]+)\s*$/;
-const SECTION_HEADER_RE = /^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$/i;
+const SECTION_HEADER_RE =
+  /^\s*(About|Main\s*Deck|Deck|Sideboard|Commander|Creature|Enchantment|Land|Artifact|Instant|Sorcery|Planeswalker|Tribal)\s*:?\s*$/i;
 const ARENA_METADATA_RE = /^\s*Name\s+(.+)$/;
 const COMMENT_LINE_RE = /^\s*(\/\/|#).*$/;
 const QUANTITY_ONLY_RE = /^(\d+x?)\s*$/;

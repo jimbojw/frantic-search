@@ -71,7 +71,7 @@ Reuse the Spec 053 overlay technique:
 - **MTGGoldfish MTGO / no-variant:** quantity, name, `[SET]`, optional `(F)` or `(E)` — no `<variant>`; e.g. `2 Disdainful Stroke [KTK] (F)`, `1 Flashfreeze [M10]`
 - **TappedOut inline:** quantity, name, optional `(SET)` or `(SET:num)`, optional `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional `*CMDR*`/`*CMPN*`, optional `#Tag` (multiple). E.g. `1x Sol Ring (SLD:589) *f* #Land #Ramp/Reduction`. Tried when line has `#Tag`, `*f*`, `*CMDR*`, or `(SET:num)`; `#` inside Archidekt `^...#hex^` is excluded.
 - **MTGGoldfish card line:** try before Moxfield pattern
-- **Section header:** `^\s*(About|Main\s*Deck|Deck|Sideboard|Commander)\s*:?\s*$` — case-insensitive; optional trailing colon. `MainDeck` and `Main Deck` are recognized for Melee.gg format.
+- **Section header:** `^\s*(About|Main\s*Deck|Deck|Sideboard|Commander|Creature|Enchantment|Land|Artifact|Instant|Sorcery|Planeswalker|Tribal)\s*:?\s*$` — case-insensitive; optional trailing colon. `MainDeck` and `Main Deck` are recognized for Melee.gg format. MTG Salvation type headers (Creature, Enchantment, Land, etc.) are recognized so the importer resets zone to main deck after the Commander section.
 - **Metadata:** `^\s*Name\s+(.+)$` — "Name" followed by deck name
 - **Comment line:** `^\s*(//|#).*` — full line is COMMENT
 - **Empty line:** No tokens (or single WHITESPACE)
@@ -154,6 +154,7 @@ Add `ListImportTextarea` to the Lists page. Placement: Import section above list
 - 2026-03-09: Added Melee.gg support. Section header regex now recognizes `MainDeck` and `Main Deck` (with optional space) as synonyms for `Deck`. Token value is the verbatim matched text; zone normalization (`MainDeck` → `Deck`) is handled by the importer (Spec 109).
 - 2026-03-10: Added TappedOut inline format. New tokens: HASH_TAG (`#Tag`), ROLE_MARKER (`*CMDR*`, `*CMPN*`), FOIL_PRERELEASE_MARKER (`*f-pre*`). Card line pattern: `(SET)` or `(SET:num)`, `*f*`/`*f-etch*`/`*e*`/`*f-pre*`/`*f-pp*`, optional role, optional `#Tag` (multiple). Tried when line has TappedOut markers; `#` inside Archidekt `^...#hex^` excluded to avoid misparse. Validator: `*f-pre*` uses variant fallback; `(SET)` without collector uses `findAnyPrintingInSet`.
 - 2026-03-12: Added Moxfield custom tag support. CARD_LINE_RE extended with optional trailing `((?:\s+#\S+)*)` for `#Tag` (multiple per [moxfield.com/help/managing-custom-tags](https://moxfield.com/help/managing-custom-tags)). Moxfield uses `(SET) collector` (space after paren); TappedOut uses `(SET:num)` (colon inside paren). Lines like `1 Biomancer's Familiar (RNA) 158 #Reduction` now parse via the generic card pattern (fallthrough when TappedOut pattern fails) and emit HASH_TAG tokens.
+- 2026-03-13: MTGSalvation import fix: SECTION_HEADER_RE extended with type labels (Creature, Enchantment, Land, Artifact, Instant, Sorcery, Planeswalker, Tribal). MTG Salvation format uses these as section dividers; previously they produced no tokens so the importer never reset `currentZone` from Commander, causing all cards to be assigned Commander zone.
 
 ## Acceptance Criteria
 
