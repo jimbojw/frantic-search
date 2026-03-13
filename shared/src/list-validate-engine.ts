@@ -20,7 +20,7 @@ import {
 } from "./list-validate";
 import { tcgplayerToScryfallSetCode } from "./list-serialize";
 import { levenshteinDistance } from "./levenshtein";
-import { normalizeAlphanumeric } from "./normalize";
+import { normalizeAlphanumeric, normalizeForLookalikes } from "./normalize";
 
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
@@ -746,18 +746,39 @@ function resolveNameOnly(
     };
   }
 
-  // § 3g: Approximate name match
-  const approxName = tryApproximateNameMatch(nameTok.value, cardIndex, display);
-  if (approxName) {
+  // § 3g: Approximate name match — auto-resolve with warning (Spec 114)
+  const approx = tryApproximateNameMatch(nameTok.value, cardIndex, display);
+  if (approx) {
+    const { canonicalFace, displayName } = approx;
+    const oracleId = display.oracle_ids[canonicalFace] ?? "";
+    let scryfallId: string | null = null;
+    let scryfallIdx = -1;
+    if (printingDisplay?.alternate_name_to_printing_indices) {
+      const altNorm = normalizeAlphanumeric(normalizeForLookalikes(nameTok.value.replace(/\s+/g, " ").trim()));
+      const pis = printingDisplay.alternate_name_to_printing_indices[altNorm];
+      if (pis && pis.length > 0) {
+        scryfallIdx = pis[0]!;
+        scryfallId = printingDisplay.scryfall_ids[scryfallIdx] ?? null;
+      }
+    }
+    const qtyStr = quantityTok.value.replace(/x$/i, "");
+    const quantity = parseInt(qtyStr, 10) || 1;
+    const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
     return {
       line: {
-        lineIndex, lineStart, lineEnd, kind: "error",
+        lineIndex, lineStart, lineEnd, kind: "warning",
         span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
-        message: `Unknown card — "${nameTok.value}"`,
-        quickFixes: [{ label: `Use "${approxName}"`, replacement: `${quantityTok.value} ${approxName}` }],
+        message: `Name resolved to "${displayName}"`,
       },
-      oracleIndex: -1,
-      scryfallIndex: -1,
+      entry: {
+        oracle_id: oracleId,
+        scryfall_id: scryfallId,
+        quantity,
+        finish: finish ?? undefined,
+        variant: variantValue,
+      },
+      oracleIndex: canonicalFace,
+      scryfallIndex: scryfallIdx >= 0 ? scryfallIdx : -1,
     };
   }
 
@@ -780,8 +801,8 @@ function tryApproximateNameMatch(
   inputName: string,
   cardIndex: CardIndex,
   display: DisplayColumns,
-): string | null {
-  const normalized = normalizeAlphanumeric(inputName);
+): { canonicalFace: number; displayName: string } | null {
+  const normalized = normalizeAlphanumeric(normalizeForLookalikes(inputName));
   if (!normalized) return null;
 
   let bestFace = -1;
@@ -801,7 +822,8 @@ function tryApproximateNameMatch(
   }
 
   if (bestFace >= 0) {
-    return getDisplayNameForCanonicalFace(bestFace, display) ?? null;
+    const displayName = getDisplayNameForCanonicalFace(bestFace, display);
+    return displayName ? { canonicalFace: bestFace, displayName } : null;
   }
   return null;
 }
@@ -1052,18 +1074,38 @@ function resolveCascade(
     }
   }
 
-  // § 3g: Approximate match
-  const approxName = tryApproximateNameMatch(nameTok.value, _cardIndex, display);
-  if (approxName) {
+  // § 3g: Approximate match — auto-resolve with warning (Spec 114)
+  const approx = tryApproximateNameMatch(nameTok.value, _cardIndex, display);
+  if (approx) {
+    const { canonicalFace, displayName } = approx;
+    const oracleId = display.oracle_ids[canonicalFace] ?? "";
+    let scryfallIdx = -1;
+    const pi = findAnyPrintingInSetEngine(
+      setCodeForLookup,
+      canonicalFace,
+      printingDisplay,
+      preferFoil,
+    );
+    if (pi >= 0) scryfallIdx = pi;
+    const scryfallId = scryfallIdx >= 0 ? printingDisplay.scryfall_ids[scryfallIdx] ?? null : null;
+    const qtyStr = quantityTok.value.replace(/x$/i, "");
+    const quantity = parseInt(qtyStr, 10) || 1;
+    const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
     return {
       line: {
-        lineIndex, lineStart, lineEnd, kind: "error",
+        lineIndex, lineStart, lineEnd, kind: "warning",
         span: { start: lineStart + nameTok.start, end: lineStart + nameTok.end },
-        message: `Unknown card — "${nameTok.value}"`,
-        quickFixes: [{ label: `Use "${approxName}"`, replacement: (line.slice(0, nameTok.start) + approxName + line.slice(nameTok.end)).trimEnd() }],
+        message: `Name resolved to "${displayName}"`,
       },
-      oracleIndex: -1,
-      scryfallIndex: -1,
+      entry: {
+        oracle_id: oracleId,
+        scryfall_id: scryfallId,
+        quantity,
+        finish: finish ?? undefined,
+        variant: variantValue,
+      },
+      oracleIndex: canonicalFace,
+      scryfallIndex: scryfallIdx,
     };
   }
 

@@ -170,17 +170,17 @@ When the variant is a numeric collector number (e.g. `<251>`), it maps to `cn:25
 
 Known Goldfish variants that cannot resolve to a distinct printing flag (e.g. "japanese", "promo pack") fall back to set-level resolution with a warning, same as current behavior. Unknown variants produce an error.
 
-#### 3g. Approximate name match — punctuation/whitespace normalization
+#### 3g. Approximate name match — punctuation/whitespace/lookalike normalization
 
 When the EXACT match (3d or 3e) fails to find a card, try an approximate match before declaring "Unknown card":
 
-1. Normalize the input name: `normalizeAlphanumeric(name)` (NFD + strip diacritics + lowercase + `[a-z0-9]` only).
-2. Evaluate as an unquoted `BARE` word node with this normalized value. The evaluator's `evalLeafBareWord` matches against `CardIndex.combinedNamesNormalized` (which is the same alphanumeric-only normalization) using `.includes()`.
-3. Among all matching canonical faces, pick the one whose `combinedNamesNormalized` is **shortest** (closest match — avoids matching "Lightning Bolt" when the user typed "Bolt").
-4. If exactly one card's normalized name **equals** the normalized input, this is a high-confidence match: the user likely has a punctuation or whitespace difference (e.g. "Narsets Reversal" vs "Narset's Reversal", "Flame Kin Zealot" vs "Flame-Kin Zealot"). Generate an error with a quick fix: `Use "Narset's Reversal"`.
+1. **Lookalike pre-normalization:** Map visually confusable characters to their Latin equivalents before alphanumeric normalization (e.g. Greek omicron ο → Latin o). This handles cases like "Glόin" (Greek omicron) vs "Glóin" (Latin o with acute). The map is a curated subset of common MTG-name confusables; see `normalizeForLookalikes` in `shared/src/normalize.ts`.
+2. **Alphanumeric normalization:** Apply `normalizeAlphanumeric(normalizeForLookalikes(name))` — NFD + strip diacritics + lowercase + `[a-z0-9]` only).
+3. Compare with `CardIndex.combinedNamesNormalized` (exact equality) and `alternateNamesIndex`, picking the shortest match when multiple cards contain the normalized input as a substring.
+4. **If exactly one card's normalized name equals the normalized input:** This is a high-confidence match: the user likely has a punctuation/whitespace difference (e.g. "Narsets Reversal" vs "Narset's Reversal") or a lookalike character (e.g. "Gloin" vs "Glóin", "Glόin" vs "Glóin"). **Auto-resolve** to that card with `kind: "warning"` and message "Name resolved to [correct name]" (span on name token). The line is imported normally; the warning signals the user that we inferred the correct spelling.
 5. If multiple cards contain the normalized input as a substring but none match exactly, do not offer a fix — report "Unknown card" as before. Substring matches are too ambiguous for automatic suggestions.
 
-This catches the common class of user errors — missing apostrophes, extra/missing hyphens, wrong whitespace — without needing Levenshtein distance. The normalization is the same one `CardIndex` already pre-computes, so no new data structure is required. The BARE node is also interned in NodeCache.
+This catches the common class of user errors — missing apostrophes, extra/missing hyphens, wrong whitespace, and lookalike character substitution — without needing Levenshtein distance. The normalization is the same one `CardIndex` already pre-computes, so no new data structure is required. The BARE node is also interned in NodeCache.
 
 ### 4. Worker-Side Validation Module
 
@@ -230,7 +230,7 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 3. Validation results appear within ~100–200 ms for a 100-card list (vs ~2 s before).
 4. Each deck line is validated by constructing and evaluating AST trees via NodeCache. Individual leaf nodes (EXACT, set:, cn:, is:) are interned and cached across lines.
 5. Full match (name + set + collector + finish) resolves in a single evaluation when all parts are present.
-6. Cascading fallback queries (drop collector, drop name, name-only, approximate match) produce the same quick fixes as current Spec 112 behavior, plus new punctuation/whitespace quick fixes from approximate matching.
+6. Cascading fallback queries (drop collector, drop name, name-only, approximate match) produce the same quick fixes as current Spec 112 behavior. When approximate name match finds exactly one card (punctuation/whitespace/lookalike difference), auto-resolve with `kind: "warning"` and message "Name resolved to [correct name]" instead of an error.
 7. Protocol: `validate-list` and `validate-result` message types; requestId for request/response matching.
 8. Validation behavior (errors, warnings, quick fixes) is unchanged from Spec 108/112.
 9. `validateDeckList` remains available for non-UI consumers (list-import, CLI).
@@ -242,4 +242,4 @@ A new module in `shared/` provides `validateDeckListWithEngine(text, index, prin
 - **Per-line memoization:** Each line's validation result is cached by line string. Same line content (e.g. `"4 Lightning Bolt"`) yields the same result; unchanged lines on re-validation hit the cache. Helps incremental edits and repeated lines.
 - `displayRef` and `printingDisplayRef` are already in scope in the worker from init.
 - Test `validateDeckListWithEngine` with existing list-validate test fixtures; use test CardIndex/PrintingIndex/NodeCache from evaluator tests.
-- **§ 3g approximate match:** The spec describes using a BARE node and `cache.evaluate()` for approximate matching. The implementation uses a manual loop over `cardIndex.faceCount` and `combinedNamesNormalized`, plus `alternateNamesIndex`, instead. Behavior is correct (exact normalized match and alternate-name lookup); the manual path is O(faceCount) per unknown card and only runs when EXACT fails. NodeCache internment for the BARE node was not implemented.
+- **§ 3g approximate match:** The spec describes using a BARE node and `cache.evaluate()` for approximate matching. The implementation uses a manual loop over `cardIndex.faceCount` and `combinedNamesNormalized`, plus `alternateNamesIndex`, instead. Behavior is correct (exact normalized match and alternate-name lookup); the manual path is O(faceCount) per unknown card and only runs when EXACT fails. NodeCache internment for the BARE node was not implemented. When a match is found, the validator auto-resolves with `kind: "warning"` and "Name resolved to [correct name]" (not an error with quick fix). Lookalike pre-normalization (`normalizeForLookalikes`) maps Greek letters and other confusables to Latin equivalents before `normalizeAlphanumeric`.

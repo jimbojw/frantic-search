@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from "vitest";
-import { normalizeAlphanumeric } from "./normalize";
+import { normalizeAlphanumeric, normalizeForLookalikes } from "./normalize";
+
+describe("normalizeForLookalikes", () => {
+  it("maps Greek omicron to Latin o", () => {
+    expect(normalizeForLookalikes("Glόin")).toBe("Gloin"); // U+03CC Greek omicron with tonos
+    expect(normalizeForLookalikes("Glοin")).toBe("Gloin"); // U+03BF Greek omicron
+  });
+
+  it("leaves Latin characters unchanged", () => {
+    expect(normalizeForLookalikes("Glóin")).toBe("Glóin");
+    expect(normalizeForLookalikes("Gloin")).toBe("Gloin");
+  });
+});
 
 describe("normalizeAlphanumeric", () => {
   it("lowercases and strips non-alphanumeric", () => {

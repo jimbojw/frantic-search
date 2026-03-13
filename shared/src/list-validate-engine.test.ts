@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
+import { Color, Format } from "./bits";
+import type { ColumnarData } from "./data";
 import { validateDeckListWithEngine, validateLines } from "./list-validate-engine";
+import { CardIndex } from "./search/card-index";
 import { NodeCache } from "./search/evaluator";
 import { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
@@ -486,20 +489,103 @@ describe("validateDeckListWithEngine", () => {
   // § 3g: Approximate name match
   // ---------------------------------------------------------------------------
 
-  test("approximate match: punctuation difference suggests fix", () => {
-    // "Thalia Guardian of Thraben" without comma → should still suggest the card
-    // The exact check uses combinedNamesNormalized which strips non-alphanumeric
+  test("approximate match: punctuation difference auto-resolves with warning", () => {
+    // "Thalia Guardian of Thraben" without comma → auto-resolve with warning (Spec 114 § 3g)
     const result = validate("1 Thalia Guardian of Thraben");
-    // The exact EXACT match will fail because the name doesn't have the comma,
-    // but the approximate match should find it via normalized comparison
-    if (result.lines.some((l) => l.kind === "error")) {
-      const err = result.lines.find((l) => l.kind === "error")!;
-      expect(err.quickFixes).toBeDefined();
-      expect(err.quickFixes![0]!.label).toContain("Thalia, Guardian of Thraben");
-    } else {
-      // The EXACT evaluator also does normalized matching, so it might pass
-      expect(result.resolved).toHaveLength(1);
-    }
+    expect(result.resolved).toHaveLength(1);
+    const warn = result.lines.find((l) => l.kind === "warning");
+    expect(warn).toBeDefined();
+    expect(warn!.message).toContain("Thalia, Guardian of Thraben");
+  });
+
+  test("approximate match: Gloin (plain o) and Glόin (Greek omicron) auto-resolve to Glóin with warning", () => {
+    // Minimal fixture with Glóin for lookalike tests (Spec 114 § 3g)
+    const gloinData: ColumnarData = {
+      names: ["Glóin, Dwarf Emissary"],
+      mana_costs: ["{1}{R}"],
+      oracle_texts: [""],
+      colors: [Color.Red],
+      color_identity: [Color.Red],
+      type_lines: ["Legendary Creature — Dwarf Noble"],
+      powers: [2],
+      toughnesses: [3],
+      loyalties: [0],
+      defenses: [0],
+      legalities_legal: [Format.Commander],
+      legalities_banned: [0],
+      legalities_restricted: [0],
+      card_index: [0],
+      canonical_face: [0],
+      scryfall_ids: [""],
+      oracle_ids: ["oid-gloin"],
+      art_crop_thumb_hashes: [""],
+      card_thumb_hashes: [""],
+      layouts: ["normal"],
+      flags: [0],
+      edhrec_ranks: [null],
+      edhrec_salts: [null],
+      power_lookup: ["", "0", "*", "2", "3"],
+      toughness_lookup: ["", "1", "3", "4"],
+      loyalty_lookup: [""],
+      defense_lookup: [""],
+      keywords_index: {},
+    };
+    const gloinIndex = new CardIndex(gloinData);
+    const gloinDisplay: DisplayColumns = {
+      names: gloinData.names,
+      mana_costs: gloinData.mana_costs,
+      type_lines: gloinData.type_lines,
+      oracle_texts: gloinData.oracle_texts,
+      powers: gloinData.powers,
+      toughnesses: gloinData.toughnesses,
+      loyalties: gloinData.loyalties,
+      defenses: gloinData.defenses,
+      color_identity: gloinData.color_identity,
+      scryfall_ids: gloinData.scryfall_ids,
+      art_crop_thumb_hashes: gloinData.art_crop_thumb_hashes ?? [""],
+      card_thumb_hashes: gloinData.card_thumb_hashes ?? [""],
+      layouts: gloinData.layouts,
+      legalities_legal: gloinData.legalities_legal,
+      legalities_banned: gloinData.legalities_banned,
+      legalities_restricted: gloinData.legalities_restricted,
+      power_lookup: gloinData.power_lookup,
+      toughness_lookup: gloinData.toughness_lookup,
+      loyalty_lookup: gloinData.loyalty_lookup,
+      defense_lookup: gloinData.defense_lookup,
+      canonical_face: gloinData.canonical_face,
+      oracle_ids: gloinData.oracle_ids ?? [""],
+      edhrec_rank: gloinData.edhrec_ranks,
+      edhrec_salt: gloinData.edhrec_salts,
+    };
+    const cache = new NodeCache(gloinIndex, null);
+
+    const resultGloin = validateDeckListWithEngine(
+      "1 Gloin, Dwarf Emissary",
+      gloinIndex,
+      null,
+      gloinDisplay,
+      null,
+      cache,
+    );
+    expect(resultGloin.resolved).toHaveLength(1);
+    expect(resultGloin.resolved![0]!.oracle_id).toBe("oid-gloin");
+    const warnGloin = resultGloin.lines.find((l) => l.kind === "warning");
+    expect(warnGloin).toBeDefined();
+    expect(warnGloin!.message).toBe('Name resolved to "Glóin, Dwarf Emissary"');
+
+    const resultGreek = validateDeckListWithEngine(
+      "1 Glόin, Dwarf Emissary", // U+03CC Greek omicron with tonos
+      gloinIndex,
+      null,
+      gloinDisplay,
+      null,
+      cache,
+    );
+    expect(resultGreek.resolved).toHaveLength(1);
+    expect(resultGreek.resolved![0]!.oracle_id).toBe("oid-gloin");
+    const warnGreek = resultGreek.lines.find((l) => l.kind === "warning");
+    expect(warnGreek).toBeDefined();
+    expect(warnGreek!.message).toBe('Name resolved to "Glóin, Dwarf Emissary"');
   });
 
   // ---------------------------------------------------------------------------
