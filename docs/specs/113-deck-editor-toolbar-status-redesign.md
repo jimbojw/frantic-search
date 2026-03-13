@@ -112,15 +112,17 @@ No buttons in Init or Display. Format chips are in the Compatible With bar (§ 7
 
 ### 7. Compatible With Bar
 
-A separate bar below the Status box, **visible only in Display mode**. Two-column layout:
+A separate bar below the Status box, **visible in Display and Review modes**. Two-column layout with a third row for export instructions:
 
 ```
 | Compatible with:    | [Arena] [Moxfield] [Archidekt] … |
-| (for export to)     | [Melee.gg] [MTGGoldfish] [TappedOut] … |
+|                     | (chips wrap)                       |
+| help text …         | (selected format only)            |
 ```
 
-- **Label** — "Compatible with:" on the left. Help text "(for export to)" below, smaller and muted. Label block center-aligns vertically when chips wrap.
+- **Label** — "Compatible with:" on the left. No help text in the label cell.
 - **Chips** — Same styling as MenuDrawer chips: `min-h-11`, `rounded`, `bg-gray-100`/`bg-blue-500` for unselected/selected. Selecting a chip changes the output format and persists to localStorage.
+- **Help row** — A full-width row below the chips shows format-specific help text for the **selected format only**. Each format has natural phrasing that ties back to the selected format (e.g. "Use Archidekt Sandbox to import", "Paste into Mana Pool's Mass Entry form"). Help text includes links to explanatory URLs where available; links open in a new tab with `rel="noopener noreferrer"`. Formats without stable URLs show plain text only.
 - **Init mode:** Bar not shown (list is empty).
 - **Edit mode:** Bar not shown; format is shown in the status line ("Editing: … (Moxfield)").
 
@@ -128,7 +130,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 
 1. Layout: TOOLBAR | STATUS | [DISPLAY FORMATS] | DECK LIST — three sections always; four when in Display mode.
 2. Toolbar is a flush bar: single border, buttons contiguous to edges (no bordered-box illusion).
-3. Display mode: Toolbar shows `[ View * ]` `[ Edit ]` … `[ Bug ]` `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` with "(for export to)" help text.
+3. Display mode: Toolbar shows `[ View * ]` `[ Edit ]` … `[ Bug ]` `[ Copy ]`. Status shows card count. Compatible With bar shows `| Compatible with: | [Arena] [Moxfield] … |` and a row below with format-specific help text for the selected format.
 4. Edit mode, no changes: Toolbar shows `[ Cancel ]` … `[ Copy ]`. Status shows "Editing: No changes".
 5. Edit mode, changes, errors: Toolbar shows `[ Revert ]` … `[ Copy ]`. Status shows error accordion (collapsible header with chevron; "Apply all quick fixes" or "No quick fixes available"; error table when expanded).
 6. Edit mode, changes, valid, diff has additions/removals: Toolbar shows `[ Revert ]` … `[ Review * ]` `[ Bug ]` `[ Copy ]`. Status shows diff summary.
@@ -137,7 +139,7 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 9. Save (in Review mode) commits changes; on success, draft cleared, editor returns to Display or Init.
 10. Review enters Review mode; Save commits directly from the toolbar.
 11. Baseline is correctly set on Edit and on restore from cache.
-12. Format chips appear in the Compatible With bar in Display mode only; chips use MenuDrawer styling (outline when selected).
+12. Format chips appear in the Compatible With bar in Display and Review modes; chips use MenuDrawer styling (outline when selected).
 13. Status box turns red on validation errors; toolbar remains neutral.
 14. Error accordion defaults to collapsed; expand/collapse preference persisted in `localStorage` (`frantic-deck-editor-errors-expanded`).
 
@@ -153,3 +155,5 @@ A separate bar below the Status box, **visible only in Display mode**. Two-colum
 - 2026-03-10: Compatible With bar — label changed to "Compatible with:" with "(for export to)" help text; selected chip uses outline style (de-emphasized vs Edit button).
 - 2026-03-11: View button — Display mode left group extended to `[ View * ]` `[ Edit ]`. View navigates to search with `v:images unique:prints include:extras my:list` (or `my:trash`). View is primary; Edit demoted to secondary.
 - 2026-03-11: Error accordion — Validation errors folded under collapsible header; "Apply all quick fixes" button; "No quick fixes available" when none; preference persisted in localStorage.
+- 2026-03-13: Compatible With bar — "(for export to)" removed from label; new row shows format-specific help text for selected format only; links open in new tab; bar visible in Review mode.
+- 2026-03-13: Help row — relaxed phrasing; each format has natural help text (e.g. "Use Archidekt Sandbox to import", "Paste into Mana Pool's Mass Entry form") rather than fixed "for export to" pattern.
