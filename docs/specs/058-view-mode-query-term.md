@@ -38,7 +38,7 @@ The `view` (or `v`) field is a display modifier (like `unique:prints`), not a fi
 
 ### Default and fallback
 
-- When the effective query has no valid `view:` term, the default is **slim**.
+- When the effective query has no valid `view:` term, the default is **images**.
 - Invalid values (e.g. `view:invalid`, typos) are treated as errors: they are **ignored** for determining display state and must be **trimmed** (spliced out) before consolidation. For example, if the live query has `view:images view:invalid` and the user taps Detail, first `view:invalid` is spliced out, then `view:images` is replaced with `view:detail`.
 
 ### Migration
@@ -69,7 +69,7 @@ Because the live query is in the URL (`?q=`), sharing a link like `?q=lightning 
 3. View mode is derived from the effective query (pinned AND live), not from `localStorage`.
 4. Pinning a chip that contains a `view:` term moves it to the pinned query with proper normalization.
 5. Unpinning a `view:` chip from pinned moves it to the live query with proper normalization.
-6. When the effective query has no valid `view:` term, the default is Slim.
+6. When the effective query has no valid `view:` term, the default is Images.
 7. Invalid `view:` values are ignored for display state and are trimmed (spliced out) before consolidation when the user changes view mode.
 8. The evaluator ignores `view:` for filtering (it is a display modifier only).
 9. Migration from `frantic-view-mode` in `localStorage` preserves existing preferences on first load.

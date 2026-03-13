@@ -132,7 +132,7 @@ function App() {
   const [pinnedPrintingCount2, setPinnedPrintingCount2] = createSignal<number | undefined>(undefined)
   const [indicesIncludingExtras2, setIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
   const [printingIndicesIncludingExtras2, setPrintingIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
-  const [visibleCount2, setVisibleCount2] = createSignal(BATCH_SIZES.slim)
+  const [visibleCount2, setVisibleCount2] = createSignal(BATCH_SIZES.images)
   const [breakdownExpanded2, setBreakdownExpanded2] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
   )

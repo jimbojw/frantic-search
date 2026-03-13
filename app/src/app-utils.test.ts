@@ -140,34 +140,34 @@ describe('formatPrice', () => {
 describe('buildScryfallSearchUrl', () => {
   it('builds base URL with encoded query', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid')
   })
 
   it('adds order and dir when sort: is in effective query', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature sort:name'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature&order=name&dir=asc')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=name&dir=asc')
   })
 
   it('adds order=edhrec when sort:edhrec is active', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature sort:edhrec'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature&order=edhrec&dir=asc')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=edhrec&dir=asc')
   })
 
   it('uses dir=desc when -sort: reverses direction', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature -sort:name'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature&order=name&dir=desc')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=name&dir=desc')
   })
 
   it('order: alias works like sort: (Spec 107)', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature order:name'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature&order=name&dir=asc')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=name&dir=asc')
     expect(buildScryfallSearchUrl('t:creature', 't:creature -order:cmc'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature&order=cmc&dir=desc')
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=cmc&dir=desc')
   })
 
   it('uses * when canonical query is empty', () => {
     expect(buildScryfallSearchUrl('', 'sort:edhrec'))
-      .toBe('https://scryfall.com/search?q=*&order=edhrec&dir=asc')
+      .toBe('https://scryfall.com/search?q=*&as=grid&order=edhrec&dir=asc')
   })
 
   it('adds as= when view mode is non-slim (Spec 107)', () => {
@@ -179,11 +179,14 @@ describe('buildScryfallSearchUrl', () => {
       .toBe('https://scryfall.com/search?q=t%3Acreature&as=full')
   })
 
-  it('omits as= when view mode is slim (default)', () => {
-    expect(buildScryfallSearchUrl('t:creature', 't:creature'))
-      .toBe('https://scryfall.com/search?q=t%3Acreature')
+  it('omits as= when view mode is slim (Scryfall checklist)', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature v:slim'))
       .toBe('https://scryfall.com/search?q=t%3Acreature')
+  })
+
+  it('adds as= when no view term (default images)', () => {
+    expect(buildScryfallSearchUrl('t:creature', 't:creature'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid')
   })
 
   it('adds both as= and order/dir when view and sort are active', () => {

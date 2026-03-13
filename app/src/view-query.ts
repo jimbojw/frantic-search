@@ -50,11 +50,11 @@ function collectViewValues(node: ASTNode): string[] {
 /**
  * Extract view mode from the effective query (pinned + live).
  * Last valid view: term wins. Invalid values are ignored.
- * Default is 'slim' when no valid view: term exists.
+ * Default is 'images' when no valid view: term exists.
  */
 export function extractViewMode(effectiveQuery: string): ViewMode {
   const trimmed = effectiveQuery.trim()
-  if (!trimmed) return 'slim'
+  if (!trimmed) return 'images'
 
   const ast = parse(trimmed)
   const values = collectViewValues(ast)
@@ -64,5 +64,5 @@ export function extractViewMode(effectiveQuery: string): ViewMode {
       return resolved as ViewMode
     }
   }
-  return 'slim'
+  return 'images'
 }

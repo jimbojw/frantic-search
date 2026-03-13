@@ -14,9 +14,9 @@ Replace the single "Oracle text" toggle with a four-way view mode selector that 
 
 | Mode | Description | Scryfall equivalent | Batch size |
 |---|---|---|---|
-| **Slim** | Thumbnail, name, type line (with P/T, loyalty, defense), mana cost. Current default. | Checklist | 150 |
+| **Slim** | Thumbnail, name, type line (with P/T, loyalty, defense), mana cost. | Checklist | 150 |
 | **Detail** | Slim plus oracle text; P/T/loyalty/defense moves to bottom of oracle box. Current "Oracle text on" view. | Text Only | 60 |
-| **Images** | Responsive grid of card face images (2–4 per row). | Images | 60 |
+| **Images** | Responsive grid of card face images (2–4 per row). Default. | Images | 60 |
 | **Full** | One card per row: full-width card image alongside detail text. | Full | 20 |
 
 ## Background
@@ -185,7 +185,7 @@ When switching view modes, `visibleCount` resets to the new mode's batch size. T
 1. The "Oracle text" pill is replaced by a four-segment toggle: Slim, Detail, Images, Full.
 2. The active view mode is visually highlighted (blue) in the toggle.
 3. ~~The selected view mode is persisted to `localStorage` under `frantic-view-mode`.~~ **Superseded by Spec 058:** view mode is now a `view:` query term.
-4. **Slim** renders identically to the current default (art crop thumbnail + name/type/mana cost).
+4. **Slim** renders the compact checklist style (art crop thumbnail + name/type/mana cost).
 5. **Detail** renders identically to the current "Oracle text on" mode.
 6. **Images** renders a responsive grid (2–4 columns) of card face images with ThumbHash placeholders.
 7. **Full** renders one card per row with a card image on the left and full detail (name, type, mana cost, oracle text, P/T) on the right.

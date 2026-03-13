@@ -3,9 +3,9 @@ import { describe, it, expect } from 'vitest'
 import { extractViewMode, isValidViewValue } from './view-query'
 
 describe('extractViewMode', () => {
-  it('returns slim when query is empty', () => {
-    expect(extractViewMode('')).toBe('slim')
-    expect(extractViewMode('   ')).toBe('slim')
+  it('returns images when query is empty', () => {
+    expect(extractViewMode('')).toBe('images')
+    expect(extractViewMode('   ')).toBe('images')
   })
 
   it('returns the value for a single view: term', () => {
@@ -34,15 +34,15 @@ describe('extractViewMode', () => {
   })
 
   it('ignores invalid view: values and uses last valid', () => {
-    expect(extractViewMode('view:invalid')).toBe('slim')
+    expect(extractViewMode('view:invalid')).toBe('images')
     expect(extractViewMode('view:images view:invalid')).toBe('images')
     expect(extractViewMode('view:invalid view:detail')).toBe('detail')
     expect(extractViewMode('view:foo view:bar view:images')).toBe('images')
   })
 
-  it('defaults to slim when no valid view: term', () => {
-    expect(extractViewMode('t:creature')).toBe('slim')
-    expect(extractViewMode('lightning bolt')).toBe('slim')
+  it('defaults to images when no valid view: term', () => {
+    expect(extractViewMode('t:creature')).toBe('images')
+    expect(extractViewMode('lightning bolt')).toBe('images')
   })
 
   it('handles combined pinned+live style queries', () => {

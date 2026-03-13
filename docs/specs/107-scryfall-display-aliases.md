@@ -82,6 +82,6 @@ Add `display:` and `order:` to Spec 098 syntax help content (aliases table).
 3. `order:name`, `order:cmc`, `order:usd` behave identically to `sort:name`, `sort:mv`, `sort:usd`.
 4. `-order:name` reverses sort direction (NOT semantics).
 5. `display:` and `order:` are stripped from the canonical query for Scryfall outlinks.
-6. Scryfall outlinks add `&as=` when view mode is non-default (slim maps to checklist; omit when slim/default).
+6. Scryfall outlinks add `&as=` when view mode is non-slim (slim maps to Scryfall checklist; omit `as=` when slim).
 7. `display:` and `order:` are stripped from the sort seed (queryForSortSeed).
 8. Unknown `display:` or `order:` values produce visible errors but do not filter (match-all preserved).
