@@ -3,6 +3,7 @@ import type { BreakdownNode } from '@frantic-search/shared'
 import { getUniqueModeFromQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import {
   findFieldNode,
+  findBareNode,
   extractValue,
   spliceQuery,
   removeNode,
@@ -40,6 +41,12 @@ export function hasUniquePrints(breakdown: BreakdownNode | null): boolean {
 export function hasMyInQuery(breakdown: BreakdownNode | null): boolean {
   if (!breakdown) return false
   return findFieldNode(breakdown, ['my'], ':', false) !== null
+}
+
+/** True when query contains a positive # metadata term (Spec 123). Used for empty-list CTA (Spec 126). */
+export function hasHashInQuery(breakdown: BreakdownNode | null): boolean {
+  if (!breakdown) return false
+  return findBareNode(breakdown, v => v.startsWith('#'), false) !== null
 }
 
 /**

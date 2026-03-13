@@ -2,21 +2,21 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
+**Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 123 (# Metadata Tag Search), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
 
 ## Goal
 
-When a user has `my:list` (or `my:default`) in the query, zero results, and an empty default list, show a contextual empty state with an informative message and a call-to-action (CTA) to visit the My List page to import a deck.
+When a user has `my:list` (or `my:default`) or a `#` metadata term in the query, zero results, and an empty default list, show a contextual empty state with an informative message and a call-to-action (CTA) to visit the My List page to import a deck.
 
 ## Background
 
-Spec 125 adds a MY LIST section at the top of the MenuDrawer with an always-present `my:list` chip. A new user may tap it to discover what it does. The query becomes `my:list`, which returns zero results when the list is empty. The generic "No cards found" message does not explain why or how to fix it. This spec addresses that by showing a targeted CTA when the conditions align.
+Spec 125 adds a MY LIST section at the top of the MenuDrawer with an always-present `my:list` chip. A new user may tap it to discover what it does. The query becomes `my:list`, which returns zero results when the list is empty. The generic "No cards found" message does not explain why or how to fix it. This spec addresses that by showing a targeted CTA when the conditions align. Similarly, a user may type `#` or `#ramp` (deck tag search per Spec 123); with an empty list, the metadata index is empty and the query returns zero results.
 
 ## Trigger Conditions
 
 All of the following must hold for the empty-list CTA to appear:
 
-1. **`hasMyInQuery(breakdown)`** — The effective query contains a positive `my:list` or `my:default` term.
+1. **List-context in query** — The query contains a positive `my:list`/`my:default` term **or** a positive `#` metadata term (e.g. `#`, `#ramp`, `#combo`). Both require a non-empty list to return results; when the list is empty, both yield zero.
 2. **`totalCards() === 0`** — The search returned zero results.
 3. **Default list is empty** — `cardListStore.getView().instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0 === 0`.
 4. **`cardListStore` present** — List feature is enabled.
@@ -24,7 +24,7 @@ All of the following must hold for the empty-list CTA to appear:
 
 ## Scope
 
-- **In scope:** `my:list` and `my:default` when the default list is empty.
+- **In scope:** `my:list`, `my:default`, and `#` metadata queries when the default list is empty.
 - **Out of scope:** `my:trash` with empty trash (different flow; not addressed here).
 
 ## Design
@@ -64,3 +64,4 @@ When both the `include:extras` hint (Spec 057) and the empty-list CTA could appl
 - [x] When the list is non-empty but the query returns zero (e.g., `my:list t:planeswalker` with no planeswalkers), the generic "No cards found" is shown (no empty-list CTA).
 - [x] When both `include:extras` hint and empty-list CTA could apply, the empty-list CTA is shown.
 - [x] Works in both single-pane and Dual Wield layouts.
+- [x] When `#` or `#ramp` (or any positive `#` term) is in the query, zero results, and the default list is empty, the empty state shows the same CTA as for `my:list`.

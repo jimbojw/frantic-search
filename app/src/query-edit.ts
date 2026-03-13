@@ -46,6 +46,7 @@ export {
   toggleUniquePrints,
   hasUniquePrints,
   hasMyInQuery,
+  hasHashInQuery,
   getMyListIdFromBreakdown,
   clearUniqueTerms,
   setUniqueTerm,

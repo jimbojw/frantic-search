@@ -10,7 +10,7 @@ import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { hasMyInQuery } from './query-edit'
+import { hasMyInQuery, hasHashInQuery } from './query-edit'
 import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
 import { HighlightedLabel } from './InlineBreakdown'
@@ -120,7 +120,7 @@ export default function SearchResults() {
             <Show when={
               ctx.cardListStore &&
               ctx.navigateToLists &&
-              hasMyInQuery(ctx.parseBreakdown(ctx.query())) &&
+              (hasMyInQuery(ctx.parseBreakdown(ctx.query())) || hasHashInQuery(ctx.parseBreakdown(ctx.query()))) &&
               (ctx.defaultListEmpty?.() ?? false)
             } fallback={
               <>
