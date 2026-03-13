@@ -24,11 +24,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -43,7 +43,7 @@ jobs:
 
       - name: Restore Scryfall data cache
         id: scryfall-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: data/raw
           key: scryfall-oracle-cards-${{ github.run_id }}
@@ -63,7 +63,7 @@ jobs:
         run: npm run etl -- download-tcgcsv --verbose
 
       - name: Restore ThumbHash cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: data/thumbhash
           key: thumbhash-manifest-${{ github.run_id }}
@@ -74,7 +74,7 @@ jobs:
         run: npm run etl -- thumbhash --verbose
 
       - name: Upload ThumbHash manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: thumbhash-manifests
           path: data/thumbhash/
@@ -91,7 +91,7 @@ jobs:
 
       # -- Deploy --
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: app/dist
 
