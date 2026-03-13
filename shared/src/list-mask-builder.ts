@@ -120,6 +120,26 @@ function normalizeMetadata(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+/**
+ * Returns sorted unique tags from all non-trash Instances in the view.
+ * Spec 125: used for MY LIST section tag chips in MenuDrawer.
+ */
+export function getUniqueTagsFromView(view: MaterializedView): string[] {
+  const seen = new Set<string>();
+  for (const [listId, uuids] of view.instancesByList) {
+    if (listId === TRASH_LIST_ID) continue;
+    if (!uuids) continue;
+    for (const uuid of uuids) {
+      const instance = view.instances.get(uuid);
+      if (!instance) continue;
+      for (const tag of instance.tags) {
+        if (tag) seen.add(tag);
+      }
+    }
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
 /** Resolve instance to printing index(es). Returns empty array when unresolved. */
 function resolveInstanceToPrintingIndices(
   instance: InstanceState,

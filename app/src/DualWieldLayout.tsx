@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
-import { toScryfallQuery, parse, DEFAULT_LIST_ID } from '@frantic-search/shared'
+import { toScryfallQuery, parse, DEFAULT_LIST_ID, getUniqueTagsFromView } from '@frantic-search/shared'
 import { getMatchingCount } from '@frantic-search/shared'
 import { buildFacesOf, buildScryfallSearchUrl } from './app-utils'
 import {
@@ -282,6 +282,10 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
       listVersion,
       listCountForCard,
       listCountForPrinting,
+      deckTags: createMemo(() => {
+        listVersion()
+        return getUniqueTagsFromView(store.getView())
+      }),
       paneId: opts?.paneId,
     }),
   }

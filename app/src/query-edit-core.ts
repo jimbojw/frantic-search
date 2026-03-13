@@ -173,6 +173,34 @@ export function findFieldNode(
   return null
 }
 
+/**
+ * DFS search for a BARE node matching the value predicate (e.g. #metadata tags).
+ * Spec 125: used for #tag chip state detection and cycling.
+ *
+ * For negated=true, returns the NOT node whose child is the matching BARE (label is -value).
+ * For negated=false, returns the BARE node itself.
+ */
+export function findBareNode(
+  breakdown: BreakdownNode,
+  valuePredicate: (value: string) => boolean,
+  negated: boolean,
+): BreakdownNode | null {
+  if (negated && breakdown.type === 'NOT' && !breakdown.children) {
+    const inner = breakdown.label.startsWith('-') ? breakdown.label.slice(1) : breakdown.label
+    if (valuePredicate(inner)) return breakdown
+  }
+  if (!negated && breakdown.type === 'BARE') {
+    if (valuePredicate(breakdown.label)) return breakdown
+  }
+  if (breakdown.children) {
+    for (const child of breakdown.children) {
+      const found = findBareNode(child, valuePredicate, negated)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 function matchesLabel(
   label: string,
   field: string[],

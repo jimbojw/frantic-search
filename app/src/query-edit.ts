@@ -32,7 +32,15 @@ export {
   clearColorIdentity,
 } from './query-edit-color'
 
-export { toggleSimple, cycleChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit-chips'
+export {
+  toggleSimple,
+  cycleChip,
+  cyclePercentileChip,
+  popularityClearPredicate,
+  saltClearPredicate,
+  getMetadataTagChipState,
+  cycleMetadataTagChip,
+} from './query-edit-chips'
 
 export {
   toggleUniquePrints,

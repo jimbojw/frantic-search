@@ -6,7 +6,7 @@
 
 **Modifies:** Spec 038 (toolbar removal), Spec 016 (Report Bug entry points), Spec 026 (Options Panel), Spec 041 (view mode toggle location), Spec 058 (adds `v:` alias for `view:`)
 
-**Extended by:** Spec 084 (MenuDrawer View Consolidation — unique row, include:extras in VIEWS), Spec 102 (EDHREC and Salt Percentile Chips)
+**Extended by:** Spec 084 (MenuDrawer View Consolidation — unique row, include:extras in VIEWS), Spec 102 (EDHREC and Salt Percentile Chips), Spec 125 (MY LIST section — my:list + deck tag chips)
 
 ## Goal
 

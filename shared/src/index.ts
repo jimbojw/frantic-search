@@ -96,6 +96,7 @@ export {
   getMatchingCount,
   countListEntriesPerCard,
   hasPrintingLevelEntries,
+  getUniqueTagsFromView,
 } from "./list-mask-builder";
 export type {
   BuildMasksOptions,

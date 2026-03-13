@@ -11,6 +11,7 @@ import {
   getMatchingCount,
   hasPrintingLevelEntries,
   countListEntriesPerCard,
+  getUniqueTagsFromView,
 } from "./list-mask-builder";
 import type {
   DisplayColumns,
@@ -621,6 +622,58 @@ describe("buildMetadataIndexFromInstances", () => {
       canonicalPrintingPerFace,
     });
     expect(result).toBeUndefined();
+  });
+});
+
+describe("getUniqueTagsFromView", () => {
+  it("returns empty array for empty view", () => {
+    const view = makeView();
+    expect(getUniqueTagsFromView(view)).toEqual([]);
+  });
+
+  it("returns sorted unique tags from non-trash lists", () => {
+    const view = makeView();
+    view.instancesByList.set("default", new Set(["uuid-1", "uuid-2"]));
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        tags: ["ramp", "combo"],
+      }),
+    );
+    view.instances.set(
+      "uuid-2",
+      inst({
+        uuid: "uuid-2",
+        oracle_id: "oid-sol",
+        scryfall_id: null,
+        finish: null,
+        list_id: "default",
+        tags: ["combo", "ramp"],
+      }),
+    );
+    expect(getUniqueTagsFromView(view)).toEqual(["combo", "ramp"]);
+  });
+
+  it("excludes trash list tags", () => {
+    const view = makeView();
+    view.instancesByList.set("trash", new Set(["uuid-1"]));
+    view.instances.set(
+      "uuid-1",
+      inst({
+        uuid: "uuid-1",
+        oracle_id: "oid-bolt",
+        scryfall_id: null,
+        finish: null,
+        list_id: "trash",
+        tags: ["removed"],
+      }),
+    );
+    expect(getUniqueTagsFromView(view)).toEqual([]);
   });
 });
 

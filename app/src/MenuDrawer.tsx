@@ -3,7 +3,7 @@ import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-j
 import { IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import type { ViewMode } from './view-mode'
@@ -35,6 +35,12 @@ function rarityChip(value: string): ChipDef {
 
 function usdChip(value: string): ChipDef {
   return { label: `$<${value}`, field: USD_FIELDS, operator: '<', value, term: `$<${value}` }
+}
+
+const MY_FIELDS = ['my']
+
+function myChip(value: string): ChipDef {
+  return { label: `my:${value}`, field: MY_FIELDS, operator: ':', value, term: `my:${value}` }
 }
 
 const SORT_CHIP_FIELDS = ['sort', 'order']
@@ -71,7 +77,7 @@ function saltPercentileChip(value: string): PercentileChipDef {
 const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
-const ALL_SECTIONS = ['views', ...TERMS_SECTIONS] as const
+const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
 type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
@@ -167,6 +173,7 @@ const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
 }
 
 const SECTION_LABELS: Record<SectionId, string> = {
+  mylist: 'My List',
   views: 'Views',
   formats: 'Formats',
   layouts: 'Layouts',
@@ -310,6 +317,24 @@ function UniqueChip(props: {
           }
         </For>
       )}
+    </button>
+  )
+}
+
+function MetadataTagChip(props: {
+  tag: string
+  query: string
+  breakdown: () => BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const state = () => getMetadataTagChipState(props.breakdown(), props.tag)
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(cycleMetadataTagChip(props.query, props.breakdown(), { tag: props.tag, term: `#${props.tag}` }))}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[state()]}`}
+    >
+      #{props.tag}
     </button>
   )
 }
@@ -522,7 +547,7 @@ export default function MenuDrawer(props: {
                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                     }`}
                   >
-                    {section}
+                    {SECTION_LABELS[section]}
                   </button>
                 )}
               </For>
@@ -557,6 +582,31 @@ export default function MenuDrawer(props: {
           class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth scroll-pt-2"
         >
           <div class="flex flex-col gap-4 pb-4">
+            {/* MY LIST section (Spec 125) */}
+            <section id="mylist" class="flex flex-col gap-1.5">
+              <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
+                My List
+              </h2>
+              <div class="flex flex-wrap gap-1.5 content-start">
+                <TermChip
+                  chip={myChip('list')}
+                  state={getChipState(bd(), myChip('list'))}
+                  query={props.query}
+                  breakdown={bd()}
+                  onSetQuery={props.onSetQuery}
+                />
+                <For each={ctx.deckTags?.() ?? []}>
+                  {(tag) => (
+                    <MetadataTagChip
+                      tag={tag}
+                      query={props.query}
+                      breakdown={bd}
+                      onSetQuery={props.onSetQuery}
+                    />
+                  )}
+                </For>
+              </div>
+            </section>
             {/* VIEWS section (Spec 084: three rows) */}
             <section id="views" class="flex flex-col gap-1.5">
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">

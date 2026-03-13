@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BreakdownNode } from '@frantic-search/shared'
-import { findFieldNode, removeNode, appendTerm, parseBreakdown, clearFieldTermsRecursive } from './query-edit-core'
+import { findFieldNode, findBareNode, removeNode, appendTerm, parseBreakdown, clearFieldTermsRecursive } from './query-edit-core'
+
+/** Normalize for # metadata matching. Spec 123 / Spec 125. */
+function normalizeMetadata(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
 
 // ---------------------------------------------------------------------------
 // Graduated: Simple (independent node-level "more / less")
@@ -63,6 +68,48 @@ export function cycleChip(
     return removeNode(query, negative, breakdown!)
   }
 
+  return appendTerm(query, opts.term, breakdown)
+}
+
+// ---------------------------------------------------------------------------
+// Tri-state cycle for #metadata tag chips (Spec 125)
+// ---------------------------------------------------------------------------
+
+function metadataTagValuePredicate(tag: string) {
+  const targetNorm = normalizeMetadata(tag)
+  return (v: string) =>
+    v.startsWith('#') && normalizeMetadata(v.slice(1)) === targetNorm
+}
+
+export function getMetadataTagChipState(
+  breakdown: BreakdownNode | null,
+  tag: string,
+): 'neutral' | 'positive' | 'negative' {
+  if (!breakdown) return 'neutral'
+  const pred = metadataTagValuePredicate(tag)
+  if (findBareNode(breakdown, pred, false)) return 'positive'
+  if (findBareNode(breakdown, pred, true)) return 'negative'
+  return 'neutral'
+}
+
+export function cycleMetadataTagChip(
+  query: string,
+  breakdown: BreakdownNode | null,
+  opts: { tag: string; term: string },
+): string {
+  const pred = metadataTagValuePredicate(opts.tag)
+  const positive = breakdown ? findBareNode(breakdown, pred, false) : null
+  const negative = breakdown ? findBareNode(breakdown, pred, true) : null
+
+  if (positive) {
+    const negatedTerm = `-${opts.term}`
+    const removed = removeNode(query, positive, breakdown!)
+    const freshBd = parseBreakdown(removed)
+    return appendTerm(removed, negatedTerm, freshBd)
+  }
+  if (negative) {
+    return removeNode(query, negative, breakdown!)
+  }
   return appendTerm(query, opts.term, breakdown)
 }
 

@@ -38,6 +38,7 @@ import {
   buildMetadataIndex,
   countListEntriesPerCard,
   getMatchingCount,
+  getUniqueTagsFromView,
 } from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
@@ -1172,6 +1173,10 @@ function App() {
     parseBreakdown,
     cardListStore,
     listVersion,
+    deckTags: createMemo(() => {
+      listVersion()
+      return getUniqueTagsFromView(cardListStore.getView())
+    }),
     paneId: 'main',
     listCountForCard: (ci: number) => {
       listVersion()

@@ -55,6 +55,8 @@ export interface SearchContextValue {
   /** List add/remove (Spec 124). When absent, list controls are not rendered. */
   cardListStore?: CardListStore
   listVersion?: Accessor<number>
+  /** Unique tags from deck list for MY LIST section (Spec 125). When absent, tag chips not shown. */
+  deckTags?: Accessor<string[]>
   listCountForCard?: (ci: number) => number
   listCountForPrinting?: (pi: number, scryfallId?: string, finish?: string) => number
   paneId?: string
