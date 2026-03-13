@@ -237,7 +237,7 @@ export default function SearchResults() {
                                   thumbHash: d()!.card_thumb_hashes[ci],
                                   onClick: () => {
                                     const n = name()
-                                    const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                    const q = n ? `!"${n}" unique:prints include:extras` : ''
                                     if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
                                     else ctx.navigateToCard(artScryfallId())
                                   },
@@ -314,7 +314,7 @@ export default function SearchResults() {
                                       thumbHash: d()!.card_thumb_hashes[ci],
                                       onClick: () => {
                                         const n = name()
-                                        const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                        const q = n ? `!"${n}" unique:prints include:extras` : ''
                                         if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
                                         else ctx.navigateToCard(artScryfallId())
                                       },
@@ -404,7 +404,7 @@ export default function SearchResults() {
                                             thumbHash: d()!.card_thumb_hashes[ci],
                                             onClick: () => {
                                               const n = name()
-                                              const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                              const q = n ? `!"${n}" unique:prints include:extras` : ''
                                               if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
                                               else ctx.navigateToCard(scryfallId)
                                             },
@@ -542,7 +542,7 @@ export default function SearchResults() {
                                   thumbHash: d()!.card_thumb_hashes[ci],
                                   onClick: () => {
                                     const n = name()
-                                    const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                    const q = n ? `!"${n}" unique:prints include:extras` : ''
                                     if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
                                     else ctx.navigateToCard(d()!.scryfall_ids[ci])
                                   },
@@ -632,7 +632,7 @@ export default function SearchResults() {
                                             thumbHash: d()!.card_thumb_hashes[ci],
                                             onClick: () => {
                                               const n = name()
-                                              const q = n ? `!"${n}" unique:prints include:extras v:images` : ''
+                                              const q = n ? `!"${n}" unique:prints include:extras` : ''
                                               if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
                                               else ctx.navigateToCard(scryfallIdImg)
                                             },

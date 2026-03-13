@@ -73,7 +73,7 @@ The external link updates to use the printing's scryfall_id when available, so i
 
 ### All prints button
 
-The All prints button navigates to `!"{name}" unique:prints include:extras view:images`. The `include:extras` modifier bypasses the default playable filter so non-tournament printings (gold-bordered, oversized, etc.) are shown. The `view:images` modifier displays results in Images view for browsing printings as a grid.
+The All prints button navigates to `!"{name}" unique:prints include:extras`. The `include:extras` modifier bypasses the default playable filter so non-tournament printings (gold-bordered, oversized, etc.) are shown. Images view is the default (Spec 058), so results display as a grid for browsing printings.
 
 ### Fallback
 

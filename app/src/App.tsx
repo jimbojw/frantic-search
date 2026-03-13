@@ -847,7 +847,7 @@ function App() {
   }
 
   function navigateToViewList(listId: string) {
-    const q = `v:images unique:prints include:extras my:${listId === 'trash' ? 'trash' : 'list'}`
+    const q = `unique:prints include:extras my:${listId === 'trash' ? 'trash' : 'list'}`
     navigateToQuery(q)
   }
 
