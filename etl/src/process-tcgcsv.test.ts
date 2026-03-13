@@ -38,9 +38,9 @@ describe("buildProductMapFromData", () => {
     const result = buildProductMapFromData(groupIds, groupAbbrevs, productsByGroup);
 
     expect(result).toEqual({
-      "1001": { setAbbrev: "LTC", number: "47" },
-      "1002": { setAbbrev: "LTC", number: "450" },
-      "2001": { setAbbrev: "LTR", number: "1" },
+      "1001": { setAbbrev: "LTC", number: "47", name: "" },
+      "1002": { setAbbrev: "LTC", number: "450", name: "" },
+      "2001": { setAbbrev: "LTR", number: "1", name: "" },
     });
   });
 
@@ -92,7 +92,7 @@ describe("buildProductMapFromData", () => {
 
     const result = buildProductMapFromData(groupIds, groupAbbrevs, productsByGroup);
 
-    expect(result["1001"]).toEqual({ setAbbrev: "LTR", number: "99" });
+    expect(result["1001"]).toEqual({ setAbbrev: "LTR", number: "99", name: "" });
   });
 
   test("skips groups with no products file", () => {
@@ -105,7 +105,31 @@ describe("buildProductMapFromData", () => {
 
     const result = buildProductMapFromData(groupIds, groupAbbrevs, productsByGroup);
 
-    expect(result).toEqual({ "1001": { setAbbrev: "LTC", number: "1" } });
+    expect(result).toEqual({ "1001": { setAbbrev: "LTC", number: "1", name: "" } });
+  });
+
+  test("includes product name for variant resolution", () => {
+    const groupIds = [123];
+    const groupAbbrevs = { "123": "LTC" };
+    const productsByGroup = {
+      123: {
+        results: [
+          {
+            productId: 1002,
+            name: "Banquet Guests (Showcase Scrolls)",
+            extendedData: [{ name: "Number", value: "450" }],
+          },
+        ],
+      },
+    };
+
+    const result = buildProductMapFromData(groupIds, groupAbbrevs, productsByGroup);
+
+    expect(result["1002"]).toEqual({
+      setAbbrev: "LTC",
+      number: "450",
+      name: "Banquet Guests (Showcase Scrolls)",
+    });
   });
 
   test("returns empty map for empty inputs", () => {

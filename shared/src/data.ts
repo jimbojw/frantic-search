@@ -63,8 +63,10 @@ export interface PrintingColumnarData {
   /** TCGPlayer Mass Entry resolution. Spec 128. Index 0 = "". */
   tcgplayer_set_lookup?: string[];
   tcgplayer_number_lookup?: string[];
+  tcgplayer_name_lookup?: string[];
   tcgplayer_set_indices?: number[];
   tcgplayer_number_indices?: number[];
+  tcgplayer_name_indices?: number[];
 }
 
 /** Oracle tag inverted index: tag label → sorted canonical face indices. */

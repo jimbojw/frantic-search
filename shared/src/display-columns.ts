@@ -67,6 +67,12 @@ export function extractPrintingDisplayColumns(
       (idx) => (idx > 0 ? numberLookup[idx] ?? "" : ""),
     );
   }
+  if (data.tcgplayer_name_indices) {
+    const nameLookup = data.tcgplayer_name_lookup ?? [];
+    result.tcgplayer_names = data.tcgplayer_name_indices.map(
+      (idx) => (idx > 0 ? nameLookup[idx] ?? "" : ""),
+    );
+  }
 
   return result;
 }

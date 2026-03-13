@@ -324,11 +324,13 @@ export function processPrintings(verbose: boolean): void {
   }
 
   // Load TCGCSV product map for TCGPlayer Mass Entry resolution (Spec 128)
-  let productMap: Record<string, { setAbbrev: string; number: string }> | null = null;
+  let productMap: Record<string, { setAbbrev: string; number: string; name: string }> | null = null;
   if (fs.existsSync(TCGCSV_PRODUCT_MAP_PATH)) {
     try {
       const mapRaw = fs.readFileSync(TCGCSV_PRODUCT_MAP_PATH, "utf-8");
-      const parsed = JSON.parse(mapRaw) as { productMap?: Record<string, { setAbbrev: string; number: string }> };
+      const parsed = JSON.parse(mapRaw) as {
+        productMap?: Record<string, { setAbbrev: string; number: string; name: string }>;
+      };
       productMap = parsed.productMap ?? null;
     } catch (err) {
       process.stderr.write(
@@ -340,6 +342,7 @@ export function processPrintings(verbose: boolean): void {
   const setEncoder = new SetEncoder();
   const tcgSetEncoder = new StringEncoder();
   const tcgNumberEncoder = new StringEncoder();
+  const tcgNameEncoder = new StringEncoder();
   let hasAnyTcgResolution = false;
 
   const data: PrintingColumnarData = {
@@ -361,6 +364,7 @@ export function processPrintings(verbose: boolean): void {
     ...(productMap && {
       tcgplayer_set_indices: [] as number[],
       tcgplayer_number_indices: [] as number[],
+      tcgplayer_name_indices: [] as number[],
     }),
   };
 
@@ -412,6 +416,7 @@ export function processPrintings(verbose: boolean): void {
     }
 
     const printingRowStart = totalEntries;
+    const oracleName = card.card_faces?.[0]?.name ?? card.name ?? "";
 
     for (const finishStr of finishes) {
       const finishVal = FINISH_FROM_STRING[finishStr];
@@ -445,10 +450,16 @@ export function processPrintings(verbose: boolean): void {
         if (entry) {
           data.tcgplayer_set_indices!.push(tcgSetEncoder.encode(entry.setAbbrev));
           data.tcgplayer_number_indices!.push(tcgNumberEncoder.encode(entry.number));
+          const nameIdx =
+            entry.name === oracleName
+              ? tcgNameEncoder.encode("")
+              : tcgNameEncoder.encode(entry.name);
+          data.tcgplayer_name_indices!.push(nameIdx);
           hasAnyTcgResolution = true;
         } else {
           data.tcgplayer_set_indices!.push(0);
           data.tcgplayer_number_indices!.push(0);
+          data.tcgplayer_name_indices!.push(0);
         }
       }
 
@@ -478,9 +489,11 @@ export function processPrintings(verbose: boolean): void {
   if (productMap && !hasAnyTcgResolution) {
     delete data.tcgplayer_set_indices;
     delete data.tcgplayer_number_indices;
+    delete data.tcgplayer_name_indices;
   } else if (productMap && hasAnyTcgResolution) {
     data.tcgplayer_set_lookup = tcgSetEncoder.lookup();
     data.tcgplayer_number_lookup = tcgNumberEncoder.lookup();
+    data.tcgplayer_name_lookup = tcgNameEncoder.lookup();
   }
 
   log(`Dropped ${dropped} unmappable entries`, verbose);

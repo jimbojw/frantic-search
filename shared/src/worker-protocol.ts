@@ -92,6 +92,8 @@ export type PrintingDisplayColumns = {
   /** TCGPlayer Mass Entry resolved set codes and collector numbers. Spec 128. */
   tcgplayer_set_codes?: string[]
   tcgplayer_collector_numbers?: string[]
+  /** TCGPlayer Mass Entry resolved product names for variant resolution. Spec 128. */
+  tcgplayer_names?: string[]
 }
 
 export type FromWorker =

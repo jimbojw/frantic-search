@@ -151,7 +151,7 @@ function aggregateInstances(
   const frontFaceOnly = options?.frontFaceOnly ?? false;
   for (const key of order) {
     const g = groups.get(key)!;
-    const name = resolveCardName(g.oracleId, display, frontFaceOnly);
+    let name = resolveCardName(g.oracleId, display, frontFaceOnly);
     if (!name) continue;
 
     let setCode: string | null = null;
@@ -165,6 +165,10 @@ function aggregateInstances(
         if (preferTcg && tcgSet && tcgNum) {
           setCode = tcgSet;
           collectorNumber = tcgNum;
+          const tcgName = printingDisplay.tcgplayer_names?.[row];
+          if (tcgName && tcgName !== "") {
+            name = tcgName;
+          }
         } else if (preferTcg) {
           setCode = tcgplayerSetCode(printingDisplay.set_codes[row]!);
           collectorNumber = printingDisplay.collector_numbers[row]!;

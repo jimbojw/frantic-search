@@ -22,6 +22,7 @@ interface ExtendedDataEntry {
 interface TcgcsvProduct {
   productId?: number;
   groupId?: number;
+  name?: string;
   extendedData?: ExtendedDataEntry[];
 }
 
@@ -35,8 +36,8 @@ export function buildProductMapFromData(
   groupIds: number[],
   groupAbbrevs: Record<string, string>,
   productsByGroup: Record<number, TcgcsvProductsResponse>,
-): Record<string, { setAbbrev: string; number: string }> {
-  const productMap: Record<string, { setAbbrev: string; number: string }> = {};
+): Record<string, { setAbbrev: string; number: string; name: string }> {
+  const productMap: Record<string, { setAbbrev: string; number: string; name: string }> = {};
 
   for (const groupId of groupIds) {
     const abbrev = groupAbbrevs[String(groupId)];
@@ -54,7 +55,11 @@ export function buildProductMapFromData(
       const number = numberEntry?.value;
       if (!number || number === "") continue;
 
-      productMap[String(productId)] = { setAbbrev: abbrev, number };
+      productMap[String(productId)] = {
+        setAbbrev: abbrev,
+        number,
+        name: product.name ?? "",
+      };
     }
   }
 

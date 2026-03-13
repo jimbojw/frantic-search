@@ -43,6 +43,7 @@ To confirm resolution is active, use a card where Scryfall and TCGPlayer differ,
 | No TCGPlayer columns | Run `npm run etl -- download-tcgcsv` then `npm run etl -- process` |
 | Stale data in dev | Ensure `data/dist/printings.json` is from a run that included TCGCSV |
 | Deployed site stale | Rebuild and redeploy; cache may serve old printings.json |
+| Variant cards (e.g. Showcase Scrolls) fail at TCGPlayer | Ensure `tcgplayer_names` is populated; re-run ETL with latest TCGCSV data |
 
 ## Data Flow
 

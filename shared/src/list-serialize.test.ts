@@ -479,6 +479,18 @@ describe("serializeTcgplayer", () => {
     const result = serializeTcgplayer([i], display, printingWithSuffix);
     expect(result).toBe("1 Lightning Bolt [PM21] 141p");
   });
+
+  it("uses tcgplayer_names when non-empty for variant (Spec 128)", () => {
+    const printingWithVariantName: PrintingDisplayColumns = {
+      ...printingDisplay,
+      tcgplayer_set_codes: ["LTC", "", ""],
+      tcgplayer_collector_numbers: ["450", "", ""],
+      tcgplayer_names: ["Banquet Guests (Showcase Scrolls)", "", ""],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithVariantName);
+    expect(result).toBe("1 Banquet Guests (Showcase Scrolls) [LTC] 450");
+  });
 });
 
 describe("serializeManapool", () => {
