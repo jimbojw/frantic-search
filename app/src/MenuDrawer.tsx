@@ -568,7 +568,7 @@ export default function MenuDrawer(props: {
                   {(mode) => (
                     <ViewChip
                       mode={mode}
-                      label={`v:${mode}`}
+                      label={`view:${mode}`}
                       active={ctx.viewMode() === mode}
                       onChange={ctx.changeViewMode}
                     />

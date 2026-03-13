@@ -14,7 +14,7 @@ Consolidate all view-affecting terms in the MenuDrawer VIEWS section. Add a mutu
 
 ### Current behavior (Spec 083)
 
-- **VIEWS:** Four chips (`v:slim`, `v:detail`, `v:images`, `v:full`) at the top of the MenuDrawer.
+- **VIEWS:** Four chips (`view:slim`, `view:detail`, `view:images`, `view:full`) at the top of the MenuDrawer.
 - **TERMS:** The sections formats, roles, rarities, and printings each have a modifier row at the bottom containing `unique:prints` and `include:extras` chips.
 
 ### Problem
@@ -27,14 +27,14 @@ Consolidate all view-affecting terms in the MenuDrawer VIEWS section. Add a mutu
 
 ```
 VIEWS
-[v:slim] [v:detail] [v:images] [v:full]
+[view:slim] [view:detail] [view:images] [view:full]
 [unique:cards] [unique:art] [unique:prints]
 [include:extras]
 ```
 
 ### Row 1: View mode (unchanged)
 
-Four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Behavior unchanged from Spec 083.
+Four chips: `view:slim`, `view:detail`, `view:images`, `view:full`. Behavior unchanged from Spec 083.
 
 ### Row 2: Unique mode (mutually exclusive)
 

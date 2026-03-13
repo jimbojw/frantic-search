@@ -27,7 +27,7 @@ The toolbar and the terms panel serve related purposes (tools and filters) but l
 
 ### Section order (top to bottom)
 
-1. **VIEWS** — View mode chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Same behavior as the current ViewModeToggle — tapping a chip updates or appends the view term in the query. The `v:` alias (Spec 058) is used for chip labels. Controls how each card row is rendered and whether oracle text is shown (Spec 041).
+1. **VIEWS** — View mode chips: `view:slim`, `view:detail`, `view:images`, `view:full`. Same behavior as the current ViewModeToggle — tapping a chip updates or appends the view term in the query. Controls how each card row is rendered and whether oracle text is shown (Spec 041).
 2. **TOOLS** — Try on Scryfall ↗ outlink. Opens the current effective query in Scryfall search (Spec 052).
 3. **TERMS** — All eight sections from Spec 081: formats, layouts, roles, lands, rarities, printings, prices, sort. Layout, scrollspy, and chip behavior unchanged.
 4. **Sticky footer** — Syntax Help, Report Bug. Unchanged from Spec 081.
@@ -67,7 +67,7 @@ All sections (VIEWS, TOOLS, plus the eight TERMS sections) in one scroll contain
 
 ```
 VIEWS
-[v:slim] [v:detail] [v:images] [v:full]
+[view:slim] [view:detail] [view:images] [view:full]
 
 TOOLS
 [Try on Scryfall ↗]
@@ -80,7 +80,7 @@ LAYOUTS
 ...
 ```
 
-**VIEWS:** Four chips: `v:slim`, `v:detail`, `v:images`, `v:full`. Active chip (matching effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent). Chip labels use the `v:` alias.
+**VIEWS:** Four chips: `view:slim`, `view:detail`, `view:images`, `view:full`. Active chip (matching effective view mode) is highlighted; tapping a chip calls `setViewTerm` (or equivalent).
 
 **TOOLS:** "Try on Scryfall ↗". Styling: `text-blue-500 hover:text-blue-600`. Uses `Outlink` component (`target="_blank"`). (My List moved to header button per Spec 090.)
 
@@ -128,7 +128,7 @@ The `frantic-terms-tab` localStorage key stores the last active section (views, 
 
 ### v: alias (Spec 058 extension)
 
-Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` and `v:slim` are valid. The VIEWS chips display the shorter form (`v:slim`, `v:detail`, `v:images`, `v:full`) for consistency with other drawer terminology. When the user taps a chip, the app appends or replaces with `v:{mode}` (or `view:{mode}` — implementation may canonicalize). `extractViewMode` and all consumers (evaluator, canonicalize, query-for-sort) must recognize both field names.
+Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` and `v:slim` are valid. The VIEWS chips display the full form (`view:slim`, `view:detail`, `view:images`, `view:full`). When the user taps a chip, the app appends or replaces with `v:{mode}` (or `view:{mode}` — implementation may canonicalize). `extractViewMode` and all consumers (evaluator, canonicalize, query-for-sort) must recognize both field names.
 
 ## Scope of Changes
 
@@ -151,7 +151,7 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 
 1. The terms panel is renamed to MenuDrawer. The header label reads "Menu".
 2. The left rail contains section labels only: views, tools, formats, layouts, roles, lands, rarities, printings, prices, sort, followed by the sticky footer (Syntax Help, Report Bug). The right content area renders VIEWS (chips), TOOLS (Try on Scryfall link), and the eight TERMS sections in that order.
-3. VIEWS chips (`v:slim`, `v:detail`, `v:images`, `v:full`) correctly control result display mode. Tapping a chip updates the query via `v:` or `view:` term (last one wins). The active chip reflects the effective view mode.
+3. VIEWS chips (`view:slim`, `view:detail`, `view:images`, `view:full`) correctly control result display mode. Tapping a chip updates the query via `v:` or `view:` term (last one wins). The active chip reflects the effective view mode.
 4. The Try on Scryfall link in TOOLS opens the effective query in Scryfall search in a new tab.
 5. The toolbar between histograms and the card list is removed. Histograms connect directly to the card list.
 6. When the result set is empty, a compact row below "No cards found" provides "Try on Scryfall ↗" and "Report a problem" links.

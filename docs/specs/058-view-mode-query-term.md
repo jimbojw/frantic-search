@@ -6,7 +6,7 @@
 
 **Supersedes:** Spec 041 § "View mode persistence", § "View mode signal"
 
-**Extended by:** Spec 083 (MenuDrawer) — adds `v:` as alias for `view:`; MenuDrawer VIEWS chips use `v:slim`, `v:detail`, `v:images`, `v:full`.
+**Extended by:** Spec 083 (MenuDrawer) — adds `v:` as alias for `view:`; MenuDrawer VIEWS chips use `view:slim`, `view:detail`, `view:images`, `view:full`.
 
 **GitHub Issue:** [#59](https://github.com/jimbojw/frantic-search/issues/59)
 
@@ -60,7 +60,7 @@ Because the live query is in the URL (`?q=`), sharing a link like `?q=lightning 
 | `app/src/query-edit.ts` | Add `setViewTerm(query, breakdown, mode)` — clear all `view:` and `v:` terms, append `v:{mode}` (or `view:{mode}`). Extend `VIEW_FIELDS` / `isViewLabel` to recognize `v`. |
 | `app/src/App.tsx` | Derive `viewMode` from effective query; `changeViewMode` calls `setViewTerm` on live query; migration logic. |
 
-**Spec 083 extension:** Add `v:` as alias for `view:`. All consumers (evaluator, canonicalize, view-query, query-edit, query-for-sort) must recognize both field names. MenuDrawer VIEWS chips display `v:slim`, `v:detail`, `v:images`, `v:full`.
+**Spec 083 extension:** Add `v:` as alias for `view:`. All consumers (evaluator, canonicalize, view-query, query-edit, query-for-sort) must recognize both field names. MenuDrawer VIEWS chips display `view:slim`, `view:detail`, `view:images`, `view:full`.
 
 ## Acceptance criteria
 
