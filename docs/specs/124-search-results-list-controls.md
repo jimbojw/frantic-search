@@ -112,6 +112,7 @@ When printing-expanded, the popover shows two rows: "Any printing" (oracle-level
 - **Popover dismiss:** Click-outside (capture phase) and Escape close the popover. Clicks inside the wrapper (trigger or popover) do not close it.
 - **Multiple popovers:** Each result row needs a unique popover ID per document. Use `list-popover-${paneId}-card-${ci}` or `list-popover-${paneId}-print-${pi}` so IDs do not collide in dual-wield or between card-level and printing-level views. No more than one popover is open at a time (light-dismiss closes the previous).
 - **Error handling:** `addInstance` and `removeMostRecentMatchingInstance` may reject (e.g. IndexedDB failure). Handle silently (e.g. `.catch(() => {})`) matching CardDetail; no user-facing error toast for MVP.
+- **Add when already in list:** When adding a card/printing that already exists in the list, clone the newest matching instance's metadata (tags, zone, collection_status, variant) so the new entry inherits it. This ensures list view deduplication yields a single line with increased count (e.g. `2x Anguished Unmaking (tdc) 279 [Removal]`) rather than two separate lines.
 
 ## Acceptance Criteria
 

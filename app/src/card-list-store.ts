@@ -164,7 +164,51 @@ export class CardListStore {
   }
 
   /**
+   * Return the newest (most recently added) matching instance, or null if none.
+   * Oracle-level: pass oracleId only; printing-level: pass scryfallId and finish.
+   * Used when adding to clone metadata from existing entry so list deduplication works.
+   */
+  async getNewestMatchingInstance(
+    listId: string,
+    oracleId: string,
+    scryfallId?: string | null,
+    finish?: string | null
+  ): Promise<InstanceState | null> {
+    if (!this.db) return null
+    const uuids = this.view.instancesByList.get(listId)
+    if (!uuids || uuids.size === 0) return null
+    const isOracleLevel = scryfallId == null && finish == null
+    const matching = new Set<string>()
+    for (const uuid of uuids) {
+      const instance = this.view.instances.get(uuid)
+      if (!instance || instance.oracle_id !== oracleId) continue
+      if (isOracleLevel) {
+        if (instance.scryfall_id == null && instance.finish == null) matching.add(uuid)
+      } else {
+        const finishMatch =
+          instance.finish === finish ||
+          (finish === 'nonfoil' && instance.finish == null)
+        if (instance.scryfall_id === scryfallId && finishMatch) matching.add(uuid)
+      }
+    }
+    if (matching.size === 0) return null
+    const keys = await getInstanceLatestLogKeys(this.db, matching)
+    let maxKey = -1
+    let targetUuid: string | null = null
+    for (const [uuid, key] of keys) {
+      if (key > maxKey) {
+        maxKey = key
+        targetUuid = uuid
+      }
+    }
+    return targetUuid ? this.view.instances.get(targetUuid) ?? null : null
+  }
+
+  /**
    * Add a new instance to a list. Assigns uuid via crypto.randomUUID().
+   * When the caller does not pass tags/zone/collection_status/variant and a matching
+   * instance exists, clones metadata from the newest matching instance so list
+   * deduplication yields a single line with increased count.
    */
   async addInstance(
     oracleId: string,
@@ -179,17 +223,40 @@ export class CardListStore {
     }
   ): Promise<InstanceState> {
     if (!this.db) throw new Error('CardListStore not initialized')
+    const shouldCloneMetadata =
+      opts?.tags === undefined &&
+      opts?.zone === undefined &&
+      opts?.collection_status === undefined &&
+      opts?.variant === undefined
+    let resolvedOpts = opts
+    if (shouldCloneMetadata) {
+      const template = await this.getNewestMatchingInstance(
+        listId,
+        oracleId,
+        opts?.scryfallId ?? undefined,
+        opts?.finish ?? undefined
+      )
+      if (template) {
+        resolvedOpts = {
+          ...opts,
+          tags: template.tags,
+          zone: template.zone,
+          collection_status: template.collection_status,
+          variant: template.variant,
+        }
+      }
+    }
     const uuid = crypto.randomUUID()
     const instance: InstanceState = {
       uuid,
       oracle_id: oracleId,
-      scryfall_id: opts?.scryfallId ?? null,
-      finish: opts?.finish ?? null,
+      scryfall_id: resolvedOpts?.scryfallId ?? null,
+      finish: resolvedOpts?.finish ?? null,
       list_id: listId,
-      zone: opts?.zone ?? null,
-      tags: opts?.tags ?? [],
-      collection_status: opts?.collection_status ?? null,
-      variant: opts?.variant ?? null,
+      zone: resolvedOpts?.zone ?? null,
+      tags: resolvedOpts?.tags ?? [],
+      collection_status: resolvedOpts?.collection_status ?? null,
+      variant: resolvedOpts?.variant ?? null,
     }
     const entry: InstanceStateEntry = { ...instance, timestamp: Date.now() }
     await appendInstanceEntry(this.db, entry)
