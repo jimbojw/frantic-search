@@ -6,7 +6,6 @@ import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
-import { Outlink } from './Outlink'
 import type { ViewMode } from './view-mode'
 import { VIEW_MODES } from './view-mode'
 
@@ -72,7 +71,7 @@ function saltPercentileChip(value: string): PercentileChipDef {
 const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
-const ALL_SECTIONS = ['views', 'tools', ...TERMS_SECTIONS] as const
+const ALL_SECTIONS = ['views', ...TERMS_SECTIONS] as const
 type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
@@ -169,7 +168,6 @@ const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
 
 const SECTION_LABELS: Record<SectionId, string> = {
   views: 'Views',
-  tools: 'Tools',
   formats: 'Formats',
   layouts: 'Layouts',
   roles: 'Roles',
@@ -186,6 +184,7 @@ const STORAGE_KEY = 'frantic-terms-tab'
 
 function loadSection(): SectionId {
   const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored === 'tools') return 'views' // migrated: TOOLS removed
   return ALL_SECTIONS.includes(stored as SectionId) ? (stored as SectionId) : 'views'
 }
 
@@ -594,20 +593,6 @@ export default function MenuDrawer(props: {
                   breakdown={bd()}
                   onSetQuery={props.onSetQuery}
                 />
-              </div>
-            </section>
-            {/* TOOLS section */}
-            <section id="tools" class="flex flex-col gap-1.5">
-              <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
-                Tools
-              </h2>
-              <div class="flex flex-col gap-1">
-                <Outlink
-                  href={ctx.scryfallUrl()}
-                  class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-[11px]"
-                >
-                  Try on Scryfall ↗
-                </Outlink>
               </div>
             </section>
             {/* TERMS sections */}

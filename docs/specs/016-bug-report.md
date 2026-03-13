@@ -20,6 +20,10 @@ The breakdown tree (Spec 009) already provides per-node match counts, which is e
 
 When a query returns no results, a "Report a problem" link appears alongside the existing "Try on Scryfall ↗" link. This is the moment when users are most likely to suspect a bug. (Spec 083: these appear in a compact inline row below "No cards found" when the results toolbar is removed.)
 
+### Primary: UnifiedBreakdown expanded content
+
+When the query accordion is expanded, a right column shows "Try Scryfall →" and "Report a problem" alongside the query chips (Spec 079). Puts both links near the query and in the user's FOV when the accordion is open.
+
 ### Secondary: menu drawer
 
 A "Report Bug" link in the sticky footer of the MenuDrawer (Spec 083). Available whenever the menu is open, regardless of result count.

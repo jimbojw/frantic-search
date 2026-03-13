@@ -80,11 +80,18 @@ Validation feedback (e.g., ignored/error tokens) must appear in the collapsed su
 
 ### Expanded panel layout
 
-When expanded, the panel contains:
+When expanded, the panel uses a two-column layout:
 
+**Left column (chips):**
 1. **Pinned chips** (when `pinnedBreakdown` is present) — same rendering as today: `BreakdownChip` / `ChipTreeNode` with `pinned={true}`, unpin-on-click, × to remove.
 2. **Visual divider** — a subtle horizontal rule (`<hr>`) or equivalent structural separation. Shown only when both pinned and live sections are present.
 3. **Live chips** (when live query is non-empty and `breakdown` is present) — same rendering as today: `BreakdownChip` / `ChipTreeNode` with `pinned={false}`, pin-on-click, × to remove.
+
+**Right column (action links):**
+- **Try on Scryfall ↗** — Outlink to Scryfall search with the effective query. Styling: `text-blue-500 hover:text-blue-600`.
+- **Report a problem** — Button with bug icon that navigates to the bug report page. Styling: muted (`text-gray-400`).
+
+The two links always stack vertically. The links use `useSearchContext()` for `scryfallUrl()` and `navigateToReport()`.
 
 Padding and spacing match the current per-drawer styling (`px-3 pt-1.5 pb-1` or equivalent).
 
@@ -154,3 +161,4 @@ No worker protocol changes. No changes to `query-edit`, `worker`, or shared pack
 8. Migration from the two previous localStorage keys results in expanded state if either was expanded.
 9. Pin, unpin, and remove interactions behave identically to the current implementation.
 10. The accordion is visible when either pinned or live content exists; hidden when both are empty.
+11. When expanded, a right column shows "Try on Scryfall ↗" and "Report a problem" (with bug icon) links. Try on Scryfall opens the effective query in Scryfall; Report a problem navigates to the bug report page. Links always stack vertically.

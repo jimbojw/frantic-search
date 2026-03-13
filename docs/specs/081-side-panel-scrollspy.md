@@ -4,7 +4,7 @@
 
 **Depends on:** Spec 044 (Terms Drawer Redesign)
 
-**Extended by:** Spec 083 (MenuDrawer) — the panel is renamed to MenuDrawer. VIEWS (ViewModeToggle) and TOOLS (Try on Scryfall) sections are added above the TERMS categories. Header label changes from "Terms" to "Menu".
+**Extended by:** Spec 083 (MenuDrawer) — the panel is renamed to MenuDrawer. VIEWS (ViewModeToggle) section is added above the TERMS categories. Header label changes from "Terms" to "Menu". Try on Scryfall moved to UnifiedBreakdown (Spec 079).
 
 **References:** [Issue #87](https://github.com/jimbojw/frantic-search/issues/87)
 
