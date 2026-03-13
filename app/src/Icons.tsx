@@ -141,6 +141,15 @@ export function IconPlus(props: { class?: string }) {
   )
 }
 
+/** Vertical bar (|) for use between plus/minus in list controls trigger. */
+export function IconVerticalBar(props: { class?: string }) {
+  return (
+    <svg {...SVG_PROPS} class={props.class ?? 'size-4'} aria-hidden>
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16" />
+    </svg>
+  )
+}
+
 export function IconArrowTopRightOnSquare(props: { class?: string }) {
   return (
     <svg {...SVG_PROPS} class={props.class ?? 'size-4'} aria-hidden>

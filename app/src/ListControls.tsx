@@ -9,12 +9,12 @@ export default function ListControls(props: {
   removeLabel: string
 }) {
   return (
-    <span class="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-100/80 dark:bg-gray-800/80 px-1.5 py-0.5">
+    <span class="inline-flex items-center gap-1.5 shrink-0 min-h-11 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-100/80 dark:bg-gray-800/80 px-2 py-2">
       <button
         type="button"
         onClick={props.onRemove}
         disabled={props.count === 0}
-        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-0.5"
+        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-1"
         aria-label={props.removeLabel}
       >
         <IconMinus class="size-4" />
@@ -23,7 +23,7 @@ export default function ListControls(props: {
       <button
         type="button"
         onClick={props.onAdd}
-        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-0.5"
+        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1"
         aria-label={props.addLabel}
       >
         <IconPlus class="size-4" />

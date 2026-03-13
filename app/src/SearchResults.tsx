@@ -195,8 +195,14 @@ export default function SearchResults() {
                             <div class="shrink-0 flex items-center">
                               <ListControlsPopover
                                 popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                cardImage={{
+                                  scryfallId: artScryfallId()!,
+                                  colorIdentity: d()!.color_identity[ci],
+                                  thumbHash: d()!.card_thumb_hashes[ci],
+                                  onClick: () => ctx.navigateToCard(artScryfallId()),
+                                }}
                                 entries={[{
-                                  label: 'Card',
+                                  label: 'Any printing',
                                   count: ctx.listCountForCard?.(ci) ?? 0,
                                   onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
                                   onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
@@ -261,8 +267,14 @@ export default function SearchResults() {
                                 <div class="mt-1 flex justify-center w-full">
                                   <ListControlsPopover
                                     popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                    cardImage={{
+                                      scryfallId: artScryfallId()!,
+                                      colorIdentity: d()!.color_identity[ci],
+                                      thumbHash: d()!.card_thumb_hashes[ci],
+                                      onClick: () => ctx.navigateToCard(artScryfallId()),
+                                    }}
                                     entries={[{
-                                      label: 'Card',
+                                      label: 'Any printing',
                                       count: ctx.listCountForCard?.(ci) ?? 0,
                                       onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
                                       onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
@@ -335,13 +347,20 @@ export default function SearchResults() {
                                       const finish = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
                                       const finishLabel = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
                                       const cn = pd.collector_numbers[pi]?.trim() ?? ''
-                                      const printingLabel = cn ? `${finishLabel} ${pd.set_codes[pi]}-${cn}` : `${finishLabel} ${pd.set_codes[pi]}`
+                                      const setCode = pd.set_codes[pi]?.toUpperCase() ?? ''
+                                      const printingLabel = [setCode, cn, finish].filter(Boolean).join(' · ')
                                       return (
                                         <ListControlsPopover
                                           popoverId={`list-popover-${ctx.paneId ?? 'main'}-print-${pi}`}
+                                          cardImage={{
+                                            scryfallId,
+                                            colorIdentity: d()!.color_identity[ci],
+                                            thumbHash: d()!.card_thumb_hashes[ci],
+                                            onClick: () => ctx.navigateToCard(scryfallId),
+                                          }}
                                           entries={[
                                             {
-                                              label: 'Card',
+                                              label: 'Any printing',
                                               count: ctx.listCountForPrinting?.(pi) ?? 0,
                                               onAdd: () => ctx.cardListStore!.addInstance(oracleIdPrint()!, DEFAULT_LIST_ID).catch(() => {}),
                                               onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdPrint()!).catch(() => {}),
@@ -466,8 +485,14 @@ export default function SearchResults() {
                             <div class="px-1.5 py-1 flex justify-center">
                               <ListControlsPopover
                                 popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                cardImage={{
+                                  scryfallId: d()!.scryfall_ids[ci],
+                                  colorIdentity: d()!.color_identity[ci],
+                                  thumbHash: d()!.card_thumb_hashes[ci],
+                                  onClick: () => ctx.navigateToCard(d()!.scryfall_ids[ci]),
+                                }}
                                 entries={[{
-                                  label: 'Card',
+                                  label: 'Any printing',
                                   count: ctx.listCountForCard?.(ci) ?? 0,
                                   onAdd: () => ctx.cardListStore!.addInstance(oracleIdImg()!, DEFAULT_LIST_ID).catch(() => {}),
                                   onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImg()!).catch(() => {}),
@@ -519,8 +544,8 @@ export default function SearchResults() {
                                 onClick={() => ctx.navigateToCard(sid)}
                                 aria-label={name()}
                               />
-                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words flex items-center justify-between gap-2 ${metaClass()}`}>
-                                <span class="min-w-0 truncate">
+                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words flex items-start justify-between gap-2 ${metaClass()}`}>
+                                <span class="min-w-0 flex-1">
                                   <span class="uppercase">{setCode}</span>
                                   {collectorNum ? <>{' · '}{collectorNum}</> : null}
                                   {' · '}
@@ -539,13 +564,20 @@ export default function SearchResults() {
                                       const finishImg = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
                                       const finishLabelImg = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
                                       const cnImg = pd.collector_numbers[pi]?.trim() ?? ''
-                                      const printingLabelImg = cnImg ? `${finishLabelImg} ${pd.set_codes[pi]}-${cnImg}` : `${finishLabelImg} ${pd.set_codes[pi]}`
+                                      const setCodeImg = pd.set_codes[pi]?.toUpperCase() ?? ''
+                                      const printingLabelImg = [setCodeImg, cnImg, finishImg].filter(Boolean).join(' · ')
                                       return (
                                         <ListControlsPopover
                                           popoverId={`list-popover-${ctx.paneId ?? 'main'}-print-${pi}`}
+                                          cardImage={{
+                                            scryfallId: scryfallIdImg,
+                                            colorIdentity: d()!.color_identity[ci],
+                                            thumbHash: d()!.card_thumb_hashes[ci],
+                                            onClick: () => ctx.navigateToCard(scryfallIdImg),
+                                          }}
                                           entries={[
                                             {
-                                              label: 'Card',
+                                              label: 'Any printing',
                                               count: ctx.listCountForPrinting?.(pi) ?? 0,
                                               onAdd: () => ctx.cardListStore!.addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID).catch(() => {}),
                                               onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImgPrint()!).catch(() => {}),
