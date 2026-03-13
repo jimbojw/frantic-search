@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
+import { PrintingFlag } from "./bits";
 import {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
@@ -142,6 +143,51 @@ describe("buildCanonicalPrintingPerFace", () => {
     const map = buildCanonicalPrintingPerFace(pd);
     expect(map.get(0)).toBe(1); // face 0 → printing 1 (first nonfoil)
     expect(map.get(1)).toBe(2); // face 1 → printing 2 (first nonfoil)
+  });
+
+  it("prefers tournament-legal nonfoil over gold-bordered nonfoil", () => {
+    const pd = makePrintingDisplay();
+    pd.canonical_face_ref = [0, 0, 0];
+    pd.finish = [0, 0, 1]; // p0 gold nonfoil, p1 normal nonfoil, p2 normal foil
+    pd.printing_flags = [PrintingFlag.GoldBorder, 0, 0];
+    pd.scryfall_ids = ["wc99", "usg", "usg-foil"];
+    pd.collector_numbers = ["1", "2", "3"];
+    pd.set_codes = ["wc99", "usg", "usg"];
+    pd.set_names = ["", "", ""];
+    pd.rarity = [0, 0, 0];
+    pd.price_usd = [0, 0, 0];
+    const map = buildCanonicalPrintingPerFace(pd);
+    expect(map.get(0)).toBe(1); // face 0 → printing 1 (tournament-legal nonfoil), not 0 (gold)
+  });
+
+  it("falls back to non-tournament when no tournament-legal exists", () => {
+    const pd = makePrintingDisplay();
+    pd.canonical_face_ref = [0, 0];
+    pd.finish = [0, 1]; // both gold-bordered
+    pd.printing_flags = [PrintingFlag.GoldBorder, PrintingFlag.GoldBorder];
+    pd.scryfall_ids = ["wc99-nf", "wc99-f"];
+    pd.collector_numbers = ["1", "2"];
+    pd.set_codes = ["wc99", "wc99"];
+    pd.set_names = ["", ""];
+    pd.rarity = [0, 0];
+    pd.price_usd = [0, 0];
+    const map = buildCanonicalPrintingPerFace(pd);
+    expect(map.get(0)).toBe(0); // face 0 → printing 0 (first nonfoil, no tournament-legal)
+  });
+
+  it("treats all as tournament-legal when printing_flags absent", () => {
+    const pd = makePrintingDisplay();
+    // No printing_flags — should behave as before: first nonfoil
+    pd.canonical_face_ref = [0, 0, 0];
+    pd.finish = [0, 1, 0];
+    pd.scryfall_ids = ["a", "b", "c"];
+    pd.collector_numbers = ["1", "2", "3"];
+    pd.set_codes = ["X", "X", "X"];
+    pd.set_names = ["", "", ""];
+    pd.rarity = [0, 0, 0];
+    pd.price_usd = [0, 0, 0];
+    const map = buildCanonicalPrintingPerFace(pd);
+    expect(map.get(0)).toBe(0); // face 0 → printing 0 (first nonfoil)
   });
 });
 

@@ -3,6 +3,7 @@ import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 import type { MaterializedView, InstanceState } from "./card-list";
 import type { ParsedEntry } from "./list-lexer";
 import { FINISH_FROM_STRING } from "./bits";
+import { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 import { TRASH_LIST_ID } from "./card-list";
 import { normalizeAlphanumeric } from "./normalize";
 
@@ -25,8 +26,8 @@ export function buildOracleToCanonicalFaceMap(
 
 /**
  * Builds canonical face index → canonical printing index map.
- * For each canonical face, picks first nonfoil printing (finish === 0), else first in group.
- * Matches promoteFaceToPrintingCanonicalNonfoil semantics (Spec 121).
+ * For each canonical face, prefers tournament-legal nonfoil, then tournament-legal any,
+ * then nonfoil, then first in group (Spec 121).
  */
 export function buildCanonicalPrintingPerFace(
   pd: PrintingDisplayColumns,
@@ -34,7 +35,11 @@ export function buildCanonicalPrintingPerFace(
   const map = new Map<number, number>();
   const cfRef = pd.canonical_face_ref;
   const finish = pd.finish;
+  const flags = pd.printing_flags;
   const n = cfRef.length;
+
+  const isTournamentLegal = (i: number) =>
+    !flags || !(flags[i] & NON_TOURNAMENT_MASK);
 
   // Group by cf: collect indices for each cf
   const byCf = new Map<number, number[]>();
@@ -48,10 +53,12 @@ export function buildCanonicalPrintingPerFace(
     arr.push(i);
   }
 
-  // For each cf, pick first nonfoil or first in group
+  // For each cf, pick canonical printing (tournament-legal nonfoil > tournament-legal any > nonfoil > first)
   for (const [cf, indices] of byCf) {
+    const legalNonfoil = indices.find((i) => isTournamentLegal(i) && finish[i] === 0);
+    const legalAny = indices.find((i) => isTournamentLegal(i));
     const nonfoil = indices.find((i) => finish[i] === 0);
-    map.set(cf, nonfoil ?? indices[0]);
+    map.set(cf, legalNonfoil ?? legalAny ?? nonfoil ?? indices[0]);
   }
   return map;
 }

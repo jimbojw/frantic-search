@@ -32,7 +32,14 @@ My List is represented by a single `printingIndices` (sparse inverted index). No
 
 **Data model note:** In Frantic Search, "printing" includes finish — each printing row is a distinct (scryfall_id, finish) pair. Unlike Scryfall (where different finishes share the same scryfall_id), we have unique rows per finish. When a deck list entry omits finish (e.g. `1x Dawn of Hope (ltc) 164` with no foil marker), it resolves to the first printing row with that scryfall_id — almost always nonfoil, but foil-only printings would resolve to foil. So printing-level entries always resolve to a specific row.
 
-**Canonical printing resolution:** For each canonical face, pick the first available finish: prefer nonfoil (finish === 0), else the first printing in the face's printing list. Matches the logic in `promoteFaceToPrintingCanonicalNonfoil` (shared/src/search/eval-printing.ts).
+**Canonical printing resolution:** For each canonical face, pick a canonical printing using this priority order:
+
+1. First tournament-legal nonfoil (`!(printingFlags[i] & NON_TOURNAMENT_MASK)` and `finish[i] === 0`)
+2. First tournament-legal printing (any finish)
+3. First nonfoil (fallback when all printings are non-tournament-legal)
+4. First printing in the face's group
+
+Tournament-legal means the printing is usable in sanctioned play (Spec 056): not gold-bordered, oversized, or 30A. When `printing_flags` is absent, treat all printings as tournament-legal.
 
 ### New Helper: buildCanonicalPrintingPerFace
 
@@ -44,9 +51,9 @@ export function buildCanonicalPrintingPerFace(
 ): Map<number, number>
 ```
 
-- Input: `PrintingDisplayColumns` with `canonical_face_ref` and `finish`.
+- Input: `PrintingDisplayColumns` with `canonical_face_ref`, `finish`, and optionally `printing_flags`.
 - Output: `Map<canonicalFaceIndex, printingIndex>`.
-- Logic: `PrintingDisplayColumns` is flat (one row per printing). Iterate rows by index; for each canonical face `cf`, collect printing indices where `pd.canonical_face_ref[i] === cf`. For each `cf`, pick first row with `pd.finish[i] === 0` (nonfoil), else first in the group. Store `map.set(cf, printingIndex)`.
+- Logic: `PrintingDisplayColumns` is flat (one row per printing). Iterate rows by index; for each canonical face `cf`, collect printing indices where `pd.canonical_face_ref[i] === cf`. For each `cf`, apply the four-step canonical printing selection (tournament-legal nonfoil, then tournament-legal any, then nonfoil, then first). Use `printing_flags` when present; when absent, treat all printings as tournament-legal. Store `map.set(cf, printingIndex)`.
 
 ### Mask Building Changes
 
@@ -128,3 +135,4 @@ list-diff's expected set (`buildExpectedFromParsedEntries`) already uses canonic
 ## Implementation Notes
 
 - 2026-03-12: Replaced `printingMask` with `printingIndices`. Sparse representation reduces transfer size and worker storage.
+- 2026-03-13: Canonical printing resolution now prefers tournament-legal printings. Fixes generic entries (e.g. Yawgmoth's Will) resolving to gold-bordered printings that require `include:extras` to display.
