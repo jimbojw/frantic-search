@@ -10,9 +10,9 @@ Resolve Scryfall printings to TCGPlayer Mass Entry format (`[SET] collector`) so
 
 ## Background
 
-Scryfall's `default_cards` bulk data includes `tcgplayer_id` (and optionally `tcgplayer_etched_id`) per printing. This is the TCGPlayer product ID. TCGCSV (Spec 127) provides a mapping from productId to TCGPlayer's Mass Entry format: `(groupId.abbreviation, product.extendedData.Number)`.
+Scryfall's `default_cards` bulk data includes `tcgplayer_id` (and optionally `tcgplayer_etched_id`) per printing. This is the TCGPlayer product ID. The TCGCSV process step (Spec 127) reads raw TCGCSV data and produces a mapping from productId to TCGPlayer's Mass Entry format: `(groupId.abbreviation, product.extendedData.Number)`.
 
-The join path: Scryfall printing → `tcgplayer_id` → TCGCSV product → group abbreviation + Number → `[SET] collector` for Mass Entry.
+The join path: Scryfall printing → `tcgplayer_id` → TCGCSV product map → `[SET] collector` for Mass Entry.
 
 ### Current Serialization (Pre-128)
 
@@ -31,9 +31,10 @@ When a printing has a resolved TCGPlayer mapping, use `tcgplayer_set_code` and `
 ## Data Flow
 
 ```
-Scryfall default_cards     TCGCSV (Spec 127)
+Scryfall default_cards     TCGCSV process step (Spec 127)
        │                         │
-       │ tcgplayer_id             │ productId → (abbrev, number)
+       │ tcgplayer_id             │ data/dist/tcgcsv-product-map.json
+       │                         │ productId → (abbrev, number)
        │                         │
        └──────────┬───────────────┘
                   │
@@ -83,7 +84,7 @@ Add optional fields to `PrintingDisplayColumns` in `shared/src/worker-protocol.t
 
 In `etl/src/process-printings.ts`:
 
-1. **Load TCGCSV mapping** — If `data/raw/tcgcsv-products.json` exists (Spec 127 output), load it. Else, skip TCGPlayer resolution.
+1. **Load TCGCSV mapping** — If `data/dist/tcgcsv-product-map.json` exists (Spec 127 process step output), load it. Else, skip TCGPlayer resolution.
 2. **Extract tcgplayer_id** — When iterating each entry in `default-cards.json`, read `tcgplayer_id` (and for etched rows, `tcgplayer_etched_id` if the finish is etched). Scryfall documents these as optional integers.
 3. **Resolve per row** — For each emitted printing row (including finish explosion):
    - Nonfoil: use `tcgplayer_id`.
@@ -126,8 +127,8 @@ TCGPlayer Mass Entry does not support foil/etched markers. `serializeTcgplayer` 
 
 ## Acceptance Criteria
 
-1. With TCGCSV data present (`npm run etl -- download-tcgcsv` then `npm run etl -- process`), `printings.json` includes `tcgplayer_set_codes` and `tcgplayer_collector_numbers` for rows where Scryfall provides `tcgplayer_id` and TCGCSV has the product.
-2. Without TCGCSV data, `printings.json` omits these columns (or they are empty); serialization uses Scryfall-derived values.
+1. With TCGCSV data present (`npm run etl -- download-tcgcsv` then `npm run etl -- process`), the process step produces `data/dist/tcgcsv-product-map.json`, and `printings.json` includes `tcgplayer_set_codes` and `tcgplayer_collector_numbers` for rows where Scryfall provides `tcgplayer_id` and the product map has the product.
+2. Without TCGCSV data (or when the product map is absent), `printings.json` omits these columns (or they are empty); serialization uses Scryfall-derived values.
 3. `serializeTcgplayer` prefers TCGPlayer values when present and non-empty.
 4. Deck lists exported for TCGPlayer that previously failed (e.g., Banquet Guests LTC 450, Frodo LTC 461, basic lands from TMT) produce lines that TCGPlayer accepts when resolution exists.
 5. Legacy `printings.json` (without TCGPlayer columns) continues to work; serialization falls back to current behavior.

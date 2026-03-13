@@ -6,7 +6,7 @@
 
 ## Goal
 
-Fetch Magic: The Gathering product and group data from [TCGCSV](https://tcgcsv.com/) and build a `productId → { setAbbrev, number }` mapping. This mapping enables TCGPlayer Mass Entry export resolution (Spec 128): Scryfall printings include `tcgplayer_id`, which we join to TCGCSV's product data to obtain the correct set code and collector number that TCGPlayer's bulk entry accepts.
+Fetch raw Magic: The Gathering product and group data from [TCGCSV](https://tcgcsv.com/) and store it unchanged in `data/raw/`. The download command writes only actual API responses — no transformation. A separate process step (see § Process Step) reads this raw data and builds the `productId → { setAbbrev, number }` mapping for TCGPlayer Mass Entry export resolution (Spec 128).
 
 TCGCSV is a public mirror of TCGPlayer's catalog, updated daily. It requires no API key. TCGPlayer itself no longer grants new API access.
 
@@ -36,13 +36,14 @@ All endpoints return JSON with `{ success, errors, results[], totalItems? }`. Pr
 
 TCGCSV updates daily around 20:00 UTC. The site provides `https://tcgcsv.com/last-updated.txt` with an ISO 8601 timestamp. TCGCSV endpoints (served via S3/CloudFront) return standard HTTP caching headers: `ETag` and `Last-Modified`.
 
-**Conditional GET** — Send `If-None-Match: <stored-etag>` with each request. The server returns `304 Not Modified` (no body) when content is unchanged, or `200 OK` with full content when it has changed. One request per resource; no separate HEAD. When unchanged, we avoid re-downloading the response body entirely.
+**last-updated.txt** — Always fetch (no conditional GET). It is a small file and acts as a canary: if the fetch fails, something is wrong (network, TCGCSV down). Compare the parsed timestamp with `meta.lastUpdated`. If meta exists and the timestamp is unchanged, skip groups and products. Otherwise proceed.
+
+**Conditional GET for groups and products** — Send `If-None-Match: <stored-etag>` with each request. The server returns `304 Not Modified` (no body) when content is unchanged, or `200 OK` with full content when it has changed. One request per resource; no separate HEAD. When unchanged, we avoid re-downloading the response body entirely.
 
 | Request | Stored ETag | Behavior |
 |---------|-------------|----------|
-| last-updated.txt | `meta.etag` | `If-None-Match`. 304 → skip all fetches, log "up to date". 200 → parse timestamp, proceed with groups + products. |
-| groups | `meta.groupsEtag` | `If-None-Match`. 304 → reuse cached group list (`meta.groupIds`); fetch products for those groups. 200 → parse, build groupId→abbrev map, store groupIds. Note: when groups returns 304, newly added TCGCSV groups are missed until the next run that gets 200. |
-| products (per group) | `meta.etags[groupId]` | `If-None-Match`. 304 → skip that group's products (reuse from cached productMap). 200 → parse, merge into productMap. |
+| groups | `meta.groupsEtag` | `If-None-Match`. 304 → reuse cached group list (`meta.groupIds`); fetch products for those groups. 200 → write raw response to `tcgcsv-groups.json`, parse to extract groupIds and groupAbbrevs for meta. Note: when groups returns 304, newly added TCGCSV groups are missed until the next run that gets 200. |
+| products (per group) | `meta.etags[groupId]` | `If-None-Match`. 304 → skip that group's products (existing raw file remains valid). 200 → write raw response to `tcgcsv-products/{groupId}.json`. |
 
 Store ETags in `tcgcsv-meta.json` after each successful fetch. Use the exact ETag string from the response header (including weak `W/"..."` format if present). On first run (no meta), omit `If-None-Match`; all requests return 200. When groups returns 304 we use `meta.groupIds` to know which product URLs to conditional-GET. The `--force` flag skips all conditional checks: omit `If-None-Match` on every request and perform full fetches. **Implementation note:** A 304 response has an empty body; do not attempt to parse JSON from it.
 
@@ -63,55 +64,42 @@ npm run etl -- download-tcgcsv [options]
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  GET last-updated.txt (If-None-Match when meta exists)      │
+│  GET last-updated.txt (always fetch; canary)                │
 └──────────────────────────┬──────────────────────────────────┘
                            │
               ┌────────────┴────────────┐
-              │ 304?                    │ 200?
+              │ Fetch failed?           │ Fetch OK
               ▼                         ▼
     ┌────────────────────┐   ┌─────────────────────────────────┐
-    │ Log "up to date"   │   │ 1. GET groups (conditional)      │
-    │ Skip all fetches   │   │ 2. For each group: GET products │
-    └────────────────────┘   │    (conditional, merge if 200)  │
-                             │ 3. Write products + meta        │
-                             │    (atomic: temp file + rename)  │
+    │ 24h mtime fallback │   │ meta exists & timestamp same?   │
+    │ (see Error Handling)│   │   Yes → log "up to date", skip  │
+    └────────────────────┘   │   No  → 1. GET groups (cond.)  │
+                             │        2. For each: GET products │
+                             │        3. Write groups+products+meta│
                              └─────────────────────────────────┘
 ```
 
 ### Freshness Check
 
-Use **conditional GET** on `https://tcgcsv.com/last-updated.txt`. When `tcgcsv-meta.json` exists, send `If-None-Match: <stored-etag>`. A `304 Not Modified` response means data is current — skip all fetches and log "up to date". A `200 OK` response means proceed with groups and products. When no meta exists, omit the header; the first run fetches everything. The `--force` flag bypasses all conditional checks and forces full fetches (no `If-None-Match` on any request).
+Always fetch `https://tcgcsv.com/last-updated.txt`. Parse the ISO 8601 timestamp. When `tcgcsv-meta.json` exists and the timestamp equals `meta.lastUpdated`, data is current — skip groups and products, log "up to date". Otherwise proceed with groups and products. The `--force` flag bypasses the timestamp check and forces full fetches (no conditional GET on groups or products).
 
 ### Fetch Strategy
 
-1. **last-updated.txt:** GET with `If-None-Match` when meta.etag exists. 304 → exit early. 200 → parse timestamp, store ETag in meta.etag, proceed.
-2. **Groups:** GET `/tcgplayer/1/groups` with `If-None-Match` when meta.groupsEtag exists. 304 → use `meta.groupIds` and `meta.groupAbbrevs` for product URLs and setAbbrev lookups. 200 → parse, build groupId→abbrev map, store ETag in meta.groupsEtag, groupIds, and groupAbbrevs.
-3. **Products:** For each groupId, GET `/tcgplayer/1/{groupId}/products` with `If-None-Match` when meta.etags[groupId] exists. 304 → keep existing productMap entries for that group. 200 → parse, merge into productMap, store ETag. Load existing productMap at start when doing conditional fetches so 304 responses preserve prior data. Rate limit: ~100–200 ms between product fetches.
-4. **Number extraction:** For each product, find `extendedData` entry where `name === "Number"`. The `value` field is the collector number string (e.g., `"139/195"`, `"47"`). Products without a Number (sealed product, pack, etc.) are skipped for the mapping.
-5. **Build map:** `productId → { setAbbrev: string, number: string }`. `setAbbrev` from the group's `abbreviation`; `number` from the Number extendedData value. Products in groups with empty `abbreviation` (e.g., "Box Sets", "Launch Party Cards") are omitted — Mass Entry requires a valid set code. If the same productId appears in multiple groups (rare), last-wins when merging into productMap.
+1. **last-updated.txt:** Always GET (no conditional). If fetch fails → 24h mtime fallback (see Error Handling). If OK → parse timestamp. If meta exists and timestamp unchanged (and not `--force`) → exit early. Else proceed.
+2. **Groups:** GET `/tcgplayer/1/groups` with `If-None-Match` when meta.groupsEtag exists. 304 → use `meta.groupIds` and `meta.groupAbbrevs` for product URLs. 200 → write raw response body to `tcgcsv-groups.json` (atomic), parse to extract groupIds and groupAbbrevs for meta, store ETag.
+3. **Products:** For each groupId, GET `/tcgplayer/1/{groupId}/products` with `If-None-Match` when meta.etags[groupId] exists. 304 → do not overwrite; existing `tcgcsv-products/{groupId}.json` from a prior run remains valid. 200 → write raw response body to `tcgcsv-products/{groupId}.json` (atomic), store ETag. Rate limit: 150 ms between product fetches.
 
 ### Output Format
 
-**tcgcsv-products.json:**
+**tcgcsv-groups.json:** Raw response from `GET /tcgplayer/1/groups` — `{ success, errors, results[], totalItems? }` unchanged.
 
-```json
-{
-  "productMap": {
-    "499719": { "setAbbrev": "LTC", "number": "47" },
-    "525959": { "setAbbrev": "CLTR", "number": "450" }
-  }
-}
-```
-
-Keys are stringified productIds for JSON compatibility. The map may have 80k–100k+ entries (one per Magic card product). (Example: 499719 = Banquet Guests regular; 525959 = Banquet Guests Showcase Scrolls, which TCGPlayer may place in a separate group such as Commander: Tales of Middle-earth.)
+**tcgcsv-products/{groupId}.json:** Raw response from `GET /tcgplayer/1/{groupId}/products` — `{ success, errors, results[], totalItems? }` unchanged. One file per groupId.
 
 **tcgcsv-meta.json:**
 
 ```json
 {
   "lastUpdated": "2026-03-12T20:05:38+0000",
-  "productCount": 95000,
-  "etag": "862567772fc7a365382bfd01c187ca32",
   "groupsEtag": "abc123def456",
   "groupIds": [123, 456, 789],
   "groupAbbrevs": { "123": "LTC", "456": "CLTR", "789": "LTR" },
@@ -119,30 +107,31 @@ Keys are stringified productIds for JSON compatibility. The map may have 80k–1
 }
 ```
 
-- `etag` — ETag for last-updated.txt; sent as `If-None-Match` on the freshness check.
+- `lastUpdated` — Timestamp from last-updated.txt; used to detect when TCGCSV has updated.
 - `groupsEtag` — ETag for the groups response; sent as `If-None-Match` on the groups request.
 - `groupIds` — List of group IDs from the groups response; used when groups returns 304 to know which product URLs to conditional-GET.
-- `groupAbbrevs` — Map of groupId (string) → abbreviation; used when groups returns 304 to resolve setAbbrev for products.
+- `groupAbbrevs` — Map of groupId (string) → abbreviation; used when groups returns 304.
 - `etags` — Per-group ETags keyed by groupId (string); sent as `If-None-Match` on product requests.
 
 ## Output Files
 
-| Path                         | Contents                                                                 |
-|------------------------------|---------------------------------------------------------------------------|
-| `data/raw/tcgcsv-products.json` | `{ productMap: Record<string, { setAbbrev: string; number: string }> }`   |
-| `data/raw/tcgcsv-meta.json`     | `{ lastUpdated, productCount, etag?, groupsEtag?, groupIds?, groupAbbrevs?, etags? }` for conditional GET |
+| Path | Contents |
+|------|----------|
+| `data/raw/tcgcsv-groups.json` | Raw groups API response — `{ success, errors, results[], totalItems? }` |
+| `data/raw/tcgcsv-products/{groupId}.json` | Raw products API response per group — `{ success, errors, results[], totalItems? }` |
+| `data/raw/tcgcsv-meta.json` | `{ lastUpdated, groupsEtag?, groupIds?, groupAbbrevs?, etags? }` for freshness and conditional GET |
 
-Both files are git-ignored (under `data/raw/`). Write both files atomically: write to `*.tmp`, then `fs.renameSync` to the final path (matching Spec 001 and download-mtgjson). This avoids partial/corrupt JSON if the process crashes during write.
+All files are git-ignored (under `data/raw/`). Write atomically: write to `*.tmp`, then `fs.renameSync` to the final path (matching Spec 001 and download-mtgjson). Ensure `tcgcsv-products/` directory exists before writing product files.
 
 ## Error Handling
 
-TCGCSV data is optional. The process command (Spec 003, via Spec 128) handles missing TCGCSV gracefully — all TCGPlayer resolutions fall back to Scryfall set+number when the mapping is absent. The download command must **never block CI**.
+TCGCSV data is optional. The process command (invoked from `npm run etl -- process`; Spec 128 describes process-printings integration) handles missing TCGCSV gracefully — all TCGPlayer resolutions fall back to Scryfall set+number when the mapping is absent. The download command must **never block CI**.
 
 | Failure mode                    | Behavior                                                                 |
 |--------------------------------|---------------------------------------------------------------------------|
-| **last-updated.txt fetch fails** | Use 24h mtime heuristic: if `tcgcsv-products.json` exists and was modified within 24 hours, skip. Otherwise attempt full download. When proceeding without last-updated.txt, set `meta.lastUpdated` to current timestamp (ISO 8601). |
+| **last-updated.txt fetch fails** | Fallback only when the canary fails (network error, non-200, etc.): if `tcgcsv-groups.json` exists and was modified within 24 hours, skip all fetches. Otherwise attempt full download. When proceeding without last-updated.txt, set `meta.lastUpdated` to current timestamp (ISO 8601). |
 | **Groups fetch fails**          | Log warning, exit 0. Existing cached files preserved.                    |
-| **Product fetch fails**         | Log warning for that group, continue with others. Partial map is useful. |
+| **Product fetch fails**         | Log warning for that group, continue with others. Partial raw data is useful. |
 | **Parse/schema validation error** | Log warning, exit 0. Do not overwrite existing files. |
 | **No cached file and all fetches fail** | Log warning, exit 0. Spec 128 will fall back to Scryfall values. |
 
@@ -173,11 +162,11 @@ No new cache step is needed. The existing Scryfall data cache already covers all
 
 **Cache keys must be unique per run.** GitHub's cache is immutable — you cannot overwrite an existing cache entry. If the key were stable (e.g. `scryfall-oracle-cards`), run 1 would save; run 2 would fetch fresh data but the save would fail (key already exists); run 3 would restore stale run‑1 data forever. Including `${{ github.run_id }}` ensures each successful run creates a *new* cache entry; `restore-keys` prefix matching restores the most recent prior entry. This "unique key per run" pattern is required for any cache that holds downloadable data that can go stale.
 
-Since `tcgcsv-products.json` and `tcgcsv-meta.json` live in `data/raw/`, they are included in this cache automatically. The cache is **restore-only from our perspective** — the restore step either populates `data/raw` from a previous run or does nothing (cache miss). The download steps then run and must **fall through** correctly:
+Since `tcgcsv-groups.json`, `tcgcsv-products/`, and `tcgcsv-meta.json` live in `data/raw/`, they are included in this cache automatically. The cache is **restore-only from our perspective** — the restore step either populates `data/raw` from a previous run or does nothing (cache miss). The download steps then run and must **fall through** correctly:
 
 | Scenario | Behavior |
 |----------|----------|
-| **Cache hit** | `data/raw` has prior run's files. Conditional GET on last-updated may return 304 → skip fetches. Or 200 → re-fetch only what changed. |
+| **Cache hit** | `data/raw` has prior run's files. Timestamp comparison may skip fetches. Or timestamp changed → re-fetch only what changed (conditional GET on groups/products). |
 | **Cache miss** | `data/raw` empty or partial. No meta → full fetch. Downloads populate from scratch. |
 | **Download fails** | Exit 0. Existing files (from restore or earlier downloads) are not overwritten. Job continues; cache save at end preserves whatever is in `data/raw`. |
 | **Next run** | `restore-keys` match restores `data/raw` including last good TCGCSV files from any prior successful run. |
@@ -189,8 +178,10 @@ This matches Spec 091 (tags) and Spec 100 (MTGJSON): output in `data/raw`, no ne
 New constants in `etl/src/paths.ts`:
 
 ```typescript
-export const TCGCSV_PRODUCTS_PATH = path.join(RAW_DIR, "tcgcsv-products.json");
+export const TCGCSV_GROUPS_PATH = path.join(RAW_DIR, "tcgcsv-groups.json");
+export const TCGCSV_PRODUCTS_DIR = path.join(RAW_DIR, "tcgcsv-products");
 export const TCGCSV_META_PATH = path.join(RAW_DIR, "tcgcsv-meta.json");
+export const TCGCSV_PRODUCT_MAP_PATH = path.join(DIST_DIR, "tcgcsv-product-map.json");  // written by process-tcgcsv
 ```
 
 ## File Organization
@@ -198,11 +189,21 @@ export const TCGCSV_META_PATH = path.join(RAW_DIR, "tcgcsv-meta.json");
 ```
 etl/
 ├── src/
-│   ├── download-tcgcsv.ts   # New: TCGCSV fetch and product map build
-│   ├── index.ts             # Updated: register download-tcgcsv subcommand
-│   └── paths.ts             # Updated: TCGCSV paths
-└── AGENTS.md                # Updated: add download-tcgcsv to commands table and data directory
+│   ├── download-tcgcsv.ts   # TCGCSV fetch, raw output only
+│   ├── process-tcgcsv.ts    # Read raw, build product map, write to dist
+│   ├── index.ts             # Register download-tcgcsv, invoke process-tcgcsv from process command
+│   └── paths.ts             # TCGCSV paths
+└── AGENTS.md                # Commands table and data directory
 ```
+
+## Process Step
+
+The download command writes only raw API responses. A separate **process step** (run as part of `npm run etl -- process`) reads this raw data and produces the product map:
+
+- **Input:** `data/raw/tcgcsv-groups.json`, `data/raw/tcgcsv-products/*.json`, `data/raw/tcgcsv-meta.json`
+- **Output:** `data/dist/tcgcsv-product-map.json` — `{ productMap: Record<string, { setAbbrev: string; number: string }> }`
+- **Logic:** For each group with non-empty `abbreviation`, read the corresponding products file. For each product, find `extendedData` entry where `name === "Number"`; add `productMap[productId] = { setAbbrev, number }` (last-wins for duplicate productId). Skip products without Number. Skip groups with empty abbreviation (e.g., "Box Sets", "Launch Party Cards").
+- **When to run:** As part of the process command, before process-printings. Runs when raw TCGCSV exists; skips when absent.
 
 ## Dependencies
 
@@ -215,17 +216,17 @@ No new npm dependencies. Use existing etl/ tooling. Send a `User-Agent` header (
 
 ## Downstream Usage
 
-Spec 128 (TCGPlayer Export Resolution) consumes this output. The process command will optionally load `tcgcsv-products.json`, join Scryfall `tcgplayer_id` to the product map, and emit TCGPlayer set+number in the printing columnar data.
+Spec 128 (TCGPlayer Export Resolution) consumes the product map produced by the process step. process-printings loads `data/dist/tcgcsv-product-map.json`, joins Scryfall `tcgplayer_id` to the product map, and emits TCGPlayer set+number in the printing columnar data.
 
 ## Acceptance Criteria
 
-1. Running `npm run etl -- download-tcgcsv` for the first time fetches Magic groups, fetches products for each group, builds the product map, and writes `tcgcsv-products.json` and `tcgcsv-meta.json` to `data/raw/`.
-2. Running it again (without `--force`) when last-updated returns 304 (conditional GET) logs "up to date" and skips all fetches.
+1. Running `npm run etl -- download-tcgcsv` for the first time fetches Magic groups, fetches products for each group, and writes raw API responses to `tcgcsv-groups.json`, `tcgcsv-products/{groupId}.json`, and `tcgcsv-meta.json` in `data/raw/`.
+2. Running it again (without `--force`) when last-updated timestamp equals meta.lastUpdated logs "up to date" and skips all fetches.
 3. Running with `--force` always fetches and overwrites, regardless of freshness.
-4. If last-updated.txt fetch fails, the 24h mtime fallback is used.
+4. If last-updated.txt fetch fails, the 24h mtime fallback (on `tcgcsv-groups.json`) is used.
 5. On any fetch failure, the command logs a warning and exits 0. Existing cached files are not overwritten.
-6. Rate limiting between product fetches is applied (~100–200 ms delay).
+6. Rate limiting between product fetches is applied (150 ms delay).
 7. All output goes to `stderr`; `stdout` remains clean.
-8. Products without a Number in extendedData, or in groups with empty abbreviation, are omitted from the map.
-9. All GET requests use `If-None-Match` when a stored ETag exists; 304 responses are handled without downloading the body.
+8. Raw API responses are written unchanged; no transformation in the download command.
+9. Groups and products GET requests use `If-None-Match` when a stored ETag exists; 304 responses are handled without downloading the body.
 10. Output files are written atomically (temp file + rename) to avoid partial writes on crash.
