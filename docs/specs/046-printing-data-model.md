@@ -183,10 +183,12 @@ Optional. Present when TCGCSV product map exists and at least one printing row h
 
 - `tcgplayer_set_lookup: string[]` — Lookup table. Index 0 = `""` (no resolution).
 - `tcgplayer_number_lookup: string[]` — Lookup table. Index 0 = `""` (no resolution).
+- `tcgplayer_name_lookup: string[]` — Lookup table. Index 0 = `""` (use oracle name). Non-zero entries are full TCGPlayer product names for variant resolution.
 - `tcgplayer_set_indices: number[]` — uint16 index into `tcgplayer_set_lookup`. 0 = no resolution.
 - `tcgplayer_number_indices: number[]` — uint16 index into `tcgplayer_number_lookup`. 0 = no resolution.
+- `tcgplayer_name_indices: number[]` — uint16 index into `tcgplayer_name_lookup`. 0 = use oracle name; non-zero = use looked-up product name.
 
-Rows where Scryfall provides `tcgplayer_id` (or `tcgplayer_etched_id` for etched) and the TCGCSV product map contains the product have non-zero indices; others have 0. Used for TCGPlayer Mass Entry export format (`[SET] collector`).
+Rows where Scryfall provides `tcgplayer_id` (or `tcgplayer_etched_id` for etched) and the TCGCSV product map contains the product have non-zero set/number indices; others have 0. Name indices are 0 when product name matches oracle name, non-zero when it differs (e.g. variant printings). Used for TCGPlayer Mass Entry export format (`quantity name [SET] collector`).
 
 ### Set lookup
 

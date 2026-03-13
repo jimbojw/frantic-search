@@ -6,7 +6,7 @@
 
 ## Goal
 
-Fetch raw Magic: The Gathering product and group data from [TCGCSV](https://tcgcsv.com/) and store it unchanged in `data/raw/`. The download command writes only actual API responses — no transformation. A separate process step (see § Process Step) reads this raw data and builds the `productId → { setAbbrev, number }` mapping for TCGPlayer Mass Entry export resolution (Spec 128).
+Fetch raw Magic: The Gathering product and group data from [TCGCSV](https://tcgcsv.com/) and store it unchanged in `data/raw/`. The download command writes only actual API responses — no transformation. A separate process step (see § Process Step) reads this raw data and builds the `productId → { setAbbrev, number, name }` mapping for TCGPlayer Mass Entry export resolution (Spec 128).
 
 TCGCSV is a public mirror of TCGPlayer's catalog, updated daily. It requires no API key. TCGPlayer itself no longer grants new API access.
 
@@ -201,8 +201,8 @@ etl/
 The download command writes only raw API responses. A separate **process step** (run as part of `npm run etl -- process`) reads this raw data and produces the product map:
 
 - **Input:** `data/raw/tcgcsv-groups.json`, `data/raw/tcgcsv-products/*.json`, `data/raw/tcgcsv-meta.json`
-- **Output:** `data/dist/tcgcsv-product-map.json` — `{ productMap: Record<string, { setAbbrev: string; number: string }> }`
-- **Logic:** For each group with non-empty `abbreviation`, read the corresponding products file. For each product, find `extendedData` entry where `name === "Number"`; add `productMap[productId] = { setAbbrev, number }` (last-wins for duplicate productId). Skip products without Number. Skip groups with empty abbreviation (e.g., "Box Sets", "Launch Party Cards").
+- **Output:** `data/dist/tcgcsv-product-map.json` — `{ productMap: Record<string, { setAbbrev: string; number: string; name: string }> }`
+- **Logic:** For each group with non-empty `abbreviation`, read the corresponding products file. For each product, find `extendedData` entry where `name === "Number"`; add `productMap[productId] = { setAbbrev, number, name: product.name ?? "" }` (last-wins for duplicate productId). Skip products without Number. Skip groups with empty abbreviation (e.g., "Box Sets", "Launch Party Cards").
 - **When to run:** As part of the process command, before process-printings. Runs when raw TCGCSV exists; skips when absent.
 
 ## Dependencies
@@ -216,7 +216,7 @@ No new npm dependencies. Use existing etl/ tooling. Send a `User-Agent` header (
 
 ## Downstream Usage
 
-Spec 128 (TCGPlayer Export Resolution) consumes the product map produced by the process step. process-printings loads `data/dist/tcgcsv-product-map.json`, joins Scryfall `tcgplayer_id` to the product map, and emits TCGPlayer set+number in the printing columnar data.
+Spec 128 (TCGPlayer Export Resolution) consumes the product map produced by the process step. process-printings loads `data/dist/tcgcsv-product-map.json`, joins Scryfall `tcgplayer_id` to the product map, and emits TCGPlayer set+number in the printing columnar data. The `name` field is used for variant name resolution (Spec 128 § Variant Name for Mass Entry).
 
 ## Acceptance Criteria
 

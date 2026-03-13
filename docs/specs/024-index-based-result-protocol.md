@@ -129,6 +129,8 @@ export type PrintingDisplayColumns = {
   /** TCGPlayer Mass Entry resolved set codes and collector numbers. Spec 128. */
   tcgplayer_set_codes?: string[]
   tcgplayer_collector_numbers?: string[]
+  /** TCGPlayer Mass Entry resolved product names (empty = use oracle name). Spec 128. */
+  tcgplayer_names?: string[]
 }
 
 export type FromWorker =
@@ -257,6 +259,9 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 - 2026-03-13: Added optional `tcgplayer_set_codes` and `tcgplayer_collector_numbers` to
   `PrintingDisplayColumns` (Spec 128). Resolved from columnar indices at load; used by
   TCGPlayer Mass Entry export when resolution exists.
+- 2026-03-13: Added optional `tcgplayer_names` to `PrintingDisplayColumns` (Spec 128).
+  Resolved from `tcgplayer_name_indices`; used for variant name in TCGPlayer Mass Entry
+  (e.g. `Banquet Guests (Showcase Scrolls)`).
 - 2026-02-25: Renamed `thumb_hashes` to `art_crop_thumb_hashes` and added
   `card_thumb_hashes` to `DisplayColumns` for card image ThumbHash
   placeholders (Spec 017). The new column supports future grid-view /

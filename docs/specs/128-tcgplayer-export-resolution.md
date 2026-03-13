@@ -36,7 +36,7 @@ When a printing has a resolved TCGPlayer mapping, use `tcgplayer_set_code` and `
 Scryfall default_cards     TCGCSV process step (Spec 127)
        │                         │
        │ tcgplayer_id             │ data/dist/tcgcsv-product-map.json
-       │                         │ productId → (abbrev, number)
+       │                         │ productId → (abbrev, number, name)
        │                         │
        └──────────┬───────────────┘
                   │
@@ -46,8 +46,8 @@ Scryfall default_cards     TCGCSV process step (Spec 127)
                   │
                   ▼
     PrintingColumnarData
-    tcgplayer_set_lookup, tcgplayer_number_lookup
-    tcgplayer_set_indices, tcgplayer_number_indices
+    tcgplayer_set_lookup, tcgplayer_number_lookup, tcgplayer_name_lookup
+    tcgplayer_set_indices, tcgplayer_number_indices, tcgplayer_name_indices
                   │
                   ▼
     extractPrintingDisplayColumns
@@ -55,7 +55,7 @@ Scryfall default_cards     TCGCSV process step (Spec 127)
                   │
                   ▼
     serializeTcgplayer
-    (prefer TCGPlayer when present)
+    (prefer TCGPlayer when present; use tcgplayer_names when non-empty)
 ```
 
 ## PrintingColumnarData Extension
@@ -66,10 +66,12 @@ Add optional columns to `PrintingColumnarData` in `shared/src/data.ts`. Use dict
 |--------|------|-------------|
 | `tcgplayer_set_lookup` | `string[]` | Lookup table. Index 0 = `""` (no resolution). |
 | `tcgplayer_number_lookup` | `string[]` | Lookup table. Index 0 = `""` (no resolution). |
+| `tcgplayer_name_lookup` | `string[]` | Lookup table. Index 0 = `""` (use oracle name). Entries are full product names for variant resolution. |
 | `tcgplayer_set_indices` | `number[]` | uint16 index into `tcgplayer_set_lookup`. 0 = no resolution. |
 | `tcgplayer_number_indices` | `number[]` | uint16 index into `tcgplayer_number_lookup`. 0 = no resolution. |
+| `tcgplayer_name_indices` | `number[]` | uint16 index into `tcgplayer_name_lookup`. 0 = use oracle name. |
 
-All four arrays are aligned with existing printing rows. When the columns are omitted entirely (legacy `printings.json`), the printing has no TCGPlayer resolution; serializeTcgplayer falls back to Scryfall-derived values.
+All six arrays are aligned with existing printing rows. When the columns are omitted entirely (legacy `printings.json`), the printing has no TCGPlayer resolution; serializeTcgplayer falls back to Scryfall-derived values.
 
 ## PrintingDisplayColumns Extension
 
@@ -79,8 +81,9 @@ Add optional fields to `PrintingDisplayColumns` in `shared/src/worker-protocol.t
 |-------|------|-------------|
 | `tcgplayer_set_codes` | `string[]` | Resolved set codes for display. |
 | `tcgplayer_collector_numbers` | `string[]` | Resolved collector numbers for display. |
+| `tcgplayer_names` | `string[]` | Resolved product names for Mass Entry. Empty = use oracle name; non-empty = use value (see § Variant Name for Mass Entry). |
 
-`extractPrintingDisplayColumns` in `shared/src/display-columns.ts` resolves indices to strings when TCGPlayer columns exist: for each row, if `tcgplayer_set_indices[row] > 0`, use `tcgplayer_set_lookup[tcgplayer_set_indices[row]]` and `tcgplayer_number_lookup[tcgplayer_number_indices[row]]`; otherwise use `""`. The worker receives resolved strings in `tcgplayer_set_codes` and `tcgplayer_collector_numbers`; `serializeTcgplayer` uses these when present (see Serialization Changes).
+`extractPrintingDisplayColumns` in `shared/src/display-columns.ts` resolves indices to strings when TCGPlayer columns exist: for each row, if `tcgplayer_set_indices[row] > 0`, use `tcgplayer_set_lookup[tcgplayer_set_indices[row]]` and `tcgplayer_number_lookup[tcgplayer_number_indices[row]]`; otherwise use `""`. The worker receives resolved strings in `tcgplayer_set_codes`, `tcgplayer_collector_numbers`, and `tcgplayer_names`; `serializeTcgplayer` uses these when present (see Serialization Changes, § Variant Name for Mass Entry).
 
 ## ETL: process-printings Changes
 
@@ -112,6 +115,45 @@ For each aggregated entry, when looking up `setCode` and `collectorNumber` from 
 3. If the chosen setCode and collectorNumber are both non-empty: emit `quantity name [SET] collector`.
 4. Else: emit `quantity name` only (name-only fallback; TCGPlayer accepts this with best-effort matching).
 
+## Variant Name for Mass Entry
+
+TCGPlayer Mass Entry requires the full product name when variants exist (e.g. `Banquet Guests (Showcase Scrolls)`). Without the variant suffix, `1 Banquet Guests [LTC] 450` fails; `1 Banquet Guests (Showcase Scrolls) [LTC] 450` works.
+
+**Design:** Store `""` when product name matches oracle name; otherwise store the full replacement name. Dictionary-encoded; most rows use index 0.
+
+**Product map shape (from Spec 127):** `{ setAbbrev, number, name }`. The `name` field is the TCGCSV product name.
+
+**Replacement logic (in process-printings):** When joining a printing to the product map, compare `product.name` to oracle name (front face for DFCs, matching TCGPlayer serialization):
+
+- If `product.name === oracleName` → store `""` (index 0).
+- If `product.name !== oracleName` → store full `product.name` as the replacement.
+
+**PrintingColumnarData extension:**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `tcgplayer_name_lookup` | `string[]` | Dictionary. Index 0 = `""` (use oracle name). Entries are full product names. |
+| `tcgplayer_name_indices` | `number[]` | uint16 index. 0 = use oracle name. Aligned with printing rows. |
+
+**PrintingDisplayColumns extension:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tcgplayer_names` | `string[]` | Resolved name per row. Empty = use oracle name; else use value. |
+
+**Serialization rule:** When emitting a TCGPlayer line and the row has `tcgplayer_set_codes` and `tcgplayer_collector_numbers`:
+
+- If `tcgplayer_names[row]` is empty → use oracle name.
+- Else → use `tcgplayer_names[row]` (full replacement).
+
+**Edge cases:**
+
+| Case | Product name | Stored | Output |
+|------|--------------|--------|--------|
+| Match | `Banquet Guests` | `""` (index 0) | `Banquet Guests` |
+| Variant | `Banquet Guests (Showcase Scrolls)` | full product name | `Banquet Guests (Showcase Scrolls)` |
+| MDFC | `Bridge of Khazad-dum - Ensnaring Bridge (Surge Foil)` | full product name | full product name |
+
 ## Finish Handling
 
 TCGPlayer Mass Entry does not support foil/etched markers. `serializeTcgplayer` already outputs lines without finish markers (Spec 109). The primary use case is nonfoil; `tcgplayer_id` in Scryfall typically refers to the default (nonfoil) product. Etched variants may have `tcgplayer_etched_id`; when emitting an etched instance, we resolve via that ID if present. Foil instances: use `tcgplayer_id` as a best-effort fallback; TCGPlayer may or may not match them correctly.
@@ -129,20 +171,22 @@ TCGPlayer Mass Entry does not support foil/etched markers. `serializeTcgplayer` 
 
 | Spec | Update |
 |------|--------|
-| 046 | Document `tcgplayer_set_lookup`, `tcgplayer_number_lookup`, `tcgplayer_set_indices`, and `tcgplayer_number_indices` as optional columns in PrintingColumnarData |
-| 024 | Document optional `tcgplayer_set_codes` and `tcgplayer_collector_numbers` on PrintingDisplayColumns in the printings-ready message (resolved strings; indices are internal) |
+| 046 | Document `tcgplayer_set_lookup`, `tcgplayer_number_lookup`, `tcgplayer_set_indices`, `tcgplayer_number_indices`, `tcgplayer_name_lookup`, and `tcgplayer_name_indices` as optional columns in PrintingColumnarData |
+| 024 | Document optional `tcgplayer_set_codes`, `tcgplayer_collector_numbers`, and `tcgplayer_names` on PrintingDisplayColumns in the printings-ready message (resolved strings; indices are internal) |
 
 ## Acceptance Criteria
 
-1. With TCGCSV data present (`npm run etl -- download-tcgcsv` then `npm run etl -- process`), the process step produces `data/dist/tcgcsv-product-map.json`, and `printings.json` includes `tcgplayer_set_lookup`, `tcgplayer_number_lookup`, `tcgplayer_set_indices`, and `tcgplayer_number_indices`. Rows where Scryfall provides `tcgplayer_id` and the product map has the product have non-zero indices; others have 0.
+1. With TCGCSV data present (`npm run etl -- download-tcgcsv` then `npm run etl -- process`), the process step produces `data/dist/tcgcsv-product-map.json`, and `printings.json` includes `tcgplayer_set_lookup`, `tcgplayer_number_lookup`, `tcgplayer_set_indices`, `tcgplayer_number_indices`, `tcgplayer_name_lookup`, and `tcgplayer_name_indices`. Rows where Scryfall provides `tcgplayer_id` and the product map has the product have non-zero set/number indices; name indices are 0 when product name matches oracle name, non-zero otherwise.
 2. Without TCGCSV data (or when the product map is absent), `printings.json` omits these columns; serialization uses Scryfall-derived values.
 3. `serializeTcgplayer` prefers TCGPlayer values when present and non-empty (via resolved display columns).
 4. Deck lists exported for TCGPlayer that previously failed (e.g., Banquet Guests LTC 450, Frodo LTC 461, basic lands from TMT) produce lines that TCGPlayer accepts when resolution exists. See Implementation Notes for expected output examples.
-5. Legacy `printings.json` (without TCGPlayer columns) continues to work; serialization falls back to current behavior.
-6. `extractPrintingDisplayColumns` resolves indices to strings and passes `tcgplayer_set_codes` and `tcgplayer_collector_numbers` to the worker.
+5. Deck with Banquet Guests (Showcase Scrolls) from LTC exports as `1 Banquet Guests (Showcase Scrolls) [LTC] 450` and pastes successfully into TCGPlayer Mass Entry.
+6. Legacy `printings.json` (without TCGPlayer columns) continues to work; serialization falls back to current behavior.
+7. `extractPrintingDisplayColumns` resolves indices to strings and passes `tcgplayer_set_codes`, `tcgplayer_collector_numbers`, and `tcgplayer_names` to the worker.
 
 ## Implementation Notes
 
 - **DefaultCard interface:** Extend the `DefaultCard` interface in `etl/src/process-printings.ts` with `tcgplayer_id?: number` and `tcgplayer_etched_id?: number` to read Scryfall's optional TCGPlayer product IDs.
 - **Test deck for criterion 4:** A minimal regression test deck could include Banquet Guests (LTC regular), Frodo, Adventurous Hobbit (LTC), and basic lands from TMT. With resolution, expected output includes e.g. `1 Banquet Guests [LTC] 47` (not `450`). Manual paste into TCGPlayer Mass Entry remains the authoritative acceptance test.
 - **2026-03-13:** Added `case 'tcgplayer'` to `app/src/deck-editor/serialization.ts` so that Review view diff lines and fallback serialization use the correct TCGPlayer format. The worker path was already wired; the local module was missing the dispatch.
+- **2026-03-13:** Added Variant Name for Mass Entry (§ Variant Name for Mass Entry). Product map (Spec 127) extended with `name`; process-printings compares product name to oracle name and encodes replacement via `tcgplayer_name_lookup` / `tcgplayer_name_indices`. Serialization uses `tcgplayer_names` when non-empty for the card name in TCGPlayer output.
