@@ -88,7 +88,10 @@ export type PrintingDisplayColumns = {
   /** Per-row promo type flags column 1. */
   promo_types_flags_1?: number[]
   /** Alternate name (normalized) → sorted printing row indices. Spec 111. */
-  alternate_name_to_printing_indices?: Record<string, number[]>
+  alternate_name_to_printing_indices?: Record<string, number[]>,
+  /** TCGPlayer Mass Entry resolved set codes and collector numbers. Spec 128. */
+  tcgplayer_set_codes?: string[]
+  tcgplayer_collector_numbers?: string[]
 }
 
 export type FromWorker =

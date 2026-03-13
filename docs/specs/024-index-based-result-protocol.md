@@ -126,6 +126,9 @@ export type PrintingDisplayColumns = {
   price_usd: number[]
   canonical_face_ref: number[]
   illustration_id_index?: number[]
+  /** TCGPlayer Mass Entry resolved set codes and collector numbers. Spec 128. */
+  tcgplayer_set_codes?: string[]
+  tcgplayer_collector_numbers?: string[]
 }
 
 export type FromWorker =
@@ -251,6 +254,9 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 
 ## Implementation Notes
 
+- 2026-03-13: Added optional `tcgplayer_set_codes` and `tcgplayer_collector_numbers` to
+  `PrintingDisplayColumns` (Spec 128). Resolved from columnar indices at load; used by
+  TCGPlayer Mass Entry export when resolution exists.
 - 2026-02-25: Renamed `thumb_hashes` to `art_crop_thumb_hashes` and added
   `card_thumb_hashes` to `DisplayColumns` for card image ThumbHash
   placeholders (Spec 017). The new column supports future grid-view /

@@ -39,7 +39,7 @@ export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
 export function extractPrintingDisplayColumns(
   data: PrintingColumnarData,
 ): PrintingDisplayColumns {
-  return {
+  const result: PrintingDisplayColumns = {
     scryfall_ids: data.scryfall_ids,
     collector_numbers: data.collector_numbers,
     set_codes: data.set_indices.map((idx) => data.set_lookup[idx]?.code ?? ""),
@@ -56,4 +56,17 @@ export function extractPrintingDisplayColumns(
       data.alternate_names_index ?? {},
     ),
   };
+
+  if (data.tcgplayer_set_indices && data.tcgplayer_number_indices) {
+    const setLookup = data.tcgplayer_set_lookup ?? [];
+    const numberLookup = data.tcgplayer_number_lookup ?? [];
+    result.tcgplayer_set_codes = data.tcgplayer_set_indices.map(
+      (idx) => (idx > 0 ? setLookup[idx] ?? "" : ""),
+    );
+    result.tcgplayer_collector_numbers = data.tcgplayer_number_indices.map(
+      (idx) => (idx > 0 ? numberLookup[idx] ?? "" : ""),
+    );
+  }
+
+  return result;
 }

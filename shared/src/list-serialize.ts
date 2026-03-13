@@ -90,6 +90,8 @@ interface AggregateOptions {
   preserveZone?: boolean;
   /** When true, DFCs use only the front face name (e.g. TCGPlayer Mass Entry). */
   frontFaceOnly?: boolean;
+  /** When true, use TCGPlayer-resolved set/number from display columns when present. Spec 128. */
+  preferTcgplayerForSetAndNumber?: boolean;
 }
 
 function aggregateInstances(
@@ -157,8 +159,19 @@ function aggregateInstances(
     if (g.scryfallId && printingDisplay) {
       const row = findPrintingRow(g.scryfallId, printingDisplay);
       if (row >= 0) {
-        setCode = printingDisplay.set_codes[row]!;
-        collectorNumber = printingDisplay.collector_numbers[row]!;
+        const preferTcg = options?.preferTcgplayerForSetAndNumber ?? false;
+        const tcgSet = printingDisplay.tcgplayer_set_codes?.[row];
+        const tcgNum = printingDisplay.tcgplayer_collector_numbers?.[row];
+        if (preferTcg && tcgSet && tcgNum) {
+          setCode = tcgSet;
+          collectorNumber = tcgNum;
+        } else if (preferTcg) {
+          setCode = tcgplayerSetCode(printingDisplay.set_codes[row]!);
+          collectorNumber = printingDisplay.collector_numbers[row]!;
+        } else {
+          setCode = printingDisplay.set_codes[row]!;
+          collectorNumber = printingDisplay.collector_numbers[row]!;
+        }
       }
     }
 
@@ -234,6 +247,7 @@ interface GroupByZoneOptions {
   preserveZone?: boolean;
   zoneOrder?: readonly (string | null)[];
   frontFaceOnly?: boolean;
+  preferTcgplayerForSetAndNumber?: boolean;
 }
 
 /** Zone order for Arena/MTGGoldfish/Moxfield: Commander first, then main deck, then sideboard block. */
@@ -493,6 +507,7 @@ export function serializeTcgplayer(
   const groups = groupByZone(instances, display, printingDisplay, {
     zoneOrder: COMMANDER_FIRST_ORDER,
     frontFaceOnly: true,
+    preferTcgplayerForSetAndNumber: true,
   });
   const mainZones = ["Commander", "Deck", null];
   const mainLines: string[] = [];
@@ -502,7 +517,7 @@ export function serializeTcgplayer(
     const cardLines = entries.map((e) => {
       let line = `${e.quantity} ${e.name}`;
       if (e.setCode && e.collectorNumber) {
-        line += ` [${tcgplayerSetCode(e.setCode)}] ${e.collectorNumber}`;
+        line += ` [${e.setCode}] ${e.collectorNumber}`;
       }
       return line;
     });

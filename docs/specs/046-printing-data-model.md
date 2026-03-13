@@ -177,6 +177,17 @@ Total: 52 bits for 52 values (49 discovered in initial bulk data scan plus `univ
 
 - `illustration_id_index: number[]` — uint16. Per-printing index into the set of unique artworks for that card's canonical face. The canonical printing's artwork gets 0; each other unique artwork gets 1, 2, 3, … (stable order by first appearance in default_cards). Null/missing `illustration_id` in Scryfall data receives a synthetic distinct index per card so those printings still appear. Enables `unique:art` deduplication (Spec 048, Issue #75).
 
+### TCGPlayer Mass Entry columns (Spec 128)
+
+Optional. Present when TCGCSV product map exists and at least one printing row has resolution. Omitted entirely when absent (legacy `printings.json`).
+
+- `tcgplayer_set_lookup: string[]` — Lookup table. Index 0 = `""` (no resolution).
+- `tcgplayer_number_lookup: string[]` — Lookup table. Index 0 = `""` (no resolution).
+- `tcgplayer_set_indices: number[]` — uint16 index into `tcgplayer_set_lookup`. 0 = no resolution.
+- `tcgplayer_number_indices: number[]` — uint16 index into `tcgplayer_number_lookup`. 0 = no resolution.
+
+Rows where Scryfall provides `tcgplayer_id` (or `tcgplayer_etched_id` for etched) and the TCGCSV product map contains the product have non-zero indices; others have 0. Used for TCGPlayer Mass Entry export format (`[SET] collector`).
+
 ### Set lookup
 
 The `set_lookup` table also carries `released_at` per set (the release date of the first printing seen), enabling the `date>setcode` proxy syntax where a set code resolves to its release date at query time.

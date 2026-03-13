@@ -1,6 +1,6 @@
 # Spec 128: TCGPlayer Export Resolution
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 127 (TCGCSV ETL Download), Spec 046 (Printing Data Model), Spec 110 (Hybrid Deck Editor)
 

@@ -5,6 +5,7 @@ import {
   ORACLE_CARDS_PATH,
   COLUMNS_PATH,
   PRINTINGS_PATH,
+  TCGCSV_PRODUCT_MAP_PATH,
   ensureDistDir,
 } from "./paths";
 import { log } from "./log";
@@ -62,6 +63,8 @@ interface DefaultCard {
   games?: string[];
   promo_types?: string[];
   prices?: Record<string, string | null>;
+  tcgplayer_id?: number;
+  tcgplayer_etched_id?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +175,27 @@ class SetEncoder {
   }
 
   lookup(): SetLookupEntry[] {
+    return this.table;
+  }
+}
+
+/** String-to-index encoder with index 0 reserved for "". Spec 128. */
+class StringEncoder {
+  private table: string[] = [""];
+  private index = new Map<string, number>();
+
+  encode(s: string): number {
+    if (s === "") return 0;
+    let idx = this.index.get(s);
+    if (idx === undefined) {
+      idx = this.table.length;
+      this.table.push(s);
+      this.index.set(s, idx);
+    }
+    return idx;
+  }
+
+  lookup(): string[] {
     return this.table;
   }
 }
@@ -299,9 +323,24 @@ export function processPrintings(verbose: boolean): void {
     illustrationIndexMap.set(cf, map);
   }
 
-  log(`Processing ${defaultCards.length} default card entries…`, verbose);
+  // Load TCGCSV product map for TCGPlayer Mass Entry resolution (Spec 128)
+  let productMap: Record<string, { setAbbrev: string; number: string }> | null = null;
+  if (fs.existsSync(TCGCSV_PRODUCT_MAP_PATH)) {
+    try {
+      const mapRaw = fs.readFileSync(TCGCSV_PRODUCT_MAP_PATH, "utf-8");
+      const parsed = JSON.parse(mapRaw) as { productMap?: Record<string, { setAbbrev: string; number: string }> };
+      productMap = parsed.productMap ?? null;
+    } catch (err) {
+      process.stderr.write(
+        `Warning: TCGCSV product map parse failed: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+    }
+  }
 
   const setEncoder = new SetEncoder();
+  const tcgSetEncoder = new StringEncoder();
+  const tcgNumberEncoder = new StringEncoder();
+  let hasAnyTcgResolution = false;
 
   const data: PrintingColumnarData = {
     canonical_face_ref: [],
@@ -319,6 +358,10 @@ export function processPrintings(verbose: boolean): void {
     promo_types_flags_1: [],
     illustration_id_index: [],
     set_lookup: [],
+    ...(productMap && {
+      tcgplayer_set_indices: [] as number[],
+      tcgplayer_number_indices: [] as number[],
+    }),
   };
 
   let dropped = 0;
@@ -392,6 +435,23 @@ export function processPrintings(verbose: boolean): void {
       data.promo_types_flags_1!.push(promoFlags.flags1);
       data.illustration_id_index!.push(illIdx);
 
+      // TCGPlayer Mass Entry resolution (Spec 128)
+      if (productMap) {
+        const productId =
+          finishStr === "etched" && card.tcgplayer_etched_id != null
+            ? card.tcgplayer_etched_id
+            : card.tcgplayer_id;
+        const entry = productId != null ? productMap[String(productId)] : undefined;
+        if (entry) {
+          data.tcgplayer_set_indices!.push(tcgSetEncoder.encode(entry.setAbbrev));
+          data.tcgplayer_number_indices!.push(tcgNumberEncoder.encode(entry.number));
+          hasAnyTcgResolution = true;
+        } else {
+          data.tcgplayer_set_indices!.push(0);
+          data.tcgplayer_number_indices!.push(0);
+        }
+      }
+
       totalEntries++;
     }
 
@@ -414,6 +474,14 @@ export function processPrintings(verbose: boolean): void {
   }
 
   data.set_lookup = setEncoder.lookup();
+
+  if (productMap && !hasAnyTcgResolution) {
+    delete data.tcgplayer_set_indices;
+    delete data.tcgplayer_number_indices;
+  } else if (productMap && hasAnyTcgResolution) {
+    data.tcgplayer_set_lookup = tcgSetEncoder.lookup();
+    data.tcgplayer_number_lookup = tcgNumberEncoder.lookup();
+  }
 
   log(`Dropped ${dropped} unmappable entries`, verbose);
   log(`Emitted ${totalEntries} printing rows (${data.set_lookup.length} unique sets)`, verbose);

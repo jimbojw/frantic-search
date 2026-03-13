@@ -446,6 +446,28 @@ describe("serializeTcgplayer", () => {
     expect(result).toBe("1 Lightning Bolt [LIST] C18-138");
   });
 
+  it("prefers TCGPlayer-resolved set and number when present (Spec 128)", () => {
+    const printingWithTcgResolution: PrintingDisplayColumns = {
+      ...printingDisplay,
+      tcgplayer_set_codes: ["LTC", "", "ISD"],
+      tcgplayer_collector_numbers: ["47", "", "51"],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithTcgResolution);
+    expect(result).toBe("1 Lightning Bolt [LTC] 47");
+  });
+
+  it("falls back to Scryfall when TCGPlayer resolution empty for row", () => {
+    const printingWithPartialTcg: PrintingDisplayColumns = {
+      ...printingDisplay,
+      tcgplayer_set_codes: ["", "2XM", ""],
+      tcgplayer_collector_numbers: ["", "141", ""],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithPartialTcg);
+    expect(result).toBe("1 Lightning Bolt [M21] 141");
+  });
+
   it("outputs collector numbers verbatim without stripping suffixes", () => {
     const printingWithSuffix: PrintingDisplayColumns = {
       ...printingDisplay,

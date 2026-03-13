@@ -60,6 +60,11 @@ export interface PrintingColumnarData {
   set_lookup: SetLookupEntry[];
   /** Alternate name → sorted printing row indices. Spec 111. */
   alternate_names_index?: Record<string, number[]>;
+  /** TCGPlayer Mass Entry resolution. Spec 128. Index 0 = "". */
+  tcgplayer_set_lookup?: string[];
+  tcgplayer_number_lookup?: string[];
+  tcgplayer_set_indices?: number[];
+  tcgplayer_number_indices?: number[];
 }
 
 /** Oracle tag inverted index: tag label → sorted canonical face indices. */
