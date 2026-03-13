@@ -110,7 +110,7 @@ async function fetchScryfallCards(query: string): Promise<CardEntry[]> {
   return cards;
 }
 
-function collectLocalCards(
+export function collectLocalCards(
   index: CardIndex,
   data: ColumnarData,
   printingData: PrintingColumnarData | null,
@@ -167,7 +167,7 @@ function collectLocalCards(
   return entries;
 }
 
-interface RawOracleCard {
+export interface RawOracleCard {
   id?: string;
   oracle_id?: string;
 }
@@ -222,7 +222,7 @@ function dedupeArtPrintingIndices(printingIndices: number[], pData: PrintingColu
   return out;
 }
 
-function normalizeLocalParity(
+export function normalizeLocalParity(
   data: ColumnarData,
   printingData: PrintingColumnarData | null,
   printingIndex: PrintingIndex | null,
@@ -295,9 +295,9 @@ function normalizeLocalParity(
   };
 }
 
-type ComparisonMode = "cards" | "prints" | "art";
+export type ComparisonMode = "cards" | "prints" | "art";
 
-interface DiffComparison {
+export interface DiffComparison {
   mode: ComparisonMode;
   inBoth: number;
   onlyLocal: number;
@@ -317,7 +317,7 @@ function groupCountBy<T>(entries: T[], keyFn: (e: T) => string | undefined): Map
   return map;
 }
 
-function compareBySetKeys(local: CardEntry[], scryfall: CardEntry[], keyFn: (e: CardEntry) => string | undefined, mode: ComparisonMode): DiffComparison {
+export function compareBySetKeys(local: CardEntry[], scryfall: CardEntry[], keyFn: (e: CardEntry) => string | undefined, mode: ComparisonMode): DiffComparison {
   const localByKey = new Map<string, CardEntry>();
   for (const e of local) {
     const k = keyFn(e);
@@ -347,7 +347,7 @@ function compareBySetKeys(local: CardEntry[], scryfall: CardEntry[], keyFn: (e: 
   };
 }
 
-function compareArtByOracleCounts(local: CardEntry[], scryfall: CardEntry[]): DiffComparison {
+export function compareArtByOracleCounts(local: CardEntry[], scryfall: CardEntry[]): DiffComparison {
   const localCounts = groupCountBy(local, (e) => e.oracleId);
   const scryCounts = groupCountBy(scryfall, (e) => e.oracleId);
   const allOracleIds = new Set<string>([
@@ -397,7 +397,7 @@ function compareArtByOracleCounts(local: CardEntry[], scryfall: CardEntry[]): Di
   };
 }
 
-function formatEntry(e: CardEntry, verbose: boolean): string {
+export function formatEntry(e: CardEntry, verbose: boolean): string {
   if (!verbose) return `  ${e.key ?? e.id}`;
   const extra = e.oracleId ? ` [oracle:${e.oracleId}]` : "";
   const keyInfo = e.key ? ` {key:${e.key}}` : "";

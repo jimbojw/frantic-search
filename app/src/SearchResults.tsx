@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show, onCleanup } from 'solid-js'
-import { Finish } from '@frantic-search/shared'
+import { Finish, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import ResultsBreakdown, { MV_BAR_COLOR, TYPE_BAR_COLOR } from './ResultsBreakdown'
 import SparkBars from './SparkBars'
 import { CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS } from './color-identity'
@@ -8,9 +8,10 @@ import ArtCrop from './ArtCrop'
 import CopyButton from './CopyButton'
 import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
-import { RARITY_LABELS, FINISH_LABELS, formatPrice, fullCardName } from './app-utils'
+import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { IconBug } from './Icons'
+import { IconBug, IconChevronRight, IconXMark } from './Icons'
+import ListControlsPopover from './ListControlsPopover'
 import { HighlightedLabel } from './InlineBreakdown'
 import { Outlink } from './Outlink'
 
@@ -61,9 +62,7 @@ export default function SearchResults() {
             >
               <Show when={ctx.histogramsExpanded()} fallback={
                 <>
-                  <svg class="size-2.5 shrink-0 fill-current text-gray-500 dark:text-gray-400 transition-transform duration-150" viewBox="0 0 24 24">
-                    <path d="M8 5l8 7-8 7z" />
-                  </svg>
+                  <IconChevronRight class="size-2.5 shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150" />
                   <div class="grid grid-cols-3 gap-4 flex-1 min-w-0 pr-3">
                     <div class="flex items-center gap-1 min-w-0">
                       <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
@@ -91,9 +90,7 @@ export default function SearchResults() {
                   class="hidden md:flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
                   aria-label="Collapse histograms"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <IconXMark class="size-5" />
                 </button>
               </Show>
             </div>
@@ -180,10 +177,41 @@ export default function SearchResults() {
                       if (idx === undefined || !pd) return null
                       return pd.set_codes[idx]
                     }
+                    const collectorNumber = () => {
+                      if (!ctx.hasPrintingConditions() && ctx.uniqueMode() === 'cards') return null
+                      const idx = pi()
+                      const pd = pdc()
+                      if (idx === undefined || !pd) return null
+                      const cn = pd.collector_numbers[idx]
+                      return cn && cn.trim() ? cn : null
+                    }
                     const aggCount = () => ctx.showPrintingResults() ? ctx.aggregationCountForCard(ci) : undefined
+                    const oracleId = () => d()?.oracle_ids?.[ci]
+                    const showListTrigger = () => ctx.cardListStore && oracleId()
                     return (
                       <Show when={ctx.viewMode() === 'full'} fallback={
                         <li class="group px-4 py-2 text-sm flex items-start gap-3">
+                          <Show when={showListTrigger()}>
+                            <div class="shrink-0 flex items-center">
+                              <ListControlsPopover
+                                popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                cardImage={{
+                                  scryfallId: artScryfallId()!,
+                                  colorIdentity: d()!.color_identity[ci],
+                                  thumbHash: d()!.card_thumb_hashes[ci],
+                                  onClick: () => ctx.navigateToCard(artScryfallId()),
+                                }}
+                                entries={[{
+                                  label: 'Any printing',
+                                  count: ctx.listCountForCard?.(ci) ?? 0,
+                                  onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
+                                  onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
+                                  addLabel: 'Add to list',
+                                  removeLabel: 'Remove from list',
+                                }]}
+                              />
+                            </div>
+                          </Show>
                           <div class="shrink-0 flex flex-col items-start">
                             <ArtCrop
                               scryfallId={artScryfallId()}
@@ -197,7 +225,7 @@ export default function SearchResults() {
                           <div class="min-w-0 flex-1">
                             <Show when={faces().length > 1} fallback={
                               <>
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={ctx.showOracleText()} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} />
+                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={ctx.showOracleText()} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
                               </>
                             }>
                               <div class="flex items-center gap-1.5 min-w-0">
@@ -208,8 +236,8 @@ export default function SearchResults() {
                                 >
                                   {name()}
                                 </button>
-                                <Show when={setBadge()}>
-                                  {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
+                                  {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                 </Show>
                                 <CopyButton text={name()} />
                               </div>
@@ -235,10 +263,31 @@ export default function SearchResults() {
                               <Show when={(aggCount() ?? 0) > 1}>
                                 <span class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">({aggCount()})</span>
                               </Show>
+                              <Show when={showListTrigger()}>
+                                <div class="mt-1 flex justify-center w-full">
+                                  <ListControlsPopover
+                                    popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                    cardImage={{
+                                      scryfallId: artScryfallId()!,
+                                      colorIdentity: d()!.color_identity[ci],
+                                      thumbHash: d()!.card_thumb_hashes[ci],
+                                      onClick: () => ctx.navigateToCard(artScryfallId()),
+                                    }}
+                                    entries={[{
+                                      label: 'Any printing',
+                                      count: ctx.listCountForCard?.(ci) ?? 0,
+                                      onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
+                                      onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
+                                      addLabel: 'Add to list',
+                                      removeLabel: 'Remove from list',
+                                    }]}
+                                  />
+                                </div>
+                              </Show>
                             </div>
                             <div class="min-w-0 flex-1 w-full">
                               <Show when={faces().length > 1} fallback={
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} />
+                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
                               }>
                                 <div class="flex items-center gap-1.5 min-w-0">
                                   <button
@@ -248,8 +297,8 @@ export default function SearchResults() {
                                   >
                                     {name()}
                                   </button>
-                                  <Show when={setBadge()}>
-                                    {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+                                  <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
+                                    {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                   </Show>
                                   <CopyButton text={name()} />
                                 </div>
@@ -278,10 +327,12 @@ export default function SearchResults() {
                         const isFoil = pd.finish[pi] === Finish.Foil
                         const isEtched = pd.finish[pi] === Finish.Etched
                         const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay ' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay ' : ''
+                        const oracleIdPrint = () => d()?.oracle_ids?.[ci]
+                        const showListTriggerPrint = () => ctx.cardListStore && oracleIdPrint()
                         return (
                           <li class="group px-4 py-3 text-sm">
                             <div class="flex flex-col min-[600px]:flex-row items-start gap-4">
-                              <div class={`${overlayClass()}w-[336px] max-w-full shrink-0 rounded-lg`}>
+                              <div class={`${overlayClass()}w-[336px] max-w-full shrink-0 flex flex-col items-start rounded-lg`}>
                                 <CardImage
                                   scryfallId={pd.scryfall_ids[pi]}
                                   colorIdentity={d()!.color_identity[ci]}
@@ -289,6 +340,47 @@ export default function SearchResults() {
                                   class="cursor-pointer rounded-lg"
                                   onClick={() => ctx.navigateToCard(pd.scryfall_ids[pi])}
                                 />
+                                <Show when={showListTriggerPrint()}>
+                                  <div class="mt-1 flex justify-center w-full">
+                                    {(() => {
+                                      const scryfallId = pd.scryfall_ids[pi]
+                                      const finish = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
+                                      const finishLabel = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
+                                      const cn = pd.collector_numbers[pi]?.trim() ?? ''
+                                      const setCode = pd.set_codes[pi]?.toUpperCase() ?? ''
+                                      const printingLabel = [setCode, cn, finish].filter(Boolean).join(' · ')
+                                      return (
+                                        <ListControlsPopover
+                                          popoverId={`list-popover-${ctx.paneId ?? 'main'}-print-${pi}`}
+                                          cardImage={{
+                                            scryfallId,
+                                            colorIdentity: d()!.color_identity[ci],
+                                            thumbHash: d()!.card_thumb_hashes[ci],
+                                            onClick: () => ctx.navigateToCard(scryfallId),
+                                          }}
+                                          entries={[
+                                            {
+                                              label: 'Any printing',
+                                              count: ctx.listCountForPrinting?.(pi) ?? 0,
+                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdPrint()!, DEFAULT_LIST_ID).catch(() => {}),
+                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdPrint()!).catch(() => {}),
+                                              addLabel: 'Add card to list',
+                                              removeLabel: 'Remove card from list',
+                                            },
+                                            {
+                                              label: printingLabel,
+                                              count: ctx.listCountForPrinting?.(pi, scryfallId, finish) ?? 0,
+                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdPrint()!, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {}),
+                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdPrint()!, scryfallId, finish).catch(() => {}),
+                                              addLabel: `Add ${finishLabel} printing to list`,
+                                              removeLabel: `Remove ${finishLabel} printing from list`,
+                                            },
+                                          ]}
+                                        />
+                                      )
+                                    })()}
+                                  </div>
+                                </Show>
                               </div>
                               <div class="min-w-0 flex-1 w-full">
                                 <Show when={faces().length > 1} fallback={
@@ -368,7 +460,7 @@ export default function SearchResults() {
               </Show>
             </ul>
           }>
-            <div class="border-t border-gray-200 dark:border-gray-800 overflow-hidden rounded-b-xl">
+            <div class="border-t border-gray-200 dark:border-gray-800 overflow-visible rounded-b-xl">
               <div class="grid grid-cols-[repeat(auto-fill,minmax(min(200px,45vw),1fr))] gap-px bg-gray-200 dark:bg-gray-800">
                 <Show when={ctx.visibleDisplayItems()} fallback={
                   <For each={ctx.visibleIndices()}>
@@ -377,15 +469,40 @@ export default function SearchResults() {
                         const faces = ctx.facesOf().get(ci) ?? []
                         return fullCardName(d()!, faces)
                       }
+                      const oracleIdImg = () => d()?.oracle_ids?.[ci]
+                      const showListTriggerImg = () => ctx.cardListStore && oracleIdImg()
                       return (
-                        <CardImage
-                          scryfallId={d()!.scryfall_ids[ci]}
-                          colorIdentity={d()!.color_identity[ci]}
-                          thumbHash={d()!.card_thumb_hashes[ci]}
-                          class="cursor-pointer hover:brightness-110 transition-[filter]"
-                          onClick={() => ctx.navigateToCard(d()!.scryfall_ids[ci])}
-                          aria-label={name()}
-                        />
+                        <div class="bg-white dark:bg-gray-900 flex flex-col">
+                          <CardImage
+                            scryfallId={d()!.scryfall_ids[ci]}
+                            colorIdentity={d()!.color_identity[ci]}
+                            thumbHash={d()!.card_thumb_hashes[ci]}
+                            class="cursor-pointer hover:brightness-110 transition-[filter]"
+                            onClick={() => ctx.navigateToCard(d()!.scryfall_ids[ci])}
+                            aria-label={name()}
+                          />
+                          <Show when={showListTriggerImg()}>
+                            <div class="px-1.5 py-1 flex justify-center">
+                              <ListControlsPopover
+                                popoverId={`list-popover-${ctx.paneId ?? 'main'}-card-${ci}`}
+                                cardImage={{
+                                  scryfallId: d()!.scryfall_ids[ci],
+                                  colorIdentity: d()!.color_identity[ci],
+                                  thumbHash: d()!.card_thumb_hashes[ci],
+                                  onClick: () => ctx.navigateToCard(d()!.scryfall_ids[ci]),
+                                }}
+                                entries={[{
+                                  label: 'Any printing',
+                                  count: ctx.listCountForCard?.(ci) ?? 0,
+                                  onAdd: () => ctx.cardListStore!.addInstance(oracleIdImg()!, DEFAULT_LIST_ID).catch(() => {}),
+                                  onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImg()!).catch(() => {}),
+                                  addLabel: 'Add to list',
+                                  removeLabel: 'Remove from list',
+                                }]}
+                              />
+                            </div>
+                          </Show>
+                        </div>
                       )
                     }}
                   </For>
@@ -401,6 +518,7 @@ export default function SearchResults() {
                             return fullCardName(d()!, faces)
                           }
                           const setCode = pd.set_codes[pi]
+                          const collectorNum = pd.collector_numbers[pi]?.trim() ?? ''
                           const rarityLabel = RARITY_LABELS[pd.rarity[pi]] ?? ''
                           const sid = pd.scryfall_ids[pi]
                           const isFoil = pd.finish[pi] === Finish.Foil
@@ -414,6 +532,8 @@ export default function SearchResults() {
                           const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay' : ''
                           const metaClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-meta' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-meta' : ''
                           const aggCount = ctx.aggregationCountForPrinting(pi)
+                          const oracleIdImgPrint = () => d()?.oracle_ids?.[ci]
+                          const showListTriggerImgPrint = () => ctx.cardListStore && oracleIdImgPrint()
                           return (
                             <div class={`bg-white dark:bg-gray-900 flex flex-col ${overlayClass()}`}>
                               <CardImage
@@ -424,15 +544,59 @@ export default function SearchResults() {
                                 onClick={() => ctx.navigateToCard(sid)}
                                 aria-label={name()}
                               />
-                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words ${metaClass()}`}>
-                                <span class="uppercase">{setCode}</span>
-                                {' · '}
-                                {rarityLabel}
-                                <Show when={finishLabel()}>
-                                  {(f) => <>{' · '}{f()}</>}
-                                </Show>
-                                <Show when={(aggCount ?? 0) > 1}>
-                                  {' · '}{aggCount} printings
+                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words flex items-start justify-between gap-2 ${metaClass()}`}>
+                                <span class="min-w-0 flex-1">
+                                  <span class="uppercase">{setCode}</span>
+                                  {collectorNum ? <>{' · '}{collectorNum}</> : null}
+                                  {' · '}
+                                  {rarityLabel}
+                                  <Show when={finishLabel()}>
+                                    {(f) => <>{' · '}{f()}</>}
+                                  </Show>
+                                  <Show when={(aggCount ?? 0) > 1}>
+                                    {' · '}{aggCount} printings
+                                  </Show>
+                                </span>
+                                <Show when={showListTriggerImgPrint()}>
+                                  <span class="shrink-0">
+                                    {(() => {
+                                      const scryfallIdImg = pd.scryfall_ids[pi]
+                                      const finishImg = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
+                                      const finishLabelImg = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
+                                      const cnImg = pd.collector_numbers[pi]?.trim() ?? ''
+                                      const setCodeImg = pd.set_codes[pi]?.toUpperCase() ?? ''
+                                      const printingLabelImg = [setCodeImg, cnImg, finishImg].filter(Boolean).join(' · ')
+                                      return (
+                                        <ListControlsPopover
+                                          popoverId={`list-popover-${ctx.paneId ?? 'main'}-print-${pi}`}
+                                          cardImage={{
+                                            scryfallId: scryfallIdImg,
+                                            colorIdentity: d()!.color_identity[ci],
+                                            thumbHash: d()!.card_thumb_hashes[ci],
+                                            onClick: () => ctx.navigateToCard(scryfallIdImg),
+                                          }}
+                                          entries={[
+                                            {
+                                              label: 'Any printing',
+                                              count: ctx.listCountForPrinting?.(pi) ?? 0,
+                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID).catch(() => {}),
+                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImgPrint()!).catch(() => {}),
+                                              addLabel: 'Add card to list',
+                                              removeLabel: 'Remove card from list',
+                                            },
+                                            {
+                                              label: printingLabelImg,
+                                              count: ctx.listCountForPrinting?.(pi, scryfallIdImg, finishImg) ?? 0,
+                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID, { scryfallId: scryfallIdImg, finish: finishImg }).catch(() => {}),
+                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImgPrint()!, scryfallIdImg, finishImg).catch(() => {}),
+                                              addLabel: `Add ${finishLabelImg} printing to list`,
+                                              removeLabel: `Remove ${finishLabelImg} printing from list`,
+                                            },
+                                          ]}
+                                        />
+                                      )
+                                    })()}
+                                  </span>
                                 </Show>
                               </div>
                             </div>

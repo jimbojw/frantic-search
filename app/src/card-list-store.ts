@@ -2,6 +2,7 @@
 import type {
   InstanceState,
   InstanceStateEntry,
+  ImportCandidate,
   ListMetadata,
   ListMetadataEntry,
   MaterializedView,
@@ -15,6 +16,7 @@ import {
 import {
   openCardListDb,
   appendInstanceEntry,
+  appendInstanceEntries,
   appendListMetadataEntry,
   replayInstanceLog,
   replayListMetadataLog,
@@ -129,6 +131,17 @@ export class CardListStore {
   }
 
   private applyInstanceDelta(instance: InstanceState, previous: Pick<InstanceState, 'list_id'> | null): void {
+    const affected = this.applyInstanceDeltaToView(instance, previous)
+    this.onChange?.([...new Set(affected)])
+  }
+
+  /**
+   * Apply instance delta to the materialized view only. Returns affected list IDs.
+   */
+  private applyInstanceDeltaToView(
+    instance: InstanceState,
+    previous: Pick<InstanceState, 'list_id'> | null
+  ): string[] {
     if (previous?.list_id) {
       const prevSet = this.view.instancesByList.get(previous.list_id)
       if (prevSet) {
@@ -143,8 +156,7 @@ export class CardListStore {
     }
     set.add(instance.uuid)
     this.view.instances.set(instance.uuid, instance)
-    const affected = [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
-    this.onChange?.([...new Set(affected)])
+    return [previous?.list_id, instance.list_id].filter((id): id is string => !!id)
   }
 
   getView(): MaterializedView {
@@ -152,22 +164,99 @@ export class CardListStore {
   }
 
   /**
+   * Return the newest (most recently added) matching instance, or null if none.
+   * Oracle-level: pass oracleId only; printing-level: pass scryfallId and finish.
+   * Used when adding to clone metadata from existing entry so list deduplication works.
+   */
+  async getNewestMatchingInstance(
+    listId: string,
+    oracleId: string,
+    scryfallId?: string | null,
+    finish?: string | null
+  ): Promise<InstanceState | null> {
+    if (!this.db) return null
+    const uuids = this.view.instancesByList.get(listId)
+    if (!uuids || uuids.size === 0) return null
+    const isOracleLevel = scryfallId == null && finish == null
+    const matching = new Set<string>()
+    for (const uuid of uuids) {
+      const instance = this.view.instances.get(uuid)
+      if (!instance || instance.oracle_id !== oracleId) continue
+      if (isOracleLevel) {
+        if (instance.scryfall_id == null && instance.finish == null) matching.add(uuid)
+      } else {
+        const finishMatch =
+          instance.finish === finish ||
+          (finish === 'nonfoil' && instance.finish == null)
+        if (instance.scryfall_id === scryfallId && finishMatch) matching.add(uuid)
+      }
+    }
+    if (matching.size === 0) return null
+    const keys = await getInstanceLatestLogKeys(this.db, matching)
+    let maxKey = -1
+    let targetUuid: string | null = null
+    for (const [uuid, key] of keys) {
+      if (key > maxKey) {
+        maxKey = key
+        targetUuid = uuid
+      }
+    }
+    return targetUuid ? this.view.instances.get(targetUuid) ?? null : null
+  }
+
+  /**
    * Add a new instance to a list. Assigns uuid via crypto.randomUUID().
+   * When the caller does not pass tags/zone/collection_status/variant and a matching
+   * instance exists, clones metadata from the newest matching instance so list
+   * deduplication yields a single line with increased count.
    */
   async addInstance(
     oracleId: string,
     listId: string,
-    scryfallId: string | null = null,
-    finish: string | null = null
+    opts?: {
+      scryfallId?: string | null
+      finish?: string | null
+      zone?: string | null
+      tags?: string[]
+      collection_status?: string | null
+      variant?: string | null
+    }
   ): Promise<InstanceState> {
     if (!this.db) throw new Error('CardListStore not initialized')
+    const shouldCloneMetadata =
+      opts?.tags === undefined &&
+      opts?.zone === undefined &&
+      opts?.collection_status === undefined &&
+      opts?.variant === undefined
+    let resolvedOpts = opts
+    if (shouldCloneMetadata) {
+      const template = await this.getNewestMatchingInstance(
+        listId,
+        oracleId,
+        opts?.scryfallId ?? undefined,
+        opts?.finish ?? undefined
+      )
+      if (template) {
+        resolvedOpts = {
+          ...opts,
+          tags: template.tags,
+          zone: template.zone,
+          collection_status: template.collection_status,
+          variant: template.variant,
+        }
+      }
+    }
     const uuid = crypto.randomUUID()
     const instance: InstanceState = {
       uuid,
       oracle_id: oracleId,
-      scryfall_id: scryfallId,
-      finish,
+      scryfall_id: resolvedOpts?.scryfallId ?? null,
+      finish: resolvedOpts?.finish ?? null,
       list_id: listId,
+      zone: resolvedOpts?.zone ?? null,
+      tags: resolvedOpts?.tags ?? [],
+      collection_status: resolvedOpts?.collection_status ?? null,
+      variant: resolvedOpts?.variant ?? null,
     }
     const entry: InstanceStateEntry = { ...instance, timestamp: Date.now() }
     await appendInstanceEntry(this.db, entry)
@@ -238,6 +327,68 @@ export class CardListStore {
    */
   async removeToTrash(uuid: string): Promise<InstanceState | null> {
     return this.transferInstance(uuid, TRASH_LIST_ID)
+  }
+
+  /**
+   * Apply a diff in batch: removals go to trash, additions go to the target list.
+   * Uses a single IndexedDB transaction and calls onChange once at the end.
+   */
+  async applyDiff(
+    listId: string,
+    removals: InstanceState[],
+    additions: ImportCandidate[]
+  ): Promise<void> {
+    if (!this.db) throw new Error('CardListStore not initialized')
+    if (removals.length === 0 && additions.length === 0) return
+
+    const entries: InstanceStateEntry[] = []
+    const newInstances: InstanceState[] = []
+    const timestamp = Date.now()
+
+    for (const inst of removals) {
+      entries.push({
+        ...inst,
+        list_id: TRASH_LIST_ID,
+        timestamp,
+      })
+    }
+
+    for (const cand of additions) {
+      const uuid = crypto.randomUUID()
+      const instance: InstanceState = {
+        uuid,
+        oracle_id: cand.oracle_id,
+        scryfall_id: cand.scryfall_id ?? null,
+        finish: cand.finish ?? null,
+        list_id: listId,
+        zone: cand.zone ?? null,
+        tags: cand.tags ?? [],
+        collection_status: cand.collection_status ?? null,
+        variant: cand.variant ?? null,
+      }
+      entries.push({ ...instance, timestamp })
+      newInstances.push(instance)
+    }
+
+    await appendInstanceEntries(this.db, entries)
+
+    const affected = new Set<string>()
+    for (const inst of removals) {
+      const transfer: InstanceState = { ...inst, list_id: TRASH_LIST_ID }
+      for (const id of this.applyInstanceDeltaToView(transfer, { list_id: inst.list_id })) {
+        affected.add(id)
+      }
+      this.broadcastInstance(transfer, { list_id: inst.list_id })
+    }
+
+    for (const instance of newInstances) {
+      for (const id of this.applyInstanceDeltaToView(instance, null)) {
+        affected.add(id)
+      }
+      this.broadcastInstance(instance, null)
+    }
+
+    this.onChange?.([...affected])
   }
 
   /**

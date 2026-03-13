@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
-import { toScryfallQuery, parse } from '@frantic-search/shared'
+import { toScryfallQuery, parse, DEFAULT_LIST_ID } from '@frantic-search/shared'
+import { getMatchingCount } from '@frantic-search/shared'
 import { buildFacesOf, buildScryfallSearchUrl } from './app-utils'
 import {
   getCompletionContext,
@@ -16,11 +17,13 @@ import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
+import { IconBars3, IconList, IconMagnifyingGlass, IconXMark } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import UnifiedBreakdown from './UnifiedBreakdown'
 import SearchResults from './SearchResults'
 import type { SearchContextValue } from './SearchContext'
+import type { CardListStore } from './card-list-store'
 
 const DUAL_WIELD_BREAKPOINT = 1024
 const SPLIT_STORAGE_KEY = 'frantic-dual-wield-split'
@@ -92,7 +95,13 @@ export type PaneState = {
   listEntryCountPerCard?: () => Map<number, number> | null
 }
 
-function buildPaneContext(state: PaneState): SearchContextValue {
+export type BuildPaneContextOpts = {
+  cardListStore?: CardListStore
+  listVersion?: () => number
+  paneId?: string
+}
+
+function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): SearchContextValue {
   const effectiveQuery = () => {
     const p = state.pinnedQuery().trim()
     const q = state.query().trim()
@@ -190,6 +199,33 @@ function buildPaneContext(state: PaneState): SearchContextValue {
     return buildScryfallSearchUrl(canonical, q)
   }
 
+  const store = opts?.cardListStore
+  const listVersion = opts?.listVersion
+  const listCountForCard = store && listVersion
+    ? (ci: number) => {
+        listVersion()
+        const d = state.display()
+        const oid = d?.oracle_ids?.[ci]
+        if (!oid) return 0
+        return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid)
+      }
+    : undefined
+  const listCountForPrinting = store && listVersion
+    ? (pi: number, scryfallId?: string, finish?: string) => {
+        listVersion()
+        const pd = state.printingDisplay()
+        const d = state.display()
+        if (!pd || !d) return 0
+        const cf = pd.canonical_face_ref[pi]
+        const oid = d.oracle_ids?.[cf]
+        if (!oid) return 0
+        if (scryfallId != null && finish != null) {
+          return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+        }
+        return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid)
+      }
+    : undefined
+
   return {
     query: state.query,
     setQuery: state.setQuery,
@@ -239,6 +275,13 @@ function buildPaneContext(state: PaneState): SearchContextValue {
     navigateToCard: state.navigateToCard,
     appendTerm: state.appendTerm,
     parseBreakdown: state.parseBreakdown,
+    ...(store && listVersion && {
+      cardListStore: store,
+      listVersion,
+      listCountForCard,
+      listCountForPrinting,
+      paneId: opts?.paneId,
+    }),
   }
 }
 
@@ -253,8 +296,15 @@ export function SearchPane(props: {
   onBlur: () => void
   workerStatus: () => 'loading' | 'ready' | 'error'
   class?: string
+  cardListStore?: CardListStore
+  listVersion?: () => number
+  paneId?: string
 }) {
-  const ctx = buildPaneContext(props.state)
+  const ctx = buildPaneContext(props.state, {
+    cardListStore: props.cardListStore,
+    listVersion: props.listVersion,
+    paneId: props.paneId,
+  })
   let textareaEl: HTMLTextAreaElement | undefined
   const [cursorOffset, setCursorOffset] = createSignal(0)
   const [selectionEnd, setSelectionEnd] = createSignal(0)
@@ -342,9 +392,7 @@ export function SearchPane(props: {
         <div class="overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
           <div class="relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
+              <IconMagnifyingGlass class="size-5" />
             </div>
             <div
               class="grid overflow-hidden relative"
@@ -431,6 +479,8 @@ export function DualWieldLayout(props: {
   onListsClick: () => void
   onNavigateHome: () => void
   onLeaveDualWield: () => void
+  cardListStore?: CardListStore
+  listVersion?: () => number
 }) {
   const [drawerOpen, setDrawerOpen] = createSignal<'left' | 'right' | null>(null)
   const [split, setSplit] = createSignal(parseStoredSplit())
@@ -510,9 +560,7 @@ export function DualWieldLayout(props: {
           class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Menu (left pane)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <IconBars3 class="size-6" />
         </button>
         <button
           type="button"
@@ -538,6 +586,9 @@ export function DualWieldLayout(props: {
           onBlur={() => {}}
           workerStatus={props.workerStatus}
           class="flex-1 min-h-0"
+          cardListStore={props.cardListStore}
+          listVersion={props.listVersion}
+          paneId="left"
         />
       </div>
 
@@ -566,6 +617,9 @@ export function DualWieldLayout(props: {
           onBlur={() => {}}
           workerStatus={props.workerStatus}
           class="flex-1 min-h-0"
+          cardListStore={props.cardListStore}
+          listVersion={props.listVersion}
+          paneId="right"
         />
       </div>
 
@@ -577,9 +631,15 @@ export function DualWieldLayout(props: {
           class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Menu (right pane)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <IconBars3 class="size-6" />
+        </button>
+        <button
+          type="button"
+          onClick={props.onListsClick}
+          class="mt-2 flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="My list"
+        >
+          <IconList class="size-5" />
         </button>
         <button
           type="button"
@@ -588,9 +648,7 @@ export function DualWieldLayout(props: {
           aria-label="Leave split view"
           title="Leave split view"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <IconXMark class="size-4" />
         </button>
       </div>
 
@@ -606,13 +664,12 @@ export function DualWieldLayout(props: {
           aria-label="Filters menu (left pane)"
         >
           <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
-            <SearchProvider value={buildPaneContext(props.leftState)}>
+            <SearchProvider value={buildPaneContext(props.leftState, { cardListStore: props.cardListStore, listVersion: props.listVersion, paneId: 'left' })}>
               <MenuDrawer
                 query={props.leftState.query()}
                 onSetQuery={(q) => { props.leftState.flushPendingCommit(); props.leftState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.leftState.navigateToReport}
-                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>
@@ -632,13 +689,12 @@ export function DualWieldLayout(props: {
           aria-label="Filters menu (right pane)"
         >
           <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
-            <SearchProvider value={buildPaneContext(props.rightState)}>
+            <SearchProvider value={buildPaneContext(props.rightState, { cardListStore: props.cardListStore, listVersion: props.listVersion, paneId: 'right' })}>
               <MenuDrawer
                 query={props.rightState.query()}
                 onSetQuery={(q) => { props.rightState.flushPendingCommit(); props.rightState.setQuery(q) }}
                 onHelpClick={props.navigateToHelp}
                 onReportClick={props.rightState.navigateToReport}
-                onListsClick={() => { setDrawerOpen(null); props.onListsClick() }}
                 onClose={() => setDrawerOpen(null)}
               />
             </SearchProvider>

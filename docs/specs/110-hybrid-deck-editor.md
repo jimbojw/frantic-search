@@ -1,0 +1,290 @@
+# Spec 110: Hybrid Import/Export Deck Editor
+
+**Status:** Implemented
+
+**Depends on:** Spec 075 (Card List Data Model), Spec 108 (List Import Textarea), Spec 109 (Deck Instance Model)
+
+## Goal
+
+Define the three-mode behavior of a unified, syntax-highlighted textarea that serves as both the import interface and the formatted output view for a card list. The editor has three modes — Init, Display, and Edit — and at any moment the textarea reflects exactly one: an empty editable surface (Init), a read-only rendering of the internal list state (Display), or the user's uncommitted draft text (Edit).
+
+## Background
+
+Spec 108 implemented a syntax-highlighted textarea and deck list lexer/validator. Spec 109 (draft) extends the Instance data model with zone, tags, collection status, and variant fields, and defines the import procedure that maps parsed tokens to Instances. Currently the `ListImportTextarea` component is a stateless input — text goes in, syntax highlighting comes out, but there is no connection to the persistent list model, no concept of modes, and no draft persistence.
+
+The goal is a single textarea that serves triple duty:
+
+- In **Init mode**, the list is empty. The textarea is editable with placeholder text, inviting the user to paste a decklist. External add actions (+ buttons) also work.
+- In **Display mode**, the list has content. The textarea is read-only and shows a formatted rendering of the internal state. Format chips control the output format.
+- In **Edit mode**, the user has a draft that diverges from the internal state. The draft is aggressively cached to `localStorage`. Committing the draft is a deliberate action (Apply).
+
+This spec covers the modal state machine, toolbar, format chips, draft persistence, and external mutation gating. It does **not** cover the diff calculation, the apply/commit procedure, or the confirmation modal — those are deferred to a follow-on spec.
+
+## Design
+
+### 1. Editor Modes
+
+The editor has three modes:
+
+| Mode | Textarea | Toolbar | Format Chips | External Mutations |
+|------|----------|---------|--------------|-------------------|
+| **Init** | Editable; empty with placeholder | No Apply, no Revert, no Edit; Copy hidden | Disabled | **Allowed** |
+| **Display** | Read-only; rendered internal state | Edit button (pencil icon), Copy | Active | **Allowed** |
+| **Edit** | Editable; user's draft text | Apply (enabled when valid), Revert, Copy | Disabled | **Gated** |
+
+Mode is derived from two inputs — whether a draft exists and whether the internal list has instances:
+
+| Draft exists? | List has instances? | Mode |
+|---------------|-------------------- |------|
+| No | No | **Init** |
+| No | Yes | **Display** |
+| Yes | (either) | **Edit** |
+
+### 2. Mode Transitions
+
+```
+              ┌──────────────────────────┐
+              │        Init Mode         │
+              │  (editable, empty, open) │
+              └─────┬──────────┬─────────┘
+                    │          │
+   user types/pastes│          │ external + adds
+                    │          │ first instance
+                    ▼          ▼
+  ┌─────────────────────┐   ┌────────────────────────┐
+  │     Edit Mode       │   │     Display Mode       │
+  │  (editable, draft)  │   │  (read-only, rendered) │
+  └──────────┬──────────┘   └──────────┬─────────────┘
+             │                         │
+             │  ┌──────────────────────┘
+             │  │ user clicks Edit button
+             │  │
+             │  ▼
+             │  (enters Edit with rendered
+             │   text as initial draft)
+             │
+     ┌───────┴───────┐
+     │               │
+  Apply (*)     Revert/Clear
+     │               │
+     ▼               ▼
+  Resulting       Internal
+  list empty?     state empty?
+   │    │          │    │
+  yes   no        yes   no
+   │    │          │    │
+   ▼    ▼          ▼    ▼
+ Init Display    Init Display
+```
+
+(*) Apply triggers the import/diff/commit pipeline defined in Spec 109. From this spec's perspective, Apply is a callback that receives the current draft text. On success, the draft is cleared. The resulting mode depends on whether the list now has instances.
+
+**Init → Edit:** The user types or pastes into the empty textarea. A draft is created, `localStorage` caching begins, and the toolbar shows Apply/Revert. The placeholder text disappears.
+
+**Init → Display:** An external action (e.g., + button on a search result card) adds the first instance to the list. The textarea switches to read-only and renders the new internal state. No draft is involved.
+
+**Display → Edit:** The user clicks the Edit button (pencil icon). The current rendered text becomes the initial draft. The textarea becomes editable, the toolbar shows Apply/Revert (replacing the Edit button), and format chips are disabled.
+
+**Edit → Display:** Apply succeeds and the resulting list is non-empty, OR Revert is clicked and the internal state is non-empty. The draft is cleared (memory and `localStorage`), and the textarea re-renders from internal state.
+
+**Edit → Init:** Apply succeeds and the resulting list is empty (user deleted all cards), OR Revert is clicked and the internal state is empty. The draft is cleared and the textarea returns to empty with placeholder.
+
+**Display → Init:** An external action (e.g., - button) removes the last instance from the list. The textarea switches from read-only rendered state to editable empty with placeholder.
+
+**Page load:** On mount, the component checks `localStorage` for a cached draft and inspects the internal list state. If a cached draft exists, the editor starts in Edit mode regardless of list contents. Otherwise, the mode is Init (empty list) or Display (non-empty list).
+
+### 3. Toolbar
+
+**Modified by Spec 113.** A horizontal bar above the textarea. Layout and button placement depend on mode — see Spec 113 § 1 for the full design. In brief:
+
+| Mode | Left | Right |
+|------|------|-------|
+| Display | Edit (primary) | Copy |
+| Edit, no changes | Cancel | Copy |
+| Edit, with changes | Revert | Apply (primary), Copy |
+
+Apply invokes an `onApply(draftText: string)` callback. The parent owns the diff/commit logic (follow-on spec). The callback returns a boolean (or Promise) indicating success; on success, the editor clears the draft and transitions to Display or Init depending on whether the resulting list has instances.
+
+### 4. Status Area
+
+A Status box renders **between** the toolbar and the textarea. It displays mode-appropriate information:
+
+| Mode | Content |
+|------|---------|
+| **Init** | Help text: "List is empty. Paste a deck list or add cards from search results." |
+| **Display** | Summary: "N card(s)" (total instance count). Future: breakdown by zone/type. |
+| **Edit** | When no errors: "+A / −R cards" (same as Apply popover). When errors: list each error with message. |
+
+**Edit mode with errors:** When `validateDeckList` returns lines with `kind: "error"`, the Status box switches to an **error state** with distinct styling (e.g., red/amber border, error icon). Display errors hierarchically:
+
+1. **Header:** "Errors (N card(s)):" — count of lines with errors.
+2. **Per error:** Two-column grid layout. Column 1: line number (1-based, e.g. `L11:`). Column 2: syntax-highlighted card line (same as textarea, no border/padding) and error message beneath with "Error: " prefix. Example:
+
+   ```
+   Errors (7 cards):
+   | L11: | 1x Bident of Thassa (000) *f* #Artifact #Card_Draw
+   |      | Error: Unknown set — "000"
+   | L23: | 1x Floodfarm Verge (DSK:33) *f* #Land
+   |      | Error: Card name "Floodfarm Verge" doesn't match `DSK` collector number `33`
+   ```
+
+   The validator may include span text in `LineValidation.message` (e.g., quoted set code for "Unknown set", or card name + set/collector for "Card name doesn't match printing") to make messages self-contained. When `span` is present and the message lacks the quoted span, the UI appends the span text for context.
+
+**Diff in Edit mode:** Compute diff from draft (debounced with validation) to show additions/removals when no errors. This mirrors the Apply popover content.
+
+**Styling:** Default (Init, Display, Edit with no errors): neutral background, muted text. Error state (Edit with errors): distinct styling — e.g., `border-red-500`, `bg-red-50 dark:bg-red-950/20`, error icon — so it is obvious that Apply is blocked and why.
+
+### 5. Format Chips
+
+A horizontal row of selectable chips, positioned above (or inline with) the toolbar. Each chip maps to an export format.
+
+**Init mode:** Chips are disabled (nothing to render or detect).
+
+**Display mode:** Chips are interactive. Selecting a chip re-renders the textarea using that format's serializer. The selected format persists in `localStorage` so it survives navigation and reload.
+
+**Edit mode:** Chips are non-interactive (visually muted, no pointer cursor, no click handler). However, the chip matching the **detected format** of the current draft is visually indicated — distinct from the interactive "selected" style used in Display mode, but clearly distinguishable from the other unmatched chips (e.g., outlined or subtly highlighted vs. filled). This communicates: "the system recognizes this as format X." If no format-specific tokens are present (ambiguous input), no chip is indicated.
+
+On Apply, the detected format becomes the selected Display mode format. This avoids a jarring reformat — the user sees their list rendered in the same format they just pasted.
+
+**Format detection:** A function in `shared/` examines the lexer token stream for format-discriminating tokens:
+
+| Discriminating tokens | Detected format |
+|----------------------|-----------------|
+| `HASH_TAG`, `ROLE_MARKER`, `FOIL_PRERELEASE_MARKER` | TappedOut |
+| `FOIL_MARKER`/`ETCHED_MARKER` with lowercase (`*f*`, `*f-etch*`, `*e*`) | TappedOut |
+| `CATEGORY`, `CATEGORY_TAG`, `COLLECTION_STATUS_TEXT` | Archidekt |
+| `FOIL_MARKER`, `ALTER_MARKER`, `ETCHED_MARKER` (Moxfield style) | Moxfield |
+| `VARIANT`, `SET_CODE_BRACKET`, `FOIL_PAREN`, `ETCHED_PAREN` | MTGGoldfish |
+| `SECTION_HEADER` value matches `MainDeck` / `Main Deck` | Melee.gg |
+| `SECTION_HEADER` only (no format-specific tokens) | Arena |
+| No format-specific tokens | Ambiguous (no chip indicated) |
+
+Detection uses a "most-specific wins" heuristic — if Archidekt-specific tokens are present alongside generic section headers, the result is Archidekt. Plain `quantity name` lines are valid in all formats and do not discriminate. Mixed format-specific tokens from different formats (unusual, likely manual editing) fall back to ambiguous.
+
+**Initial formats:** A minimal set to start — the serializer interface is designed so new formats can be added independently.
+
+**Serializer interface:**
+
+```typescript
+type DeckSerializer = (instances: InstanceState[], metadata: ListMetadata) => string
+```
+
+Each chip maps to a serializer function that receives the active list's instances and metadata and returns the formatted text for the textarea. Serializer implementations are out of scope for this spec.
+
+### 6. Draft State Persistence (localStorage)
+
+The draft is aggressively cached so it survives page reloads, navigation, and accidental tab closure.
+
+**Key:** `frantic-search-draft:{list_id}`
+
+**Value:** JSON-serialized object:
+
+```typescript
+interface DraftCache {
+  text: string
+  timestamp: number
+}
+```
+
+**Write timing:** On every `input` event — not debounced. Deck lists are small (typically <5 KB), so this has negligible performance cost. The purpose is crash safety, not periodic sync.
+
+**Restore:** On component mount, check for a cached draft for the active `list_id`. If one exists, enter Edit mode with the cached text. The Apply/Revert buttons serve as the dirty-state indicator.
+
+**Clear:** Remove the key from `localStorage` on successful Apply, on Revert, or when the user clears the editor. No automatic expiration for stale drafts — Revert lets the user discard them explicitly.
+
+**Cross-tab sync:** `localStorage` fires a `storage` event in all other same-origin tabs when a key is written or removed. The component listens for `storage` events on the draft key. When another tab creates a draft, the receiving tab enters Edit mode (and gates mutations) for that list. When another tab clears the draft (Apply or Revert), the receiving tab exits Edit mode. The originating tab updates its own state directly — the `storage` event only fires in other tabs. No additional `BroadcastChannel` is needed for draft state; the existing `frantic-search-card-lists` channel (Spec 075) handles instance log changes independently.
+
+### 7. External Mutation Gating
+
+While the editor is in Edit mode, the user has a draft representing their intended list state. If external actions (add/remove buttons on search results, quantity adjustments) modified the internal model concurrently, the rendered state the user expects to see on Revert (or after Apply) would be unpredictable.
+
+To prevent this:
+
+- When Edit mode is active, UI elements that write to the `instance_log` for the **active list** are disabled (visually dimmed, non-interactive).
+- The gating signal is a reactive boolean (`isDraftActive`) exposed from the editor via callback or shared context.
+- **Gated actions:** Add-to-list, remove-from-list, quantity increment/decrement, and any other operation that appends to the active list's instance log.
+- **Ungated actions:** Operations on other lists, search queries, navigation, and read-only interactions remain fully functional.
+
+Init mode and Display mode do **not** gate external mutations. In Init mode, + buttons are the expected way to start building a list. In Display mode, +/- buttons trigger immediate re-render of the read-only textarea.
+
+### 8. Component Architecture
+
+`ListImportTextarea` is refactored into a `DeckEditor` component that owns:
+
+- Mode state (derived from draft presence and list emptiness)
+- Draft text signal + `localStorage` sync
+- Format chip selection signal
+- Serializer dispatch (Display mode rendering)
+- Toolbar rendering (Edit, Apply, Revert, Copy — state-dependent)
+- The existing syntax-highlighting overlay layer (Spec 108)
+- Validation memo (Spec 108)
+
+**Props:**
+
+```typescript
+interface DeckEditorProps {
+  listId: string
+  instances: InstanceState[]
+  metadata: ListMetadata
+  display: DisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null
+  onApply: (draftText: string) => Promise<boolean>
+  onDraftActiveChange?: (active: boolean) => void
+}
+```
+
+`ListHighlight` remains an inner implementation detail. The highlight layer renders in all three modes — Init shows nothing (or placeholder), Display and Edit text is syntax-highlighted.
+
+## Out of Scope
+
+- **Diff calculation** (+M cards, -N cards, ~K modified) — Spec 109 § 5.
+- **Apply/commit procedure** (parsing draft, computing delta, writing to IndexedDB) — Spec 109 §§ 4, 7.
+- **Confirmation modal** — Spec 109 § 6.
+- **Fuzzy matching / auto-correction** for card names.
+- **Serializer implementations** — this spec defines the interface; individual format serializers are implemented separately.
+- **Tag editing UX**, zone drag-and-drop, or structural editing beyond text.
+
+## Acceptance Criteria
+
+1. When the list is empty and no draft is cached, the editor is in Init mode: textarea is editable with placeholder text, no toolbar actions except that the user can type or paste.
+2. In Init mode, external + actions add instances and transition to Display mode.
+3. In Display mode, the textarea is read-only and shows the rendered internal list state.
+4. In Display mode, clicking the Edit button transitions to Edit mode with the rendered text as the initial draft.
+5. Format chips are interactive in Display mode, disabled in Init mode, and non-interactive in Edit mode.
+6. Selecting a format chip re-renders the Display mode textarea in that format.
+7. In Edit mode, the chip matching the detected format is visually indicated (distinct from the Display mode selected style). No chip is indicated when detection is ambiguous.
+8. On Apply, the detected format (if any) becomes the selected Display mode format.
+9. In Edit mode, the Apply button is visible and enabled only when validation reports zero errors.
+10. In Edit mode, the Revert button is visible; clicking it discards the draft and returns to Display (list non-empty) or Init (list empty).
+11. Apply returns to Display (resulting list non-empty) or Init (resulting list empty).
+12. Copy-to-clipboard works in Display and Edit modes.
+13. Draft text is written to `localStorage` on every input event.
+14. On mount, a cached draft is restored and the editor enters Edit mode regardless of list contents.
+15. On successful Apply or Revert, the `localStorage` draft is cleared.
+16. While in Edit mode, add/remove actions for the active list are disabled. Init and Display modes do not gate mutations.
+17. Syntax highlighting (Spec 108) works in Display and Edit modes.
+18. Removing the last instance via external - action transitions Display → Init.
+19. Status box renders between toolbar and textarea in all modes.
+20. Init mode: Help text explains empty list, paste or add via UI.
+21. Display mode: Shows "N card(s)" (instance count).
+22. Edit mode, no errors: Shows "+A / −R cards" (or "No changes" when 0/0).
+23. Edit mode, with errors: Shows "Errors (N card(s)):" header and each error hierarchically — full card line as context, error message indented beneath.
+24. Error state has visually distinct styling (border, background) from default state.
+
+## Implementation Notes
+
+- 2026-03-09: Initial implementation of the three-mode state machine, toolbar, format chips, draft persistence, cross-tab sync, and mutation gating signal. Apply shows a placeholder popover ("Apply is not yet supported") and on OK discards the draft, returning to Display or Init. The DeckEditor component replaces ListImportTextarea and the Lists page was stripped to back button + title + DeckEditor.
+- 2026-03-09: Format detection (`shared/src/list-format.ts`) examines token stream for format-discriminating tokens per the spec's heuristic table. Serializers (`shared/src/list-serialize.ts`) implement Arena (quantity + name) and Moxfield (quantity + name + set/collector + finish markers). Other format chips are visible but fall back to Arena when selected. The serializer interface takes `(instances, display, printingDisplay)` rather than the spec's `(instances, metadata)` since card name and printing resolution require display columns.
+- 2026-03-09: On Apply → OK, the detected format (if any) becomes the selected Display mode format per spec § 4, preserving the user's format context even though the actual apply/commit is stubbed.
+- 2026-03-09: Toolbar updated to always show all four buttons (Revert, Edit, Apply, Copy) in fixed order, conditionally disabled by mode. Revert on left (semantic "back"); Edit between Revert and Apply to reduce misclicks; Copy right-aligned.
+- 2026-03-09: Serialization format fixes. Arena/MTGGoldfish: Commander first, deck, two newlines, Sideboard — no headings. Moxfield: `SIDEBOARD:` on own line for post-main zones. Archidekt: flat alphabetical list, no headers; zone-derived tags when tags empty. Melee: `MainDeck` header, two newlines, `Sideboard` header. Added `serializeMelee`.
+- 2026-03-10: Display mode serialization runs in the search worker to keep the main thread responsive. The main thread requests serialization via `postMessage` and renders the returned string. When `onSerializeRequest` is not provided (e.g. tests), DeckEditor falls back to synchronous `serialize()` on the main thread.
+- 2026-03-10: Added TappedOut format. Format chip, detection (HASH_TAG, ROLE_MARKER, lowercase foil markers), and `serializeTappedOut` (1x name (SET:num) *f* #Tag, flat alphabetical).
+- 2026-03-12: Moxfield serializer emits `#Tag` for custom tags when present (per moxfield.com/help/managing-custom-tags). Uses `preserveTagsAndStatus: true` in groupByZone so tags are included in aggregated entries.
+- 2026-03-10: Added Status area between toolbar and textarea. Mode-specific content: Init help, Display card count, Edit diff or validation errors. Error state styling when validation fails.
+- 2026-03-10: Status box error display made hierarchical per spec § 4 — "Errors (N card(s)):" header, full card line as context, error message indented beneath. Validator enhanced to produce richer messages (set code for "Unknown set", card name + set/collector for "Card name doesn't match printing").
+- 2026-03-10: Error lines show 1-based line numbers (L11:) and syntax highlighting; line block uses same background as textarea for visual consistency.
+- 2026-03-10: Error display reorganized into 2-column grid (line number | content); removed border/padding from highlighted lines; added "Error: " prefix to messages.
+- 2026-03-10: Toolbar and Status box redesigned per Spec 113. Toolbar reduced to Edit and Copy only; Revert, Cancel, and Apply moved into the Status box with contextual placement.
+- 2026-03-10: Spec 113 revised. All actions (Edit, Cancel, Revert, Apply, Copy) moved to toolbar. Status box content-only. Flush toolbar (single border, contiguous buttons). Three-part layout TOOLBAR | STATUS | DECK LIST with shared borders.
+- 2026-03-13: Added MTGSalvation export format. `serializeMtgsalvation(instances, display, listName?)` emits `[deck=Name]`, type-ordered sections (Commander, Creature, Enchantment, Land, Artifact, Instant, Sorcery, Planeswalker, Tribal), `1 Card Name` lines, `[/deck]`. No set/collector/foil markers. Protocol extended: optional `listName` passed to `serialize-list` for formats that need it. Type extraction: first matching type from `type_line`; multi-type cards (e.g. Artifact Creature) → Creature section.

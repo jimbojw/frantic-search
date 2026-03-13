@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import {
+  IconArrowTopRightOnSquare,
+  IconCheck,
+  IconChevronLeft,
+  IconClipboardDocument,
+} from './Icons'
+import ListControls from './ListControls'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
-import { getMatchingCount } from './list-mask-builder'
+import { getMatchingCount } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
-import { RARITY_LABELS, FINISH_LABELS, formatPrice } from './app-utils'
+import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice } from './app-utils'
 import { Outlink } from './Outlink'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
@@ -56,9 +63,6 @@ const STATUS_LABELS: Record<LegalityStatus, string> = {
   restricted: 'Restricted',
   not_legal: 'Not Legal',
 }
-
-/** Maps numeric finish (0=nonfoil, 1=foil, 2=etched) to InstanceState.finish string. */
-const FINISH_TO_STRING = ['nonfoil', 'foil', 'etched'] as const
 
 const DOUBLE_SIDED_LAYOUTS = new Set(['transform', 'modal_dfc'])
 
@@ -160,41 +164,6 @@ function FaceDetail(props: { d: DisplayColumns; fi: number }) {
   )
 }
 
-function ListControls(props: {
-  count: number
-  onAdd: () => void
-  onRemove: () => void
-  addLabel: string
-  removeLabel: string
-}) {
-  return (
-    <span class="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-100/80 dark:bg-gray-800/80 px-1.5 py-0.5">
-      <button
-        type="button"
-        onClick={props.onRemove}
-        disabled={props.count === 0}
-        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-0.5"
-        aria-label={props.removeLabel}
-      >
-        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
-        </svg>
-      </button>
-      <span class="min-w-[1.5rem] text-center text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">{props.count}</span>
-      <button
-        type="button"
-        onClick={props.onAdd}
-        class="shrink-0 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-0.5"
-        aria-label={props.addLabel}
-      >
-        <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-      </button>
-    </span>
-  )
-}
-
 function formatTagCount(cards?: number, prints?: number): string {
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString())
   if (cards !== undefined) return `${fmt(cards)} cards`
@@ -251,17 +220,8 @@ function TagChip(props: {
           class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
           aria-label={`Copy ${query()} to clipboard`}
         >
-          <Show
-            when={copied()}
-            fallback={
-              <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-              </svg>
-            }
-          >
-            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
+          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
+            <IconCheck class="size-3.5 text-green-500" />
           </Show>
         </button>
       </div>
@@ -342,9 +302,7 @@ export default function CardDetail(props: {
           class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
           aria-label="Back to search results"
         >
-          <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <IconChevronLeft class="size-5" />
         </button>
         <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
         <div class="flex items-center gap-1 shrink-0">
@@ -353,9 +311,7 @@ export default function CardDetail(props: {
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
             aria-label="View on Scryfall"
           >
-            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
+            <IconArrowTopRightOnSquare class="size-5" />
           </Outlink>
         </div>
       </div>
@@ -507,7 +463,7 @@ export default function CardDetail(props: {
                                           const oid = oracleId()
                                           const scryfallId = pcols().scryfall_ids[pi]
                                           const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
-                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                         }}
                                         onRemove={() => {
                                           const store = props.cardListStore!
@@ -551,7 +507,7 @@ export default function CardDetail(props: {
                                       const oid = oracleId()
                                       const scryfallId = pcols().scryfall_ids[pidx]
                                       const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
-                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, scryfallId, finish).catch(() => {})
+                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                     }}
                                     onRemove={() => {
                                       const store = props.cardListStore!
@@ -577,14 +533,8 @@ export default function CardDetail(props: {
                           class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
                           aria-label="Copy Slack bot reference"
                         >
-                          <Show when={copied()} fallback={
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
-                            </svg>
-                          }>
-                            <svg class="size-3.5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
+                          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
+                            <IconCheck class="size-3.5 text-green-500" />
                           </Show>
                         </button>
                       </div>

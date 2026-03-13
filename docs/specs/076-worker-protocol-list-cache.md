@@ -41,7 +41,7 @@ For `list-update`, pass `faceMask` (and optionally `printingMask`) as a [transfe
 
 ### Main Thread Responsibilities
 
-1. On list load or change: build `faceMask` from oracle-level Instances; build `printingMask` from printing-level Instances when printing data is available (`scryfall_id` and `finish`).
+1. On list load or change: build `faceMask` from oracle-level Instances; build `printingMask` from printing-level Instances when printing data is available. Per Spec 075, an Instance is either generic (oracle_id only; scryfall_id and finish null) or specific (scryfall_id + finish). When `finish` is null but `scryfall_id` is set (legacy data from before import set finish to nonfoil), treat as nonfoil so `printingMask` is set and `my:list` + `unique:prints` shows only that printing.
 2. Map `oracle_id` → canonical face index using `display.oracle_ids` — index in the array is the face row index; `canonical_face` maps face → canonical for multi-face cards.
 3. Map Instance entries `(scryfall_id, finish)` to printing row indices using `PrintingDisplayColumns`. Build a lookup when `printings-ready` arrives; reuse for all lists. Encode `InstanceState.finish` (string) to match the numeric finish in the printing columns (0=nonfoil, 1=foil, 2=etched) for the lookup.
 4. Send `{ type: 'list-update', listId, faceMask, printingMask? }` to worker with transfer. Include `printingMask` when the list has printing-level entries and printing data is loaded.
@@ -96,3 +96,4 @@ When a list is empty, send `list-update` with a zeroed `faceMask` (same length a
 ## Implementation Notes
 
 - 2026-03-07: Extended to include trash. Main thread now sends list-update for `TRASH_LIST_ID` in addition to `view.lists.keys()`; trash is a system list without metadata.
+- 2026-03-12: Mask building fix: when an Instance has `scryfall_id` but `finish` is null (e.g. `1 Reliquary Tower (TDC) 386` with no foil marker), treat as nonfoil so `printingMask` is set. Previously, `scryfall_id && finish` skipped these entries, causing printing-only lists to be treated as oracle-only; `my:list unique:prints` then expanded to all printings instead of the listed one. `list-mask-builder.buildMasksForList` now uses `encodeFinish(finish ?? 'nonfoil')`; `hasPrintingLevelEntries` and `getMatchingCount` updated for consistency.

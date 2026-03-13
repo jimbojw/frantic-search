@@ -44,6 +44,13 @@ When an Instance is created (pulled from external), all of these are locked in:
 | `scryfall_id` | string \| null | `null` = generic (oracle only). Specific printing when set. |
 | `finish` | string \| null | Tied to `scryfall_id`; `null` when generic. Valid values: `"nonfoil"`, `"foil"`, `"etched"` (matching Scryfall's `finishes` vocabulary). Spec 076 encodes these to numeric `0/1/2` when building printing masks. |
 
+**Instance granularity invariant:** An Instance is either **totally generic** or **fully specific** — never a mix:
+
+- **Generic:** `scryfall_id` and `finish` are both null. Identifies "any printing of this card."
+- **Specific:** Both `scryfall_id` and `finish` are set. The pair `(scryfall_id, finish)` uniquely identifies a piece of cardboard (minus currently unsupported modifiers such as prerelease variant).
+
+When creating Instances from deck list import, if a line resolves to a specific printing (set + collector) but has no foil/etched marker, set `finish` to `"nonfoil"` so the stored data satisfies the invariant. Mask-building and aggregation logic may treat `scryfall_id` + null `finish` as nonfoil for backwards compatibility with existing data.
+
 **Only `list_id` mutates** — where the Instance lives. Records of location are in the append-only log.
 
 **Swapping a card** (e.g., change printing, or replace with a different card) = remove one Instance to trash/external, add another from external. Two operations, two Instances.

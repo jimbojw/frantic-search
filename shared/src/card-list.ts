@@ -7,6 +7,10 @@ export interface InstanceState {
   scryfall_id: string | null
   finish: string | null
   list_id: string
+  zone: string | null
+  tags: string[]
+  collection_status: string | null
+  variant: string | null
 }
 
 /** Instance log entry. Every entry is a full snapshot. Latest per uuid = current state. */
@@ -20,6 +24,7 @@ export interface ListMetadata {
   name: string
   description?: string
   short_name?: string
+  tag_colors?: Record<string, string>
 }
 
 /** List metadata log entry. Every entry is a full snapshot. Latest per list_id = current metadata. */
@@ -56,3 +61,5 @@ export const TRASH_LIST_ID = 'trash'
 export const DEFAULT_LIST_ID = 'default'
 
 export const BROADCAST_CHANNEL_NAME = 'frantic-search-card-lists'
+
+export const KNOWN_ZONES = ["Deck", "Sideboard", "Commander", "Companion", "Maybeboard"] as const

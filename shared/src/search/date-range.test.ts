@@ -2,7 +2,7 @@
 import { describe, test, expect } from "vitest";
 import { parseDateRange } from "./date-range";
 import { PrintingIndex } from "./printing-index";
-import { Rarity, Finish, Frame, PrintingFlag } from "../bits";
+import { Rarity, Finish, Frame } from "../bits";
 import type { PrintingColumnarData } from "../data";
 
 const MINIMAL_PRINTING_DATA: PrintingColumnarData = {

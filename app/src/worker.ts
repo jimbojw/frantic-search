@@ -4,12 +4,26 @@ import type {
   PrintingColumnarData,
   ToWorker,
   FromWorker,
-  DisplayColumns,
-  PrintingDisplayColumns,
   OracleTagData,
   IllustrationTagData,
 } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache } from '@frantic-search/shared'
+import {
+  CardIndex,
+  PrintingIndex,
+  NodeCache,
+  serializeArena,
+  serializeMoxfield,
+  serializeArchidekt,
+  serializeMtggoldfish,
+  serializeMelee,
+  serializeTappedOut,
+  serializeTcgplayer,
+  serializeManapool,
+  serializeMtgsalvation,
+  validateLines,
+  extractDisplayColumns,
+  extractPrintingDisplayColumns,
+} from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -18,50 +32,6 @@ declare const __COLUMNS_FILESIZE__: number
 declare const __PRINTINGS_FILENAME__: string
 declare const __OTAGS_FILENAME__: string
 declare const __ATAGS_FILENAME__: string
-
-function extractDisplayColumns(data: ColumnarData): DisplayColumns {
-  const len = data.names.length
-  return {
-    names: data.names,
-    mana_costs: data.mana_costs,
-    type_lines: data.type_lines,
-    oracle_texts: data.oracle_texts,
-    powers: data.powers,
-    toughnesses: data.toughnesses,
-    loyalties: data.loyalties,
-    defenses: data.defenses,
-    color_identity: data.color_identity,
-    scryfall_ids: data.scryfall_ids,
-    art_crop_thumb_hashes: data.art_crop_thumb_hashes ?? new Array<string>(len).fill(''),
-    card_thumb_hashes: data.card_thumb_hashes ?? new Array<string>(len).fill(''),
-    layouts: data.layouts,
-    legalities_legal: data.legalities_legal,
-    legalities_banned: data.legalities_banned,
-    legalities_restricted: data.legalities_restricted,
-    power_lookup: data.power_lookup,
-    toughness_lookup: data.toughness_lookup,
-    loyalty_lookup: data.loyalty_lookup,
-    defense_lookup: data.defense_lookup,
-    canonical_face: data.canonical_face,
-    oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(''),
-    edhrec_rank: data.edhrec_ranks,
-    edhrec_salt: data.edhrec_salts,
-  }
-}
-
-function extractPrintingDisplayColumns(data: PrintingColumnarData): PrintingDisplayColumns {
-  return {
-    scryfall_ids: data.scryfall_ids,
-    collector_numbers: data.collector_numbers,
-    set_codes: data.set_indices.map(idx => data.set_lookup[idx]?.code ?? ''),
-    set_names: data.set_indices.map(idx => data.set_lookup[idx]?.name ?? ''),
-    rarity: data.rarity,
-    finish: data.finish,
-    price_usd: data.price_usd,
-    canonical_face_ref: data.canonical_face_ref,
-    illustration_id_index: data.illustration_id_index,
-  }
-}
 
 function post(msg: FromWorker, transfer?: Transferable[]): void {
   self.postMessage(msg, transfer ?? [])
@@ -251,8 +221,12 @@ async function init(): Promise<void> {
   const printingIndex = printingData
     ? new PrintingIndex(printingData, data.scryfall_ids)
     : null
-  const listMaskCache = new Map<string, { faceMask: Uint8Array; printingMask?: Uint8Array }>()
+  const listMaskCache = new Map<
+    string,
+    { printingIndices?: Uint32Array; metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] } }
+  >()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
+  const getMetadataIndex = () => listMaskCache.get("default")?.metadataIndex ?? null
   let faceToOtags: Map<number, string[]> | null = null
   let printingToAtags: Map<number, string[]> | null = null
   const tagDataRef = {
@@ -261,13 +235,49 @@ async function init(): Promise<void> {
   }
   const keywordsIndex = data.keywords_index ?? {}
   const keywordDataRef = { keywords: keywordsIndex }
-  const cache = new NodeCache(index, printingIndex, getListMask, tagDataRef, keywordDataRef)
-  const display = extractDisplayColumns(data)
+  const cache = new NodeCache(
+    index,
+    printingIndex,
+    getListMask,
+    tagDataRef,
+    keywordDataRef,
+    getMetadataIndex,
+  )
+  const displayRef = extractDisplayColumns(data)
+  const printingDisplayRef = printingData ? extractPrintingDisplayColumns(printingData) : null
 
-  post({ type: 'status', status: 'ready', display, keywordLabels: Object.keys(keywordsIndex) })
+  post({ type: 'status', status: 'ready', display: displayRef, keywordLabels: Object.keys(keywordsIndex) })
 
   if (printingData) {
-    post({ type: 'status', status: 'printings-ready', printingDisplay: extractPrintingDisplayColumns(printingData) })
+    post({ type: 'status', status: 'printings-ready', printingDisplay: printingDisplayRef! })
+  }
+
+  function serializeList(
+    instances: import('@frantic-search/shared').InstanceState[],
+    format: import('@frantic-search/shared').DeckFormat,
+    listName?: string
+  ): string {
+    switch (format) {
+      case 'moxfield':
+        return serializeMoxfield(instances, displayRef, printingDisplayRef)
+      case 'archidekt':
+        return serializeArchidekt(instances, displayRef, printingDisplayRef)
+      case 'mtggoldfish':
+        return serializeMtggoldfish(instances, displayRef, printingDisplayRef)
+      case 'melee':
+        return serializeMelee(instances, displayRef)
+      case 'tappedout':
+        return serializeTappedOut(instances, displayRef, printingDisplayRef)
+      case 'tcgplayer':
+        return serializeTcgplayer(instances, displayRef, printingDisplayRef)
+      case 'manapool':
+        return serializeManapool(instances, displayRef, printingDisplayRef)
+      case 'mtgsalvation':
+        return serializeMtgsalvation(instances, displayRef, listName)
+      case 'arena':
+      default:
+        return serializeArena(instances, displayRef)
+    }
   }
 
   otagsPromise.then((otags) => {
@@ -293,10 +303,22 @@ async function init(): Promise<void> {
     const msg = e.data
     if (msg.type === 'list-update') {
       listMaskCache.set(msg.listId, {
-        faceMask: msg.faceMask,
-        printingMask: msg.printingMask,
+        printingIndices: msg.printingIndices,
+        metadataIndex: msg.metadataIndex,
       })
       cache.clearAllComputed()
+      return
+    }
+    if (msg.type === 'serialize-list') {
+      const text = serializeList(msg.instances, msg.format, msg.listName)
+      post({ type: 'serialize-result', requestId: msg.requestId, text })
+      return
+    }
+    if (msg.type === 'validate-list') {
+      const { result, indices } = validateLines(
+        msg.lines, index, printingIndex, displayRef, printingDisplayRef, cache,
+      )
+      post({ type: 'validate-result', requestId: msg.requestId, result, indices }, [indices.buffer])
       return
     }
     if (msg.type === 'get-tags-for-card') {

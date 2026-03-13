@@ -27,6 +27,9 @@ import {
 interface DefaultCardFace {
   illustration_id?: string;
   oracle_id?: string;
+  name?: string;
+  printed_name?: string;
+  flavor_name?: string;
 }
 
 interface DefaultCard {
@@ -35,6 +38,8 @@ interface DefaultCard {
   illustration_id?: string;
   card_faces?: DefaultCardFace[];
   name?: string;
+  printed_name?: string;
+  flavor_name?: string;
   layout?: string;
   set?: string;
   set_name?: string;
@@ -226,6 +231,11 @@ function buildCanonicalScryfallIdMap(): Map<number, string> {
   return map;
 }
 
+/** Normalize for alternate name index: lowercase, strip non-alphanumeric. Spec 111. */
+function normalizeAltName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 /** Front-face illustration_id (multiface uses card_faces[0]). */
 function getFrontIllustrationId(card: DefaultCard): string | undefined {
   return card.card_faces?.[0]?.illustration_id ?? card.illustration_id;
@@ -318,6 +328,7 @@ export function processPrintings(verbose: boolean): void {
 
   let dropped = 0;
   let totalEntries = 0;
+  const altNamesIndex: Record<string, number[]> = {};
 
   for (const card of defaultCards) {
     // reversible_card layout: Scryfall puts oracle_id on card_faces[0], not top-level (Issue #98)
@@ -349,6 +360,22 @@ export function processPrintings(verbose: boolean): void {
     const illMap = illustrationIndexMap.get(canonicalFace);
     const illIdx = illMap?.get(illKey) ?? 0;
 
+    // Collect alternate names for this printing (Spec 111)
+    const altNames: string[] = [];
+    const collectAlt = (alt: string | undefined, refName: string) => {
+      if (!alt || alt.toLowerCase() === refName.toLowerCase()) return;
+      const norm = normalizeAltName(alt);
+      if (norm) altNames.push(norm);
+    };
+    collectAlt(card.printed_name, card.name ?? "");
+    collectAlt(card.flavor_name, card.name ?? "");
+    for (const face of card.card_faces ?? []) {
+      collectAlt(face.printed_name, face.name ?? card.name ?? "");
+      collectAlt(face.flavor_name, face.name ?? card.name ?? "");
+    }
+
+    const printingRowStart = totalEntries;
+
     for (const finishStr of finishes) {
       const finishVal = FINISH_FROM_STRING[finishStr];
       if (finishVal === undefined) continue;
@@ -373,6 +400,23 @@ export function processPrintings(verbose: boolean): void {
 
       totalEntries++;
     }
+
+    // Map each alternate name to the printing rows just emitted (Spec 111)
+    if (altNames.length > 0) {
+      for (let pi = printingRowStart; pi < totalEntries; pi++) {
+        for (const norm of altNames) {
+          (altNamesIndex[norm] ??= []).push(pi);
+        }
+      }
+    }
+  }
+
+  // Sort each alternate name's printing row array (Spec 111)
+  for (const arr of Object.values(altNamesIndex)) {
+    arr.sort((a, b) => a - b);
+  }
+  if (Object.keys(altNamesIndex).length > 0) {
+    data.alternate_names_index = altNamesIndex;
   }
 
   data.set_lookup = setEncoder.lookup();

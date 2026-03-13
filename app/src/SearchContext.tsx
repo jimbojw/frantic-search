@@ -10,6 +10,7 @@ import type {
   BreakdownNode,
 } from '@frantic-search/shared'
 import type { ViewMode } from './view-mode'
+import type { CardListStore } from './card-list-store'
 
 export interface SearchContextValue {
   query: Accessor<string>
@@ -50,6 +51,12 @@ export interface SearchContextValue {
   navigateToCard: (scryfallId: string) => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
+  /** List add/remove (Spec 124). When absent, list controls are not rendered. */
+  cardListStore?: CardListStore
+  listVersion?: Accessor<number>
+  listCountForCard?: (ci: number) => number
+  listCountForPrinting?: (pi: number, scryfallId?: string, finish?: string) => number
+  paneId?: string
 }
 
 export const SearchContext = createContext<SearchContextValue | undefined>(undefined)

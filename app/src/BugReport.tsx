@@ -2,6 +2,7 @@
 import { createSignal, Show, For } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { parse, toScryfallQuery } from '@frantic-search/shared'
+import { IconChevronLeft } from './Icons'
 import { openOutlink } from './Outlink'
 
 declare const __APP_VERSION__: string
@@ -184,9 +185,7 @@ export default function BugReport(props: {
           class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
           aria-label="Back"
         >
-          <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <IconChevronLeft class="size-5" />
         </button>
         <h1 class="text-lg font-bold tracking-tight">Report a Problem</h1>
       </div>

@@ -86,6 +86,17 @@ describe('buildSpans', () => {
     ])
   })
 
+  it('classifies # metadata tags with metadata role (Spec 123)', () => {
+    expect(roles('#combo')).toEqual([['#combo', 'metadata']])
+    expect(roles('my:list #combo')).toEqual([
+      ['my', 'field'],
+      [':', 'operator'],
+      ['list', 'value'],
+      [' ', null],
+      ['#combo', 'metadata'],
+    ])
+  })
+
   it('classifies parens', () => {
     expect(roles('(a OR b)')).toEqual([
       ['(', 'paren'],

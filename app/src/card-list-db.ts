@@ -94,6 +94,26 @@ export function appendInstanceEntry(
 }
 
 /**
+ * Append multiple instance log entries in a single transaction.
+ * Order is preserved: entries are appended in array order.
+ */
+export function appendInstanceEntries(
+  db: IDBDatabase,
+  entries: InstanceStateEntry[]
+): Promise<void> {
+  if (entries.length === 0) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(INSTANCE_LOG_STORE, 'readwrite')
+    const store = tx.objectStore(INSTANCE_LOG_STORE)
+    for (const entry of entries) {
+      store.add(entry)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+/**
  * Append a list metadata log entry. Does not close the database.
  */
 export function appendListMetadataEntry(
@@ -131,6 +151,10 @@ export function replayInstanceLog(
       const entry = cursor.value as InstanceStateEntry
       if (!result.has(entry.uuid)) {
         const { timestamp: _t, ...state } = entry
+        state.zone ??= null
+        state.tags ??= []
+        state.collection_status ??= null
+        state.variant ??= null
         result.set(entry.uuid, state)
       }
       cursor.continue()

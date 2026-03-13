@@ -9,8 +9,11 @@ npm run cli -- parse <query>                     # print AST as JSON
 npm run cli -- search <query>                    # evaluate against card dataset
 npm run cli -- search <query> --output names     # print matching card names
 npm run cli -- search <query> --output cards     # print full card JSON
+npm run cli -- search "my:list" --list=-         # run my:list with deck list from stdin
 npm run cli -- diff "<query>"                    # compare local vs Scryfall results
 npm run cli -- diff "<query>" --quiet            # compact output (IDs only)
+npm run cli -- list-diff "<query>" --list <path> # compare list vs search for my:list
+npm run cli -- list-diff "<query>" --list=- -q  # list from stdin, quiet output
 npm run cli -- --help
 ```
 

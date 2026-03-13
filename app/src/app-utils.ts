@@ -102,6 +102,9 @@ export const FINISH_LABELS: Record<number, string> = {
   [Finish.Etched]: 'Etched',
 }
 
+/** Maps numeric finish (0=nonfoil, 1=foil, 2=etched) to InstanceState.finish string. */
+export const FINISH_TO_STRING = ['nonfoil', 'foil', 'etched'] as const
+
 export function formatPrice(cents: number): string {
   if (cents === 0) return '\u2014'
   return `$${(cents / 100).toFixed(2)}`

@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from '@frantic-search/shared'
-import { parse, toScryfallQuery, TRASH_LIST_ID } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
+import type { DeckFormat } from '@frantic-search/shared'
+import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import SyntaxHelp from './SyntaxHelp'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
+import DeckBugReport from './DeckBugReport'
+import type { DeckReportContext } from './deck-editor/DeckEditorContext'
 import ListsPage from './ListsPage'
 import UnifiedBreakdown from './UnifiedBreakdown'
 import MenuDrawer from './MenuDrawer'
@@ -30,10 +33,12 @@ import { CardListStore } from './card-list-store'
 import {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
   buildMasksForList,
-  hasPrintingLevelEntries,
+  buildMetadataIndex,
   countListEntriesPerCard,
-} from './list-mask-builder'
+  getMatchingCount,
+} from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
 import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
 import { createPaneState } from './pane-state-factory'
@@ -46,6 +51,12 @@ import {
   applyCompletion,
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
+import {
+  IconAdjustmentsHorizontal,
+  IconBars3,
+  IconList,
+  IconMagnifyingGlass,
+} from './Icons'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -67,6 +78,7 @@ function App() {
   const [listTab, setListTab] = createSignal<'default' | 'trash'>(parseListTab(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [reportingPane, setReportingPane] = createSignal<'left' | 'right'>('left')
+  const [deckReportContext, setDeckReportContext] = createSignal<DeckReportContext | null>(null)
   const [headerArtLoaded, setHeaderArtLoaded] = createSignal(false)
   const [dataProgress, setDataProgress] = createSignal(0)
   const [workerStatus, setWorkerStatus] = createSignal<'loading' | 'ready' | 'error'>('loading')
@@ -388,7 +400,27 @@ function App() {
   let latestQueryId = 0
   let latestQueryIdLeft = 0
   let latestQueryIdRight = 0
+  let serializeRequestId = 0
+  const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
+  let validateRequestId = 0
+  const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
+
+  function serializeDeckList(instances: InstanceState[], format: DeckFormat, listName?: string): Promise<string> {
+    const requestId = ++serializeRequestId
+    return new Promise((resolve, reject) => {
+      serializePending.set(requestId, { resolve, reject })
+      worker.postMessage({ type: 'serialize-list', requestId, instances, format, listName })
+    })
+  }
+
+  function validateLines(lines: string[]): Promise<{ result: LineValidationResult[]; indices: Int32Array }> {
+    const requestId = ++validateRequestId
+    return new Promise((resolve) => {
+      validatePending.set(requestId, resolve)
+      worker.postMessage({ type: 'validate-list', requestId, lines })
+    })
+  }
 
   function sendListUpdatesFor(
     workerRef: Worker,
@@ -399,21 +431,38 @@ function App() {
   ): void {
     const oracleMap = buildOracleToCanonicalFaceMap(d)
     const view = store.getView()
-    const faceCount = d.oracle_ids.length
     const printingCount = pd?.scryfall_ids.length ?? 0
     const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+    const canonicalPrintingPerFace = pd ? buildCanonicalPrintingPerFace(pd) : undefined
+    const metadataIndex =
+      printingCount > 0
+        ? buildMetadataIndex(view, {
+            printingCount,
+            oracleToCanonicalFace: oracleMap,
+            printingLookup,
+            canonicalPrintingPerFace,
+          })
+        : undefined
     for (const listId of affectedListIds) {
-      const { faceMask, printingMask } = buildMasksForList({
+      const { printingIndices } = buildMasksForList({
         view,
         listId,
-        faceCount,
         printingCount,
         oracleToCanonicalFace: oracleMap,
         printingLookup,
+        canonicalPrintingPerFace,
       })
-      const transfer: Transferable[] = [faceMask.buffer]
-      if (printingMask) transfer.push(printingMask.buffer)
-      workerRef.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
+      const transfer: Transferable[] = []
+      if (printingIndices) transfer.push(printingIndices.buffer)
+      const meta =
+        listId === DEFAULT_LIST_ID ? metadataIndex : undefined
+      if (meta?.indexArrays) {
+        for (const arr of meta.indexArrays) transfer.push(arr.buffer)
+      }
+      workerRef.postMessage(
+        { type: 'list-update', listId, printingIndices, metadataIndex: meta },
+        transfer,
+      )
     }
   }
 
@@ -429,6 +478,18 @@ function App() {
     cardListStore.init().catch((err) => {
       console.error('CardListStore init failed:', err)
     })
+  })
+
+  // Sync list masks to worker whenever listVersion or display changes. Ensures the worker
+  // receives list-update even when onChange ran with display null (e.g. before worker ready).
+  createEffect(() => {
+    listVersion()
+    const d = display()
+    if (!d) return
+    const pd = printingDisplay()
+    const view = cardListStore.getView()
+    const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
+    sendListUpdatesFor(worker, listIds, d, pd, cardListStore)
   })
 
   createEffect(() => {
@@ -474,22 +535,11 @@ function App() {
         } else if (msg.status === 'printings-ready') {
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()
-          const listsWithPrintings = [...new Set([...view.lists.keys(), TRASH_LIST_ID])].filter((lid) =>
-            hasPrintingLevelEntries(view, lid)
-          )
-          if (listsWithPrintings.length > 0) {
-            const d = display()
-            if (d) {
-              sendListUpdatesFor(
-                worker,
-                listsWithPrintings,
-                d,
-                msg.printingDisplay,
-                cardListStore
-              )
-              // Re-run search so my:list + unique:prints override applies with full masks
-              setListVersion((v) => v + 1)
-            }
+          const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
+          const d = display()
+          if (d && listIds.length > 0) {
+            sendListUpdatesFor(worker, listIds, d, msg.printingDisplay, cardListStore)
+            setListVersion((v) => v + 1)
           }
         } else {
           if (msg.status === 'ready') {
@@ -500,27 +550,14 @@ function App() {
             cardListStore
               .init()
               .then(() => {
-                const d = msg.display
-                const pd = printingDisplay()
-                const oracleMap = buildOracleToCanonicalFaceMap(d)
-                const view = cardListStore.getView()
-                const faceCount = d.oracle_ids.length
-                const printingCount = pd?.scryfall_ids.length ?? 0
-                const printingLookup = pd ? buildPrintingLookup(pd) : undefined
-                const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
-                for (const listId of listIds) {
-                  const { faceMask, printingMask } = buildMasksForList({
-                    view,
-                    listId,
-                    faceCount,
-                    printingCount,
-                    oracleToCanonicalFace: oracleMap,
-                    printingLookup,
-                  })
-                  const transfer: Transferable[] = [faceMask.buffer]
-                  if (printingMask) transfer.push(printingMask.buffer)
-                  worker.postMessage({ type: 'list-update', listId, faceMask, printingMask }, transfer)
-                }
+                const listIds = [...new Set([...cardListStore.getView().lists.keys(), TRASH_LIST_ID])]
+                sendListUpdatesFor(
+                  worker,
+                  listIds,
+                  msg.display,
+                  printingDisplay(),
+                  cardListStore,
+                )
                 setWorkerStatus('ready')
               })
               .catch((err) => {
@@ -539,6 +576,22 @@ function App() {
       case 'card-tags':
         setCardTags({ otags: msg.otags, atags: msg.atags })
         break
+      case 'serialize-result': {
+        const pending = serializePending.get(msg.requestId)
+        if (pending) {
+          serializePending.delete(msg.requestId)
+          pending.resolve(msg.text)
+        }
+        break
+      }
+      case 'validate-result': {
+        const cb = validatePending.get(msg.requestId)
+        if (cb) {
+          validatePending.delete(msg.requestId)
+          cb({ result: msg.result, indices: msg.indices })
+        }
+        break
+      }
       case 'result': {
         const side = msg.side
         const matchesLeft = !side && msg.queryId === latestQueryId
@@ -787,6 +840,23 @@ function App() {
         : effectiveQuery().trim()
     if (q) params.set('q', q)
     params.set('report', '')
+    history.pushState(null, '', `?${params}`)
+    setView('report')
+    window.scrollTo(0, 0)
+  }
+
+  function navigateToViewList(listId: string) {
+    const q = `v:images unique:prints include:extras my:${listId === 'trash' ? 'trash' : 'list'}`
+    navigateToQuery(q)
+  }
+
+  function navigateToDeckReport(context: DeckReportContext) {
+    cancelPendingCommit()
+    saveScrollPosition()
+    setDeckReportContext(context)
+    const params = new URLSearchParams()
+    params.set('report', '')
+    params.set('deck', '1')
     history.pushState(null, '', `?${params}`)
     setView('report')
     window.scrollTo(0, 0)
@@ -1097,6 +1167,29 @@ function App() {
     navigateToCard,
     appendTerm,
     parseBreakdown,
+    cardListStore,
+    listVersion,
+    paneId: 'main',
+    listCountForCard: (ci: number) => {
+      listVersion()
+      const d = display()
+      const oid = d?.oracle_ids?.[ci]
+      if (!oid) return 0
+      return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid)
+    },
+    listCountForPrinting: (pi: number, scryfallId?: string, finish?: string) => {
+      listVersion()
+      const pd = printingDisplay()
+      const d = display()
+      if (!pd || !d) return 0
+      const cf = pd.canonical_face_ref[pi]
+      const oid = d.oracle_ids?.[cf]
+      if (!oid) return 0
+      if (scryfallId != null && finish != null) {
+        return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+      }
+      return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid)
+    },
   }
 
   return (
@@ -1135,12 +1228,20 @@ function App() {
         })()}
       </Show>
       <Show when={view() === 'report'}>
-        <BugReport
-          query={reportQuery()}
-          breakdown={reportBreakdown()}
-          resultCount={reportResultCount()}
-          printingCount={reportPrintingCount()}
-        />
+        {(() => {
+          const params = new URLSearchParams(location.search)
+          const isDeckReport = params.get('deck') === '1'
+          return isDeckReport ? (
+            <DeckBugReport context={deckReportContext()} />
+          ) : (
+            <BugReport
+              query={reportQuery()}
+              breakdown={reportBreakdown()}
+              resultCount={reportResultCount()}
+              printingCount={reportPrintingCount()}
+            />
+          )
+        })()}
       </Show>
       <Show when={view() === 'lists'}>
         <ListsPage
@@ -1149,7 +1250,13 @@ function App() {
           cardListStore={cardListStore}
           listVersion={listVersion()}
           display={display()}
+          printingDisplay={printingDisplay()}
+          workerStatus={workerStatus}
+          onSerializeRequest={serializeDeckList}
+          onValidateRequest={validateLines}
           onBack={() => history.back()}
+          onDeckReportClick={navigateToDeckReport}
+          onViewInSearch={navigateToViewList}
         />
       </Show>
       <Show when={view() === 'search'}>
@@ -1163,6 +1270,8 @@ function App() {
             onListsClick={navigateToLists}
             onNavigateHome={navigateHome}
             onLeaveDualWield={leaveDualWield}
+            cardListStore={cardListStore}
+            listVersion={listVersion}
           />
         </Show>
         <Show when={!showDualWield()}>
@@ -1208,38 +1317,48 @@ function App() {
           </>
         }>
           <div class="flex h-11 items-center justify-between mb-2">
-            <button
-              type="button"
-              onClick={() => navigateHome()}
-              aria-label="Go to home"
-              class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
-            </button>
             <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigateHome()}
+                aria-label="Go to home"
+                class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
+              </button>
               <Show when={viewportWide()}>
                 <button
                   type="button"
                   onClick={enterDualWield}
                   aria-label="Split view"
                   title="Split view"
-                  class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
                     <rect x="3" y="3" width="9" height="18" rx="1" />
                     <rect x="12" y="3" width="9" height="18" rx="1" />
                   </svg>
+                  <span class="text-sm whitespace-nowrap">Split view</span>
                 </button>
               </Show>
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigateToLists()}
+                aria-label="My list"
+                class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <IconList class="size-5 shrink-0" />
+                <span class="text-sm whitespace-nowrap">My list</span>
+              </button>
               <button
                 type="button"
                 onClick={toggleTerms}
                 aria-label="Menu"
                 class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
+                <IconBars3 class="size-6" />
               </button>
             </div>
           </div>
@@ -1262,7 +1381,6 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
-                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>
@@ -1277,16 +1395,13 @@ function App() {
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
                 onReportClick={navigateToReport}
-                onListsClick={() => { toggleTerms(); navigateToLists() }}
                 onClose={toggleTerms}
               />
             </div>
           </Show>
           <div class={`relative bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 ${termsExpanded() && !headerCollapsed() ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}>
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
+              <IconMagnifyingGlass class="size-5" />
             </div>
             <div
               class="grid overflow-hidden relative"
@@ -1355,9 +1470,7 @@ function App() {
                 class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                 aria-label="Toggle search filters"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
-                </svg>
+                <IconAdjustmentsHorizontal class="size-5" />
               </button>
             </Show>
           </div>

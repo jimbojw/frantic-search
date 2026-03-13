@@ -32,6 +32,8 @@ export interface ColumnarData {
   defense_lookup: string[];
   /** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. Spec 105. */
   keywords_index: Record<string, number[]>;
+  /** Alternate names (printed_name, flavor_name) → canonical face index. Spec 111. */
+  alternate_names_index?: Record<string, number>;
 }
 
 export interface SetLookupEntry {
@@ -56,6 +58,8 @@ export interface PrintingColumnarData {
   promo_types_flags_1?: number[];
   illustration_id_index?: number[];
   set_lookup: SetLookupEntry[];
+  /** Alternate name → sorted printing row indices. Spec 111. */
+  alternate_names_index?: Record<string, number[]>;
 }
 
 /** Oracle tag inverted index: tag label → sorted canonical face indices. */

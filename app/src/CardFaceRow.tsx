@@ -6,10 +6,17 @@ import { ManaCost, OracleText } from './card-symbols'
 import { faceStat } from './app-utils'
 
 export default function CardFaceRow(props: {
-  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null
+  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null; collectorNumber?: string | null
 }) {
   const copyText = () => props.fullName ?? props.d.names[props.fi]
   const stat = () => faceStat(props.d, props.fi)
+  const badgeText = () => {
+    const s = props.setBadge
+    const c = props.collectorNumber
+    if (!s) return null
+    if (c && c.trim()) return `${s} · ${c}`
+    return s
+  }
   return (
     <div>
       <div class="flex items-start justify-between gap-2">
@@ -28,8 +35,8 @@ export default function CardFaceRow(props: {
                 {props.fullName}
               </button>
             </Show>
-            <Show when={props.setBadge}>
-              {(code) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{code()}</span>}
+            <Show when={badgeText()}>
+              {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
             </Show>
             <CopyButton text={copyText()} />
           </div>

@@ -364,19 +364,15 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
 })
 
 // ---------------------------------------------------------------------------
-// Issue #96: Pinned my:list + live unique:prints applies override
+// Spec 121: Pinned my:list + live unique:prints (printing-only, no override)
 // ---------------------------------------------------------------------------
-describe('pinned my:list + live unique:prints override (Issue #96)', () => {
-  const getListMask = () => {
-    const faceMask = new Uint8Array(index.faceCount)
-    faceMask[3] = 1 // Sol Ring (oracle-level)
-    const printingMask = new Uint8Array(printingIndex.printingCount)
-    printingMask[1] = 1 // Bolt foil (printing-level)
-    return { faceMask, printingMask }
-  }
+describe('pinned my:list + live unique:prints (Spec 121)', () => {
+  const getListMask = () => ({
+    printingIndices: new Uint32Array([1, 3]), // Bolt foil (printing-level) + Sol Ring canonical nonfoil (generic)
+  })
   const cacheWithList = new NodeCache(index, printingIndex, getListMask)
 
-  it('pinned my:list + live unique:prints applies override (2 printings)', () => {
+  it('pinned my:list + live unique:prints returns 2 printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints', pinnedQuery: 'my:list' },
       cache: cacheWithList,
@@ -386,14 +382,13 @@ describe('pinned my:list + live unique:prints override (Issue #96)', () => {
     })
     expect(result.hasPrintingConditions).toBe(true)
     expect(result.uniqueMode).toBe('prints')
-    // Override: Bolt foil (1) + Sol Ring canonical nonfoil (3) = 2 printings
     expect(result.printingIndices).toBeDefined()
     expect(result.printingIndices!.length).toBe(2)
     expect(Array.from(result.printingIndices!)).toContain(1)
     expect(Array.from(result.printingIndices!)).toContain(3)
   })
 
-  it('pinned unique:prints + live my:list applies override (2 printings)', () => {
+  it('pinned unique:prints + live my:list returns 2 printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'my:list', pinnedQuery: 'unique:prints' },
       cache: cacheWithList,

@@ -2,7 +2,6 @@
 import { describe, test, expect } from "vitest";
 import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
-import { CardIndex } from "./card-index";
 import { index } from "./evaluator.test-fixtures";
 import type { KeywordData } from "../data";
 

@@ -111,6 +111,9 @@ export class CardIndex {
   /** Sorted face indices for salt percentile. Ascending (high-index = saltier). */
   readonly sortedSaltIndices: Uint32Array;
   readonly sortedSaltCount: number;
+  /** Alternate name (normalized) → canonical face index. Spec 111. */
+  readonly alternateNamesIndex: Record<string, number>;
+
   private readonly _facesOf: Map<number, number[]>;
 
   constructor(data: ColumnarData) {
@@ -184,6 +187,8 @@ export class CardIndex {
     this.numericToughnessLookup = data.toughness_lookup.map(parseStatValue);
     this.numericLoyaltyLookup = data.loyalty_lookup.map(parseStatValue);
     this.numericDefenseLookup = data.defense_lookup.map(parseStatValue);
+
+    this.alternateNamesIndex = data.alternate_names_index ?? {};
 
     this._facesOf = new Map();
     for (let i = 0; i < this.faceCount; i++) {

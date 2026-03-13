@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import cac from "cac";
-import { fetchMetadata, fetchBulkMetadata } from "./scryfall";
+import { fetchBulkMetadata } from "./scryfall";
 import { downloadToFile } from "./download";
 import {
   readLocalMeta,
@@ -8,10 +8,8 @@ import {
   readLocalMetaFor,
   writeLocalMetaFor,
   ensureDataDir,
-  RAW_DIR,
   ORACLE_CARDS_PATH,
   DEFAULT_CARDS_PATH,
-  META_PATH,
   DEFAULT_CARDS_META_PATH,
 } from "./paths";
 import { log } from "./log";

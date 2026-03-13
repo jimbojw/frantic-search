@@ -5,6 +5,7 @@ import type { InstanceStateEntry, ListMetadataEntry } from '@frantic-search/shar
 import {
   openCardListDb,
   appendInstanceEntry,
+  appendInstanceEntries,
   appendListMetadataEntry,
   replayInstanceLog,
   replayListMetadataLog,
@@ -13,6 +14,10 @@ import {
 
 function uniqueDbName(): string {
   return `frantic-search-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function entry(partial: Omit<InstanceStateEntry, 'zone' | 'tags' | 'collection_status' | 'variant'> & Partial<Pick<InstanceStateEntry, 'zone' | 'tags' | 'collection_status' | 'variant'>>): InstanceStateEntry {
+  return { zone: null, tags: [], collection_status: null, variant: null, ...partial }
 }
 
 describe('card-list-db', () => {
@@ -26,25 +31,47 @@ describe('card-list-db', () => {
     db.close()
   })
 
+  describe('appendInstanceEntries', () => {
+    it('appends multiple entries in a single transaction', async () => {
+      const entries = [
+        entry({ uuid: 'batch-1', oracle_id: 'o1', scryfall_id: null, finish: null, list_id: 'default', timestamp: 1000 }),
+        entry({ uuid: 'batch-2', oracle_id: 'o2', scryfall_id: null, finish: null, list_id: 'default', timestamp: 1000 }),
+      ]
+      await appendInstanceEntries(db, entries)
+      const result = await replayInstanceLog(db)
+      expect(result.size).toBe(2)
+      expect(result.get('batch-1')?.oracle_id).toBe('o1')
+      expect(result.get('batch-2')?.oracle_id).toBe('o2')
+    })
+
+    it('resolves when given empty array', async () => {
+      await expect(appendInstanceEntries(db, [])).resolves.toBeUndefined()
+    })
+  })
+
   describe('appendInstanceEntry', () => {
     it('appends an entry to instance_log', async () => {
-      const entry: InstanceStateEntry = {
+      const e = entry({
         uuid: 'a1b2c3d4-0000-4000-8000-000000000001',
         oracle_id: 'oracle-1',
         scryfall_id: null,
         finish: null,
         list_id: 'default',
         timestamp: 1000,
-      }
-      await appendInstanceEntry(db, entry)
+      })
+      await appendInstanceEntry(db, e)
       const result = await replayInstanceLog(db)
       expect(result.size).toBe(1)
-      expect(result.get(entry.uuid)).toEqual({
-        uuid: entry.uuid,
-        oracle_id: entry.oracle_id,
-        scryfall_id: entry.scryfall_id,
-        finish: entry.finish,
-        list_id: entry.list_id,
+      expect(result.get(e.uuid)).toEqual({
+        uuid: e.uuid,
+        oracle_id: e.oracle_id,
+        scryfall_id: e.scryfall_id,
+        finish: e.finish,
+        list_id: e.list_id,
+        zone: null,
+        tags: [],
+        collection_status: null,
+        variant: null,
       })
     })
   })
@@ -52,44 +79,44 @@ describe('card-list-db', () => {
   describe('replayInstanceLog', () => {
     it('returns latest entry per uuid when multiple entries exist', async () => {
       const uuid = 'a1b2c3d4-0000-4000-8000-000000000002'
-      await appendInstanceEntry(db, {
+      await appendInstanceEntry(db, entry({
         uuid,
         oracle_id: 'oracle-1',
         scryfall_id: null,
         finish: null,
         list_id: 'default',
         timestamp: 1000,
-      })
-      await appendInstanceEntry(db, {
+      }))
+      await appendInstanceEntry(db, entry({
         uuid,
         oracle_id: 'oracle-1',
         scryfall_id: null,
         finish: null,
         list_id: 'trash',
         timestamp: 2000,
-      })
+      }))
       const result = await replayInstanceLog(db)
       expect(result.size).toBe(1)
       expect(result.get(uuid)?.list_id).toBe('trash')
     })
 
     it('handles multiple uuids', async () => {
-      await appendInstanceEntry(db, {
+      await appendInstanceEntry(db, entry({
         uuid: 'uuid-1',
         oracle_id: 'o1',
         scryfall_id: null,
         finish: null,
         list_id: 'default',
         timestamp: 1000,
-      })
-      await appendInstanceEntry(db, {
+      }))
+      await appendInstanceEntry(db, entry({
         uuid: 'uuid-2',
         oracle_id: 'o2',
         scryfall_id: 's2',
         finish: 'foil',
         list_id: 'default',
         timestamp: 1000,
-      })
+      }))
       const result = await replayInstanceLog(db)
       expect(result.size).toBe(2)
       expect(result.get('uuid-1')?.oracle_id).toBe('o1')
@@ -140,22 +167,22 @@ describe('card-list-db', () => {
   describe('getInstanceHistory', () => {
     it('returns entries in chronological order', async () => {
       const uuid = 'uuid-history'
-      await appendInstanceEntry(db, {
+      await appendInstanceEntry(db, entry({
         uuid,
         oracle_id: 'o1',
         scryfall_id: null,
         finish: null,
         list_id: 'default',
         timestamp: 1000,
-      })
-      await appendInstanceEntry(db, {
+      }))
+      await appendInstanceEntry(db, entry({
         uuid,
         oracle_id: 'o1',
         scryfall_id: null,
         finish: null,
         list_id: 'trash',
         timestamp: 2000,
-      })
+      }))
       const history = await getInstanceHistory(db, uuid)
       expect(history).toHaveLength(2)
       expect(history[0].list_id).toBe('default')

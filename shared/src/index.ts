@@ -50,6 +50,7 @@ export {
   TRASH_LIST_ID,
   DEFAULT_LIST_ID,
   BROADCAST_CHANNEL_NAME,
+  KNOWN_ZONES,
 } from "./card-list";
 
 export { TokenType } from "./search/ast";
@@ -59,6 +60,7 @@ export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
 export { NodeCache, nodeKey, FIELD_ALIASES, getUniqueModeFromQuery } from "./search/evaluator";
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
+export { levenshteinDistance } from "./levenshtein";
 export { IS_KEYWORDS } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";
@@ -70,3 +72,34 @@ export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, 
 export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
+export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
+export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
+export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";
+export { detectDeckFormat } from "./list-format";
+export type { DeckFormat } from "./list-format";
+export { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, serializeMtgsalvation, parsedEntriesFromInstances } from "./list-serialize";
+export { importDeckList } from "./list-import";
+export type { ImportCandidate, ImportResult } from "./list-import";
+export { diffDeckList } from "./list-diff";
+export type { DiffResult } from "./list-diff";
+export { enrichDiffForPreserve } from "./enrich-diff-for-preserve";
+export type { PreserveOptions } from "./enrich-diff-for-preserve";
+export { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-columns";
+export {
+  buildOracleToCanonicalFaceMap,
+  buildPrintingLookup,
+  buildCanonicalPrintingPerFace,
+  buildMasksForList,
+  buildMasksFromParsedEntries,
+  buildMetadataIndex,
+  buildMetadataIndexFromInstances,
+  getMatchingCount,
+  countListEntriesPerCard,
+  hasPrintingLevelEntries,
+} from "./list-mask-builder";
+export type {
+  BuildMasksOptions,
+  BuildMasksResult,
+  BuildMetadataIndexOptions,
+  MetadataIndexResult,
+} from "./list-mask-builder";

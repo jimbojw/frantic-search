@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { InstanceState } from './card-list'
+import type { DeckFormat } from './list-format'
+import type { LineValidationResult } from './list-lexer'
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 
@@ -6,8 +9,16 @@ export type DualWieldSide = 'left' | 'right'
 
 export type ToWorker =
   | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode; side?: DualWieldSide }
-  | { type: 'list-update'; listId: string; faceMask: Uint8Array; printingMask?: Uint8Array }
+  | {
+      type: "list-update";
+      listId: string;
+      printingIndices?: Uint32Array;
+      /** Spec 123: pan-list metadata index for # queries. keys[i] → indexArrays[i]. */
+      metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] };
+    }
   | { type: 'get-tags-for-card'; canonicalIndex: number; primaryPrintingIndex?: number }
+  | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat; listName?: string }
+  | { type: 'validate-list'; requestId: number; lines: string[] }
 
 export type DisplayColumns = {
   names: string[]
@@ -34,6 +45,8 @@ export type DisplayColumns = {
   oracle_ids: string[]
   edhrec_rank: (number | null)[]
   edhrec_salt: (number | null)[]
+  /** Alternate name (normalized) → canonical face index. Spec 111. */
+  alternate_name_to_canonical_face?: Record<string, number>
 }
 
 export type BreakdownNode = {
@@ -68,6 +81,14 @@ export type PrintingDisplayColumns = {
   price_usd: number[]
   canonical_face_ref: number[]
   illustration_id_index?: number[]
+  /** Per-row printing flags for variant resolution (MTGGoldfish import). */
+  printing_flags?: number[]
+  /** Per-row promo type flags column 0. */
+  promo_types_flags_0?: number[]
+  /** Per-row promo type flags column 1. */
+  promo_types_flags_1?: number[]
+  /** Alternate name (normalized) → sorted printing row indices. Spec 111. */
+  alternate_name_to_printing_indices?: Record<string, number[]>
 }
 
 export type FromWorker =
@@ -80,3 +101,5 @@ export type FromWorker =
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide }
+  | { type: 'serialize-result'; requestId: number; text: string }
+  | { type: 'validate-result'; requestId: number; result: LineValidationResult[]; indices: Int32Array }

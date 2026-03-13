@@ -29,18 +29,18 @@ Example: `?list` or `?list=trash`
 
 ## Entry Points
 
-### Primary: MenuDrawer TOOLS section
+### Primary: Header button
 
-Add "My List" (or "Lists") as a link in the TOOLS section, alongside "Try on Scryfall ↗". Tapping navigates to `?list` via `pushState` (Spec 013).
+A "List" button in the header (next to the menu burger) navigates to `?list` via `pushState` (Spec 013). On mobile: `[ Home ] ... [ List ] [ Menu ]`. On desktop: `[ Home ] [ Split view ] ... [ List ] [ Menu ]`. In Dual Wield mode, a List button appears in the right rail between Menu and the leave-split (X) button.
 
 ### Secondary: query context
 
-When the effective query contains `my:list`, a "View list" or "My List" chip/link in the results area could navigate to the Lists page. Deferred to a follow-up; MVP uses only the menu entry.
+When the effective query contains `my:list`, a "View list" or "My List" chip/link in the results area could navigate to the Lists page. Deferred to a follow-up; MVP uses only the header button.
 
 ## Navigation Flow
 
 ```
-search → open MenuDrawer → tap "My List" → lists (?list) → back → search
+search → tap List button in header → lists (?list) → back → search
 lists (?list) → tap "Trash" tab/section → lists (?list=trash) → back → lists (?list)
 ```
 
@@ -133,10 +133,10 @@ This helps diagnose count mismatches (e.g., oracle-level vs printing-level, fini
 | File | Change |
 |------|--------|
 | `app/src/app-utils.ts` | Add `'lists'` to `View` type; extend `parseView` to return `'lists'` when `params.has('list')`. |
-| `app/src/App.tsx` | Add `view === 'lists'` branch; render `ListsPage` component. Pass `cardListStore`, `display`, `facesOf`, `navigateBack`. Handle `?list` and `?list=trash` params. |
+| `app/src/App.tsx` | Add `view === 'lists'` branch; render `ListsPage` component. Pass `cardListStore`, `display`, `facesOf`, `navigateBack`. Handle `?list` and `?list=trash` params. Add List button to header (collapsed state). |
 | `app/src/ListsPage.tsx` | New component. Header, list selector (My List / Trash), contents table, metadata section, per-entry actions. |
-| `app/src/MenuDrawer.tsx` | Add "My List" link in TOOLS section. Requires `onListsClick` or similar from App. |
-| `docs/specs/083-menu-drawer.md` | Add Lists as TOOLS entry point. |
+| `app/src/DualWieldLayout.tsx` | Add List button to right rail. |
+| `app/src/Icons.tsx` | Add `IconList` component. |
 
 ## Out of Scope (MVP)
 
@@ -152,7 +152,7 @@ All data comes from IndexedDB (via CardListStore) and in-memory display. The Lis
 
 ## Acceptance Criteria
 
-1. A "My List" link in the MenuDrawer TOOLS section navigates to the Lists page (`?list`).
+1. A "List" button in the header (and in Dual Wield right rail) navigates to the Lists page (`?list`).
 2. The Lists page shows a header with back arrow and title ("My List" or "Trash").
 3. A list selector (tabs or segmented control) switches between default list and trash. URL reflects `?list` vs `?list=trash`.
 4. The default list view displays each card in the list with resolved name (or "Unknown card"), oracle-level count, and printing-level summary.
@@ -166,3 +166,4 @@ All data comes from IndexedDB (via CardListStore) and in-memory display. The Lis
 ## Implementation Notes
 
 - 2026-03-06: Implemented per spec. Lists page at `?list` and `?list=trash`; MenuDrawer TOOLS section includes "My List" link; metadata editable (name, short_name); per-card remove (minus) for default list. Trash restore deferred to phase 2.
+- 2026-03-11: My List promoted to header button. List button in single-pane header (icon + "List" label) and Dual Wield right rail (icon only). Removed from MenuDrawer TOOLS.
