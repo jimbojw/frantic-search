@@ -43,15 +43,6 @@ button, [role="button"] {
   50% { background-position: -100% 0; }
 }
 
-.foil-meta {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 210, 120, 0.15),
-    rgba(200, 140, 255, 0.15),
-    rgba(100, 200, 255, 0.15)
-  );
-}
-
 .etched-overlay {
   position: relative;
 }
@@ -81,15 +72,6 @@ button, [role="button"] {
 @keyframes sparkle-drift-2 {
   from { background-position: 0 0; }
   to { background-position: -96px 96px; }
-}
-
-.etched-meta {
-  background: linear-gradient(
-    90deg,
-    rgba(180, 195, 220, 0.15),
-    rgba(210, 215, 230, 0.12),
-    rgba(180, 200, 230, 0.15)
-  );
 }
 
 /* Syntax-highlight overlay: highlight layer sits behind a transparent input/textarea */

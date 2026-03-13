@@ -550,21 +550,22 @@ export default function SearchResults() {
                             return group.map(g => FINISH_LABELS[g.finish] ?? '').filter(Boolean).join(', ')
                           }
                           const overlayClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-overlay' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-overlay' : ''
-                          const metaClass = () => ctx.uniqueMode() === 'prints' && isFoil ? 'foil-meta' : ctx.uniqueMode() === 'prints' && isEtched ? 'etched-meta' : ''
                           const aggCount = ctx.aggregationCountForPrinting(pi)
                           const oracleIdImgPrint = () => d()?.oracle_ids?.[ci]
                           const showListTriggerImgPrint = () => ctx.cardListStore && oracleIdImgPrint()
                           return (
-                            <div class={`bg-white dark:bg-gray-900 flex flex-col ${overlayClass()}`}>
-                              <CardImage
-                                scryfallId={sid}
-                                colorIdentity={d()!.color_identity[ci]}
-                                thumbHash={d()!.card_thumb_hashes[ci]}
-                                class="cursor-pointer hover:brightness-110 transition-[filter]"
-                                onClick={() => ctx.navigateToCard(sid)}
-                                aria-label={name()}
-                              />
-                              <div class={`px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words flex items-start justify-between gap-2 ${metaClass()}`}>
+                            <div class="bg-white dark:bg-gray-900 flex flex-col">
+                              <div class={`overflow-hidden rounded-[4%] ${overlayClass()}`}>
+                                <CardImage
+                                  scryfallId={sid}
+                                  colorIdentity={d()!.color_identity[ci]}
+                                  thumbHash={d()!.card_thumb_hashes[ci]}
+                                  class="cursor-pointer hover:brightness-110 transition-[filter]"
+                                  onClick={() => ctx.navigateToCard(sid)}
+                                  aria-label={name()}
+                                />
+                              </div>
+                              <div class="px-1.5 py-1 text-[10px] font-mono text-gray-500 dark:text-gray-400 leading-tight break-words flex items-start justify-between gap-2">
                                 <span class="min-w-0 flex-1">
                                   <span class="uppercase">{setCode}</span>
                                   {collectorNum ? <>{' · '}{collectorNum}</> : null}
