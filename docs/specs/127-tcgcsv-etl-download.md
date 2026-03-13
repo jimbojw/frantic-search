@@ -1,6 +1,6 @@
 # Spec 127: TCGCSV ETL Download
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 001 (ETL Download)
 

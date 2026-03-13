@@ -8,13 +8,14 @@ This workspace is a CLI tool that fetches MTG card data from the Scryfall API an
 npm run etl -- download [--force] [--verbose]   # fetch Oracle Cards from Scryfall
 npm run etl -- download-tags [--force] [--verbose]  # fetch oracle/illustration tags (Spec 091)
 npm run etl -- download-mtgjson [--force] [--verbose]  # fetch MTGJSON AtomicCards (Spec 100)
+npm run etl -- download-tcgcsv [--force] [--verbose]  # fetch TCGCSV Magic data (Spec 127)
 npm run etl -- process                           # transform raw data → columnar JSON
 npm run etl -- --help                            # list all commands
 ```
 
 ## Important: Network Access
 
-The `download`, `download-tags`, and `download-mtgjson` commands make HTTP requests to `api.scryfall.com`, `data.scryfall.io`, and `mtgjson.com`. Do not run them without the user's knowledge — they download significant data and are subject to each provider's rate limits and terms of use.
+The `download`, `download-tags`, `download-mtgjson`, and `download-tcgcsv` commands make HTTP requests to `api.scryfall.com`, `data.scryfall.io`, `mtgjson.com`, and `tcgcsv.com`. Do not run them without the user's knowledge — they download significant data and are subject to each provider's rate limits and terms of use.
 
 ## Data Directory
 
@@ -27,8 +28,12 @@ Output goes to `data/` at the **project root** (not inside `etl/`), since the ap
 | `data/raw/illustration-tags.json` | Illustration tags from Scryfall (Spec 091) |
 | `data/raw/atomic-cards.json`     | MTGJSON AtomicCards (Spec 100)                |
 | `data/raw/atomic-cards-meta.json`| MTGJSON freshness metadata (Spec 100)        |
-| `data/raw/meta.json`             | Freshness metadata (timestamps, URIs)        |
-| `data/dist/columns.json`         | Columnar format consumed by the query engine |
+| `data/raw/tcgcsv-groups.json`   | TCGCSV groups API response (Spec 127)        |
+| `data/raw/tcgcsv-products/`     | TCGCSV products per group (Spec 127)         |
+| `data/raw/tcgcsv-meta.json`     | TCGCSV freshness and ETags (Spec 127)        |
+| `data/raw/meta.json`            | Freshness metadata (timestamps, URIs)        |
+| `data/dist/columns.json`        | Columnar format consumed by the query engine |
+| `data/dist/tcgcsv-product-map.json` | TCGPlayer productId → set+number (Spec 127) |
 
 ## Dependencies
 

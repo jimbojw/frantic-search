@@ -59,6 +59,9 @@ jobs:
       - name: Download MTGJSON AtomicCards
         run: npm run etl -- download-mtgjson --verbose
 
+      - name: Download TCGCSV Magic data
+        run: npm run etl -- download-tcgcsv --verbose
+
       - name: Restore ThumbHash cache
         uses: actions/cache@v4
         with:

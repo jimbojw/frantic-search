@@ -24,6 +24,10 @@ export const THUMBHASH_DIR = path.join(PROJECT_ROOT, "data", "thumbhash");
 export const ART_CROP_MANIFEST_PATH = path.join(THUMBHASH_DIR, "art-crop-thumbhash-manifest.json");
 export const CARD_MANIFEST_PATH = path.join(THUMBHASH_DIR, "card-thumbhash-manifest.json");
 export const LEGACY_MANIFEST_PATH = path.join(THUMBHASH_DIR, "manifest.json");
+export const TCGCSV_GROUPS_PATH = path.join(RAW_DIR, "tcgcsv-groups.json");
+export const TCGCSV_PRODUCTS_DIR = path.join(RAW_DIR, "tcgcsv-products");
+export const TCGCSV_META_PATH = path.join(RAW_DIR, "tcgcsv-meta.json");
+export const TCGCSV_PRODUCT_MAP_PATH = path.join(DIST_DIR, "tcgcsv-product-map.json");
 
 const LocalMetaSchema = z.object({
   updated_at: z.string(),

@@ -20,6 +20,8 @@ import { generateThumbHashes } from "./thumbhash";
 import { restoreManifest } from "./restore";
 import { runDownloadTags } from "./download-tags";
 import { runDownloadMtGjson } from "./download-mtgjson";
+import { runDownloadTcgcsv } from "./download-tcgcsv";
+import { processTcgcsv } from "./process-tcgcsv";
 
 const cli = cac("etl");
 
@@ -108,11 +110,28 @@ cli
   });
 
 cli
+  .command("download-tcgcsv", "Download TCGCSV Magic product and group data for TCGPlayer Mass Entry")
+  .option("--force", "Download even if local data is up to date", {
+    default: false,
+  })
+  .option("--verbose", "Print detailed progress (group count, product count)", { default: false })
+  .action(async (options: { force: boolean; verbose: boolean }) => {
+    try {
+      await runDownloadTcgcsv(options);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`Warning: TCGCSV download failed: ${msg}\n`);
+    }
+    // Always exit 0 — TCGCSV data is optional, must not block CI
+  });
+
+cli
   .command("process", "Extract searchable fields into columnar JSON files")
   .option("--verbose", "Print detailed progress", { default: false })
   .action((options: { verbose: boolean }) => {
     try {
       processCards(options.verbose);
+      processTcgcsv(options.verbose);
       processPrintings(options.verbose);
       processTags(options.verbose);
     } catch (err) {
