@@ -631,3 +631,113 @@ export function serializeTappedOut(
     })
     .join("\n");
 }
+
+/** MTGSalvation section order: Commander first, then type-based sections. */
+const MTGSALVATION_TYPE_ORDER = [
+  "Commander",
+  "Creature",
+  "Enchantment",
+  "Land",
+  "Artifact",
+  "Instant",
+  "Sorcery",
+  "Planeswalker",
+  "Tribal",
+] as const;
+
+function resolveTypeLine(oracleId: string, display: DisplayColumns): string {
+  for (let i = 0; i < display.oracle_ids.length; i++) {
+    if (display.oracle_ids[i] === oracleId) {
+      return display.type_lines[i] ?? "";
+    }
+  }
+  return "";
+}
+
+/**
+ * Map type_line to MTGSalvation section. Multi-type cards (e.g. Artifact Creature)
+ * go to Creature when Creature is present.
+ */
+function primaryTypeForMtgsalvation(typeLine: string): string {
+  const tl = typeLine.trim();
+  if (!tl) return "Creature"; // fallback for unknown
+  if (tl.includes("Creature")) return "Creature";
+  if (tl.includes("Enchantment")) return "Enchantment";
+  if (tl.includes("Land")) return "Land";
+  if (tl.includes("Artifact")) return "Artifact";
+  if (tl.includes("Instant")) return "Instant";
+  if (tl.includes("Sorcery")) return "Sorcery";
+  if (tl.includes("Planeswalker")) return "Planeswalker";
+  if (tl.includes("Tribal")) return "Tribal";
+  const first = tl.split(/\s+/)[0];
+  return first ?? "Creature";
+}
+
+/**
+ * Serialize instances in MTGSalvation format: [deck=Name], type-ordered sections,
+ * 1 Card Name per line, [/deck]. Commander first, then Creature, Enchantment, Land,
+ * Artifact, Instant, Sorcery, Planeswalker, Tribal. No set/collector/foil markers.
+ */
+export function serializeMtgsalvation(
+  instances: InstanceState[],
+  display: DisplayColumns,
+  listName?: string
+): string {
+  if (instances.length === 0) return "";
+
+  const commanderGroup = groupByZone(
+    instances.filter((i) => i.zone === "Commander"),
+    display,
+    null,
+    { zoneOrder: COMMANDER_FIRST_ORDER }
+  );
+  const deckInstances = instances.filter(
+    (i) => i.zone !== "Commander" && i.zone !== "Companion" && i.zone !== "Maybeboard"
+  );
+  const byType = new Map<string, AggregatedEntry[]>();
+  for (const type of MTGSALVATION_TYPE_ORDER) {
+    if (type !== "Commander") byType.set(type, []);
+  }
+
+  const deckEntries = aggregateInstances(deckInstances, display, null);
+  for (const e of deckEntries) {
+    const oracleId = (e as AggregatedEntry & { _oracleId?: string })._oracleId;
+    const typeLine = oracleId ? resolveTypeLine(oracleId, display) : "";
+    const section = primaryTypeForMtgsalvation(typeLine);
+    const arr = byType.get(section);
+    if (arr) arr.push(e);
+    else {
+      const fallback = byType.get("Creature")!;
+      fallback.push(e);
+    }
+  }
+
+  const sections: string[] = [];
+  const name = listName ?? "My List";
+  sections.push(`[deck=${name}]`);
+
+  for (const sectionType of MTGSALVATION_TYPE_ORDER) {
+    if (sectionType === "Commander") {
+      const commanderEntries = commanderGroup.find((g) => g.zone === "Commander")?.entries ?? [];
+      if (commanderEntries.length > 0) {
+        sections.push("Commander");
+        for (const e of commanderEntries) {
+          sections.push(`${e.quantity} ${e.name}`);
+        }
+        sections.push("");
+      }
+      continue;
+    }
+    const entries = byType.get(sectionType) ?? [];
+    if (entries.length > 0) {
+      sections.push(sectionType);
+      for (const e of entries) {
+        sections.push(`${e.quantity} ${e.name}`);
+      }
+      sections.push("");
+    }
+  }
+
+  sections.push("[/deck]");
+  return sections.join("\n").replace(/\n\n+$/g, "\n");
+}

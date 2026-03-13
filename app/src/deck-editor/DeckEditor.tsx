@@ -65,7 +65,7 @@ export default function DeckEditor(props: {
   workerStatus: () => 'loading' | 'ready' | 'error'
   cardListStore: CardListStore
   onApplySuccess?: () => void
-  onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
+  onSerializeRequest?: (instances: InstanceState[], format: DeckFormat, listName?: string) => Promise<string>
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onDraftActiveChange?: (active: boolean) => void
   onDeckReportClick?: (context: DeckReportContext) => void
@@ -192,12 +192,12 @@ export default function DeckEditor(props: {
       return
     }
     if (props.onSerializeRequest) {
-      props.onSerializeRequest(ins, fmt).then((text) => {
+      props.onSerializeRequest(ins, fmt, props.metadata?.name).then((text) => {
         setBaselineText(text)
         writeBaselineToStorage(props.listId, text)
       })
     } else {
-      const text = serialize(fmt, ins, props.display!, props.printingDisplay)
+      const text = serialize(fmt, ins, props.display!, props.printingDisplay, props.metadata?.name)
       setBaselineText(text)
       writeBaselineToStorage(props.listId, text)
     }
@@ -211,11 +211,11 @@ export default function DeckEditor(props: {
     const fmt = selectedFormat()
     if (props.onSerializeRequest) {
       const version = ++serializeVersion
-      props.onSerializeRequest(ins, fmt).then((text) => {
+      props.onSerializeRequest(ins, fmt, props.metadata?.name).then((text) => {
         if (version === serializeVersion) setSerializedText(text)
       })
     } else {
-      setSerializedText(serialize(fmt, ins, props.display!, props.printingDisplay))
+      setSerializedText(serialize(fmt, ins, props.display!, props.printingDisplay, props.metadata?.name))
     }
   })
 
@@ -648,7 +648,7 @@ export default function DeckEditor(props: {
       variant: c.variant,
     }))
     const wouldBe = [...matched, ...additionsAsInstances]
-    return serialize(selectedFormat(), wouldBe, props.display, props.printingDisplay)
+    return serialize(selectedFormat(), wouldBe, props.display, props.printingDisplay, props.metadata?.name)
   }
 
   async function handleCopy() {

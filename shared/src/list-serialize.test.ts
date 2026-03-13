@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, tcgplayerToScryfallSetCode } from "./list-serialize";
+import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, serializeMtgsalvation, tcgplayerToScryfallSetCode } from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -673,5 +673,59 @@ describe("serializeTappedOut", () => {
     const i = inst("bolt-oracle", "default", null, "foil");
     const result = serializeTappedOut([i], display, null);
     expect(result).toContain("*f*");
+  });
+});
+
+// Display with type_lines for MTGSalvation tests (bolt=Instant, delver=Creature)
+const displayWithTypes: DisplayColumns = {
+  ...display,
+  type_lines: ["Instant", "Creature", "Creature"],
+};
+
+describe("serializeMtgsalvation", () => {
+  it("returns empty string for empty instances", () => {
+    expect(serializeMtgsalvation([], displayWithTypes)).toBe("");
+  });
+
+  it("wraps output in [deck=Name] and [/deck]", () => {
+    const result = serializeMtgsalvation([inst("bolt-oracle")], displayWithTypes);
+    expect(result).toMatch(/^\[deck=My List\]/);
+    expect(result).toMatch(/\[\/deck\]$/);
+  });
+
+  it("uses custom list name when provided", () => {
+    const result = serializeMtgsalvation([inst("bolt-oracle")], displayWithTypes, "King of Gondor");
+    expect(result).toMatch(/^\[deck=King of Gondor\]/);
+  });
+
+  it("puts Commander zone in Commander section", () => {
+    const i = inst("bolt-oracle", "default", null, null, "Commander");
+    const result = serializeMtgsalvation([i], displayWithTypes);
+    expect(result).toContain("Commander\n1 Lightning Bolt");
+  });
+
+  it("groups deck cards by type: Instant in Instant section", () => {
+    const result = serializeMtgsalvation([inst("bolt-oracle")], displayWithTypes);
+    expect(result).toContain("Instant\n1 Lightning Bolt");
+  });
+
+  it("groups deck cards by type: Creature in Creature section", () => {
+    const result = serializeMtgsalvation([inst("delver-oracle")], displayWithTypes);
+    expect(result).toContain("Creature\n1 Delver of Secrets // Insectile Aberration");
+  });
+
+  it("emits 1 Card Name format without set/collector/foil", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "foil");
+    const result = serializeMtgsalvation([i], displayWithTypes);
+    expect(result).toContain("1 Lightning Bolt");
+    expect(result).not.toContain("M21");
+    expect(result).not.toContain("141");
+    expect(result).not.toContain("*F*");
+  });
+
+  it("aggregates multiple instances of same card", () => {
+    const instances = [inst("bolt-oracle"), inst("bolt-oracle"), inst("bolt-oracle")];
+    const result = serializeMtgsalvation(instances, displayWithTypes);
+    expect(result).toContain("3 Lightning Bolt");
   });
 });

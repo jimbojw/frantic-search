@@ -19,6 +19,7 @@ import {
   serializeTappedOut,
   serializeTcgplayer,
   serializeManapool,
+  serializeMtgsalvation,
   validateLines,
   extractDisplayColumns,
   extractPrintingDisplayColumns,
@@ -253,7 +254,8 @@ async function init(): Promise<void> {
 
   function serializeList(
     instances: import('@frantic-search/shared').InstanceState[],
-    format: import('@frantic-search/shared').DeckFormat
+    format: import('@frantic-search/shared').DeckFormat,
+    listName?: string
   ): string {
     switch (format) {
       case 'moxfield':
@@ -270,6 +272,8 @@ async function init(): Promise<void> {
         return serializeTcgplayer(instances, displayRef, printingDisplayRef)
       case 'manapool':
         return serializeManapool(instances, displayRef, printingDisplayRef)
+      case 'mtgsalvation':
+        return serializeMtgsalvation(instances, displayRef, listName)
       case 'arena':
       default:
         return serializeArena(instances, displayRef)
@@ -306,7 +310,7 @@ async function init(): Promise<void> {
       return
     }
     if (msg.type === 'serialize-list') {
-      const text = serializeList(msg.instances, msg.format)
+      const text = serializeList(msg.instances, msg.format, msg.listName)
       post({ type: 'serialize-result', requestId: msg.requestId, text })
       return
     }

@@ -17,7 +17,7 @@ export default function ListsPage(props: {
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
   workerStatus: Accessor<'loading' | 'ready' | 'error'>
-  onSerializeRequest?: (instances: InstanceState[], format: DeckFormat) => Promise<string>
+  onSerializeRequest?: (instances: InstanceState[], format: DeckFormat, listName?: string) => Promise<string>
   onValidateRequest?: (lines: string[]) => Promise<{ result: LineValidationResult[]; indices: Int32Array }>
   onBack: () => void
   onDeckReportClick?: (context: DeckReportContext) => void

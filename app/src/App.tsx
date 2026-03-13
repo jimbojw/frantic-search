@@ -406,11 +406,11 @@ function App() {
   const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
 
-  function serializeDeckList(instances: InstanceState[], format: DeckFormat): Promise<string> {
+  function serializeDeckList(instances: InstanceState[], format: DeckFormat, listName?: string): Promise<string> {
     const requestId = ++serializeRequestId
     return new Promise((resolve, reject) => {
       serializePending.set(requestId, { resolve, reject })
-      worker.postMessage({ type: 'serialize-list', requestId, instances, format })
+      worker.postMessage({ type: 'serialize-list', requestId, instances, format, listName })
     })
   }
 

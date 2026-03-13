@@ -17,7 +17,7 @@ export type ToWorker =
       metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] };
     }
   | { type: 'get-tags-for-card'; canonicalIndex: number; primaryPrintingIndex?: number }
-  | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat }
+  | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat; listName?: string }
   | { type: 'validate-list'; requestId: number; lines: string[] }
 
 export type DisplayColumns = {

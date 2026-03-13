@@ -7,6 +7,7 @@ import {
   serializeMelee,
   serializeTappedOut,
   serializeManapool,
+  serializeMtgsalvation,
 } from '@frantic-search/shared'
 import type {
   DisplayColumns,
@@ -31,7 +32,8 @@ export function serialize(
   format: DeckFormat,
   instances: InstanceState[],
   display: DisplayColumns,
-  printingDisplay: PrintingDisplayColumns | null
+  printingDisplay: PrintingDisplayColumns | null,
+  listName?: string
 ): string {
   switch (format) {
     case 'moxfield':
@@ -46,6 +48,8 @@ export function serialize(
       return serializeTappedOut(instances, display, printingDisplay)
     case 'manapool':
       return serializeManapool(instances, display, printingDisplay)
+    case 'mtgsalvation':
+      return serializeMtgsalvation(instances, display, listName)
     case 'arena':
     default:
       return serializeArena(instances, display)
