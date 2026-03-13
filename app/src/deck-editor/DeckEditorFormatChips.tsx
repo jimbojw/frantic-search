@@ -61,7 +61,7 @@ export default function DeckEditorFormatChips() {
             <Match when={ctx.selectedFormat() === 'manapool'}>
               Paste into Mana Pool's{' '}
               <a
-                href="https://manapool.com/add-deck"
+                href="https://manapool.com/add-deck?ref=franticsearch"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
@@ -122,7 +122,7 @@ export default function DeckEditorFormatChips() {
             <Match when={ctx.selectedFormat() === 'tcgplayer'}>
               Paste into TCGPlayer's{' '}
               <a
-                href="https://www.tcgplayer.com/massentry"
+                href="https://partner.tcgplayer.com/X4mx1a"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
