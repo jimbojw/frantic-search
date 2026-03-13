@@ -216,6 +216,7 @@ describe("validateDeckListWithEngine", () => {
     expect(result.resolved).toHaveLength(1);
     expect(result.resolved![0]!.oracle_id).toBe("oid1");
     expect(result.resolved![0]!.quantity).toBe(1);
+    expect(result.resolved![0]!.scryfall_id).toBeNull();
   });
 
   test("unknown card name produces error", () => {

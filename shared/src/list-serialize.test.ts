@@ -502,6 +502,19 @@ describe("serializeTcgplayer", () => {
     const result = serializeTcgplayer([i], display, printingWithSetOnly);
     expect(result).toBe("1 Lightning Bolt [HML]");
   });
+
+  it("uses combined name for split cards (Supply // Demand)", () => {
+    const displayWithSplit: DisplayColumns = {
+      ...display,
+      names: ["Lightning Bolt", "Delver of Secrets", "Insectile Aberration", "Supply", "Demand"],
+      oracle_ids: ["bolt-oracle", "delver-oracle", "delver-oracle", "supply-demand-oracle", "supply-demand-oracle"],
+      canonical_face: [0, 1, 1, 3, 3],
+      layouts: ["normal", "transform", "transform", "split", "split"],
+    };
+    const i = inst("supply-demand-oracle", "default", null, "nonfoil");
+    const result = serializeTcgplayer([i], displayWithSplit, null);
+    expect(result).toBe("1 Supply // Demand");
+  });
 });
 
 describe("serializeManapool", () => {

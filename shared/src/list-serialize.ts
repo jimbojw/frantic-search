@@ -28,6 +28,10 @@ function resolveCardName(
     if (display.canonical_face[i] === canonicalFace) faces.push(i);
   }
   if (frontFaceOnly && faces.length > 0) {
+    const layout = display.layouts?.[faces[0]];
+    if (layout === "split") {
+      return faces.map((i) => display.names[i]).join(" // ");
+    }
     return display.names[faces[0]!]!;
   }
   return faces.map((i) => display.names[i]).join(" // ");

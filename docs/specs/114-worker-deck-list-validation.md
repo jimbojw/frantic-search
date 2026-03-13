@@ -149,6 +149,8 @@ If this doesn't match either: the card name is unknown. Generate error "Unknown 
 
 When the line has no set/collector/finish, only the EXACT node is evaluated. Match → success; no match → "Unknown card" error. This is the simplest case and benefits most from NodeCache internment (many deck lines share the same card names).
 
+**Printing resolution:** Name-only resolution never assigns `scryfall_id`; the resolved entry has `scryfall_id: null`. Printing resolution requires explicit set/collector in the line (e.g. `1 Taiga (LEA) 285`). This ensures generic entries like `1 Taiga` export as name-only for TCGPlayer Mass Entry, which accepts best-effort matching without set/collector.
+
 #### 3f. Variant handling (MTGGoldfish, TappedOut)
 
 Lines with `VARIANT` or `FOIL_PRERELEASE_MARKER` tokens follow the same cascade but with variant-aware field nodes. `variantToFlags` maps the variant string to a printing attribute:

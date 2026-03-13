@@ -703,7 +703,7 @@ function resolveNameOnly(
   cardIndex: CardIndex,
   cache: NodeCache,
   display: DisplayColumns,
-  printingDisplay: PrintingDisplayColumns | null,
+  _printingDisplay: PrintingDisplayColumns | null,
   quantityTok: ListToken,
   finish: "foil" | "etched" | null,
   lineIndex: number,
@@ -717,18 +717,6 @@ function resolveNameOnly(
   if (evalResult.indices.length > 0) {
     const faceIdx = evalResult.indices[0]!;
     const oracleId = display.oracle_ids[faceIdx] ?? "";
-    let scryfallId: string | null = null;
-    let scryfallIdx = -1;
-
-    if (printingDisplay?.alternate_name_to_printing_indices) {
-      const altNorm = normalizeAlphanumeric(nameTok.value.replace(/\s+/g, " ").trim());
-      const pis = printingDisplay.alternate_name_to_printing_indices[altNorm];
-      if (pis && pis.length > 0) {
-        scryfallIdx = pis[0]!;
-        scryfallId = printingDisplay.scryfall_ids[scryfallIdx] ?? null;
-      }
-    }
-
     const qtyStr = quantityTok.value.replace(/x$/i, "");
     const quantity = parseInt(qtyStr, 10) || 1;
     const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
@@ -736,13 +724,13 @@ function resolveNameOnly(
       line: { lineIndex, lineStart, lineEnd, kind: "ok" },
       entry: {
         oracle_id: oracleId,
-        scryfall_id: scryfallId,
+        scryfall_id: null,
         quantity,
         finish: finish ?? undefined,
         variant: variantValue,
       },
       oracleIndex: faceIdx,
-      scryfallIndex: scryfallIdx >= 0 ? scryfallIdx : -1,
+      scryfallIndex: -1,
     };
   }
 
@@ -751,16 +739,6 @@ function resolveNameOnly(
   if (approx) {
     const { canonicalFace, displayName } = approx;
     const oracleId = display.oracle_ids[canonicalFace] ?? "";
-    let scryfallId: string | null = null;
-    let scryfallIdx = -1;
-    if (printingDisplay?.alternate_name_to_printing_indices) {
-      const altNorm = normalizeAlphanumeric(normalizeForLookalikes(nameTok.value.replace(/\s+/g, " ").trim()));
-      const pis = printingDisplay.alternate_name_to_printing_indices[altNorm];
-      if (pis && pis.length > 0) {
-        scryfallIdx = pis[0]!;
-        scryfallId = printingDisplay.scryfall_ids[scryfallIdx] ?? null;
-      }
-    }
     const qtyStr = quantityTok.value.replace(/x$/i, "");
     const quantity = parseInt(qtyStr, 10) || 1;
     const variantValue = variantTok?.value ?? (foilPrereleaseMarkerTok ? "prerelease" : undefined);
@@ -772,13 +750,13 @@ function resolveNameOnly(
       },
       entry: {
         oracle_id: oracleId,
-        scryfall_id: scryfallId,
+        scryfall_id: null,
         quantity,
         finish: finish ?? undefined,
         variant: variantValue,
       },
       oracleIndex: canonicalFace,
-      scryfallIndex: scryfallIdx >= 0 ? scryfallIdx : -1,
+      scryfallIndex: -1,
     };
   }
 
