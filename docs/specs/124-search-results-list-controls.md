@@ -1,6 +1,6 @@
 # Spec 124: List Add/Remove from Search Results
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 075 (Card List Data Model and Persistence), Spec 077 (Query Engine — my:list), Spec 090 (Lists Page), Spec 041 (Result Display Modes)
 
@@ -23,13 +23,13 @@ Search results use four view modes (Spec 041): Slim, Detail, Images, and Full. E
 
 ### Popover Approach
 
-Use the **native HTML Popover API** (`popover` attribute, `popovertarget`) for show/hide and light-dismiss. Tailwind provides styling only; no additional dependencies.
+Manual show/hide with state; `position: absolute` relative to a tightly fitted wrapper around the trigger. Light-dismiss via click-outside and Escape. The popover scrolls with the page (not fixed to viewport).
 
-- **Trigger:** A compact icon button (IconPlus/IconMinus combined, matching CardDetail's ListControls). `popovertarget="list-popover-{id}"` links to the popover. Use unique IDs: `list-popover-${paneId}-card-${ci}` for card-level, `list-popover-${paneId}-print-${pi}` for printing-level. In single-pane mode, `paneId` is `'main'`; in dual-wield, use `'left'` / `'right'` so IDs do not collide across panes or between card/printing domains.
-- **Popover content:** Reuse the existing `ListControls` component (extracted to `ListControls.tsx`). The popover container has `popover`, `id="list-popover-{id}"`, and appropriate Tailwind classes (`rounded-lg`, `border`, `bg-white dark:bg-gray-900`, `shadow-lg`, `p-2`).
-- **Positioning:** Use `popover="auto"` for MVP — the browser places the popover (typically centered). Future: CSS Anchor Positioning or manual positioning for better placement near the trigger.
+- **Trigger:** A compact button labeled `+ | -` (IconPlus, IconVerticalBar, IconMinus). Height matches menu drawer chips (`min-h-11 min-w-11`). Use unique IDs: `list-popover-${paneId}-card-${ci}` for card-level, `list-popover-${paneId}-print-${pi}` for printing-level.
+- **Popover content:** Fixed width 300px. Card image at top (CardImage with color identity, ThumbHash, rounded corners; click navigates to card). Below that, a 2×2 grid: each row has a label and `[-] N [+]` ListControls. Labels: "Any printing" for oracle-level add/remove; "SET · CN · finish" (e.g. "LTR · 478 · nonfoil") for printing-specific add/remove when printing-expanded.
+- **Positioning:** Popover is `position: absolute` inside a `position: relative` wrapper that tightly fits the trigger. Popover must have `absolute` in its class from render so the wrapper stays tight (late application would inflate the wrapper). Vertical: if button center Y > 50% viewport height, show above (`bottom: BH + gap`); else show below (`top: BH + gap`). Horizontal: prefer `left: 0` (align left edges) if popover fits in viewport; else `right: 0` (align right edges) if it fits; else center in viewport (`left = VW/2 - PW/2 - BX`). Parent containers need `overflow: visible` (e.g. Images grid container).
 
-**Accessibility:** The trigger button has `aria-label="Add or remove from list"`. ListControls buttons retain their existing `aria-label` values. Trigger supports Enter/Space to activate; popover dismisses on Escape. Focus remains within the popover when open (native Popover API behavior).
+**Accessibility:** Trigger has `aria-label="Add or remove from list"`, `aria-expanded`, `aria-haspopup="dialog"`. Popover has `role="dialog"`. ListControls buttons retain their `aria-label` values. Dismiss on Escape or click outside.
 
 ### Data Flow
 
@@ -90,7 +90,7 @@ When `printingExpanded` is true and results are per-printing, each row has a spe
 - **Oracle ID:** `display().oracle_ids[pd.canonical_face_ref[pi]]`
 - **Count:** Use printing-level count when available (e.g. `getMatchingCount` with scryfallId and finish). The aggregation count logic may need extension to support printing-level list counts for the popover.
 
-For MVP, we can use oracle-level add/remove (no scryfallId/finish) when the display is printing-expanded — this adds a generic "1x Card Name" entry. A follow-up can add printing-specific add/remove for Images/Full when showing individual printings.
+When printing-expanded, the popover shows two rows: "Any printing" (oracle-level) and "SET · CN · finish" (printing-specific with scryfallId and finish).
 
 ## File Organization
 
@@ -100,7 +100,7 @@ For MVP, we can use oracle-level add/remove (no scryfallId/finish) when the disp
 | `app/src/App.tsx` | Pass `cardListStore` and `listVersion` to DualWieldLayout (App owns them) |
 | `app/src/DualWieldLayout.tsx` | Receive `cardListStore`, `listVersion` from App; pass into `buildPaneContext`; create `listCountForCard` and `listCountForPrinting` per-pane using that pane's display/printingDisplay |
 | `app/src/SearchResults.tsx` | Add ListControlsPopover trigger and popover in each view mode branch; integrate with CardFaceRow or adjacent layout |
-| `app/src/ListControlsPopover.tsx` (new) | Reusable component: trigger button + popover containing ListControls. Props: `popoverId` (unique per row, e.g. `list-popover-${paneId}-card-${ci}`), `oracleId`, `scryfallId?`, `finish?`, `count`, `onAdd`, `onRemove`, `addLabel`, `removeLabel` |
+| `app/src/ListControlsPopover.tsx` | Reusable component: trigger button + popover. Props: `popoverId`, `entries` (array of `{ label, count, onAdd, onRemove, addLabel, removeLabel }`), optional `cardImage` (`{ scryfallId, colorIdentity, thumbHash, onClick }`). Wrapper uses `inline-flex` to stay tight; popover uses `absolute` in class. |
 | `app/src/ListControls.tsx` (new) | Extract `ListControls` from CardDetail.tsx for reuse in CardDetail and ListControlsPopover |
 | `app/src/CardDetail.tsx` | Import `ListControls` from `ListControls.tsx`; remove local definition |
 
@@ -109,7 +109,7 @@ For MVP, we can use oracle-level add/remove (no scryfallId/finish) when the disp
 - **Lists not available:** `cardListStore` is undefined or not passed into context; no trigger rendered.
 - **Oracle ID missing:** Skip rendering for cards without `oracle_ids` (e.g. display not fully loaded).
 - **Multi-faced cards:** Use canonical face index; `oracle_ids[ci]` is the same for all faces of a card.
-- **Popover dismiss:** `popover="auto"` dismisses on outside click, Escape, or focus move. Ensure ListControls buttons don't cause accidental dismiss (e.g. clicking Add should not close the popover before the action completes — the Popover API typically keeps it open for in-popover interactions). Verify this behavior in Chrome, Firefox, and Safari; if a browser closes the popover on in-popover clicks, use `event.stopPropagation()` or an alternative dismiss strategy.
+- **Popover dismiss:** Click-outside (capture phase) and Escape close the popover. Clicks inside the wrapper (trigger or popover) do not close it.
 - **Multiple popovers:** Each result row needs a unique popover ID per document. Use `list-popover-${paneId}-card-${ci}` or `list-popover-${paneId}-print-${pi}` so IDs do not collide in dual-wield or between card-level and printing-level views. No more than one popover is open at a time (light-dismiss closes the previous).
 - **Error handling:** `addInstance` and `removeMostRecentMatchingInstance` may reject (e.g. IndexedDB failure). Handle silently (e.g. `.catch(() => {})`) matching CardDetail; no user-facing error toast for MVP.
 
@@ -128,3 +128,9 @@ For MVP, we can use oracle-level add/remove (no scryfallId/finish) when the disp
 11. No list controls are shown when `cardListStore` is undefined or not passed into context.
 12. Dual-wield: each pane shows list controls. Counts always reflect `DEFAULT_LIST_ID` (the list we add/remove from).
 13. The popover count updates reactively when the list changes (e.g. add/remove from another tab, or from the card detail page) — `listVersion` accessor triggers re-computation.
+
+## Implementation Notes
+
+- Switched from native Popover API to manual state + `position: absolute` so the popover scrolls with the page.
+- Added card image and 2×2 grid layout to popover content; labels "Any printing" and "SET · CN · finish".
+- Images grid container changed from `overflow-hidden` to `overflow-visible` so the popover can extend outside.
