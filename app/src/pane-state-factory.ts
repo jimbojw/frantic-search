@@ -70,6 +70,8 @@ export interface CreatePaneStateOpts {
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
   navigateToQuery?: (q: string) => void
+  /** Navigate to Lists page (Spec 126). */
+  navigateToLists?: () => void
   /** When my:list is in query, list entry count per canonical face (Spec 087). */
   listEntryCountPerCard?: () => Map<number, number> | null
 }
@@ -177,6 +179,7 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     navigateToReport: opts.navigateToReport,
     navigateToCard: opts.navigateToCard,
     navigateToQuery: opts.navigateToQuery,
+    navigateToLists: opts.navigateToLists,
     appendTerm,
     parseBreakdown,
     listEntryCountPerCard: opts.listEntryCountPerCard ?? (() => null),

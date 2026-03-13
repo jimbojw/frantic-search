@@ -1083,6 +1083,7 @@ function App() {
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
     navigateToQuery,
+    navigateToLists,
     listEntryCountPerCard,
   })
 
@@ -1118,6 +1119,7 @@ function App() {
     navigateToReport: () => navigateToReport('right'),
     navigateToCard,
     navigateToQuery,
+    navigateToLists,
     listEntryCountPerCard: listEntryCountPerCard2,
   })
 
@@ -1169,6 +1171,13 @@ function App() {
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
     navigateToQuery,
+    navigateToLists,
+    defaultListEmpty: () => {
+      listVersion()
+      const view = cardListStore.getView()
+      const count = view.instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0
+      return count === 0
+    },
     appendTerm,
     parseBreakdown,
     cardListStore,

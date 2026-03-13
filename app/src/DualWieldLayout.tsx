@@ -90,6 +90,7 @@ export type PaneState = {
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
   navigateToQuery?: (q: string) => void
+  navigateToLists?: () => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
   /** When my:list is in query, list entry count per canonical face (Spec 087). */
@@ -275,9 +276,16 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     navigateToReport: state.navigateToReport,
     navigateToCard: state.navigateToCard,
     navigateToQuery: state.navigateToQuery,
+    navigateToLists: state.navigateToLists,
     appendTerm: state.appendTerm,
     parseBreakdown: state.parseBreakdown,
     ...(store && listVersion && {
+      defaultListEmpty: () => {
+        listVersion()
+        const view = store.getView()
+        const count = view.instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0
+        return count === 0
+      },
       cardListStore: store,
       listVersion,
       listCountForCard,

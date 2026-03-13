@@ -167,3 +167,4 @@ All data comes from IndexedDB (via CardListStore) and in-memory display. The Lis
 
 - 2026-03-06: Implemented per spec. Lists page at `?list` and `?list=trash`; MenuDrawer TOOLS section includes "My List" link; metadata editable (name, short_name); per-card remove (minus) for default list. Trash restore deferred to phase 2.
 - 2026-03-11: My List promoted to header button. List button in single-pane header (icon + "List" label) and Dual Wield right rail (icon only). Removed from MenuDrawer TOOLS.
+- 2026-03-13: Spec 126 adds an empty-state CTA when `my:list` returns zero results with an empty list — "Import a deck" button navigates to the Lists page. Partially addresses the deferred "View list" / "My List" chip in results (query context).

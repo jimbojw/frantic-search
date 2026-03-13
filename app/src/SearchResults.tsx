@@ -10,7 +10,8 @@ import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { IconBug, IconChevronRight, IconXMark } from './Icons'
+import { hasMyInQuery } from './query-edit'
+import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
 import { HighlightedLabel } from './InlineBreakdown'
 import { Outlink } from './Outlink'
@@ -116,43 +117,78 @@ export default function SearchResults() {
         </Show>
         <Show when={ctx.totalCards() > 0} fallback={
           <div class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-            <p>No cards found</p>
-            <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
-              <Outlink
-                href={ctx.scryfallUrl()}
-                class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-              >
-                Try on Scryfall ↗
-              </Outlink>
+            <Show when={
+              ctx.cardListStore &&
+              ctx.navigateToLists &&
+              hasMyInQuery(ctx.parseBreakdown(ctx.query())) &&
+              (ctx.defaultListEmpty?.() ?? false)
+            } fallback={
+              <>
+                <p class="text-gray-700 dark:text-gray-300">No cards found</p>
+                <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
+                  <Outlink
+                    href={ctx.scryfallUrl()}
+                    class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                  >
+                    Try on Scryfall ↗
+                  </Outlink>
+                  <button
+                    type="button"
+                    onClick={() => ctx.navigateToReport()}
+                    class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                  >
+                    Report a problem
+                  </button>
+                </p>
+                <Show when={ctx.indicesIncludingExtras()}>
+                  {(extrasCount) => {
+                    const pExtras = ctx.printingIndicesIncludingExtras()
+                    const showPrintings = () => pExtras !== undefined && (ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions())
+                    return (
+                      <p class="mt-1">
+                        Try again with{' '}
+                        <button
+                          type="button"
+                          onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
+                          class="inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        >
+                          <HighlightedLabel label="include:extras" />
+                        </button>
+                        {' '}({extrasCount()} {extrasCount() === 1 ? 'card' : 'cards'}
+                        <Show when={showPrintings()}>
+                          , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
+                        </Show>)?
+                      </p>
+                    )
+                  }}
+                </Show>
+              </>
+            }>
+              <p class="font-medium text-gray-700 dark:text-gray-300">Your list is empty.</p>
+              <p class="mt-1 text-gray-600 dark:text-gray-400">Import a deck to search for cards in your list.</p>
               <button
                 type="button"
-                onClick={() => ctx.navigateToReport()}
-                class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                onClick={() => ctx.navigateToLists!()}
+                class="mt-3 inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition-colors"
               >
-                Report a problem
+                <IconArrowRightOnRectangle class="size-5" />
+                Import a deck
               </button>
-            </p>
-            <Show when={ctx.indicesIncludingExtras()}>
-              {(extrasCount) => {
-                const pExtras = ctx.printingIndicesIncludingExtras()
-                const showPrintings = () => pExtras !== undefined && (ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions())
-                return (
-                  <p class="mt-1">
-                    Try again with{' '}
-                    <button
-                      type="button"
-                      onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                      class="inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                    >
-                      <HighlightedLabel label="include:extras" />
-                    </button>
-                    {' '}({extrasCount()} {extrasCount() === 1 ? 'card' : 'cards'}
-                    <Show when={showPrintings()}>
-                      , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
-                    </Show>)?
-                  </p>
-                )
-              }}
+              <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
+                <Outlink
+                  href={ctx.scryfallUrl()}
+                  class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                >
+                  Try on Scryfall ↗
+                </Outlink>
+                <button
+                  type="button"
+                  onClick={() => ctx.navigateToReport()}
+                  class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                >
+                  Report a problem
+                </button>
+              </p>
             </Show>
           </div>
         }>

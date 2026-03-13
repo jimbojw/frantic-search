@@ -50,6 +50,10 @@ export interface SearchContextValue {
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
   navigateToQuery?: (q: string) => void
+  /** Navigate to My List page (?list). Spec 126 empty-list CTA. When absent, empty-list CTA not shown. */
+  navigateToLists?: () => void
+  /** True when default list has no instances (Spec 126). When absent, empty-list CTA not shown. */
+  defaultListEmpty?: Accessor<boolean>
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
   /** List add/remove (Spec 124). When absent, list controls are not rendered. */
