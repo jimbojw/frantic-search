@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
+import { Color, Format } from "../bits";
+import type { ColumnarData } from "../data";
 import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
@@ -584,6 +586,40 @@ describe("evaluate", () => {
   test("unquoted bare word still matches single-face cards via normalized name", () => {
     expect(matchCount("bolt")).toBe(1);
     expect(matchCount("lightningbolt")).toBe(1);
+  });
+
+  test("unquoted bare word gloin matches card Glóin via accent folding (NFD normalization)", () => {
+    const minimal: ColumnarData = {
+      names: ["Glóin, Dwarf Emissary"],
+      mana_costs: ["{1}{R}"],
+      oracle_texts: [""],
+      colors: [Color.Red],
+      color_identity: [Color.Red],
+      type_lines: ["Legendary Creature — Dwarf Noble"],
+      powers: [2],
+      toughnesses: [3],
+      loyalties: [0],
+      defenses: [0],
+      legalities_legal: [Format.Commander],
+      legalities_banned: [0],
+      legalities_restricted: [0],
+      card_index: [0],
+      canonical_face: [0],
+      scryfall_ids: [""],
+      layouts: ["normal"],
+      flags: [0],
+      edhrec_ranks: [null],
+      edhrec_salts: [null],
+      power_lookup: ["", "0", "*", "2", "3", "4"],
+      toughness_lookup: ["", "1", "1+*", "3", "4"],
+      loyalty_lookup: [""],
+      defense_lookup: [""],
+      keywords_index: {},
+    };
+    const idx = new CardIndex(minimal);
+    const cache = new NodeCache(idx);
+    const result = cache.evaluate(parse("gloin"));
+    expect(result.result.matchCount).toBe(1);
   });
 
   test("quoted bare word matches literal combined name", () => {

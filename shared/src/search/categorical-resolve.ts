@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { FORMAT_NAMES, GAME_NAMES, RARITY_FROM_STRING, FRAME_NAMES } from "../bits";
+import { normalizeAlphanumeric } from "../normalize";
 import { SORT_FIELDS } from "./sort-fields";
 import { IS_KEYWORDS } from "./eval-is";
 
@@ -26,11 +27,11 @@ export interface ResolutionContext {
 }
 
 /**
- * Normalize a string for prefix matching: lowercase, strip non-alphanumeric.
- * E.g. "9ED" and "9 ed" both become "9ed".
+ * Normalize a string for prefix matching: accent folding, lowercase, alphanumeric only.
+ * E.g. "9ED" and "9 ed" both become "9ed"; "Glóin" becomes "gloin".
  */
 export function normalizeForResolution(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalizeAlphanumeric(s);
 }
 
 /**

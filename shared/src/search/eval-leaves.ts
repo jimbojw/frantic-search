@@ -10,6 +10,7 @@ import { parseStatValue } from "./stats";
 import { evalIsKeyword } from "./eval-is";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
+import { normalizeAlphanumeric } from "../normalize";
 
 export const FIELD_ALIASES: Record<string, string> = {
   name: "name", n: "name",
@@ -123,7 +124,7 @@ export function evalLeafField(
       if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       if (NAME_CMP_OPS.has(op)) {
         // Lexicographic comparison (Spec 096): same normalization as sort:name
-        const valNorm = val.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const valNorm = normalizeAlphanumeric(val);
         const col = index.combinedNamesNormalized;
         for (let i = 0; i < n; i++) {
           const cardNorm = col[cf[i]];
@@ -460,7 +461,7 @@ export function evalLeafMetadataTag(
   const idx = getMetadataIndex();
   if (!idx || idx.keys.length === 0) return;
 
-  const queryNorm = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const queryNorm = normalizeAlphanumeric(value);
 
   for (let i = 0; i < idx.keys.length; i++) {
     const key = idx.keys[i]!;
@@ -481,12 +482,12 @@ export function evalLeafBareWord(value: string, quoted: boolean, index: CardInde
     for (let i = 0; i < index.faceCount; i++) {
       if (index.combinedNamesLower[i].includes(valLower)) buf[cf[i]] = 1;
     }
-    const valNorm = valLower.replace(/[^a-z0-9]/g, "");
+    const valNorm = normalizeAlphanumeric(value);
     for (const altName in altIndex) {
       if (altName.includes(valNorm)) buf[altIndex[altName]] = 1;
     }
   } else {
-    const valNormalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const valNormalized = normalizeAlphanumeric(value);
     for (let i = 0; i < index.faceCount; i++) {
       if (index.combinedNamesNormalized[i].includes(valNormalized)) buf[cf[i]] = 1;
     }
@@ -504,7 +505,7 @@ export function evalLeafExact(node: ExactNameNode, index: CardIndex, buf: Uint8A
     if (index.combinedNamesLower[i] === valLower || index.namesLower[i] === valLower) buf[cf[i]] = 1;
   }
   // Alternate names: exact match on normalized value (Spec 111)
-  const valNormalized = valLower.replace(/[^a-z0-9]/g, "");
+  const valNormalized = normalizeAlphanumeric(node.value);
   const altMatch = index.alternateNamesIndex[valNormalized];
   if (altMatch !== undefined) buf[altMatch] = 1;
   return null;

@@ -54,7 +54,7 @@ Examples: `name>=M` matches "Mountain", "Metalworker", "Zephyr" but not "Lightni
 In the `name` case, branch on operator before evaluation:
 
 1. If operator is `>`, `<`, `>=`, or `<=`: apply lexicographic comparison.
-   - Normalize the value: `val.toLowerCase().replace(/[^a-z0-9]/g, "")`
+   - Normalize the value: NFD decomposition, strip combining diacritics, lowercase, then `[a-z0-9]` only (same as `normalizeAlphanumeric`)
    - For each face `i`, compare `index.combinedNamesNormalized[cf[i]]` to the normalized value using `localeCompare` or equivalent.
    - Mark `buf[cf[i]] = 1` when the comparison matches the operator.
 2. Else (operator is `:`, `=`, `!=`): existing substring logic, unchanged.

@@ -20,6 +20,7 @@ import {
 } from "./list-validate";
 import { tcgplayerToScryfallSetCode } from "./list-serialize";
 import { levenshteinDistance } from "./levenshtein";
+import { normalizeAlphanumeric } from "./normalize";
 
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
@@ -720,7 +721,7 @@ function resolveNameOnly(
     let scryfallIdx = -1;
 
     if (printingDisplay?.alternate_name_to_printing_indices) {
-      const altNorm = nameTok.value.toLowerCase().replace(/\s+/g, " ").trim().replace(/[^a-z0-9]/g, "");
+      const altNorm = normalizeAlphanumeric(nameTok.value.replace(/\s+/g, " ").trim());
       const pis = printingDisplay.alternate_name_to_printing_indices[altNorm];
       if (pis && pis.length > 0) {
         scryfallIdx = pis[0]!;
@@ -780,7 +781,7 @@ function tryApproximateNameMatch(
   cardIndex: CardIndex,
   display: DisplayColumns,
 ): string | null {
-  const normalized = inputName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalized = normalizeAlphanumeric(inputName);
   if (!normalized) return null;
 
   let bestFace = -1;

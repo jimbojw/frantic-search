@@ -174,7 +174,7 @@ Known Goldfish variants that cannot resolve to a distinct printing flag (e.g. "j
 
 When the EXACT match (3d or 3e) fails to find a card, try an approximate match before declaring "Unknown card":
 
-1. Normalize the input name to alphanumeric-only lowercase: `name.toLowerCase().replace(/[^a-z0-9]/g, "")`.
+1. Normalize the input name: `normalizeAlphanumeric(name)` (NFD + strip diacritics + lowercase + `[a-z0-9]` only).
 2. Evaluate as an unquoted `BARE` word node with this normalized value. The evaluator's `evalLeafBareWord` matches against `CardIndex.combinedNamesNormalized` (which is the same alphanumeric-only normalization) using `.includes()`.
 3. Among all matching canonical faces, pick the one whose `combinedNamesNormalized` is **shortest** (closest match — avoids matching "Lightning Bolt" when the user typed "Bolt").
 4. If exactly one card's normalized name **equals** the normalized input, this is a high-confidence match: the user likely has a punctuation or whitespace difference (e.g. "Narsets Reversal" vs "Narset's Reversal", "Flame Kin Zealot" vs "Flame-Kin Zealot"). Generate an error with a quick fix: `Use "Narset's Reversal"`.

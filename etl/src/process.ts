@@ -163,12 +163,8 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
-/** Normalize for alternate name index: lowercase, strip non-alphanumeric. Spec 111. */
-function normalizeAlternateName(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-/** Build alternate_names_index from default-cards. Spec 111. */
+/** Build alternate_names_index from default-cards. Spec 111.
+ * Keys are raw alternate names; client normalizes at load time. */
 function buildAlternateNamesIndex(
   data: ColumnarDataBuilder,
   verbose: boolean
@@ -197,8 +193,7 @@ function buildAlternateNamesIndex(
         if (alt.toLowerCase() === oracleName.toLowerCase()) return;
         const canonicalFace = oracleToFace.get(oid);
         if (canonicalFace === undefined) return;
-        const norm = normalizeAlternateName(alt);
-        if (norm) index[norm] = canonicalFace;
+        index[alt] = canonicalFace;
       };
 
       const oracleId = card.oracle_id ?? card.card_faces?.[0]?.oracle_id;

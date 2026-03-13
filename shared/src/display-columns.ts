@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData, PrintingColumnarData } from "./data";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+import { buildNormalizedAlternateIndex } from "./normalize";
 
 export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   const len = data.names.length;
@@ -29,7 +30,9 @@ export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(""),
     edhrec_rank: data.edhrec_ranks,
     edhrec_salt: data.edhrec_salts,
-    alternate_name_to_canonical_face: data.alternate_names_index,
+    alternate_name_to_canonical_face: buildNormalizedAlternateIndex(
+      data.alternate_names_index ?? {},
+    ),
   };
 }
 
@@ -49,6 +52,8 @@ export function extractPrintingDisplayColumns(
     printing_flags: data.printing_flags,
     promo_types_flags_0: data.promo_types_flags_0,
     promo_types_flags_1: data.promo_types_flags_1,
-    alternate_name_to_printing_indices: data.alternate_names_index,
+    alternate_name_to_printing_indices: buildNormalizedAlternateIndex(
+      data.alternate_names_index ?? {},
+    ),
   };
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
 
@@ -321,7 +321,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   } else {
     // No sort directive: fall back to Spec 019 seeded ordering
     const bareWords = collectBareWords(ast)
-      .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ''))
+      .map(w => normalizeAlphanumeric(w))
       .filter(w => w.length > 0)
     seededSort(deduped, sortSeed, index.combinedNamesNormalized, bareWords, sessionSalt)
     if (printingIndices && printingIndex) {

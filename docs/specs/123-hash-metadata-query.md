@@ -31,7 +31,7 @@ Spec 109 extends Instances with `zone`, `tags`, `collection_status`, and `varian
 ### Matching Semantics
 
 - **Sources:** `zone`, each entry in `tags[]`, `collection_status`, `variant`. All treated uniformly.
-- **Normalization:** Same as bare words: `value.toLowerCase().replace(/[^a-z0-9]/g, "")`. So `"Don't Have,#334455"` → `"donthave334455"`.
+- **Normalization:** Same as bare words: `normalizeAlphanumeric(value)` (NFD + strip diacritics + lowercase + `[a-z0-9]` only). So `"Don't Have,#334455"` → `"donthave334455"`.
 - **Substring:** Query `#com` normalized to `"com"`. For each indexed metadata string, if `normalizedString.includes(queryNorm)` then that string's indices contribute. Allocate `Uint8Array(printingCount)`, set `buf[idx] = 1` for each index across all contributing keys; return combined mask.
 - **List scope:** Pan-list, trash excluded. `#combo` matches metadata across all non-trash lists. Currently that's the default list only; future multi-list will span all. `my:list #combo` ANDs list membership with metadata → default-list cards with combo tag.
 

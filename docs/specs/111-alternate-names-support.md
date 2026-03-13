@@ -47,23 +47,22 @@ Two indexes serve different purposes:
 - Resolve `oracle_id` (top-level or `card_faces[0].oracle_id` for reversible_card)
 - Collect `printed_name` and `flavor_name` when present and different from `name`
 - For multi-face cards, also check `card_faces[].printed_name` and `card_faces[].flavor_name`
-- Normalize: `s.toLowerCase().replace(/[^a-z0-9]/g, "")` (same as primary names)
-- Map normalized alternate name → canonical face via `oracle_id` → canonical_face (from columns being built or from oracle-cards)
+- Use raw alternate name as key (no normalization in ETL). Client builds normalized lookup at load time.
 
 **Placement:** process.ts already reads default-cards for UB. After building columns, add a pass over default-cards to build `alternate_names_index`. We need `oracle_id` → canonical_face; build from `data.oracle_ids` and `data.canonical_face` (oracle_id → canonical_face for first occurrence of each oracle_id).
 
-**Output:** `alternate_names_index: Record<string, number>` — normalized alternate name → canonical face index. If multiple printings use the same alternate name for the same card, one entry suffices. Collisions (same alternate name, different cards) are unlikely; last write wins.
+**Output:** `alternate_names_index: Record<string, number>` — raw alternate name → canonical face index. If multiple printings use the same alternate name for the same card, one entry suffices. Collisions (same alternate name, different cards) are unlikely; last write wins. CardIndex and extractDisplayColumns apply `normalizeAlphanumeric` when building the in-memory lookup.
 
 ### 2. ETL: Printing-domain index (printings.json)
 
 **Source:** default-cards.json (same iteration as process-printings)
 
 **Extraction:** During process-printings, when emitting printing rows:
-- For each default-card with `printed_name` or `flavor_name` different from `name`, collect the alternate name(s)
+- For each default-card with `printed_name` or `flavor_name` different from `name`, collect the raw alternate name(s)
 - For each finish row emitted, the printing row index is known
-- Add normalized alternate name → [printing row indices] (one or more per physical printing due to finishes)
+- Add raw alternate name → [printing row indices] (one or more per physical printing due to finishes)
 
-**Output:** `alternate_names_index: Record<string, number[]>` — normalized alternate name → sorted printing row indices. Used when adding to list with no set specified: pick first printing index, get `scryfall_id` from that row.
+**Output:** `alternate_names_index: Record<string, number[]>` — raw alternate name → sorted printing row indices. extractPrintingDisplayColumns applies `normalizeAlphanumeric` when building the in-memory lookup. Used when adding to list with no set specified: pick first printing index, get `scryfall_id` from that row.
 
 ### 3. Search: BARE and EXACT
 
@@ -122,7 +121,7 @@ Two indexes serve different purposes:
 }
 ```
 
-- Keys: normalized alternate names (lowercase, non-alphanumeric stripped)
+- Keys: raw alternate names (as in Scryfall data; client normalizes at load)
 - Values: canonical face indices
 - Size: ~400–500 entries (UB + Godzilla + future); negligible
 
@@ -131,23 +130,20 @@ Two indexes serve different purposes:
 ```json
 {
   "alternate_names_index": {
-    "leylineweaver": [45001, 45002],
-    "detectintrusion": [45010, 45011],
+    "Leyline Weaver": [45001, 45002],
+    "Detect Intrusion": [45010, 45011],
     ...
   }
 }
 ```
 
-- Keys: same normalization
+- Keys: raw alternate names (same as columns.json)
 - Values: sorted printing row indices (one per finish variant of the physical printing)
 - For list-add default: use first index
 
 ## Normalization
 
-Same as primary names (Spec 018, Spec 096):
-- Lowercase
-- Strip non-alphanumeric: `replace(/[^a-z0-9]/g, "")`
-- List validation also collapses whitespace: `replace(/\s+/g, " ").trim()` before normalize
+**Client-side only.** ETL emits raw names; `CardIndex`, `extractDisplayColumns`, and `extractPrintingDisplayColumns` build normalized lookups at load time via `normalizeAlphanumeric` (shared/src/normalize.ts): NFD decomposition, strip combining diacritics, lowercase, `[a-z0-9]` only. Same as primary names (Spec 018, Spec 096). List validation collapses whitespace before normalizing: `replace(/\s+/g, " ").trim()`.
 
 ## Files to Touch
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnarData } from "../data";
+import { normalizeAlphanumeric, buildNormalizedAlternateIndex } from "../normalize";
 import { parseManaSymbols, computeCmc } from "./mana";
 import { parseStatValue } from "./stats";
 import { computeCombinedNames } from "./combined-names";
@@ -133,7 +134,7 @@ export class CardIndex {
     this.namesLower = data.names.map((n) => n.toLowerCase());
     this.combinedNamesLower = combinedNames.map((n) => n.toLowerCase());
     this.combinedNamesNormalized = combinedNames.map((n) =>
-      n.toLowerCase().replace(/[^a-z0-9]/g, ""),
+      normalizeAlphanumeric(n),
     );
     this.sortedNameIndices = buildSortedNameIndices(
       data.names.length,
@@ -188,7 +189,9 @@ export class CardIndex {
     this.numericLoyaltyLookup = data.loyalty_lookup.map(parseStatValue);
     this.numericDefenseLookup = data.defense_lookup.map(parseStatValue);
 
-    this.alternateNamesIndex = data.alternate_names_index ?? {};
+    this.alternateNamesIndex = buildNormalizedAlternateIndex(
+      data.alternate_names_index ?? {},
+    );
 
     this._facesOf = new Map();
     for (let i = 0; i < this.faceCount; i++) {

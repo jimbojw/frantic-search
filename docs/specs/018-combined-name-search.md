@@ -47,7 +47,7 @@ At construction time, `CardIndex` computes two additional arrays from `combined_
 
 - **`combinedNamesLower`** — lowercased combined name, for literal substring search.
   - `"beck // call"`, `"claim // fame"`, `"lightning bolt"`
-- **`combinedNamesNormalized`** — lowercased with all non-`[a-z0-9]` characters removed, for bare-word search.
+- **`combinedNamesNormalized`** — NFD decomposition, strip combining diacritics, lowercase, then keep only `[a-z0-9]`. Enables "gloin" to match "Glóin".
   - `"beckcall"`, `"claimfame"`, `"lightningbolt"`
 
 ### 3. AST: Distinguish quoted bare words

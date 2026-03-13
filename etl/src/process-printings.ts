@@ -231,11 +231,6 @@ function buildCanonicalScryfallIdMap(): Map<number, string> {
   return map;
 }
 
-/** Normalize for alternate name index: lowercase, strip non-alphanumeric. Spec 111. */
-function normalizeAltName(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 /** Front-face illustration_id (multiface uses card_faces[0]). */
 function getFrontIllustrationId(card: DefaultCard): string | undefined {
   return card.card_faces?.[0]?.illustration_id ?? card.illustration_id;
@@ -360,12 +355,11 @@ export function processPrintings(verbose: boolean): void {
     const illMap = illustrationIndexMap.get(canonicalFace);
     const illIdx = illMap?.get(illKey) ?? 0;
 
-    // Collect alternate names for this printing (Spec 111)
+    // Collect alternate names for this printing (Spec 111). Raw names; client normalizes at load.
     const altNames: string[] = [];
     const collectAlt = (alt: string | undefined, refName: string) => {
       if (!alt || alt.toLowerCase() === refName.toLowerCase()) return;
-      const norm = normalizeAltName(alt);
-      if (norm) altNames.push(norm);
+      altNames.push(alt);
     };
     collectAlt(card.printed_name, card.name ?? "");
     collectAlt(card.flavor_name, card.name ?? "");
@@ -404,8 +398,8 @@ export function processPrintings(verbose: boolean): void {
     // Map each alternate name to the printing rows just emitted (Spec 111)
     if (altNames.length > 0) {
       for (let pi = printingRowStart; pi < totalEntries; pi++) {
-        for (const norm of altNames) {
-          (altNamesIndex[norm] ??= []).push(pi);
+        for (const alt of altNames) {
+          (altNamesIndex[alt] ??= []).push(pi);
         }
       }
     }

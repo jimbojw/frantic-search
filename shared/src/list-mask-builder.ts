@@ -4,6 +4,7 @@ import type { MaterializedView, InstanceState } from "./card-list";
 import type { ParsedEntry } from "./list-lexer";
 import { FINISH_FROM_STRING } from "./bits";
 import { TRASH_LIST_ID } from "./card-list";
+import { normalizeAlphanumeric } from "./normalize";
 
 /**
  * Builds oracle_id → canonical face index map from display columns.
@@ -115,9 +116,9 @@ export interface MetadataIndexResult {
   indexArrays: Uint32Array[];
 }
 
-/** Normalize metadata string for index: lowercase, alphanumeric only. Spec 123. */
+/** Normalize metadata string for index: accent folding, lowercase, alphanumeric only. Spec 123. */
 function normalizeMetadata(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalizeAlphanumeric(s);
 }
 
 /**

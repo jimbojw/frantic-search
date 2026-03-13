@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BreakdownNode } from '@frantic-search/shared'
+import { normalizeAlphanumeric } from '@frantic-search/shared'
 import { findFieldNode, findBareNode, removeNode, appendTerm, parseBreakdown, clearFieldTermsRecursive } from './query-edit-core'
 
 /** Normalize for # metadata matching. Spec 123 / Spec 125. */
 function normalizeMetadata(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return normalizeAlphanumeric(s)
 }
 
 // ---------------------------------------------------------------------------

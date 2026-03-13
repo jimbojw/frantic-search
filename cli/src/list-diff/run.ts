@@ -12,6 +12,7 @@ import {
   buildCanonicalPrintingPerFace,
   buildMetadataIndexFromInstances,
   importDeckList,
+  normalizeAlphanumeric,
 } from "@frantic-search/shared";
 import type { UniqueMode } from "@frantic-search/shared";
 import type { ImportCandidate, InstanceState } from "@frantic-search/shared";
@@ -80,7 +81,7 @@ function hasListContextInQuery(ast: ReturnType<typeof parse>): boolean {
 }
 
 function normalizeMetadata(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalizeAlphanumeric(s);
 }
 
 function candidateMatchesMetadataQueries(

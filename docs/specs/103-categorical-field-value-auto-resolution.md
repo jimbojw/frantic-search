@@ -30,7 +30,7 @@ For fields that accept a **closed set** of values (categorical fields), when the
 
 ```typescript
 function normalizeForResolution(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalizeAlphanumeric(s);  // NFD + strip diacritics + lowercase + [a-z0-9]
 }
 ```
 
