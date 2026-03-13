@@ -6,6 +6,7 @@ import {
   serializeMtggoldfish,
   serializeMelee,
   serializeTappedOut,
+  serializeTcgplayer,
   serializeManapool,
   serializeMtgsalvation,
 } from '@frantic-search/shared'
@@ -46,6 +47,8 @@ export function serialize(
       return serializeMelee(instances, display)
     case 'tappedout':
       return serializeTappedOut(instances, display, printingDisplay)
+    case 'tcgplayer':
+      return serializeTcgplayer(instances, display, printingDisplay)
     case 'manapool':
       return serializeManapool(instances, display, printingDisplay)
     case 'mtgsalvation':

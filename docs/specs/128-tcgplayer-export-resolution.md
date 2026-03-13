@@ -100,6 +100,11 @@ In `etl/src/process-printings.ts`:
 
 Resolution happens in `aggregateInstances` when building entries for the TCGPlayer export path. Pass `preferTcgplayerForSetAndNumber: true` when calling `groupByZone` from `serializeTcgplayer` so that only the TCGPlayer format uses resolved values; other formats (Moxfield, Archidekt, etc.) continue to use Scryfall set codes and collector numbers.
 
+All DeckEditor serialization paths must route TCGPlayer format to `serializeTcgplayer`:
+
+- **Worker path** (via `onSerializeRequest`) — used for Display mode and Copy; already correct.
+- **Local path** (`app/src/deck-editor/serialization.ts`) — used by Review view diff lines (Spec 119) and fallback when the worker is unavailable; must include `case 'tcgplayer'`.
+
 For each aggregated entry, when looking up `setCode` and `collectorNumber` from the printing row:
 
 1. If `preferTcgplayerForSetAndNumber` is true and `printingDisplay.tcgplayer_set_codes` and `printingDisplay.tcgplayer_collector_numbers` exist and the row has non-empty values: use `tcgplayer_set_codes[row]` and `tcgplayer_collector_numbers[row]` directly (already in TCGPlayer format; no `tcgplayerSetCode` transform).
@@ -140,3 +145,4 @@ TCGPlayer Mass Entry does not support foil/etched markers. `serializeTcgplayer` 
 
 - **DefaultCard interface:** Extend the `DefaultCard` interface in `etl/src/process-printings.ts` with `tcgplayer_id?: number` and `tcgplayer_etched_id?: number` to read Scryfall's optional TCGPlayer product IDs.
 - **Test deck for criterion 4:** A minimal regression test deck could include Banquet Guests (LTC regular), Frodo, Adventurous Hobbit (LTC), and basic lands from TMT. With resolution, expected output includes e.g. `1 Banquet Guests [LTC] 47` (not `450`). Manual paste into TCGPlayer Mass Entry remains the authoritative acceptance test.
+- **2026-03-13:** Added `case 'tcgplayer'` to `app/src/deck-editor/serialization.ts` so that Review view diff lines and fallback serialization use the correct TCGPlayer format. The worker path was already wired; the local module was missing the dispatch.
