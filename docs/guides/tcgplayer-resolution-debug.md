@@ -36,6 +36,10 @@ For Banquet Guests LTC 130 (regular): TCGCSV has number `130` for that product (
 
 To confirm resolution is active, use a card where Scryfall and TCGPlayer differ, e.g. Admiral Beckett Brass from The List (plst): Scryfall `XLN-217` vs TCGPlayer `217/279`.
 
+### 5. Numberless products
+
+Products without collector numbers (e.g., Chain Stasis HML, Mobilize LIST) are included in the product map with empty number; output is `quantity name [SET]`.
+
 ## Common Causes
 
 | Symptom | Cause |
@@ -51,4 +55,4 @@ To confirm resolution is active, use a card where Scryfall and TCGPlayer differ,
 2. `process` runs `processTcgcsv` → `data/dist/tcgcsv-product-map.json`
 3. `processPrintings` joins `tcgplayer_id` to product map → `tcgplayer_set_indices`, `tcgplayer_number_indices` in `printings.json`
 4. Worker loads printings, `extractPrintingDisplayColumns` resolves indices → `tcgplayer_set_codes`, `tcgplayer_collector_numbers`
-5. `serializeTcgplayer` uses these when `preferTcgplayerForSetAndNumber` and both are non-empty
+5. `serializeTcgplayer` uses these when `preferTcgplayerForSetAndNumber`; emits `[SET] collector` when both present, `[SET]` only when TCGPlayer has no number

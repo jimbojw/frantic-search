@@ -202,7 +202,7 @@ The download command writes only raw API responses. A separate **process step** 
 
 - **Input:** `data/raw/tcgcsv-groups.json`, `data/raw/tcgcsv-products/*.json`, `data/raw/tcgcsv-meta.json`
 - **Output:** `data/dist/tcgcsv-product-map.json` — `{ productMap: Record<string, { setAbbrev: string; number: string; name: string }> }`
-- **Logic:** For each group with non-empty `abbreviation`, read the corresponding products file. For each product, find `extendedData` entry where `name === "Number"`; add `productMap[productId] = { setAbbrev, number, name: product.name ?? "" }` (last-wins for duplicate productId). Skip products without Number. Skip groups with empty abbreviation (e.g., "Box Sets", "Launch Party Cards").
+- **Logic:** For each group with non-empty `abbreviation`, read the corresponding products file. For each product, find `extendedData` entry where `name === "Number"`. Add `productMap[productId] = { setAbbrev, number: numberEntry?.value ?? "", name: product.name ?? "" }` (last-wins for duplicate productId). Products without a Number entry receive `number: ""`; this signals that TCGPlayer has no collector number for the product and the serializer should emit `quantity name [SET]` only. Skip groups with empty abbreviation (e.g., "Box Sets", "Launch Party Cards").
 - **When to run:** As part of the process command, before process-printings. Runs when raw TCGCSV exists; skips when absent.
 
 ## Dependencies

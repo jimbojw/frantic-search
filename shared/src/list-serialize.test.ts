@@ -491,6 +491,17 @@ describe("serializeTcgplayer", () => {
     const result = serializeTcgplayer([i], display, printingWithVariantName);
     expect(result).toBe("1 Banquet Guests (Showcase Scrolls) [LTC] 450");
   });
+
+  it("emits set without collector when TCGPlayer has no number for product", () => {
+    const printingWithSetOnly: PrintingDisplayColumns = {
+      ...printingDisplay,
+      tcgplayer_set_codes: ["HML", "", ""],
+      tcgplayer_collector_numbers: ["", "", ""],
+    };
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    const result = serializeTcgplayer([i], display, printingWithSetOnly);
+    expect(result).toBe("1 Lightning Bolt [HML]");
+  });
 });
 
 describe("serializeManapool", () => {

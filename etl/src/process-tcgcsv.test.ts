@@ -60,7 +60,7 @@ describe("buildProductMapFromData", () => {
     expect(result).toEqual({});
   });
 
-  test("skips products without Number in extendedData", () => {
+  test("includes products without Number with empty number", () => {
     const groupIds = [123];
     const groupAbbrevs = { "123": "LTC" };
     const productsByGroup = {
@@ -75,7 +75,11 @@ describe("buildProductMapFromData", () => {
 
     const result = buildProductMapFromData(groupIds, groupAbbrevs, productsByGroup);
 
-    expect(result).toEqual({});
+    expect(result).toEqual({
+      "1001": { setAbbrev: "LTC", number: "", name: "" },
+      "1002": { setAbbrev: "LTC", number: "", name: "" },
+      "1003": { setAbbrev: "LTC", number: "", name: "" },
+    });
   });
 
   test("last-wins for duplicate productId across groups", () => {

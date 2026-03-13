@@ -169,6 +169,13 @@ function aggregateInstances(
           if (tcgName && tcgName !== "") {
             name = tcgName;
           }
+        } else if (preferTcg && tcgSet) {
+          setCode = tcgSet;
+          collectorNumber = null;
+          const tcgName = printingDisplay.tcgplayer_names?.[row];
+          if (tcgName && tcgName !== "") {
+            name = tcgName;
+          }
         } else if (preferTcg) {
           setCode = tcgplayerSetCode(printingDisplay.set_codes[row]!);
           collectorNumber = printingDisplay.collector_numbers[row]!;
@@ -520,8 +527,11 @@ export function serializeTcgplayer(
   for (const { zone, entries } of groups) {
     const cardLines = entries.map((e) => {
       let line = `${e.quantity} ${e.name}`;
-      if (e.setCode && e.collectorNumber) {
-        line += ` [${e.setCode}] ${e.collectorNumber}`;
+      if (e.setCode) {
+        line += ` [${e.setCode}]`;
+        if (e.collectorNumber) {
+          line += ` ${e.collectorNumber}`;
+        }
       }
       return line;
     });

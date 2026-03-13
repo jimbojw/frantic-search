@@ -52,8 +52,7 @@ export function buildProductMapFromData(
       if (productId == null) continue;
 
       const numberEntry = product.extendedData?.find((e) => e.name === "Number");
-      const number = numberEntry?.value;
-      if (!number || number === "") continue;
+      const number = numberEntry?.value ?? "";
 
       productMap[String(productId)] = {
         setAbbrev: abbrev,

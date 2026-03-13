@@ -95,7 +95,7 @@ In `etl/src/process-printings.ts`:
    - Nonfoil: use `tcgplayer_id`.
    - Etched: use `tcgplayer_etched_id` when present; else `tcgplayer_id`.
    - Foil: use `tcgplayer_id` (TCGPlayer may have separate foil products; Scryfall links the primary one; foil Mass Entry behavior is undefined and may need future work).
-4. **Look up in TCGCSV map** — If we have a productId and it exists in the TCGCSV map, encode `entry.setAbbrev` and `entry.number` via dictionary encoders. Else push 0 for both.
+4. **Look up in TCGCSV map** — If we have a productId and it exists in the TCGCSV map, encode `entry.setAbbrev` and `entry.number` (which may be `""`) via dictionary encoders. Empty number encodes to index 0. Else push 0 for both.
 
 **Dictionary encoding:** Use two separate string-to-index encoders (one for set codes, one for collector numbers). Each reserves index 0 for `""` (no resolution). Rows without resolution get index 0. Matches the `set_indices` / `set_lookup` pattern for smaller payloads and better gzip compression.
 
@@ -110,10 +110,13 @@ All DeckEditor serialization paths must route TCGPlayer format to `serializeTcgp
 
 For each aggregated entry, when looking up `setCode` and `collectorNumber` from the printing row:
 
-1. If `preferTcgplayerForSetAndNumber` is true and `printingDisplay.tcgplayer_set_codes` and `printingDisplay.tcgplayer_collector_numbers` exist and the row has non-empty values: use `tcgplayer_set_codes[row]` and `tcgplayer_collector_numbers[row]` directly (already in TCGPlayer format; no `tcgplayerSetCode` transform).
-2. Else: use `tcgplayerSetCode(printingDisplay.set_codes[row])` and `printingDisplay.collector_numbers[row]`.
+1. If `preferTcgplayerForSetAndNumber` is true and `printingDisplay.tcgplayer_set_codes[row]` is non-empty:
+   - If `printingDisplay.tcgplayer_collector_numbers[row]` is non-empty: use both; emit `quantity name [SET] collector`.
+   - If `printingDisplay.tcgplayer_collector_numbers[row]` is empty: use set only; emit `quantity name [SET]` (no collector). TCGPlayer has no number for this product.
+2. Else: use `tcgplayerSetCode(printingDisplay.set_codes[row])` and `printingDisplay.collector_numbers[row]` (Scryfall fallback).
 3. If the chosen setCode and collectorNumber are both non-empty: emit `quantity name [SET] collector`.
-4. Else: emit `quantity name` only (name-only fallback; TCGPlayer accepts this with best-effort matching).
+4. Else if setCode is non-empty: emit `quantity name [SET]`.
+5. Else: emit `quantity name` only (name-only fallback; TCGPlayer accepts this with best-effort matching).
 
 ## Variant Name for Mass Entry
 
