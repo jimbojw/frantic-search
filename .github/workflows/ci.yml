@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: Apache-2.0
+name: CI
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # -- ETL --
+      - name: Restore data from previous deployment
+        run: >-
+          npm run etl -- restore
+          --site-url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          --verbose
+        continue-on-error: true
+
+      - name: Restore Scryfall data cache
+        id: scryfall-cache
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: ci-scryfall-oracle-cards-${{ github.run_id }}
+          restore-keys: |
+            ci-scryfall-oracle-cards-
+
+      - name: Download Oracle Cards
+        run: npm run etl -- download
+
+      - name: Download Scryfall tags
+        run: npm run etl -- download-tags --verbose
+
+      - name: Download MTGJSON AtomicCards
+        run: npm run etl -- download-mtgjson --verbose
+
+      - name: Restore ThumbHash cache
+        uses: actions/cache@v4
+        with:
+          path: data/thumbhash
+          key: ci-thumbhash-manifest-${{ github.run_id }}
+          restore-keys: |
+            ci-thumbhash-manifest-
+
+      - name: Generate ThumbHashes
+        run: timeout 10 npm run etl -- thumbhash --verbose
+        continue-on-error: true
+
+      - name: Process card data
+        run: npm run etl -- process
+
+      # -- Test --
+      - name: Test
+        run: npm test
+
+      # -- App --
+      - name: Build app
+        run: npm run build -w app
