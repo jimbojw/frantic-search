@@ -55,6 +55,8 @@ export interface CreatePaneStateOpts {
   uniqueMode: Accessor<UniqueMode>
   indicesIncludingExtras: Accessor<number | undefined>
   printingIndicesIncludingExtras: Accessor<number | undefined>
+  /** Spec 131: Oracle "did you mean?" hint when zero results and trailing bare tokens. */
+  oracleHint?: Accessor<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>
   display: Accessor<DisplayColumns | null>
   printingDisplay: Accessor<PrintingDisplayColumns | null>
   oracleTagLabels: Accessor<string[]>
@@ -159,6 +161,7 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     uniqueMode: opts.uniqueMode,
     indicesIncludingExtras: opts.indicesIncludingExtras,
     printingIndicesIncludingExtras: opts.printingIndicesIncludingExtras,
+    oracleHint: opts.oracleHint,
     display: opts.display,
     printingDisplay: opts.printingDisplay,
     oracleTagLabels: opts.oracleTagLabels,

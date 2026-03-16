@@ -71,6 +71,7 @@ export type PaneState = {
   uniqueMode: () => UniqueMode
   indicesIncludingExtras: () => number | undefined
   printingIndicesIncludingExtras: () => number | undefined
+  oracleHint?: () => { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined
   display: () => DisplayColumns | null
   printingDisplay: () => PrintingDisplayColumns | null
   oracleTagLabels: () => string[]
@@ -241,6 +242,7 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     uniqueMode: state.uniqueMode,
     indicesIncludingExtras: state.indicesIncludingExtras,
     printingIndicesIncludingExtras: state.printingIndicesIncludingExtras,
+    oracleHint: state.oracleHint,
     viewMode,
     changeViewMode: state.changeViewMode,
     changeUniqueMode: state.changeUniqueMode,

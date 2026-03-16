@@ -471,3 +471,45 @@ describe('dual counts (Spec 082)', () => {
     expect(setMh2.matchCountCards).toBe(1)
   })
 })
+
+describe('oracle hint (Spec 131)', () => {
+  it('zero results with trailing bare tokens yields oracleHint when oracle variant returns results', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'lightning ci:r deal 3' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.oracleHint).toBeDefined()
+    expect(result.oracleHint!.query).toContain('o:')
+    expect(result.oracleHint!.label).toContain('o:')
+    expect(result.oracleHint!.count).toBeGreaterThan(0)
+    expect(result.oracleHint!.variant).toMatch(/^(phrase|per-word)$/)
+  })
+
+  it('(xyc OR abc) with zero results does not trigger oracle hint', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '(xyc OR abc)' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.oracleHint).toBeUndefined()
+  })
+
+  it('non-zero results does not populate oracleHint', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBeGreaterThan(0)
+    expect(result.oracleHint).toBeUndefined()
+  })
+})

@@ -54,7 +54,7 @@ export {
 } from "./card-list";
 
 export { TokenType } from "./search/ast";
-export type { ASTNode, Token, QueryNodeResult, Span, SortDirective } from "./search/ast";
+export type { ASTNode, BareWordNode, Token, QueryNodeResult, Span, SortDirective } from "./search/ast";
 export { lex } from "./search/lexer";
 export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
@@ -70,6 +70,7 @@ export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";
 export { getSortByFromQuery } from "./search/query-sort";
 export { seededSort, seededSortPrintings, collectBareWords, fnv1a, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./search/ordering";
+export { getTrailingBareNodes } from "./search/oracle-hint";
 export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";

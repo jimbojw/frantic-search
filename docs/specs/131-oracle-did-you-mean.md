@@ -1,6 +1,6 @@
 # Spec 131: Oracle "Did You Mean?" Empty-State Hint
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol)
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
+import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -348,6 +349,101 @@ export function runSearch(params: RunSearchParams): SearchResult {
     effectiveBreakdown = breakdown
   }
 
+  // Spec 131: Oracle "Did you mean?" hint when zero results and trailing bare tokens
+  let oracleHint: SearchResult['oracleHint'] = undefined
+  if (deduped.length === 0 && hasLive) {
+    if (!(hasPinned && pinnedIndicesCount === 0)) {
+      const root = ast.type === 'AND' || ast.type === 'BARE'
+      if (root) {
+        const trailing = getTrailingBareNodes(ast)
+        if (trailing && trailing.length > 0) {
+          const variants: Array<'phrase' | 'per-word'> =
+            trailing.length === 1 && trailing[0].quoted ? ['phrase'] : ['phrase', 'per-word']
+          let best: { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | null = null
+          for (const variant of variants) {
+            const altLiveQuery = spliceBareToOracle(msg.query, trailing, variant)
+            const altCombinedQuery = hasPinned
+              ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(altLiveQuery)
+              : altLiveQuery
+            const altEval = cache.evaluate(parse(altCombinedQuery))
+            let altDeduped = Array.from(altEval.indices)
+            let altPrintingIndices = altEval.printingIndices
+
+            if (!includeExtras) {
+              if (altEval.hasPrintingConditions && altPrintingIndices && printingIndex) {
+                const filtered: number[] = []
+                for (let i = 0; i < altPrintingIndices.length; i++) {
+                  const p = altPrintingIndices[i]
+                  if (
+                    !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                    (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                      index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+                  ) {
+                    filtered.push(p)
+                  }
+                }
+                const seen = new Set<number>()
+                altDeduped = []
+                for (let i = 0; i < filtered.length; i++) {
+                  const cf = printingIndex.canonicalFaceRef[filtered[i]]
+                  if (!seen.has(cf)) {
+                    seen.add(cf)
+                    altDeduped.push(cf)
+                  }
+                }
+                altPrintingIndices = new Uint32Array(filtered)
+              } else {
+                altDeduped = altDeduped.filter(
+                  (fi) => (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0,
+                )
+                if (altPrintingIndices && printingIndex) {
+                  const filtered: number[] = []
+                  for (let i = 0; i < altPrintingIndices.length; i++) {
+                    const p = altPrintingIndices[i]
+                    if (
+                      !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                      (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                        index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+                    ) {
+                      filtered.push(p)
+                    }
+                  }
+                  altPrintingIndices = new Uint32Array(filtered)
+                }
+              }
+            }
+
+            const cardCount = altDeduped.length
+            if (cardCount > 0) {
+              let printingCount: number | undefined
+              if (altPrintingIndices && printingIndex && (msg.viewMode === 'images' || msg.viewMode === 'full')) {
+                printingCount = altPrintingIndices.length
+              } else if (printingIndex && altDeduped.length > 0) {
+                let total = 0
+                for (const fi of altDeduped) total += printingIndex.printingsOf(fi).length
+                printingCount = total
+              }
+              const fullQuery = hasPinned
+                ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(altLiveQuery)
+                : altLiveQuery
+              best = {
+                query: fullQuery,
+                label: getOracleLabel(trailing, variant),
+                count: cardCount,
+                printingCount,
+                variant,
+              }
+              if (variant === 'phrase') break
+            }
+          }
+          if (best) {
+            oracleHint = best
+          }
+        }
+      }
+    }
+  }
+
   const result: SearchResult = {
     type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
     printingIndices, hasPrintingConditions, uniqueMode, includeExtras,
@@ -357,6 +453,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
     ...(indicesIncludingExtras !== undefined && { indicesIncludingExtras }),
     ...(printingIndicesIncludingExtras !== undefined && { printingIndicesIncludingExtras }),
+    ...(oracleHint && { oracleHint }),
   }
   return result
 }

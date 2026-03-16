@@ -24,6 +24,8 @@ export interface SearchContextValue {
   uniqueMode: Accessor<UniqueMode>
   indicesIncludingExtras: Accessor<number | undefined>
   printingIndicesIncludingExtras: Accessor<number | undefined>
+  /** Spec 131: Oracle "did you mean?" hint when zero results and trailing bare tokens. */
+  oracleHint?: Accessor<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>
   viewMode: Accessor<ViewMode>
   changeViewMode: (mode: ViewMode) => void
   changeUniqueMode: (mode: UniqueMode) => void

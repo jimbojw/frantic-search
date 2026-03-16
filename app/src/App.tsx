@@ -122,6 +122,7 @@ function App() {
   const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount, setPinnedPrintingCount] = createSignal<number | undefined>(undefined)
+  const [oracleHint, setOracleHint] = createSignal<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>(undefined)
   // Right-pane state (Dual Wield only)
   const [indices2, setIndices2] = createSignal<Uint32Array>(new Uint32Array(0))
   const [breakdown2, setBreakdown2] = createSignal<BreakdownNode | null>(null)
@@ -135,6 +136,7 @@ function App() {
   const [pinnedPrintingCount2, setPinnedPrintingCount2] = createSignal<number | undefined>(undefined)
   const [indicesIncludingExtras2, setIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
   const [printingIndicesIncludingExtras2, setPrintingIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
+  const [oracleHint2, setOracleHint2] = createSignal<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>(undefined)
   const [visibleCount2, setVisibleCount2] = createSignal(BATCH_SIZES.images)
   const [breakdownExpanded2, setBreakdownExpanded2] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
@@ -613,6 +615,7 @@ function App() {
           setUniqueMode2(msg.uniqueMode)
           setIndicesIncludingExtras2(msg.indicesIncludingExtras)
           setPrintingIndicesIncludingExtras2(msg.printingIndicesIncludingExtras)
+          setOracleHint2(msg.oracleHint)
         } else if (matchesLeft || matchesLeftDual) {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
@@ -626,6 +629,7 @@ function App() {
           setUniqueMode(msg.uniqueMode)
           setIndicesIncludingExtras(msg.indicesIncludingExtras)
           setPrintingIndicesIncludingExtras(msg.printingIndicesIncludingExtras)
+          setOracleHint(msg.oracleHint)
           const eq = effectiveQuery().trim()
           if (eq) {
             const usedExtension = (msg.includeExtras ?? false) || msg.uniqueMode !== 'cards'
@@ -664,6 +668,7 @@ function App() {
       if (workerStatus() === 'ready') {
         if (q || pq) {
           latestQueryIdLeft++
+          setOracleHint(undefined)
           worker.postMessage({
             type: 'search', queryId: latestQueryIdLeft, query: query(),
             pinnedQuery: pq || undefined,
@@ -683,9 +688,11 @@ function App() {
           setUniqueMode('cards')
           setIndicesIncludingExtras(undefined)
           setPrintingIndicesIncludingExtras(undefined)
+          setOracleHint(undefined)
         }
         if (q2 || pq2) {
           latestQueryIdRight++
+          setOracleHint2(undefined)
           const viewMode2 = extractViewMode(
             pq2 ? sealQuery(pq2) + ' ' + sealQuery(q2) : q2
           )
@@ -708,11 +715,13 @@ function App() {
           setUniqueMode2('cards')
           setIndicesIncludingExtras2(undefined)
           setPrintingIndicesIncludingExtras2(undefined)
+          setOracleHint2(undefined)
         }
       }
     } else {
       if (workerStatus() === 'ready' && (q || pq)) {
         latestQueryId++
+        setOracleHint(undefined)
         worker.postMessage({
           type: 'search', queryId: latestQueryId, query: query(),
           pinnedQuery: pq || undefined,
@@ -732,6 +741,7 @@ function App() {
         setUniqueMode('cards')
         setIndicesIncludingExtras(undefined)
         setPrintingIndicesIncludingExtras(undefined)
+        setOracleHint(undefined)
       } else if (!q) {
         setIndices(new Uint32Array(0))
         setBreakdown(null)
@@ -741,6 +751,7 @@ function App() {
         setUniqueMode('cards')
         setIndicesIncludingExtras(undefined)
         setPrintingIndicesIncludingExtras(undefined)
+        setOracleHint(undefined)
       }
     }
   })
@@ -1070,6 +1081,7 @@ function App() {
     uniqueMode,
     indicesIncludingExtras,
     printingIndicesIncludingExtras,
+    oracleHint,
     display,
     printingDisplay,
     oracleTagLabels,
@@ -1106,6 +1118,7 @@ function App() {
     uniqueMode: uniqueMode2,
     indicesIncludingExtras: indicesIncludingExtras2,
     printingIndicesIncludingExtras: printingIndicesIncludingExtras2,
+    oracleHint: oracleHint2,
     display,
     printingDisplay,
     oracleTagLabels,
@@ -1137,6 +1150,7 @@ function App() {
     uniqueMode,
     indicesIncludingExtras,
     printingIndicesIncludingExtras,
+    oracleHint,
     viewMode,
     changeViewMode: leftPaneState.changeViewMode,
     changeUniqueMode: leftPaneState.changeUniqueMode,

@@ -13,7 +13,7 @@ import { useSearchContext } from './SearchContext'
 import { hasMyInQuery, hasHashInQuery } from './query-edit'
 import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
-import { HighlightedLabel } from './InlineBreakdown'
+import { HighlightedLabel, formatDualCount } from './InlineBreakdown'
 import { Outlink } from './Outlink'
 
 declare const __REPO_URL__: string
@@ -158,6 +158,29 @@ export default function SearchResults() {
                         <Show when={showPrintings()}>
                           , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
                         </Show>)?
+                      </p>
+                    )
+                  }}
+                </Show>
+                <Show when={!ctx.indicesIncludingExtras() && ctx.oracleHint?.()}>
+                  {(hint) => {
+                    const h = hint()
+                    return (
+                      <p class="mt-1 flex flex-wrap items-center gap-x-1">
+                        Did you mean to search oracle text? Try{' '}
+                        <button
+                          type="button"
+                          onClick={() => ctx.setQuery(h.query)}
+                          class="inline-flex flex-col items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-left"
+                        >
+                          <span class="flex items-center gap-1">
+                            <HighlightedLabel label={h.label} />
+                          </span>
+                          <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            {formatDualCount(h.count, h.printingCount)}
+                          </span>
+                        </button>
+                        ?
                       </p>
                     )
                   }}
