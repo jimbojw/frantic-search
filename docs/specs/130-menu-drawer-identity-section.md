@@ -1,6 +1,6 @@
 # Spec 130: MenuDrawer COLOR Section
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 083 (MenuDrawer), Spec 043 (Graduated Color Identity Interaction), Spec 044 (Tri-state Chips), Spec 055 (Color Number Queries), ADR-015 (Mana Symbol Rendering)
 

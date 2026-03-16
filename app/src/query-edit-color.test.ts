@@ -10,6 +10,11 @@ import {
   colorlessBar,
   colorlessX,
   clearColorIdentity,
+  findFirstCiWubrgNode,
+  isWubrgColorActive,
+  toggleIdentityColorChip,
+  toggleIdentityColorlessChip,
+  cycleCiNumericChip,
 } from './query-edit-color'
 import { toggleSimple } from './query-edit-chips'
 
@@ -573,5 +578,167 @@ describe('clearColorIdentity', () => {
   it('handles alias fields', () => {
     const q = 'identity>=r'
     expect(clearColorIdentity(q, buildBreakdown(q))).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Spec 130: findFirstCiWubrgNode
+// ---------------------------------------------------------------------------
+
+describe('findFirstCiWubrgNode', () => {
+  it('returns ci>= node when only ci>= exists', () => {
+    const bd = buildBreakdown('ci>=r t:creature')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).not.toBeNull()
+    expect(node!.label).toContain('ci>=')
+    expect(node!.label).toContain('r')
+  })
+
+  it('returns ci= over ci>= (priority)', () => {
+    const bd = buildBreakdown('ci=w ci>=u')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).not.toBeNull()
+    expect(node!.label).toMatch(/ci=w/)
+  })
+
+  it('returns ci: over ci>= (priority)', () => {
+    const bd = buildBreakdown('ci:u ci>=w')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).not.toBeNull()
+    expect(node!.label).toMatch(/ci:u/)
+  })
+
+  it('skips ci:m, returns ci:u', () => {
+    const bd = buildBreakdown('ci:m ci:u')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).not.toBeNull()
+    expect(node!.label).toMatch(/ci:u/)
+  })
+
+  it('skips ci:2, returns ci:wu', () => {
+    const bd = buildBreakdown('ci:2 ci:wu')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).not.toBeNull()
+    expect(node!.label).toMatch(/ci:wu/)
+  })
+
+  it('returns null for named value ci:grixis', () => {
+    const bd = buildBreakdown('ci:grixis')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).toBeNull()
+  })
+
+  it('returns null for ci:m only', () => {
+    const bd = buildBreakdown('ci:m')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).toBeNull()
+  })
+
+  it('returns null when no CI node', () => {
+    const bd = buildBreakdown('t:creature')
+    const node = findFirstCiWubrgNode(bd)
+    expect(node).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Spec 130: isWubrgColorActive
+// ---------------------------------------------------------------------------
+
+describe('isWubrgColorActive', () => {
+  it('returns true for W and U when ci=w and ci>=u exist', () => {
+    const bd = buildBreakdown('ci=w ci>=u')
+    expect(isWubrgColorActive(bd, 'w')).toBe(true)
+    expect(isWubrgColorActive(bd, 'u')).toBe(true)
+  })
+
+  it('returns false for U when only ci=w exists', () => {
+    const bd = buildBreakdown('AND(ci=w)')
+    expect(isWubrgColorActive(bd, 'u')).toBe(false)
+  })
+
+  it('returns false for U when only ci:m exists', () => {
+    const bd = buildBreakdown('AND(ci:m)')
+    expect(isWubrgColorActive(bd, 'u')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Spec 130: toggleIdentityColorChip / toggleIdentityColorlessChip
+// ---------------------------------------------------------------------------
+
+describe('toggleIdentityColorChip', () => {
+  it('tap U on empty → ci:u', () => {
+    expect(toggleIdentityColorChip('', null, 'u')).toBe('ci:u')
+  })
+
+  it('tap U on ci:u → empty', () => {
+    const q = 'ci:u'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'u')).toBe('')
+  })
+
+  it('tap U on ci>=u → empty', () => {
+    const q = 'ci>=u'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'u')).toBe('')
+  })
+
+  it('tap W on ci>=u → ci:wu', () => {
+    const q = 'ci>=u'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'w')).toBe('ci:wu')
+  })
+
+  it('tap U on ci:wu → ci:w', () => {
+    const q = 'ci:wu'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'u')).toBe('ci:w')
+  })
+})
+
+describe('toggleIdentityColorlessChip', () => {
+  it('tap C on ci=c → empty', () => {
+    const q = 'ci=c'
+    expect(toggleIdentityColorlessChip(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('tap C on ci:c → empty', () => {
+    const q = 'ci:c'
+    expect(toggleIdentityColorlessChip(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('tap C on ci:wr → ci=c (replaces WUBRG with colorless)', () => {
+    const q = 'ci:wr'
+    expect(toggleIdentityColorlessChip(q, buildBreakdown(q))).toBe('ci=c')
+  })
+})
+
+describe('toggleIdentityColorChip — C interaction', () => {
+  it('tap W on ci=c → ci:w (removes ci=c first)', () => {
+    const q = 'ci=c'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'w')).toBe('ci:w')
+  })
+
+  it('tap W on ci:c → ci:w', () => {
+    const q = 'ci:c'
+    expect(toggleIdentityColorChip(q, buildBreakdown(q), 'w')).toBe('ci:w')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Spec 130: cycleCiNumericChip
+// ---------------------------------------------------------------------------
+
+describe('cycleCiNumericChip', () => {
+  it('appends ci=2 when neutral', () => {
+    expect(cycleCiNumericChip('', null, 2)).toBe('ci=2')
+  })
+
+  it('cycles positive → negative', () => {
+    const q = 'ci=2'
+    expect(cycleCiNumericChip(q, buildBreakdown(q), 2)).toMatch(/-ci=2|-ci:2/)
+  })
+
+  it('detects ci:2 as positive', () => {
+    const q = 'ci:2'
+    const result = cycleCiNumericChip(q, buildBreakdown(q), 2)
+    expect(result).toMatch(/-ci/)
   })
 })

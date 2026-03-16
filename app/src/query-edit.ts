@@ -30,7 +30,15 @@ export {
   toggleColorExclude,
   isCILabel,
   clearColorIdentity,
+  CI_FIELDS,
+  findFirstCiWubrgNode,
+  isWubrgColorActive,
+  getIdentityColorChipState,
+  toggleIdentityColorChip,
+  toggleIdentityColorlessChip,
+  cycleCiNumericChip,
 } from './query-edit-color'
+export type { IdentityColorChipState } from './query-edit-color'
 
 export {
   toggleSimple,

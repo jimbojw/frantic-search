@@ -15,6 +15,7 @@ import {
   clearFieldTerms,
   isFieldLabel,
   isCILabel,
+  isWubrgColorActive,
   parseBreakdown,
 } from './query-edit'
 
@@ -194,14 +195,7 @@ export default function ResultsBreakdown(props: {
 
   function colorDrillActive(bar: ColorBarDef): boolean {
     if (bar.kind === 'wubrg') {
-      const c = bar.color
-      const eq = ciEqNode()
-      if (eq && extractValue(eq.label, '=').toLowerCase().includes(c)) return true
-      const colon = ciColonNode()
-      if (colon && extractValue(colon.label, ':').toLowerCase().includes(c)) return true
-      const gte = ciGteNode()
-      if (gte && extractValue(gte.label, '>=').toLowerCase().includes(c)) return true
-      return false
+      return isWubrgColorActive(bd(), bar.color)
     }
     if (bar.kind === 'colorless') {
       if (isSimpleActive(bd(), CI_FIELDS, '=', false, 'c')) return true

@@ -3,7 +3,7 @@ import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-j
 import { IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip } from './query-edit'
+import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip, CI_FIELDS, getIdentityColorChipState, toggleIdentityColorChip, toggleIdentityColorlessChip, cycleCiNumericChip } from './query-edit'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import type { ViewMode } from './view-mode'
@@ -74,13 +74,14 @@ function saltPercentileChip(value: string): PercentileChipDef {
   }
 }
 
-const TERMS_SECTIONS = ['formats', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
+const TERMS_SECTIONS = ['formats', 'color', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
 const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
 type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
+  color: [], // Spec 130: rendered by ColorSection
   formats: [
     fmtChip('commander'),
     fmtChip('modern'),
@@ -176,6 +177,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
   mylist: 'My List',
   views: 'Views',
   formats: 'Formats',
+  color: 'Colors',
   layouts: 'Layouts',
   roles: 'Roles',
   lands: 'Lands',
@@ -185,6 +187,12 @@ const SECTION_LABELS: Record<SectionId, string> = {
   popularity: 'Popularity',
   salt: 'Salt',
   sort: 'Sort',
+}
+
+// Content headings; inherits from nav labels, overrides where different
+const SECTION_HEADINGS: Record<SectionId, string> = {
+  ...SECTION_LABELS,
+  color: 'Color Identity',
 }
 
 const STORAGE_KEY = 'frantic-terms-tab'
@@ -410,6 +418,177 @@ function PercentileTermChip(props: {
     </button>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Spec 130: COLOR section chips
+// ---------------------------------------------------------------------------
+
+const WUBRG_COLORS = ['w', 'u', 'b', 'r', 'g'] as const
+const MANA_CLASSES: Record<string, string> = {
+  w: 'ms-w',
+  u: 'ms-u',
+  b: 'ms-b',
+  r: 'ms-r',
+  g: 'ms-g',
+  c: 'ms-c',
+}
+
+function IdentityColorChip(props: {
+  color: string
+  prefix: string
+  active: boolean
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const isC = props.color === 'c'
+  const onClick = () =>
+    isC
+      ? props.onSetQuery(toggleIdentityColorlessChip(props.query, props.breakdown))
+      : props.onSetQuery(toggleIdentityColorChip(props.query, props.breakdown, props.color))
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      class={`inline-flex items-center justify-center gap-0.5 min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
+        props.active
+          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
+          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+      }`}
+    >
+      {props.active ? (
+        <>
+          {props.prefix}
+          <i class={`ms ms-cost ${MANA_CLASSES[props.color] ?? 'ms-c'}`} />
+        </>
+      ) : (
+        <>
+          <For each={buildSpans(props.prefix)}>
+            {(span) =>
+              span.role
+                ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+                : <>{span.text}</>
+            }
+          </For>
+          <i class={`ms ms-cost ${MANA_CLASSES[props.color] ?? 'ms-c'}`} />
+        </>
+      )}
+    </button>
+  )
+}
+
+function IdentityNumericChip(props: {
+  n: number
+  state: 'neutral' | 'positive' | 'negative'
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const label = `ci=${props.n}`
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(cycleCiNumericChip(props.query, props.breakdown, props.n))}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
+    >
+      {props.state === 'neutral' ? (
+        <For each={buildSpans(label)}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      ) : (
+        label
+      )}
+    </button>
+  )
+}
+
+function IdentityMulticolorChip(props: {
+  state: 'neutral' | 'positive' | 'negative'
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, { field: CI_FIELDS, operator: ':', value: 'm', term: 'ci:m' }))}
+      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
+    >
+      {props.state === 'neutral' ? (
+        <For each={buildSpans('ci:m')}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      ) : (
+        'ci:m'
+      )}
+    </button>
+  )
+}
+
+function ColorSection(props: {
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const state = () => getIdentityColorChipState(props.breakdown)
+  return (
+    <>
+      <div class="flex flex-wrap gap-1.5 content-start">
+        <For each={WUBRG_COLORS}>
+          {(color) => (
+            <IdentityColorChip
+              color={color}
+              prefix="ci:"
+              active={state().wubrg[color as 'w' | 'u' | 'b' | 'r' | 'g']}
+              query={props.query}
+              breakdown={props.breakdown}
+              onSetQuery={props.onSetQuery}
+            />
+          )}
+        </For>
+        <IdentityColorChip
+          color="c"
+          prefix="ci="
+          active={state().colorless}
+          query={props.query}
+          breakdown={props.breakdown}
+          onSetQuery={props.onSetQuery}
+        />
+      </div>
+      <div class="flex flex-wrap gap-1.5 content-start">
+        <For each={[1, 2, 3, 4, 5]}>
+          {(n) => (
+            <IdentityNumericChip
+              n={n}
+              state={state().numeric[n]}
+              query={props.query}
+              breakdown={props.breakdown}
+              onSetQuery={props.onSetQuery}
+            />
+          )}
+        </For>
+        <IdentityMulticolorChip
+          state={state().multicolor}
+          query={props.query}
+          breakdown={props.breakdown}
+          onSetQuery={props.onSetQuery}
+        />
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sort chip
+// ---------------------------------------------------------------------------
 
 function SortTermChip(props: {
   chip: ChipDef
@@ -650,42 +829,53 @@ export default function MenuDrawer(props: {
               {(section) => (
                 <section id={section} class="flex flex-col gap-1.5">
                   <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
-                    {SECTION_LABELS[section]}
+                    {SECTION_HEADINGS[section]}
                   </h2>
-                  <div class="flex flex-wrap gap-1.5 content-start">
-                    <For each={SECTION_CHIPS[section]}>
-                      {(chip) => (
-                        <>
-                          <Show when={section === 'sort'}>
-                            <SortTermChip
-                              chip={chip as ChipDef}
-                              state={getChipState(bd(), chip)}
-                              query={props.query}
-                              breakdown={bd()}
-                              onSetQuery={props.onSetQuery}
-                            />
-                          </Show>
-                          <Show when={section === 'popularity' || section === 'salt'}>
-                            <PercentileTermChip
-                              chip={chip as PercentileChipDef}
-                              state={getChipState(bd(), chip)}
-                              query={props.query}
-                              breakdown={bd()}
-                              onSetQuery={props.onSetQuery}
-                            />
-                          </Show>
-                          <Show when={section !== 'sort' && section !== 'popularity' && section !== 'salt'}>
-                            <TermChip
-                              chip={chip as ChipDef}
-                              state={getChipState(bd(), chip)}
-                              query={props.query}
-                              breakdown={bd()}
-                              onSetQuery={props.onSetQuery}
-                            />
-                          </Show>
-                        </>
-                      )}
-                    </For>
+                  <div class="flex flex-col gap-1.5">
+                    <Show when={section === 'color'}>
+                      <ColorSection
+                        query={props.query}
+                        breakdown={bd()}
+                        onSetQuery={props.onSetQuery}
+                      />
+                    </Show>
+                    <Show when={section !== 'color'}>
+                      <div class="flex flex-wrap gap-1.5 content-start">
+                        <For each={SECTION_CHIPS[section]}>
+                          {(chip) => (
+                            <>
+                              <Show when={section === 'sort'}>
+                                <SortTermChip
+                                  chip={chip as ChipDef}
+                                  state={getChipState(bd(), chip)}
+                                  query={props.query}
+                                  breakdown={bd()}
+                                  onSetQuery={props.onSetQuery}
+                                />
+                              </Show>
+                              <Show when={section === 'popularity' || section === 'salt'}>
+                                <PercentileTermChip
+                                  chip={chip as PercentileChipDef}
+                                  state={getChipState(bd(), chip)}
+                                  query={props.query}
+                                  breakdown={bd()}
+                                  onSetQuery={props.onSetQuery}
+                                />
+                              </Show>
+                              <Show when={section !== 'sort' && section !== 'popularity' && section !== 'salt'}>
+                                <TermChip
+                                  chip={chip as ChipDef}
+                                  state={getChipState(bd(), chip)}
+                                  query={props.query}
+                                  breakdown={bd()}
+                                  onSetQuery={props.onSetQuery}
+                                />
+                              </Show>
+                            </>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
                   </div>
                 </section>
               )}
