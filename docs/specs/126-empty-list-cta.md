@@ -39,6 +39,8 @@ All of the following must hold for the empty-list CTA to appear:
 
 When both the `include:extras` hint (Spec 057) and the empty-list CTA could apply (e.g., `my:list` + empty list + playable filter removed results), show the **empty-list CTA** — it is more actionable for new users who have no list yet. The `include:extras` hint addresses "filter hid results"; the empty list is a different problem.
 
+Empty-state priority order: empty-list CTA (Spec 126) > `include:extras` hint (Spec 057) > oracle "did you mean?" hint (Spec 131).
+
 ### Data flow
 
 - `SearchContext` gains optional `navigateToLists?: () => void` — navigates to `?list`.

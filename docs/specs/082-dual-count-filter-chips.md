@@ -1,6 +1,6 @@
 # Spec 082: Dual Card/Print Counts on Filter Chips
 
-**Status:** Draft
+**Status:** Implemented 
 
 **Depends on:** Spec 054 (Pinned Search Criteria), Spec 079 (Consolidated Query Accordion), Spec 047 (Printing Query Fields)
 
