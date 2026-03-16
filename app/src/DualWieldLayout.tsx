@@ -17,6 +17,7 @@ import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
+import CopyUrlButton from './CopyUrlButton'
 import { IconBars3, IconList, IconMagnifyingGlass, IconXMark } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
@@ -585,6 +586,9 @@ export function DualWieldLayout(props: {
         >
           <img src="/pwa-192x192.png" alt="" class="size-6 rounded" />
         </button>
+        <Show when={props.leftState.query().trim() !== '' || props.rightState.query().trim() !== ''}>
+          <CopyUrlButton variant="rail" />
+        </Show>
       </div>
 
       {/* Left pane */}

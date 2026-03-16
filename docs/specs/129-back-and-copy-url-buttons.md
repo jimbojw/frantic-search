@@ -1,6 +1,6 @@
 # Spec 129: Back and Copy URL Buttons for PWA
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 013 (URL State), Spec 086 (Dual Wield)
 

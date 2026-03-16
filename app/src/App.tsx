@@ -52,9 +52,11 @@ import {
   applyCompletion,
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
+import CopyUrlButton from './CopyUrlButton'
 import {
   IconAdjustmentsHorizontal,
   IconBars3,
+  IconChevronLeft,
   IconList,
   IconMagnifyingGlass,
 } from './Icons'
@@ -1343,6 +1345,19 @@ function App() {
               >
                 <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
               </button>
+              <Show when={!viewportWide() && query().trim() !== ''}>
+                <button
+                  type="button"
+                  onClick={() => history.back()}
+                  aria-label="Go back"
+                  class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <IconChevronLeft class="size-5" />
+                </button>
+              </Show>
+              <Show when={query().trim() !== ''}>
+                <CopyUrlButton variant="header" />
+              </Show>
               <Show when={viewportWide()}>
                 <button
                   type="button"
