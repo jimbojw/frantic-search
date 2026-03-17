@@ -1,6 +1,6 @@
 # Spec 133: In-App Documentation Navigation
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 132 (Docs Infrastructure), Spec 013 (URL State), Spec 014 (Syntax Help Overlay), Spec 083 (MenuDrawer)
 

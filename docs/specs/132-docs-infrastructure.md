@@ -1,6 +1,6 @@
 # Spec 132: In-App Documentation Infrastructure
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** ADR-008 (Documentation Strategy)
 

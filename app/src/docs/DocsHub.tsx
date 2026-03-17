@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For } from 'solid-js'
-import { DOC_INDEX, type DocQuadrant } from './index'
+import { DOC_INDEX, VISIBLE_QUADRANTS, type DocQuadrant } from './index'
 
 const QUADRANT_LABELS: Record<DocQuadrant, string> = {
   tutorials: 'Tutorials',
@@ -28,7 +28,7 @@ export default function DocsHub(props: { onNavigateToDoc: (docParam: string) => 
       }
       list.push(entry)
     }
-    return QUADRANT_ORDER.map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
+    return QUADRANT_ORDER.filter((q) => VISIBLE_QUADRANTS.includes(q)).map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
   }
 
   return (

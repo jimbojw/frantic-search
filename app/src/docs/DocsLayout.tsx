@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createResource, Show, For, onMount, onCleanup } from 'solid-js'
 import { IconChevronLeft, IconChevronRight } from '../Icons'
-import { DOC_INDEX, type DocEntry, type DocQuadrant } from './index'
+import { DOC_INDEX, VISIBLE_QUADRANTS, type DocEntry, type DocQuadrant } from './index'
 import { getDocLoader } from './doc-loader'
 import { MDXProvider } from './components/MdxProvider'
 import DocsHub from './DocsHub'
@@ -52,7 +52,7 @@ export default function DocsLayout(props: {
       }
       list.push(entry)
     }
-    return QUADRANT_ORDER.map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
+    return QUADRANT_ORDER.filter((q) => VISIBLE_QUADRANTS.includes(q)).map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
   }
 
   onMount(() => {

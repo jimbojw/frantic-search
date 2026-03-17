@@ -12,6 +12,9 @@ export interface DocEntry {
   next?: string
 }
 
+/** Quadrants shown in sidebar and hub. Set to ['reference'] to hide others until content is ready. */
+export const VISIBLE_QUADRANTS: DocQuadrant[] = ['reference']
+
 export const DOC_INDEX: DocEntry[] = [
   { id: 'getting-started', docParam: 'tutorials/getting-started', title: 'Getting Started', quadrant: 'tutorials' },
   { id: 'budget-alternatives', docParam: 'how-to/budget-alternatives', title: 'Find Budget Alternatives', quadrant: 'how-to' },
