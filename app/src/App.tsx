@@ -59,7 +59,6 @@ import {
   IconChevronLeft,
   IconList,
   IconMagnifyingGlass,
-  IconQuestionMarkCircle,
 } from './Icons'
 
 declare const __REPO_URL__: string
@@ -1482,21 +1481,12 @@ function App() {
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
               <IconMagnifyingGlass class="size-5" />
             </div>
-            <button
-              type="button"
-              onClick={() => navigateToHelp()}
-              aria-label="Syntax help"
-              title="Syntax help"
-              class="absolute right-0 top-0 flex items-center pr-2.5 pl-1 py-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <IconQuestionMarkCircle class="size-5" />
-            </button>
             <div
               class="grid overflow-hidden relative"
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
-              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-11`}>
+              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
                 <QueryHighlight
                   query={query()}
                   breakdown={breakdown()}
@@ -1540,7 +1530,7 @@ function App() {
                 onFocus={(e) => { setInputFocused(true); updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => { setInputFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
-                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+                class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
               />
               <Show when={ghostText()}>
                 <div
