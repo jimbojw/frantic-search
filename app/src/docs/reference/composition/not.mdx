@@ -4,15 +4,15 @@ title: NOT
 
 # NOT
 
-Prefix a term with <QueryExample query="-"/> to exclude cards that match it.
+Prefix a term with `q=-` to exclude cards that match it.
 
 ## Syntax
 
 | Query | Meaning |
 |-------|---------|
-| `-c:black` | Cards that are not black |
-| `-t:creature` | Cards with no creature face |
-| `-usd>100` | Printings with price ≤ $100 (or no price data) |
+| `q=-c:black` | Cards that are not black |
+| `q=-t:creature` | Cards with no creature face |
+| `q=-usd>100` | Printings with price ≤ $100 (or no price data) |
 
 ## Leaf-aware negation
 
@@ -20,14 +20,14 @@ For comparison operators, NOT uses **operator inversion** instead of simple excl
 
 | Negated term | Equivalent to | Null handling |
 |--------------|--------------|---------------|
-| `-usd>10` | `usd<=10` | Both exclude printings with no price data |
-| `-pow>=4` | `pow<4` | Both exclude non-creatures (no power) |
-| `-tou>5` | `tou≤5` | Both exclude cards without toughness |
+| `q=-usd>10` | `q=usd<=10` | Both exclude printings with no price data |
+| `q=-pow>=4` | `q=pow<4` | Both exclude non-creatures (no power) |
+| `q=-tou>5` | `q=tou≤5` | Both exclude cards without toughness |
 
-So <QueryExample query="-usd>10"/> ⟺ <QueryExample query="usd<=10"/> — the negated term excludes nulls, matching mathematical expectation.
+So `q=-usd>10` ⟺ `q=usd<=10` — the negated term excludes nulls, matching mathematical expectation.
 
-For equality (<QueryExample query="="/>, <QueryExample query="!="/>), negation uses normal buffer inversion. Example: <QueryExample query="-usd=null"/> matches printings that have price data.
+For equality (`q==`, `q=!=`), negation uses normal buffer inversion. Example: `q=-usd=null` matches printings that have price data.
 
 ## Scryfall
 
-Scryfall does not support negated price queries. A query like <QueryExample query="-usd<2000"/> on Scryfall produces a text search for <QueryExample query={'"usd<2000"'}/> exclusion, not a price filter. Frantic Search's leaf-aware negation is a principled divergence.
+Scryfall does not support negated price queries. A query like `q=-usd<2000` on Scryfall produces a text search for `q="usd<2000"` exclusion, not a price filter. Frantic Search's leaf-aware negation is a principled divergence.

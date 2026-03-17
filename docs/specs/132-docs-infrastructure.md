@@ -43,6 +43,18 @@ The folder structure **explicitly mirrors** the four Diátaxis quadrants. No sub
 - Prose articles (Tutorials, How-To, Explanation) authored in `.mdx` with YAML frontmatter.
 - Reference/syntax may remain `.tsx` if component density makes MDX unwieldy (hybrid approach); otherwise `.mdx` with wrapper components.
 
+### Query example syntax
+
+Use the `q=` or `query=` prefix inside backticks for query examples that should render with syntax highlighting. The DocCode component strips the prefix and passes the remainder to QueryExample. Unprefixed code renders as plain `<code>`.
+
+| Backtick content | Renders as |
+|-----------------|------------|
+| `` `q=-c:black` `` | Syntax-highlighted query |
+| `` `query=usd>10` `` | Syntax-highlighted query |
+| `` `localStorage` `` | Plain code (no highlighting) |
+
+This aligns with URL param naming (`?q=`, `?doc=`).
+
 ## Vite Configuration
 
 - **Dependencies:** `@mdx-js/rollup`, `remark-frontmatter`, `remark-gfm` (optional, for GFM tables)
@@ -157,6 +169,7 @@ Documentation changes are AI-driven. When adding or modifying user-facing docs, 
 ## Shared Components
 
 - **MdxProvider** — minimal provider that supplies the component map to compiled MDX. Use industry-standard MDX + Solid integration; exact API determined at implementation time.
+- **DocCode** — overrides the default `code` element. Renders `q=`/`query=`-prefixed content via QueryExample (syntax highlighting); all other code as plain `<code>`.
 
 Other shared components (breadcrumbs, prev/next links) may be added in Spec 133. Interactive components (e.g. clickable query examples) may be added in later specs when needed.
 

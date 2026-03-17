@@ -11,6 +11,7 @@ import {
 } from './index'
 import { getDocLoader } from './doc-loader'
 import { MDXProvider } from './components/MdxProvider'
+import DocCode from './components/DocCode'
 import QueryExample from './components/QueryExample'
 import DocsHub from './DocsHub'
 
@@ -302,7 +303,7 @@ export default function DocsLayout(props: {
                           }
                         : {}
                     return (
-                      <MDXProvider components={{ QueryExample }}>
+                      <MDXProvider components={{ QueryExample, code: DocCode }}>
                         <div class="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
                           <Content {...(syntaxProps as object)} />
                         </div>
