@@ -12,9 +12,9 @@ Define the canonical content for the Syntax Help page so it accurately documents
 
 ## Background
 
-Spec 014 defines the Syntax Help overlay structure and mechanics. The content (field tables, examples, divergences) lives in `app/src/SyntaxHelp.tsx` as structured data constants. Over time, Frantic Search has added features that Scryfall does not support (name range queries, percentile filters, `usd=null`, bare regex, `**`) and expanded field coverage (set, date, tags, etc.). The help content has drifted out of date.
+Spec 014 defines the Syntax Help overlay structure and mechanics. The content (field tables, examples, divergences) lives in `app/src/docs/reference/syntax.tsx` as structured data constants. Over time, Frantic Search has added features that Scryfall does not support (name range queries, percentile filters, `usd=null`, bare regex, `**`) and expanded field coverage (set, date, tags, etc.). The help content has drifted out of date.
 
-This spec is the single source of truth for what the Syntax Help must display. Implementers update `SyntaxHelp.tsx` to match this spec when adding or changing query features.
+This spec is the single source of truth for what the Syntax Help must display. Implementers update `app/src/docs/reference/syntax.tsx` to match this spec when adding or changing query features.
 
 ## Content Requirements
 
@@ -132,16 +132,16 @@ When implementing a new query feature:
 1. If it adds a field: add a row to the Fields table (Section 1).
 2. If it extends a field's semantics: update the field's description and add an example.
 3. If it is Frantic Search–exclusive: add to Section 6 (Exclusives) and Section 7 (Differences) as appropriate.
-4. Update `SyntaxHelp.tsx` to match this spec.
+4. Update `app/src/docs/reference/syntax.tsx` to match this spec.
 
 ## File Organization
 
 | File | Responsibility |
 |------|----------------|
 | `docs/specs/098-syntax-help-content.md` | This spec — canonical content definition |
-| `app/src/SyntaxHelp.tsx` | Renders the content; `FIELDS`, `EXCLUSIVES`, `DIVERGENCES`, etc. must match this spec |
+| `app/src/docs/reference/syntax.tsx` | In-app implementation; renders the content; `FIELDS`, `EXCLUSIVES`, `DIVERGENCES`, etc. must match this spec |
 
-The SyntaxHelp component will need an `EXCLUSIVES` constant (and optionally `ExclusiveEntry` interface) for the Frantic Search Exclusives section. Structure mirrors `ModifierEntry`: feature name, description, example.
+The in-app Reference doc at `docs/reference/syntax.tsx` is the canonical implementation. This spec defines its required content. The syntax component includes an `EXCLUSIVES` constant (and `ExclusiveEntry` interface) for the Frantic Search Exclusives section. Structure mirrors `ModifierEntry`: feature name, description, example.
 
 ## Acceptance Criteria
 

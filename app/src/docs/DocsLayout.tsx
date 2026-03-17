@@ -178,8 +178,11 @@ export default function DocsLayout(props: {
                   {(mod) => {
                     const Content = mod.default
                     const syntaxProps =
-                      props.docParam === 'reference/syntax' && props.onSelectExample
-                        ? { onSelectExample: props.onSelectExample }
+                      props.docParam === 'reference/syntax'
+                        ? {
+                            onSelectExample: props.onSelectExample ?? (() => {}),
+                            onNavigateToDoc: props.onNavigateToDoc,
+                          }
                         : {}
                     return (
                       <MDXProvider>

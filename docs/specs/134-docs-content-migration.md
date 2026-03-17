@@ -1,6 +1,6 @@
 # Spec 134: In-App Documentation Content Migration
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 132 (Docs Infrastructure), Spec 133 (Docs Navigation), Spec 098 (Syntax Help Content)
 
