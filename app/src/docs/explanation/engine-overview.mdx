@@ -1,0 +1,7 @@
+---
+title: Query Engine Overview
+---
+
+# Query Engine Overview
+
+Frantic Search runs the query engine in a WebWorker so the UI stays responsive. The parser builds an AST; the evaluator walks it and produces a bitmask of matching card indices. Results stream to the main thread as they're computed.

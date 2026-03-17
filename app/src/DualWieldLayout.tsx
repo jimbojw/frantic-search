@@ -18,7 +18,7 @@ import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
 import CopyUrlButton from './CopyUrlButton'
-import { IconBars3, IconList, IconMagnifyingGlass, IconXMark } from './Icons'
+import { IconBars3, IconList, IconMagnifyingGlass, IconQuestionMarkCircle, IconXMark } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import UnifiedBreakdown from './UnifiedBreakdown'
@@ -92,6 +92,7 @@ export type PaneState = {
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
   navigateToQuery?: (q: string) => void
+  navigateToDocs?: (docParam?: string) => void
   navigateToLists?: () => void
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
@@ -279,6 +280,7 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     navigateToReport: state.navigateToReport,
     navigateToCard: state.navigateToCard,
     navigateToQuery: state.navigateToQuery,
+    navigateToDocs: state.navigateToDocs,
     navigateToLists: state.navigateToLists,
     appendTerm: state.appendTerm,
     parseBreakdown: state.parseBreakdown,
@@ -312,6 +314,7 @@ export function SearchPane(props: {
   onFocus: (e: FocusEvent) => void
   onBlur: () => void
   workerStatus: () => 'loading' | 'ready' | 'error'
+  onHelpClick?: () => void
   class?: string
   cardListStore?: CardListStore
   listVersion?: () => number
@@ -411,12 +414,23 @@ export function SearchPane(props: {
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
               <IconMagnifyingGlass class="size-5" />
             </div>
+            <Show when={props.onHelpClick}>
+              <button
+                type="button"
+                onClick={() => props.onHelpClick!()}
+                aria-label="Syntax help"
+                title="Syntax help"
+                class="absolute right-0 top-0 flex items-center pr-2.5 pl-1 py-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <IconQuestionMarkCircle class="size-5" />
+              </button>
+            </Show>
             <div
               class="grid overflow-hidden relative"
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
-              <div ref={props.setTextareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-4">
+              <div ref={props.setTextareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${props.onHelpClick ? 'pr-11' : 'pr-4'}`}>
                 <QueryHighlight
                   query={props.state.query()}
                   breakdown={props.state.breakdown()}
@@ -446,7 +460,7 @@ export function SearchPane(props: {
                 onFocus={(e) => { updateSelection(e.target as HTMLTextAreaElement); props.onFocus(e) }}
                 onBlur={props.onBlur}
                 disabled={props.workerStatus() === 'error'}
-                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
+                class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${props.onHelpClick ? 'pr-11' : 'pr-4'}`}
               />
               <Show when={ghostText()}>
                 <div
@@ -605,6 +619,7 @@ export function DualWieldLayout(props: {
           onFocus={() => props.setUserEngaged(true)}
           onBlur={() => {}}
           workerStatus={props.workerStatus}
+          onHelpClick={props.navigateToHelp}
           class="flex-1 min-h-0"
           cardListStore={props.cardListStore}
           listVersion={props.listVersion}
@@ -636,6 +651,7 @@ export function DualWieldLayout(props: {
           onFocus={() => props.setUserEngaged(true)}
           onBlur={() => {}}
           workerStatus={props.workerStatus}
+          onHelpClick={props.navigateToHelp}
           class="flex-1 min-h-0"
           cardListStore={props.cardListStore}
           listVersion={props.listVersion}

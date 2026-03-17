@@ -52,6 +52,8 @@ export interface SearchContextValue {
   navigateToReport: () => void
   navigateToCard: (scryfallId: string) => void
   navigateToQuery?: (q: string) => void
+  /** Navigate to docs (Spec 133). When set, Syntax help link shown in UnifiedBreakdown. */
+  navigateToDocs?: (docParam?: string) => void
   /** Navigate to My List page (?list). Spec 126 empty-list CTA. When absent, empty-list CTA not shown. */
   navigateToLists?: () => void
   /** True when default list has no instances (Spec 126). When absent, empty-list CTA not shown. */

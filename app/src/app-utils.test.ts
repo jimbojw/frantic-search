@@ -16,6 +16,7 @@ import {
   fullCardName,
   parseView,
   parseListTab,
+  parseDocParam,
 } from './app-utils'
 
 // ---------------------------------------------------------------------------
@@ -318,16 +319,26 @@ describe('fullCardName', () => {
 // ---------------------------------------------------------------------------
 
 describe('parseView', () => {
+  it('returns "docs" when doc param is present', () => {
+    expect(parseView(new URLSearchParams('doc'))).toBe('docs')
+    expect(parseView(new URLSearchParams('doc=reference/syntax'))).toBe('docs')
+  })
+
+  it('returns "docs" when docs param is present (alias for doc)', () => {
+    expect(parseView(new URLSearchParams('docs'))).toBe('docs')
+    expect(parseView(new URLSearchParams('docs=tutorials/getting-started'))).toBe('docs')
+  })
+
+  it('returns "docs" when help param is present (Spec 133)', () => {
+    expect(parseView(new URLSearchParams('help'))).toBe('docs')
+  })
+
   it('returns "card" when card param is present', () => {
     expect(parseView(new URLSearchParams('card=abc'))).toBe('card')
   })
 
   it('returns "report" when report param is present', () => {
     expect(parseView(new URLSearchParams('report'))).toBe('report')
-  })
-
-  it('returns "help" when help param is present', () => {
-    expect(parseView(new URLSearchParams('help'))).toBe('help')
   })
 
   it('returns "search" for empty params', () => {
@@ -338,12 +349,13 @@ describe('parseView', () => {
     expect(parseView(new URLSearchParams('q=foo'))).toBe('search')
   })
 
-  it('prioritizes card over report and help', () => {
-    expect(parseView(new URLSearchParams('card=abc&report&help'))).toBe('card')
+  it('prioritizes docs over card, report, help', () => {
+    expect(parseView(new URLSearchParams('doc&card=abc&report&help'))).toBe('docs')
+    expect(parseView(new URLSearchParams('help&card=abc'))).toBe('docs')
   })
 
-  it('prioritizes report over help', () => {
-    expect(parseView(new URLSearchParams('report&help'))).toBe('report')
+  it('prioritizes card over report when doc absent', () => {
+    expect(parseView(new URLSearchParams('card=abc&report'))).toBe('card')
   })
 
   it('returns "lists" when list param is present', () => {
@@ -354,6 +366,32 @@ describe('parseView', () => {
 
   it('prioritizes card over lists', () => {
     expect(parseView(new URLSearchParams('card=abc&list'))).toBe('card')
+  })
+})
+
+describe('parseDocParam', () => {
+  it('returns null for hub (doc present, no value)', () => {
+    expect(parseDocParam(new URLSearchParams('doc'))).toBe(null)
+    expect(parseDocParam(new URLSearchParams('doc='))).toBe(null)
+  })
+
+  it('returns docParam for specific article', () => {
+    expect(parseDocParam(new URLSearchParams('doc=reference/syntax'))).toBe('reference/syntax')
+    expect(parseDocParam(new URLSearchParams('doc=tutorials/getting-started'))).toBe('tutorials/getting-started')
+  })
+
+  it('returns reference/syntax when help param present (Spec 133)', () => {
+    expect(parseDocParam(new URLSearchParams('help'))).toBe('reference/syntax')
+  })
+
+  it('returns docParam when docs param is used (alias for doc)', () => {
+    expect(parseDocParam(new URLSearchParams('docs=tutorials/getting-started'))).toBe('tutorials/getting-started')
+    expect(parseDocParam(new URLSearchParams('docs'))).toBe(null)
+  })
+
+  it('returns null when neither doc nor help present', () => {
+    expect(parseDocParam(new URLSearchParams())).toBe(null)
+    expect(parseDocParam(new URLSearchParams('q=foo'))).toBe(null)
   })
 })
 

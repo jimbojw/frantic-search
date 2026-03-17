@@ -125,14 +125,22 @@ export function fullCardName(d: DisplayColumns, faceIndices: number[]): string {
   return faceIndices.map(fi => d.names[fi]).join(' // ')
 }
 
-export type View = 'search' | 'help' | 'card' | 'report' | 'lists'
+export type View = 'search' | 'help' | 'card' | 'report' | 'lists' | 'docs'
 
 export function parseView(params: URLSearchParams): View {
+  if (params.has('doc') || params.has('docs') || params.has('help')) return 'docs'
   if (params.has('card')) return 'card'
   if (params.has('report')) return 'report'
-  if (params.has('help')) return 'help'
   if (params.has('list')) return 'lists'
   return 'search'
+}
+
+/** Returns doc param value (e.g., "reference/syntax") or null for hub. Treats ?help as ?doc=reference/syntax. Accepts ?docs as alias for ?doc. */
+export function parseDocParam(params: URLSearchParams): string | null {
+  const doc = params.get('doc') ?? params.get('docs')
+  if (doc !== null && doc !== undefined) return doc || null
+  if (params.has('help')) return 'reference/syntax'
+  return null
 }
 
 /** List tab when view is 'lists'. 'default' or 'trash'. */

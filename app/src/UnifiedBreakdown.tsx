@@ -140,6 +140,15 @@ export default function UnifiedBreakdown(props: {
             >
               Try on Scryfall ↗
             </Outlink>
+            <Show when={ctx.navigateToDocs}>
+              <button
+                type="button"
+                onClick={() => ctx.navigateToDocs!('reference/syntax')}
+                class="flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                Syntax help
+              </button>
+            </Show>
             <button
               type="button"
               onClick={() => ctx.navigateToReport()}

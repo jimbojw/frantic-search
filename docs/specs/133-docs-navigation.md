@@ -25,6 +25,10 @@ The app manages state via URL query parameters (`?help`, `?card=`, `?report`, `?
 | `?doc` | Docs hub | Param present, no value — landing page with quadrant overview |
 | `?doc=quadrant/slug` | Specific article | e.g., `?doc=reference/syntax`, `?doc=tutorials/getting-started` |
 
+### docs param alias
+
+`?docs` is accepted as an alias for `?doc`. Both `?docs` and `?docs=quadrant/slug` work identically. Internal navigation always uses `doc`; the alias supports incoming URLs (bookmarks, shared links).
+
 ### Query param preservation
 
 When navigating to docs, preserve `q` (and `q2` if Dual Wield) so returning to search restores the user's query.
@@ -160,12 +164,13 @@ function navigateToSearch() {
 ## Acceptance Criteria
 
 1. `?doc` shows the docs hub. `?doc=reference/syntax` shows the syntax article.
-2. `parseView` returns `'docs'` when `doc` param is present.
-3. `q` and `q2` are preserved when navigating to/from docs.
-4. Sidebar lists all quadrants and articles; active route highlighted.
-5. Breadcrumbs show `Docs > Quadrant > Article` on article pages.
-6. Prev/Next links work within quadrant only; first has no Prev, last has no Next (or Next → hub).
-7. `?` icon on search input navigates to `?doc=reference/syntax`.
-8. Menu drawer has "Documentation" (hub) and "Syntax Help" (syntax) or equivalent.
-9. "Syntax help" in UnifiedBreakdown navigates to `?doc=reference/syntax`.
-10. `?help` continues to work (redirect or alias to `?doc=reference/syntax`).
+2. `?docs` and `?docs=quadrant/slug` work identically to `?doc` and `?doc=quadrant/slug`.
+3. `parseView` returns `'docs'` when `doc` or `docs` param is present.
+4. `q` and `q2` are preserved when navigating to/from docs.
+5. Sidebar lists all quadrants and articles; active route highlighted.
+6. Breadcrumbs show `Docs > Quadrant > Article` on article pages.
+7. Prev/Next links work within quadrant only; first has no Prev, last has no Next (or Next → hub).
+8. `?` icon on search input navigates to `?doc=reference/syntax`.
+9. Menu drawer has "Documentation" (hub) and "Syntax Help" (syntax) or equivalent.
+10. "Syntax help" in UnifiedBreakdown navigates to `?doc=reference/syntax`.
+11. `?help` continues to work (redirect or alias to `?doc=reference/syntax`).

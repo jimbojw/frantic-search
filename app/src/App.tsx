@@ -4,7 +4,7 @@ import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, Br
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
-import SyntaxHelp from './SyntaxHelp'
+import DocsLayout from './docs/DocsLayout'
 import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import DeckBugReport from './DeckBugReport'
@@ -20,7 +20,7 @@ import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex, buildScryfallSearchUrl,
-  parseView, parseListTab, isDualWield, getPaneQueries,
+  parseView, parseListTab, parseDocParam, isDualWield, getPaneQueries,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -59,6 +59,7 @@ import {
   IconChevronLeft,
   IconList,
   IconMagnifyingGlass,
+  IconQuestionMarkCircle,
 } from './Icons'
 
 declare const __REPO_URL__: string
@@ -78,6 +79,9 @@ function App() {
   const [query, setQuery] = createSignal(initialQueries.left)
   const [query2, setQuery2] = createSignal(initialQueries.right)
   const [view, setView] = createSignal<View>(parseView(initialParams))
+  const [docParam, setDocParam] = createSignal<string | null>(
+    parseView(initialParams) === 'docs' ? parseDocParam(initialParams) : null
+  )
   const [listTab, setListTab] = createSignal<'default' | 'trash'>(parseListTab(initialParams))
   const [cardId, setCardId] = createSignal(initialParams.get('card') ?? '')
   const [reportingPane, setReportingPane] = createSignal<'left' | 'right'>('left')
@@ -790,6 +794,7 @@ function App() {
     setDualWieldActive(isDualWield(params))
     setView(parseView(params))
     setListTab(parseListTab(params))
+    if (parseView(params) === 'docs') setDocParam(parseDocParam(params))
     const { left, right } = getPaneQueries(params)
     setQuery(left)
     setQuery2(right)
@@ -806,15 +811,24 @@ function App() {
     }
   })
 
-  function navigateToHelp() {
+  function navigateToDocs(docParamValue?: string | null) {
     cancelPendingCommit()
     saveScrollPosition()
-    captureUiInteracted({ element_name: 'syntax_help', action: 'clicked' })
+    if (docParamValue === 'reference/syntax') {
+      captureUiInteracted({ element_name: 'syntax_help', action: 'clicked' })
+    }
     const params = new URLSearchParams(location.search)
-    params.set('help', '')
+    if (docParamValue) params.set('doc', docParamValue)
+    else params.set('doc', '')
+    params.delete('help')
     history.pushState(null, '', `?${params}`)
-    setView('help')
+    setDocParam(docParamValue ?? null)
+    setView('docs')
     window.scrollTo(0, 0)
+  }
+
+  function navigateToHelp() {
+    navigateToDocs('reference/syntax')
   }
 
   function navigateToQuery(q: string) {
@@ -835,6 +849,7 @@ function App() {
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
     params.delete('help')
+    params.delete('doc')
     params.set('card', scryfallId)
     history.pushState(null, '', `?${params}`)
     setCardId(scryfallId)
@@ -1097,6 +1112,7 @@ function App() {
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
     navigateToQuery,
+    navigateToDocs,
     navigateToLists,
     listEntryCountPerCard,
   })
@@ -1134,6 +1150,7 @@ function App() {
     navigateToReport: () => navigateToReport('right'),
     navigateToCard,
     navigateToQuery,
+    navigateToDocs,
     navigateToLists,
     listEntryCountPerCard: listEntryCountPerCard2,
   })
@@ -1187,6 +1204,7 @@ function App() {
     navigateToReport: () => navigateToReport('left'),
     navigateToCard,
     navigateToQuery,
+    navigateToDocs,
     navigateToLists,
     defaultListEmpty: () => {
       listVersion()
@@ -1227,8 +1245,21 @@ function App() {
 
   return (
     <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
-      <Show when={view() === 'help'}>
-        <SyntaxHelp onSelectExample={navigateToQuery} />
+      <Show when={view() === 'docs'}>
+        <DocsLayout
+          docParam={docParam()}
+          onSelectExample={navigateToQuery}
+          onBack={() => history.back()}
+          onNavigateToDoc={(dp) => {
+            const params = new URLSearchParams(location.search)
+            if (dp) params.set('doc', dp)
+            else params.set('doc', '')
+            params.delete('help')
+            history.pushState(null, '', `?${params}`)
+            setDocParam(dp)
+            window.scrollTo(0, 0)
+          }}
+        />
       </Show>
       <Show when={view() === 'card'}>
         {(() => {
@@ -1426,6 +1457,7 @@ function App() {
                 query={query()}
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
+                onDocsClick={() => navigateToDocs()}
                 onReportClick={navigateToReport}
                 onClose={toggleTerms}
               />
@@ -1440,6 +1472,7 @@ function App() {
                 query={query()}
                 onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
                 onHelpClick={navigateToHelp}
+                onDocsClick={() => navigateToDocs()}
                 onReportClick={navigateToReport}
                 onClose={toggleTerms}
               />
@@ -1449,12 +1482,21 @@ function App() {
             <div class="absolute left-0 top-0 flex items-center pl-2.5 pr-1 py-3 text-gray-400 dark:text-gray-500 pointer-events-none">
               <IconMagnifyingGlass class="size-5" />
             </div>
+            <button
+              type="button"
+              onClick={() => navigateToHelp()}
+              aria-label="Syntax help"
+              title="Syntax help"
+              class="absolute right-0 top-0 flex items-center pr-2.5 pl-1 py-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <IconQuestionMarkCircle class="size-5" />
+            </button>
             <div
               class="grid overflow-hidden relative"
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
-              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
+              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-11`}>
                 <QueryHighlight
                   query={query()}
                   breakdown={breakdown()}
@@ -1498,7 +1540,7 @@ function App() {
                 onFocus={(e) => { setInputFocused(true); updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => { setInputFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
-                class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
+                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
               />
               <Show when={ghostText()}>
                 <div

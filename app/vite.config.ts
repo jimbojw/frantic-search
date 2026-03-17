@@ -4,6 +4,8 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
+import mdx from '@mdx-js/rollup'
+import remarkFrontmatter from 'remark-frontmatter'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -116,6 +118,14 @@ function gitHash(): string {
 
 export default defineConfig({
   base: './',
+  resolve: {
+    alias: [
+      { find: '@frantic-docs-runtime/jsx-dev-runtime', replacement: path.resolve(__dirname, 'src/docs/jsx-runtime.ts') },
+      { find: '@frantic-docs-runtime/jsx-runtime', replacement: path.resolve(__dirname, 'src/docs/jsx-runtime.ts') },
+      { find: '@frantic-docs-runtime', replacement: path.resolve(__dirname, 'src/docs') },
+      { find: '@frantic-docs-provider', replacement: path.resolve(__dirname, 'src/docs/components/MdxProvider.tsx') },
+    ],
+  },
   define: {
     __APP_VERSION__: JSON.stringify(gitHash()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
@@ -126,6 +136,14 @@ export default defineConfig({
     serveData(),
     checker({ typescript: { tsconfigPath: './tsconfig.json', buildMode: true } }),
     tailwindcss(),
+    {
+      ...mdx({
+        jsxImportSource: '@frantic-docs-runtime',
+        remarkPlugins: [remarkFrontmatter],
+        providerImportSource: '@frantic-docs-provider',
+      }),
+      enforce: 'pre' as const,
+    },
     solid(),
     VitePWA({
       registerType: 'autoUpdate',

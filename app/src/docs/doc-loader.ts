@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
+import type { Component } from 'solid-js'
+
+export type DocModule = {
+  default: Component
+  meta?: { title: string }
+}
+
+const DOC_LOADERS: Record<string, () => Promise<DocModule>> = {
+  'tutorials/getting-started': () => import('./tutorials/getting-started.mdx'),
+  'how-to/budget-alternatives': () => import('./how-to/budget-alternatives.mdx'),
+  'reference/syntax': () => import('./reference/syntax'),
+  'explanation/engine-overview': () => import('./explanation/engine-overview.mdx'),
+}
+
+export function getDocLoader(docParam: string): (() => Promise<DocModule>) | undefined {
+  return DOC_LOADERS[docParam]
+}
