@@ -4,4 +4,42 @@ title: Sort Fields
 
 # Sort Fields
 
-(Placeholder — content in Phase 2.)
+Use `sort:field` to order results. See [Sorting Overview](?doc=reference/sorting/overview) for direction control (`-sort:field` reverses).
+
+## Face-domain fields
+
+These fields sort over deduplicated cards (face indices). They work with or without `unique:prints`.
+
+| Field | Aliases | Default dir | Nulls |
+|-------|---------|------------|-------|
+| `name` | — | asc | — |
+| `mv` | `cmc`, `manavalue` | asc | — |
+| `color` | `c` | asc | Colorless first |
+| `power` | `pow` | desc | Non-numeric last |
+| `toughness` | `tou` | desc | Non-numeric last |
+| `edhrec` | `edhrecrank` | asc | Missing last |
+| `salt` | `edhrecsalt`, `saltiness` | desc | Missing last |
+
+## Printing-domain fields
+
+These fields sort over individual printings. When `unique:cards` is active, the printing order is projected onto card order (first-seen printing per card).
+
+| Field | Aliases | Default dir | Nulls |
+|-------|---------|------------|-------|
+| `usd` | `$` | asc | No price data last |
+| `date` | `released`, `year` | desc | Unknown date last |
+| `rarity` | — | desc | — |
+
+## Null handling
+
+Across all fields, null or missing values sort **last** regardless of sort direction:
+
+- Non-creature with `sort:power` → sorts after all creatures
+- Printing with no price data → sorts after all priced printings
+- Printing with unknown date → sorts after all dated printings
+- Non-numeric power/toughness (`*`, `1+*`, `X`) → sorts after numeric values
+- Card with no EDHREC rank → sorts after all ranked cards
+
+## Last valid wins
+
+When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown values (e.g. `sort:foo`) produce a visible error and are ignored.

@@ -4,4 +4,42 @@ title: Sorting Overview
 
 # Sorting Overview
 
-(Placeholder — content in Phase 2.)
+## Default "frantic" sort
+
+When no `sort:` directive is present, results use the **frantic** default ordering:
+
+1. **Bare-word prefix boost:** Cards whose names start with any bare word in the query appear first. Example: typing `light` puts Lightning Bolt near the top.
+2. **Session-stable random:** Within each tier, cards are ordered by a keyed hash derived from the query string and card index. Same query → same order. Tapping space at the end of the query changes the seed (via trailing whitespace) and reshuffles results.
+3. **Display tokens omitted:** Modifiers like `view:`, `unique:`, and `sort:` are stripped from the query before seed derivation. Toggling view mode or unique mode does not reshuffle — the user is already looking at results.
+
+## sort:field
+
+Use `sort:field` to order results by a specific field. See [Sort Fields](?doc=reference/sorting/sort-fields) for the full table.
+
+| Query | Effect |
+|-------|--------|
+| `sort:name` | Alphabetical A–Z |
+| `sort:mv` | Mana value low-to-high |
+| `sort:usd` | Price low-to-high |
+| `sort:date` | Newest first |
+| `sort:power` | Highest power first |
+
+## Reversing direction
+
+Prefix with `-` to reverse the sort direction. The NOT operator inverts the default direction for that field.
+
+| Query | Effect |
+|-------|--------|
+| `-sort:name` | Alphabetical Z–A |
+| `-sort:mv` | Mana value high-to-low |
+| `-sort:usd` | Price high-to-low |
+| `-sort:date` | Oldest first |
+| `-sort:power` | Lowest power first |
+
+## Last valid wins
+
+When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown sort fields (e.g. `sort:foo`) produce a visible error in the breakdown but are ignored for ordering; the previous valid directive applies.
+
+## Scryfall
+
+Scryfall uses URL parameters (`order=`, `dir=`) for sort. Frantic Search embeds sort directives in the query string so they can be pinned and shared via URL.

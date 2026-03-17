@@ -4,4 +4,47 @@ title: view
 
 # view
 
-(Placeholder — content in Phase 2.)
+**Canonical:** `view:slim`, `view:detail`, `view:images`, `view:full`  
+**Aliases:** `v:`, `display:` (Scryfall)  
+**Domain:** Face (modifier; applies to display)
+
+## Purpose
+
+The `view:` modifier controls the display mode for search results: how much information each row shows and how cards are laid out.
+
+## Syntax
+
+| Value | Description |
+|-------|-------------|
+| `view:slim` | Compact checklist-style rows |
+| `view:detail` | Text-focused rows with more detail |
+| `view:images` | Card images in a grid |
+| `view:full` | Full card layout |
+
+**Aliases:** `v:`, `display:` (Scryfall). Use `v:slim`, `v:detail`, `v:images`, `v:full` — `v:` is an alias for `view:`.
+
+## Behavior
+
+- `view:` is a display modifier, not a filter. The evaluator does not process it as a filter — it is extracted before evaluation and passed to the display layer.
+- **Last one wins.** If there are multiple `view:` terms in the combined pinned and live query, the last one determines the display mode.
+- **Default:** When the effective query has no valid `view:` term, the default is **images**.
+- Invalid values (e.g. `view:invalid`) are ignored for display state and are trimmed when the user changes view mode.
+
+## Examples
+
+- `t:creature v:images` — Creatures in image grid view
+- `v:detail` — Pin detail view for all searches
+- `view:full` — Full card layout
+
+## Scryfall mapping
+
+Scryfall uses `display:` with different value names. Frantic Search maps them:
+
+| Scryfall `display:` | Frantic Search `view:` |
+|---------------------|------------------------|
+| `display:checklist` | `view:slim` |
+| `display:text` | `view:detail` |
+| `display:grid` | `view:images` |
+| `display:full` | `view:full` |
+
+Scryfall outlinks strip `view:` terms from the canonicalized query and add `&as=` when view mode is non-slim.

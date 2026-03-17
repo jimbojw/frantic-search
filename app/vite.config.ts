@@ -6,6 +6,7 @@ import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import mdx from '@mdx-js/rollup'
 import remarkFrontmatter from 'remark-frontmatter'
+import remarkGfm from 'remark-gfm'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -139,7 +140,7 @@ export default defineConfig({
     {
       ...mdx({
         jsxImportSource: '@frantic-docs-runtime',
-        remarkPlugins: [remarkFrontmatter],
+        remarkPlugins: [remarkFrontmatter, remarkGfm],
         providerImportSource: '@frantic-docs-provider',
       }),
       enforce: 'pre' as const,

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createComponent, createContext, useContext, type JSX, type ParentProps } from 'solid-js'
+import { createComponent, createContext, useContext, type Component, type JSX, type ParentProps } from 'solid-js'
 
-const MDXContext = createContext<Record<string, JSX.Element>>(Object.create(null))
+type MDXComponent = Component<any> | JSX.Element
+const MDXContext = createContext<Record<string, MDXComponent>>(Object.create(null))
 
 export function MDXProvider(
-  props: ParentProps<{ components?: Record<string, JSX.Element> }>,
+  props: ParentProps<{ components?: Record<string, MDXComponent> }>,
 ): JSX.Element {
   const context = useContext(MDXContext)
   return createComponent(MDXContext.Provider, {
@@ -18,8 +19,8 @@ export function MDXProvider(
 }
 
 export function useMDXComponents(
-  components?: Record<string, JSX.Element>,
-): Record<string, JSX.Element> {
+  components?: Record<string, MDXComponent>,
+): Record<string, MDXComponent> {
   const context = useContext(MDXContext)
   return { ...context, ...components }
 }

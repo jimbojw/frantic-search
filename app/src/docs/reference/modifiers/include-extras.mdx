@@ -4,4 +4,34 @@ title: include:extras
 
 # include:extras
 
-(Placeholder — content in Phase 2.)
+**Canonical:** `include:extras`  
+**Alias:** `**` (Frantic Search–exclusive)  
+**Domain:** Face (modifier; applies to entire query)
+
+## Purpose
+
+By default, Frantic Search excludes non-playable cards and non-tournament-usable printings from search results — matching Scryfall's behavior. The `include:extras` modifier bypasses this filter and shows all matches, including acorn-stamped cards, silver-bordered cards, playtest cards, gold-bordered printings, oversized, and 30th Anniversary Edition.
+
+## Syntax
+
+| Form | Example |
+|------|---------|
+| `include:extras` | `t:creature include:extras` |
+| `**` | `t:bolt **` |
+
+The bare word `**` desugars to `include:extras`. It behaves identically to the canonical form. Desugared nodes carry `sourceText` so the breakdown displays the original token.
+
+## Behavior
+
+- `include:extras` is a query modifier, not a filter. It follows the same pattern as `unique:prints` — it produces a match-all buffer and does not affect which cards match.
+- When present, the evaluator sets `includeExtras: true` on the output. The worker skips the default playable filter entirely.
+- When absent, the worker applies the playable filter: cards must be legal or restricted in at least one format; printings must be tournament-usable (no gold-bordered, oversized, etc.).
+
+## Examples
+
+- `t:creature **` — All creatures, including non-playable ones
+- `f:commander include:extras` — Commander-legal cards plus extras (e.g. acorn-stamped)
+
+## Scryfall
+
+Scryfall uses `include:extras` with the same semantics. The `**` alias is Frantic Search–exclusive.

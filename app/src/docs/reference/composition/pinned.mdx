@@ -4,4 +4,32 @@ title: Pinned queries
 
 # Pinned queries
 
-(Placeholder — content in Phase 2.)
+Pinned criteria let you separate "always on" filters from the terms you're actively exploring. The pinned query acts as a stable pre-filter; the live query (in the input box) refines results on top of it.
+
+## Effective query
+
+When both pinned and live queries are non-empty, the effective query sent to the search engine is:
+
+```
+effectiveQuery = pinnedQuery + " " + liveQuery
+```
+
+The two are combined with AND. A card must match **both** the pinned criteria and the live criteria to appear in results.
+
+## Behavior
+
+- **Input box:** Displays and edits only the live query. The pinned query is never shown in the input.
+- **Storage:** The pinned query is stored in `localStorage` under `frantic-pinned-query` and survives page reloads and navigation.
+- **Results visibility:** The live query determines whether results are shown. If the live query is empty, no results grid appears even when the pinned query is non-empty.
+- **Modifiers:** `uniqueMode`, `hasPrintingConditions`, and other display modifiers are resolved across both queries. A `unique:prints` or `view:images` term in either query has the same effect as if it appeared in a single combined query.
+
+## Use cases
+
+- Pin `f:commander` to always filter by Commander legality while exploring other terms
+- Pin `unique:prints` to always show all printings
+- Pin `view:images` to keep image grid view across searches
+- Pin `is:permanent` to narrow the card pool while refining with type, color, or other filters
+
+## PINNED and MATCHES lips
+
+The PINNED lip shows the card count (and printing count when applicable) for the pinned query in isolation. The MATCHES lip shows the count for the intersection — cards matching both pinned and live.

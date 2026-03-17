@@ -11,6 +11,7 @@ import {
 } from './index'
 import { getDocLoader } from './doc-loader'
 import { MDXProvider } from './components/MdxProvider'
+import QueryExample from './components/QueryExample'
 import DocsHub from './DocsHub'
 
 const QUADRANT_LABELS: Record<DocQuadrant, string> = {
@@ -301,8 +302,8 @@ export default function DocsLayout(props: {
                           }
                         : {}
                     return (
-                      <MDXProvider>
-                        <div class="prose dark:prose-invert max-w-none">
+                      <MDXProvider components={{ QueryExample }}>
+                        <div class="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
                           <Content {...(syntaxProps as object)} />
                         </div>
                       </MDXProvider>

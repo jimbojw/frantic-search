@@ -4,4 +4,38 @@ title: unique
 
 # unique
 
-(Placeholder — content in Phase 2.)
+**Canonical:** `unique:cards`, `unique:prints`, `unique:art`  
+**Aliases:** `++` → `unique:prints`, `@@` → `unique:art` (Scryfall)  
+**Domain:** Face (modifier; applies to display)
+
+## Purpose
+
+The `unique:` modifier controls deduplication in Images and Full view modes. It determines how many rows or tiles are shown per card when there are multiple matching printings.
+
+## Syntax
+
+| Value | Aliases | Effect |
+|-------|---------|--------|
+| `unique:cards` | — | One row per oracle card (default) |
+| `unique:prints` | `++` | One row per matching printing |
+| `unique:art` | `@@` | One row per unique artwork per card |
+
+## Behavior
+
+- **`unique:cards` (default):** One row per oracle card. When `unique:cards` is present or no legal `unique:` term exists, this is the effective mode. First matching printing in the result set is used for art and set badge.
+- **`unique:prints`:** Forces Images and Full to show all printings that survived the AST. When present and the query has no printing conditions, every printing of every matching card is shown. Finish variants (foil/nonfoil) appear as separate tiles.
+- **`unique:art`:** One row per unique artwork per card. Uses `illustration_id_index` from printing data. First occurrence in the result set wins per artwork.
+
+**Resolution rule:** The last legal `unique:` term wins across the combined pinned and live query. Invalid values (e.g. `unique:bogus`) are ignored; if no legal term remains, default to `unique:cards`.
+
+Slim and Detail modes always show one row per card regardless of `unique:`.
+
+## Examples
+
+- `t:bolt ++` — Show all printings of cards containing "bolt" in the type line
+- `t:creature @@` — One row per unique artwork among creature cards
+- `r:mythic unique:prints` — All mythic printings (no deduplication)
+
+## Scryfall
+
+Scryfall supports the same `unique:` values. The aliases `++` and `@@` are Scryfall Display Keywords. `**` is Frantic Search–exclusive (see [include:extras](?doc=reference/modifiers/include-extras)).
