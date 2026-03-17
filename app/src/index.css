@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "mana-font/css/mana.min.css";
 
 html, body {

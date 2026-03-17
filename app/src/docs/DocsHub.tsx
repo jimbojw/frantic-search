@@ -17,6 +17,12 @@ function buildDocUrl(docParam: string): string {
   return `?${params.toString()}`
 }
 
+/** Reference quadrant shows hub + cheat sheet only; granular articles reached via hub, cheat sheet, or sidebar. */
+const REFERENCE_HUB_ENTRIES = [
+  { docParam: 'reference/index', title: 'Reference' },
+  { docParam: 'reference/syntax', title: 'Syntax cheat sheet' },
+]
+
 export default function DocsHub(props: { onNavigateToDoc: (docParam: string) => void }) {
   const byQuadrant = () => {
     const map = new Map<DocQuadrant, typeof DOC_INDEX>()
@@ -28,7 +34,10 @@ export default function DocsHub(props: { onNavigateToDoc: (docParam: string) => 
       }
       list.push(entry)
     }
-    return QUADRANT_ORDER.filter((q) => VISIBLE_QUADRANTS.includes(q)).map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
+    return QUADRANT_ORDER.filter((q) => VISIBLE_QUADRANTS.includes(q)).map((q) => ({
+      quadrant: q,
+      entries: q === 'reference' ? REFERENCE_HUB_ENTRIES : (map.get(q) ?? []),
+    }))
   }
 
   return (

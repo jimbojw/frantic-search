@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createResource, Show, For, onMount, onCleanup } from 'solid-js'
+import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
 import { IconChevronLeft, IconChevronRight } from '../Icons'
-import { DOC_INDEX, VISIBLE_QUADRANTS, type DocEntry, type DocQuadrant } from './index'
+import {
+  DOC_INDEX,
+  VISIBLE_QUADRANTS,
+  buildReferenceSidebarTree,
+  type DocEntry,
+  type DocQuadrant,
+  type SidebarSection,
+} from './index'
 import { getDocLoader } from './doc-loader'
 import { MDXProvider } from './components/MdxProvider'
 import DocsHub from './DocsHub'
@@ -53,6 +60,56 @@ export default function DocsLayout(props: {
       list.push(entry)
     }
     return QUADRANT_ORDER.filter((q) => VISIBLE_QUADRANTS.includes(q)).map((q) => ({ quadrant: q, entries: map.get(q) ?? [] }))
+  }
+
+  const referenceTree = () => buildReferenceSidebarTree(DOC_INDEX)
+
+  const [expandedSections, setExpandedSections] = createSignal<Set<string>>(new Set())
+  const [collapsedByUser, setCollapsedByUser] = createSignal<Set<string>>(new Set())
+  createEffect(() => {
+    const docParam = props.docParam
+    if (!docParam || !docParam.startsWith('reference/')) return
+    for (const node of referenceTree()) {
+      if (node.type === 'section') {
+        const section = node as SidebarSection
+        const contains =
+          docParam === section.indexDocParam || section.children.some((c) => c.docParam === docParam)
+        if (contains) {
+          setExpandedSections((s) => new Set(s).add(section.id))
+          setCollapsedByUser((s) => {
+            const next = new Set(s)
+            next.delete(section.id)
+            return next
+          })
+          break
+        }
+      }
+    }
+  })
+
+  const toggleSection = (id: string) => {
+    const expanded = isSectionExpanded(id)
+    if (expanded) {
+      setCollapsedByUser((s) => new Set(s).add(id))
+    } else {
+      setExpandedSections((s) => new Set(s).add(id))
+      setCollapsedByUser((s) => {
+        const next = new Set(s)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
+  const isSectionExpanded = (sectionId: string): boolean => {
+    const docParam = props.docParam
+    const tree = referenceTree()
+    const node = tree.find((n) => n.type === 'section' && (n as SidebarSection).id === sectionId)
+    if (!node || node.type !== 'section') return false
+    const section = node as SidebarSection
+    const contains = docParam && (docParam === section.indexDocParam || section.children.some((c) => c.docParam === docParam))
+    const expanded = expandedSections().has(sectionId) || !!contains
+    return expanded && !collapsedByUser().has(sectionId)
   }
 
   onMount(() => {
@@ -135,24 +192,83 @@ export default function DocsLayout(props: {
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                       {QUADRANT_LABELS[quadrant]}
                     </h3>
-                    <ul class="flex flex-col gap-0.5">
-                      <For each={entries}>
-                        {(entry) => (
-                          <li>
-                            <a
-                              href={buildDocUrl(entry.docParam)}
-                              class={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                                props.docParam === entry.docParam
-                                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                              }`}
-                            >
-                              {entry.title}
-                            </a>
-                          </li>
-                        )}
-                      </For>
-                    </ul>
+                    {quadrant === 'reference' ? (
+                      <ul class="flex flex-col gap-0.5">
+                        <For each={referenceTree()}>
+                          {(node) =>
+                            node.type === 'link' ? (
+                              <li>
+                                <a
+                                  href={buildDocUrl(node.docParam)}
+                                  class={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                                    props.docParam === node.docParam
+                                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                  }`}
+                                >
+                                  {node.title}
+                                </a>
+                              </li>
+                            ) : (
+                              <li>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSection((node as SidebarSection).id)}
+                                  aria-expanded={isSectionExpanded((node as SidebarSection).id)}
+                                  class="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                  <IconChevronRight
+                                    class={`size-4 shrink-0 transition-transform ${
+                                      isSectionExpanded((node as SidebarSection).id) ? 'rotate-90' : ''
+                                    }`}
+                                  />
+                                  <span class="font-medium">{(node as SidebarSection).title}</span>
+                                </button>
+                                <Show when={isSectionExpanded((node as SidebarSection).id)}>
+                                  <ul class="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                    <For each={(node as SidebarSection).children}>
+                                      {(child) => (
+                                        <li>
+                                          <a
+                                            href={buildDocUrl(child.docParam)}
+                                            class={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                              props.docParam === child.docParam
+                                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                            }`}
+                                          >
+                                            {child.title}
+                                          </a>
+                                        </li>
+                                      )}
+                                    </For>
+                                  </ul>
+                                </Show>
+                              </li>
+                            )
+                          }
+                        </For>
+                      </ul>
+                    ) : (
+                      <ul class="flex flex-col gap-0.5">
+                        <For each={entries}>
+                          {(entry) => (
+                            <li>
+                              <a
+                                href={buildDocUrl(entry.docParam)}
+                                class={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                                  props.docParam === entry.docParam
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                }`}
+                              >
+                                {entry.title}
+                              </a>
+                            </li>
+                          )}
+                        </For>
+                      </ul>
+                    )}
                   </div>
                 )}
               </For>
@@ -186,7 +302,9 @@ export default function DocsLayout(props: {
                         : {}
                     return (
                       <MDXProvider>
-                        <Content {...(syntaxProps as object)} />
+                        <div class="prose dark:prose-invert max-w-none">
+                          <Content {...(syntaxProps as object)} />
+                        </div>
                       </MDXProvider>
                     )
                   }}

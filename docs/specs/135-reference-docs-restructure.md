@@ -1,6 +1,6 @@
 # Spec 135: Reference Documentation Restructure
 
-**Status:** Draft
+**Status:** In Progress
 
 **Depends on:** Spec 132 (Docs Infrastructure), Spec 133 (Docs Navigation), Spec 134 (Docs Content Migration), Spec 098 (Syntax Help Content)
 
@@ -260,15 +260,24 @@ Sort fields (~10 canonical: name, mv, color, power, toughness, edhrec, salt, usd
 
 ## Index and Navigation
 
-**Option A — Flat index:** Each leaf article is a `DocEntry`. Sidebar shows full flat list under Reference. Prev/next follow index order within quadrant.
+**Index:** Each leaf article is a `DocEntry`. Prev/next follow index order within quadrant.
 
-**Index order** (for prev/next and sidebar): `reference/index` → `reference/syntax` → `reference/fields/index` → face fields (alphabetically by docParam) → printing fields (alphabetically) → modifiers → composition → sorting → special (bare-regex, my-list, tag-filter) → feedback → scryfall → lists. This order keeps related content adjacent.
+**Index order** (for prev/next): `reference/index` → `reference/syntax` → `reference/fields/index` → face fields (alphabetically by docParam) → printing fields (alphabetically) → modifiers → composition → sorting → special (bare-regex, my-list, tag-filter) → feedback → scryfall → lists. This order keeps related content adjacent.
 
-**Sidebar:** With 50+ reference articles, a flat list may be long. Implementation may group entries by subdirectory (Fields, Modifiers, etc.) in the sidebar for scanability, even with a flat `DOC_INDEX`. Collapsible sections are a follow-up option.
+### Hierarchical collapsible sidebar
 
-**Option B — Hierarchical sidebar:** Reference has sub-sections (Fields, Modifiers, Composition, etc.). Each sub-section expands to show children. `DOC_INDEX` may include a `parent` or `children` field; exact structure TBD at implementation.
+The Reference sidebar uses a **hierarchical, collapsible** structure (accordion-style navigation). Top-level items are always visible; sections with children can expand or collapse.
 
-Recommendation: Start with **Option A** for simplicity. Add hierarchy in a follow-up if needed.
+**Top level (always visible):** Reference (hub), Syntax Cheat Sheet, Fields, Modifiers, Composition, Sorting, Special, Feedback, Scryfall, Lists.
+
+**Indented children:** Under each section, child articles are shown when expanded. For example, Fields expands to show Fields Overview plus atag, banned, color, … (face fields) and collectornumber, date, … (printing fields). Modifiers expands to include-extras, unique, view. And so on.
+
+**Expand/collapse behavior:**
+- **Auto-expand:** The section containing the current article is expanded when the user navigates to it (e.g. viewing `reference/fields/face/atag` → Fields expanded).
+- **Manual toggle:** Users can click a section header to expand or collapse it. A chevron (▼ expanded / ▶ collapsed) indicates state.
+- **Other quadrants:** Tutorials, How-To, and Explanation keep a flat sidebar (few items).
+
+**Implementation:** The tree is derived from `DOC_INDEX` at runtime by grouping reference entries by docParam path prefix. No `parent` or `children` fields on `DocEntry`; the sidebar builder groups by `reference/fields/`, `reference/modifiers/`, etc.
 
 ## Spec 098 Relationship
 
@@ -293,8 +302,9 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 | `app/src/docs/reference/scryfall/differences.mdx` | New — high-level divergences with links to per-field sections |
 | `app/src/docs/reference/lists/index.mdx` | New — deck list overview; import/export format syntax |
 | `app/src/docs/doc-loader.ts` | Extend for multi-segment paths; use import.meta.glob for reference articles |
-| `app/src/docs/index.ts` | Add entries; possibly extend DocEntry for hierarchy |
+| `app/src/docs/index.ts` | Add entries; add `buildReferenceSidebarTree()` helper |
 | `app/src/docs/DocsHub.tsx` | Update Reference section: primary link to `?doc=reference` (hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax` |
+| `app/src/docs/DocsLayout.tsx` | Render hierarchical collapsible sidebar for Reference quadrant |
 | `app/src/docs/reference/syntax.tsx` | Replaced by cheat sheet MDX |
 | `docs/specs/098-syntax-help-content.md` | Update to reference Spec 135 structure |
 
@@ -313,3 +323,4 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 11. Spec 098 is updated to reference Spec 135 as the implementation structure.
 12. `reference/lists/index.mdx` exists (placeholder acceptable); cheat sheet links to it.
 13. DocsHub Reference section links to `?doc=reference` (reference hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax`.
+14. Reference sidebar shows hierarchical collapsible sections (Fields, Modifiers, etc.) with indented children; section containing current article is auto-expanded; users can toggle sections manually.
