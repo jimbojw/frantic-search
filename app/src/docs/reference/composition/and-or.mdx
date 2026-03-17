@@ -10,17 +10,17 @@ By default, multiple terms are combined with AND. A card must match **all** term
 
 | Query | Meaning |
 |-------|---------|
-| `t:creature c:green` | Creatures that are green |
-| `f:modern pow>=4` | Modern-legal cards with power 4 or greater |
+| `q=t:creature c:green` | Creatures that are green |
+| `q=f:modern pow>=4` | Modern-legal cards with power 4 or greater |
 
 ## Explicit OR
 
-Use the keyword `OR` (case-insensitive) to match cards that satisfy **either** term.
+Use the keyword `q=OR` (case-insensitive) to match cards that satisfy **either** term.
 
 | Query | Meaning |
 |-------|---------|
-| `c:red OR c:blue` | Red or blue cards |
-| `t:instant OR t:sorcery` | Instants or sorceries |
+| `q=c:red OR c:blue` | Red or blue cards |
+| `q=t:instant OR t:sorcery` | Instants or sorceries |
 
 ## Parentheses
 
@@ -28,16 +28,16 @@ Use parentheses to group sub-expressions and control precedence.
 
 | Query | Meaning |
 |-------|---------|
-| `(c:red OR c:blue) t:creature` | Red or blue creatures |
-| `(t:creature OR t:artifact) f:commander` | Creatures or artifacts legal in Commander |
+| `q=(c:red OR c:blue) t:creature` | Red or blue creatures |
+| `q=(t:creature OR t:artifact) f:commander` | Creatures or artifacts legal in Commander |
 
 ## Exact name
 
-Use `!"..."` to match the full card name exactly (no substring). This is useful for disambiguating cards with similar names.
+Use `q=!"..."` to match the full card name exactly (no substring). This is useful for disambiguating cards with similar names.
 
 | Query | Meaning |
 |-------|---------|
-| `!"Lightning Bolt"` | Exactly "Lightning Bolt" |
-| `!"Lightning Bolt" f:vintage` | Lightning Bolt in Vintage |
+| `q=!"Lightning Bolt"` | Exactly "Lightning Bolt" |
+| `q=!"Lightning Bolt" f:vintage` | Lightning Bolt in Vintage |
 
 Exact-name terms participate in AND/OR composition like any other term.

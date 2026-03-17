@@ -13,16 +13,16 @@ The query input uses functional colors to distinguish semantic categories. Each 
 | Category | Description | Examples |
 |----------|-------------|----------|
 | **field** | Known field names | `name`, `type`, `color`, `usd` |
-| **field-unknown** | Unknown field names | `foo:bar` — `foo` is highlighted as error |
-| **operator** | Comparison and equality operators | `:`, `=`, `!=`, `>`, `&lt;`, `>=`, `&lt;=` |
-| **value** | Field values (non-quoted) | `bolt` in `n:bolt` |
-| **bare** | Bare words (no field prefix) | `light` in `light t:creature` |
-| **quoted** | Quoted strings | `!"Lightning Bolt"` |
-| **regex** | Regex patterns | `/trample/` in `o:/trample/` |
-| **metadata** | Display modifiers | `view:`, `unique:`, `sort:` |
-| **not** | NOT prefix | `-` in `-c:black` |
-| **paren** | Parentheses | `(`, `)` in `(c:red OR c:blue)` |
-| **keyword** | OR and other keywords | `OR` |
+| **field-unknown** | Unknown field names | `q=foo:bar` — `foo` is highlighted as error |
+| **operator** | Comparison and equality operators | `q=:`, `q==`, `q=!=`, `q=>`, `q=<`, `q=>=`, `q=<=` |
+| **value** | Field values (non-quoted) | `bolt` in `q=n:bolt` |
+| **bare** | Bare words (no field prefix) | `light` in `q=light t:creature` |
+| **quoted** | Quoted strings | `q=!"Lightning Bolt"` |
+| **regex** | Regex patterns | `/trample/` in `q=o:/trample/` |
+| **metadata** | Display modifiers | `q=view:`, `q=unique:`, `q=sort:` |
+| **not** | NOT prefix | `-` in `q=-c:black` |
+| **paren** | Parentheses | `(`, `)` in `q=(c:red OR c:blue)` |
+| **keyword** | OR and other keywords | `q=OR` |
 
 Specific colors are implementation-defined; the important distinction is that field names, operators, and values are visually separated so users can parse the query at a glance.
 
@@ -30,9 +30,9 @@ Specific colors are implementation-defined; the important distinction is that fi
 
 When a term is invalid — unknown field, invalid regex, unknown format — the interface highlights it in red with a squiggly underline. Examples:
 
-- `foo:bar` — unknown field `foo`
-- `o:/bad regex [/` — invalid regex pattern
-- `f:comma` — unknown format `comma`
+- `q=foo:bar` — unknown field `foo`
+- `q=o:/bad regex [/` — invalid regex pattern
+- `q=f:comma` — unknown format `comma`
 
 **Erroneous terms are ignored during evaluation.** The query runs as if those terms were absent. Results reflect only the valid portions of the query, matching Scryfall's behavior. The error is shown in the breakdown so the user can fix or remove the term.
 
@@ -40,8 +40,8 @@ When a term is invalid — unknown field, invalid regex, unknown format — the 
 
 When an AST node yields zero matches, the breakdown shows this with special styling (amber/warning). This helps users quickly spot potential issues:
 
-- A typo in a field value (e.g. `t:creatuer`)
-- An overly restrictive combination (e.g. `c:rg c=w`)
+- A typo in a field value (e.g. `q=t:creatuer`)
+- An overly restrictive combination (e.g. `q=c:rg c=w`)
 - A term that matches no cards in the current data
 
 Zero-match terms still participate in the query — they narrow the result set (often to empty). The styling is informational, not an error; the term is valid but matches nothing.

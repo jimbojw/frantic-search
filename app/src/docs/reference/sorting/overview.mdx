@@ -6,11 +6,11 @@ title: Sorting Overview
 
 ## Default "frantic" sort
 
-When no `sort:` directive is present, results use the **frantic** default ordering:
+When no `q=sort:` directive is present, results use the **frantic** default ordering:
 
-1. **Bare-word prefix boost:** Cards whose names start with any bare word in the query appear first. Example: typing `light` puts Lightning Bolt near the top.
+1. **Bare-word prefix boost:** Cards whose names start with any bare word in the query appear first. Example: typing `q=light` puts Lightning Bolt near the top.
 2. **Session-stable random:** Within each tier, cards are ordered by a keyed hash derived from the query string and card index. Same query → same order. Tapping space at the end of the query changes the seed (via trailing whitespace) and reshuffles results.
-3. **Display tokens omitted:** Modifiers like `view:`, `unique:`, and `sort:` are stripped from the query before seed derivation. Toggling view mode or unique mode does not reshuffle — the user is already looking at results.
+3. **Display tokens omitted:** Modifiers like `q=view:`, `q=unique:`, and `q=sort:` are stripped from the query before seed derivation. Toggling view mode or unique mode does not reshuffle — the user is already looking at results.
 
 ## sort:field
 
@@ -38,7 +38,7 @@ Prefix with `-` to reverse the sort direction. The NOT operator inverts the defa
 
 ## Last valid wins
 
-When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown sort fields (e.g. `sort:foo`) produce a visible error in the breakdown but are ignored for ordering; the previous valid directive applies.
+When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown sort fields (e.g. `q=sort:foo`) produce a visible error in the breakdown but are ignored for ordering; the previous valid directive applies.
 
 ## Scryfall
 

@@ -4,37 +4,37 @@ title: view
 
 # view
 
-**Canonical:** `view:slim`, `view:detail`, `view:images`, `view:full`  
-**Aliases:** `v:`, `display:` (Scryfall)  
+**Canonical:** `q=view:slim`, `q=view:detail`, `q=view:images`, `q=view:full`  
+**Aliases:** `q=v:`, `q=display:` (Scryfall)  
 **Domain:** Face (modifier; applies to display)
 
 ## Purpose
 
-The `view:` modifier controls the display mode for search results: how much information each row shows and how cards are laid out.
+The `q=view:` modifier controls the display mode for search results: how much information each row shows and how cards are laid out.
 
 ## Syntax
 
 | Value | Description |
 |-------|-------------|
-| `view:slim` | Compact checklist-style rows |
-| `view:detail` | Text-focused rows with more detail |
-| `view:images` | Card images in a grid |
-| `view:full` | Full card layout |
+| `q=view:slim` | Compact checklist-style rows |
+| `q=view:detail` | Text-focused rows with more detail |
+| `q=view:images` | Card images in a grid |
+| `q=view:full` | Full card layout |
 
-**Aliases:** `v:`, `display:` (Scryfall). Use `v:slim`, `v:detail`, `v:images`, `v:full` — `v:` is an alias for `view:`.
+**Aliases:** `q=v:`, `q=display:` (Scryfall). Use `q=v:slim`, `q=v:detail`, `q=v:images`, `q=v:full` — `v:` is an alias for `view:`.
 
 ## Behavior
 
-- `view:` is a display modifier, not a filter. The evaluator does not process it as a filter — it is extracted before evaluation and passed to the display layer.
+- `q=view:` is a display modifier, not a filter. The evaluator does not process it as a filter — it is extracted before evaluation and passed to the display layer.
 - **Last one wins.** If there are multiple `view:` terms in the combined pinned and live query, the last one determines the display mode.
 - **Default:** When the effective query has no valid `view:` term, the default is **images**.
-- Invalid values (e.g. `view:invalid`) are ignored for display state and are trimmed when the user changes view mode.
+- Invalid values (e.g. `q=view:invalid`) are ignored for display state and are trimmed when the user changes view mode.
 
 ## Examples
 
-- `t:creature v:images` — Creatures in image grid view
-- `v:detail` — Pin detail view for all searches
-- `view:full` — Full card layout
+- `q=t:creature v:images` — Creatures in image grid view
+- `q=v:detail` — Pin detail view for all searches
+- `q=view:full` — Full card layout
 
 ## Scryfall mapping
 
@@ -42,9 +42,9 @@ Scryfall uses `display:` with different value names. Frantic Search maps them:
 
 | Scryfall `display:` | Frantic Search `view:` |
 |---------------------|------------------------|
-| `display:checklist` | `view:slim` |
-| `display:text` | `view:detail` |
-| `display:grid` | `view:images` |
-| `display:full` | `view:full` |
+| `q=display:checklist` | `q=view:slim` |
+| `q=display:text` | `q=view:detail` |
+| `q=display:grid` | `q=view:images` |
+| `q=display:full` | `q=view:full` |
 
 Scryfall outlinks strip `view:` terms from the canonicalized query and add `&as=` when view mode is non-slim.

@@ -4,11 +4,11 @@ title: Sort Fields
 
 # Sort Fields
 
-Use `sort:field` to order results. See [Sorting Overview](?doc=reference/sorting/overview) for direction control (`-sort:field` reverses).
+Use `q=sort:field` to order results. See [Sorting Overview](?doc=reference/sorting/overview) for direction control (`q=-sort:field` reverses).
 
 ## Face-domain fields
 
-These fields sort over deduplicated cards (face indices). They work with or without `unique:prints`.
+These fields sort over deduplicated cards (face indices). They work with or without `q=unique:prints`.
 
 | Field | Aliases | Default dir | Nulls |
 |-------|---------|------------|-------|
@@ -34,12 +34,12 @@ These fields sort over individual printings. When `unique:cards` is active, the 
 
 Across all fields, null or missing values sort **last** regardless of sort direction:
 
-- Non-creature with `sort:power` → sorts after all creatures
+- Non-creature with `q=sort:power` → sorts after all creatures
 - Printing with no price data → sorts after all priced printings
 - Printing with unknown date → sorts after all dated printings
-- Non-numeric power/toughness (`*`, `1+*`, `X`) → sorts after numeric values
+- Non-numeric power/toughness (`q=*`, `q=1+*`, `q=X`) → sorts after numeric values
 - Card with no EDHREC rank → sorts after all ranked cards
 
 ## Last valid wins
 
-When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown values (e.g. `sort:foo`) produce a visible error and are ignored.
+When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown values (e.g. `q=sort:foo`) produce a visible error and are ignored.

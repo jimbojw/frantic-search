@@ -21,14 +21,14 @@ The two are combined with AND. A card must match **both** the pinned criteria an
 - **Input box:** Displays and edits only the live query. The pinned query is never shown in the input.
 - **Storage:** The pinned query is stored in `localStorage` under `frantic-pinned-query` and survives page reloads and navigation.
 - **Results visibility:** The live query determines whether results are shown. If the live query is empty, no results grid appears even when the pinned query is non-empty.
-- **Modifiers:** `uniqueMode`, `hasPrintingConditions`, and other display modifiers are resolved across both queries. A `unique:prints` or `view:images` term in either query has the same effect as if it appeared in a single combined query.
+- **Modifiers:** `uniqueMode`, `hasPrintingConditions`, and other display modifiers are resolved across both queries. A `q=unique:prints` or `q=view:images` term in either query has the same effect as if it appeared in a single combined query.
 
 ## Use cases
 
-- Pin `f:commander` to always filter by Commander legality while exploring other terms
-- Pin `unique:prints` to always show all printings
-- Pin `view:images` to keep image grid view across searches
-- Pin `is:permanent` to narrow the card pool while refining with type, color, or other filters
+- Pin `q=f:commander` to always filter by Commander legality while exploring other terms
+- Pin `q=unique:prints` to always show all printings
+- Pin `q=view:images` to keep image grid view across searches
+- Pin `q=is:permanent` to narrow the card pool while refining with type, color, or other filters
 
 ## PINNED and MATCHES lips
 
