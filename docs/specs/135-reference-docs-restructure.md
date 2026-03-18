@@ -270,14 +270,14 @@ The Reference sidebar uses a **hierarchical, collapsible** structure (accordion-
 
 **Top level (always visible):** Reference (hub), Syntax Cheat Sheet, Fields, Modifiers, Composition, Sorting, Special, Feedback, Scryfall, Lists.
 
-**Indented children:** Under each section, child articles are shown when expanded. For example, Fields expands to show Fields Overview plus atag, banned, color, … (face fields) and collectornumber, date, … (printing fields). Modifiers expands to include-extras, unique, view. And so on.
+**Indented children:** Under each section, child articles are shown when expanded. For example, Fields expands to show Fields Overview plus two sub-sections: **Face Fields** (atag, banned, color, …) and **Printing Fields** (collectornumber, date, …). Each sub-section is collapsible. Modifiers expands to include-extras, unique, view. And so on.
 
 **Expand/collapse behavior:**
 - **Auto-expand:** The section containing the current article is expanded when the user navigates to it (e.g. viewing `reference/fields/face/atag` → Fields expanded).
 - **Manual toggle:** Users can click a section header to expand or collapse it. A chevron (▼ expanded / ▶ collapsed) indicates state.
 - **Other quadrants:** Tutorials, How-To, and Explanation keep a flat sidebar (few items).
 
-**Implementation:** The tree is derived from `DOC_INDEX` at runtime by grouping reference entries by docParam path prefix. No `parent` or `children` fields on `DocEntry`; the sidebar builder groups by `reference/fields/`, `reference/modifiers/`, etc.
+**Implementation:** The tree is derived from `DOC_INDEX` at runtime by grouping reference entries by docParam path prefix. No `parent` or `children` fields on `DocEntry`; the sidebar builder groups by `reference/fields/`, `reference/modifiers/`, etc. The Fields section uses special handling: entries under `reference/fields/face/` are grouped into a "Face Fields" sub-section, and entries under `reference/fields/printing/` into a "Printing Fields" sub-section. See `buildReferenceSidebarTree()` in `app/src/docs/index.ts`.
 
 ## Spec 098 Relationship
 
@@ -302,7 +302,7 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 | `app/src/docs/reference/scryfall/differences.mdx` | New — high-level divergences with links to per-field sections |
 | `app/src/docs/reference/lists/index.mdx` | New — deck list overview; import/export format syntax |
 | `app/src/docs/doc-loader.ts` | Extend for multi-segment paths; use import.meta.glob for reference articles |
-| `app/src/docs/index.ts` | Add entries; add `buildReferenceSidebarTree()` helper |
+| `app/src/docs/index.ts` | Add entries; add `buildReferenceSidebarTree()` helper; Fields section groups face vs printing into separate collapsible sub-sections |
 | `app/src/docs/DocsHub.tsx` | Update Reference section: primary link to `?doc=reference` (hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax` |
 | `app/src/docs/DocsLayout.tsx` | Render hierarchical collapsible sidebar for Reference quadrant |
 | `app/src/docs/reference/syntax.tsx` | Replaced by cheat sheet MDX |
@@ -323,4 +323,8 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 11. Spec 098 is updated to reference Spec 135 as the implementation structure.
 12. `reference/lists/index.mdx` exists (placeholder acceptable); cheat sheet links to it.
 13. DocsHub Reference section links to `?doc=reference` (reference hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax`.
-14. Reference sidebar shows hierarchical collapsible sections (Fields, Modifiers, etc.) with indented children; section containing current article is auto-expanded; users can toggle sections manually.
+14. Reference sidebar shows hierarchical collapsible sections (Fields, Modifiers, etc.) with indented children; Fields has Face Fields and Printing Fields as nested sub-sections; section containing current article is auto-expanded; users can toggle sections manually.
+
+## Changelog
+
+- 2026-03-18: Face/printing split: Fields sidebar now shows Face Fields and Printing Fields as separate collapsible sub-sections for clearer navigation.
