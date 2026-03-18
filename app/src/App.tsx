@@ -1246,7 +1246,7 @@ function App() {
     <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Show when={view() === 'docs'}>
         <DocsLayout
-          docParam={docParam()}
+          docParam={docParam}
           onSelectExample={navigateToQuery}
           onBack={() => history.back()}
           onNavigateToDoc={(dp) => {

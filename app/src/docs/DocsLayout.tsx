@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { Accessor } from 'solid-js'
 import { createSignal, createResource, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
 import { IconChevronLeft, IconChevronRight } from '../Icons'
 import {
@@ -36,7 +37,7 @@ function buildDocUrl(docParam: string | null): string {
 function SidebarNode(props: {
   node: ReferenceSidebarNode
   depth: number
-  docParam: string | null
+  docParam: Accessor<string | null>
   buildDocUrl: (docParam: string | null) => string
   toggleSection: (id: string) => void
   isSectionExpanded: (id: string) => boolean
@@ -61,7 +62,7 @@ function SidebarNode(props: {
       <li>
         <a
           href={buildDocUrl(node.docParam)}
-          class={depth === 0 ? topLinkClass(docParam === node.docParam) : linkClass(docParam === node.docParam)}
+          class={depth === 0 ? topLinkClass(docParam() === node.docParam) : linkClass(docParam() === node.docParam)}
         >
           {node.title}
         </a>
@@ -83,7 +84,7 @@ function SidebarNode(props: {
         />
         <span class="font-medium">{section.title}</span>
       </button>
-      <Show when={isSectionExpanded(section.id)}>
+      <Show when={isSectionExpanded(section.id) ? docParam() : null} keyed>
         <ul class={`${indent} mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 dark:border-gray-700 pl-2`}>
           <For each={section.children}>
             {(child) => (
@@ -104,7 +105,7 @@ function SidebarNode(props: {
 }
 
 export default function DocsLayout(props: {
-  docParam: string | null
+  docParam: Accessor<string | null>
   onSelectExample?: (q: string) => void
   onBack: () => void
   onNavigateToDoc: (docParam: string | null) => void
@@ -112,7 +113,7 @@ export default function DocsLayout(props: {
   const [sidebarOpen, setSidebarOpen] = createSignal(false)
 
   const [docModule] = createResource(
-    () => props.docParam,
+    () => props.docParam(),
     async (docParam) => {
       const loader = docParam ? getDocLoader(docParam) : undefined
       return loader ? loader() : null
@@ -120,7 +121,7 @@ export default function DocsLayout(props: {
   )
 
   const currentEntry = () =>
-    props.docParam ? DOC_INDEX.find((e) => e.docParam === props.docParam) : null
+    props.docParam() ? DOC_INDEX.find((e) => e.docParam === props.docParam()) : null
 
   const byQuadrant = () => {
     const map = new Map<DocQuadrant, DocEntry[]>()
@@ -151,7 +152,7 @@ export default function DocsLayout(props: {
   const [expandedSections, setExpandedSections] = createSignal<Set<string>>(new Set())
   const [collapsedByUser, setCollapsedByUser] = createSignal<Set<string>>(new Set())
   createEffect(() => {
-    const docParam = props.docParam
+    const docParam = props.docParam()
     if (!docParam || !docParam.startsWith('reference/')) return
     const doc: string = docParam
     const tree = referenceTree()
@@ -190,7 +191,7 @@ export default function DocsLayout(props: {
   }
 
   const isSectionExpanded = (sectionId: string): boolean => {
-    const docParam = props.docParam
+    const docParam = props.docParam()
     const section = findSectionById(referenceTree(), sectionId)
     if (!section) return false
     const contains = docParam && sectionContainsDocParam(section, docParam)
@@ -301,7 +302,7 @@ export default function DocsLayout(props: {
                               <a
                                 href={buildDocUrl(entry.docParam)}
                                 class={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                                  props.docParam === entry.docParam
+                                  props.docParam() === entry.docParam
                                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                                 }`}
@@ -331,14 +332,14 @@ export default function DocsLayout(props: {
 
         {/* Content */}
         <main class="flex-1 min-w-0 overflow-y-auto p-6 md:p-8">
-          <Show when={!props.docParam} fallback={
+          <Show when={!props.docParam()} fallback={
             <Show when={docModule.loading} fallback={
               <Show when={docModule.error} fallback={
                 <Show when={docModule()} keyed>
                   {(mod) => {
                     const Content = mod.default
                     const syntaxProps =
-                      props.docParam === 'reference/syntax'
+                      props.docParam() === 'reference/syntax'
                         ? {
                             onSelectExample: props.onSelectExample ?? (() => {}),
                             onNavigateToDoc: props.onNavigateToDoc,
