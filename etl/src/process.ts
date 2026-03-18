@@ -29,6 +29,7 @@ interface CardFace {
 interface AllPart {
   id?: string;
   component?: string;
+  name?: string;
 }
 
 interface Card {
@@ -122,10 +123,13 @@ function isMeldResult(card: Card): boolean {
   if (layout !== "meld" || !allParts) return false;
   const cardId = card.id;
   const oracleId = card.oracle_id;
+  const cardName = (card.name ?? "").toLowerCase();
   return allParts.some(
     (p) =>
       p.component === "meld_result" &&
-      (p.id === cardId || p.id === oracleId),
+      (p.id === cardId ||
+        p.id === oracleId ||
+        (cardName && p.name && p.name.toLowerCase() === cardName)),
   );
 }
 
