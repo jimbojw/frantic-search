@@ -17,8 +17,14 @@ Planeswalker loyalty number.
 | `:` | Equals or has value | `q=loy:3` |
 | `=` | Equals | `q=loyalty=3` |
 | `!=` | Not equal | `q=loy!=0` |
+| `=null` | No loyalty | `q=loy=null` |
+| `!=null` | Has loyalty | `q=loy!=null` |
 | `>`, `<`, `>=`, `<=` | Numeric comparison | `q=loy>=3` |
 
 ## Allowed values
 
 Numeric loyalty (planeswalker starting loyalty). Only planeswalkers have loyalty; other card types are excluded from numeric comparisons.
+
+## Notes
+
+- **`null`:** Use `q=loy=null` to find non-planeswalkers. `q=loy!=null` finds planeswalkers. Comparison operators with `null` are invalid.

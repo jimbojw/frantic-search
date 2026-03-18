@@ -1,6 +1,6 @@
 # Spec 136: Nullable Face Fields
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issues:** [#150](https://github.com/jimbojw/frantic-search/issues/150), [#151](https://github.com/jimbojw/frantic-search/issues/151)
 

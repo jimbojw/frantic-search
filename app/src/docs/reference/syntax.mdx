@@ -19,12 +19,12 @@ Frantic Search is based on [Scryfall syntax](https://scryfall.com/docs/syntax) w
 | type | t | Type line (substring) | `q=t:creature` |
 | color | c | Card colors | `q=c:rg` |
 | identity | id, ci, cmd | Color identity | `q=id:wubrg` |
-| power | pow | Power (numeric) | `q=pow>=4` |
-| toughness | tou | Toughness (numeric) | `q=tou>5` |
-| loyalty | loy | Loyalty (numeric) | `q=loy>=3` |
-| defense | def | Defense (numeric) | `q=def>3` |
+| power | pow | Power (numeric); =null for no power | `q=pow>=4` |
+| toughness | tou | Toughness (numeric); =null for no toughness | `q=tou>5` |
+| loyalty | loy | Loyalty (numeric); =null for no loyalty | `q=loy>=3` |
+| defense | def | Defense (numeric); =null for no defense | `q=def>3` |
 | mana value | mv, cmc | Mana value (numeric) | `q=mv>=2` |
-| mana | m | Mana cost (symbols) | `q=m:{b/p}` |
+| mana | m | Mana cost (symbols); =null for no cost | `q=m:{b/p}` |
 | legal | f, format | Format legality | `q=f:modern` |
 | banned | — | Banned in format | `q=banned:legacy` |
 | restricted | — | Restricted in format | `q=restricted:vintage` |
@@ -32,8 +32,8 @@ Frantic Search is based on [Scryfall syntax](https://scryfall.com/docs/syntax) w
 | kw | keyword | Keyword ability (Scryfall catalog) | `q=kw:flying` |
 | otag | function, oracletag | Oracle tag (community-curated) | `q=otag:ramp` |
 | atag | — | Illustration tag (community-curated) | `q=atag:bolt` |
-| edhrec | edhrecrank | EDHREC Commander popularity; numeric and percentile | `q=edhrec>100` |
-| salt | edhrecsalt, saltiness | EDHREC saltiness; numeric and percentile | `q=salt>2` |
+| edhrec | edhrecrank | EDHREC Commander popularity; numeric, percentile; =null for no rank | `q=edhrec>100` |
+| salt | edhrecsalt, saltiness | EDHREC saltiness; numeric, percentile; =null for no salt | `q=salt>2` |
 | my | — | Cards in a list | `q=my:list` |
 
 ### Printing-domain fields
@@ -109,6 +109,7 @@ Regex is case-insensitive. The trailing `/` is optional. Bare regex is Frantic S
 | Salt percentile | Filter by EDHREC saltiness | `q=salt>90%` |
 | Percentile chips in Menu | Popularity and Salt sections offer one-tap chips | Open Menu → Popularity or Salt |
 | usd=null | Find printings with no price data | `q=usd=null` |
+| pow=null, m=null, etc. | Find cards without power, mana cost, EDHREC rank, etc. | `q=pow=null OR tou=null` |
 | -sort:field | Reverse sort direction (NOT inverts) | `q=-sort:name` |
 
 ## Differences from Scryfall
@@ -121,6 +122,7 @@ Regex is case-insensitive. The trailing `/` is optional. Bare regex is Frantic S
 | Name comparison | Not supported | name>M, name>=X (alphabetical) |
 | Percentile filters | Not supported | usd>90%, date>10%, name>50%, edhrec>90%, salt>90% |
 | usd=null | Not supported | Matches printings with no price data |
+| pow=null, m=null, etc. | Not supported | Matches cards without power, mana cost, EDHREC rank, etc. |
 | $ alias | Uses usd | $ is alias for usd |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
 

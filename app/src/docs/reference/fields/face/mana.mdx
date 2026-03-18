@@ -17,6 +17,8 @@ Mana cost symbols.
 | `:` | Contains symbol(s) | `q=m:{b/p}` |
 | `=` | Exactly contains | `q=mana:{w}{u}{b}{r}{g}` |
 | `!=` | Does not contain | `q=m!=g` |
+| `=null` | No mana cost | `q=m=null` |
+| `!=null` | Has mana cost | `q=m!=null` |
 
 ## Allowed values
 
@@ -27,3 +29,8 @@ Mana symbols: `{w}`, `{u}`, `{b}`, `{r}`, `{g}`, `{c}` (colorless), `{x}`, `{s}`
 | `q=m:{b/p}` | Has Phyrexian black or Phyrexian (2 life) |
 | `q=m:g` | Has green in mana cost |
 | `q=m!=c` | Has at least one colored symbol |
+| `q=m=null` | No mana cost (e.g. Glimpse of Tomorrow, Asmoranomardicadaistinaculdacar) |
+
+## Notes
+
+- **`null`:** Use `q=m=null` to find cards with no mana cost. `q=m!=null` finds cards with a mana cost (including `{0}`). Comparison operators with `null` are invalid.

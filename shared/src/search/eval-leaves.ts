@@ -147,6 +147,19 @@ export function evalLeafField(
       break;
     }
     case "edhrec": {
+      if (valLower === "null") {
+        switch (op) {
+          case ":": case "=":
+            for (let i = 0; i < n; i++) if (index.edhrecRank[i] === null) buf[cf[i]] = 1;
+            break;
+          case "!=":
+            for (let i = 0; i < n; i++) if (index.edhrecRank[i] !== null) buf[cf[i]] = 1;
+            break;
+          default:
+            return "null cannot be used with comparison operators";
+        }
+        break;
+      }
       const edhrecPercentile = parsePercentile(val);
       if (edhrecPercentile !== null) {
         if (!NAME_CMP_OPS.has(op) && op !== "=" && op !== ":" && op !== "!=") break;
@@ -180,6 +193,19 @@ export function evalLeafField(
       break;
     }
     case "salt": {
+      if (valLower === "null") {
+        switch (op) {
+          case ":": case "=":
+            for (let i = 0; i < n; i++) if (index.edhrecSalt[i] === null) buf[cf[i]] = 1;
+            break;
+          case "!=":
+            for (let i = 0; i < n; i++) if (index.edhrecSalt[i] !== null) buf[cf[i]] = 1;
+            break;
+          default:
+            return "null cannot be used with comparison operators";
+        }
+        break;
+      }
       const saltPercentile = parsePercentile(val);
       if (saltPercentile !== null) {
         if (!NAME_CMP_OPS.has(op) && op !== "=" && op !== ":" && op !== "!=") break;
@@ -305,14 +331,31 @@ export function evalLeafField(
     case "toughness":
     case "loyalty":
     case "defense": {
-      const numericLookup = canonical === "power" ? index.numericPowerLookup
-        : canonical === "toughness" ? index.numericToughnessLookup
-        : canonical === "loyalty" ? index.numericLoyaltyLookup
-        : index.numericDefenseLookup;
+      const strLookup = canonical === "power" ? index.powerLookup
+        : canonical === "toughness" ? index.toughnessLookup
+        : canonical === "loyalty" ? index.loyaltyLookup
+        : index.defenseLookup;
       const idxCol = canonical === "power" ? index.powers
         : canonical === "toughness" ? index.toughnesses
         : canonical === "loyalty" ? index.loyalties
         : index.defenses;
+      if (valLower === "null") {
+        switch (op) {
+          case ":": case "=":
+            for (let i = 0; i < n; i++) if (strLookup[idxCol[i]] === "") buf[cf[i]] = 1;
+            break;
+          case "!=":
+            for (let i = 0; i < n; i++) if (strLookup[idxCol[i]] !== "") buf[cf[i]] = 1;
+            break;
+          default:
+            return "null cannot be used with comparison operators";
+        }
+        break;
+      }
+      const numericLookup = canonical === "power" ? index.numericPowerLookup
+        : canonical === "toughness" ? index.numericToughnessLookup
+        : canonical === "loyalty" ? index.numericLoyaltyLookup
+        : index.numericDefenseLookup;
       const queryNum = parseStatValue(val);
       if (isNaN(queryNum)) break;
       for (let i = 0; i < n; i++) {
@@ -350,6 +393,19 @@ export function evalLeafField(
       break;
     }
     case "mana": {
+      if (valLower === "null") {
+        switch (op) {
+          case ":": case "=":
+            for (let i = 0; i < n; i++) if (index.manaCostsLower[i] === "") buf[cf[i]] = 1;
+            break;
+          case "!=":
+            for (let i = 0; i < n; i++) if (index.manaCostsLower[i] !== "") buf[cf[i]] = 1;
+            break;
+          default:
+            return "null cannot be used with comparison operators";
+        }
+        break;
+      }
       const querySymbols = parseManaSymbols(valLower);
       for (let i = 0; i < n; i++) {
         const cardSymbols = index.manaSymbols[i];

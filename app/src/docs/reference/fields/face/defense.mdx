@@ -17,8 +17,14 @@ Defense stat for battle cards.
 | `:` | Equals or has value | `q=def:4` |
 | `=` | Equals | `q=defense=4` |
 | `!=` | Not equal | `q=def!=0` |
+| `=null` | No defense | `q=def=null` |
+| `!=null` | Has defense | `q=def!=null` |
 | `>`, `<`, `>=`, `<=` | Numeric comparison | `q=def>3` |
 
 ## Allowed values
 
 Numeric defense (battle defense, e.g. Siege cards). Only battles have defense; other card types are excluded from numeric comparisons.
+
+## Notes
+
+- **`null`:** Use `q=def=null` to find non-battles. `q=def!=null` finds battles. Comparison operators with `null` are invalid.

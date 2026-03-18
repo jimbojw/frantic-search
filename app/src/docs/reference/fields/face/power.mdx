@@ -17,6 +17,8 @@ Power stat for creatures and vehicles.
 | `:` | Equals or has value | `q=pow:4` |
 | `=` | Equals | `q=power=4` |
 | `!=` | Not equal | `q=pow!=0` |
+| `=null` | No power (non-creatures) | `q=pow=null` |
+| `!=null` | Has power | `q=pow!=null` |
 | `>`, `<`, `>=`, `<=` | Numeric comparison | `q=pow>=4` |
 
 ## Allowed values
@@ -25,4 +27,5 @@ Numeric power. Use `q=pow:*` to match cards with variable power (e.g. "X", "*").
 
 ## Notes
 
+- **`null`:** Use `q=pow=null` to find non-creatures (e.g. Lightning Bolt). `q=pow!=null` finds creatures. Comparison operators with `null` are invalid.
 - Negation: `q=-pow>=4` ⟺ `q=pow<4` (operator inversion; excludes non-creatures).

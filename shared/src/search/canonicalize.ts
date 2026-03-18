@@ -88,6 +88,9 @@ function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionC
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
       if (canonical === "usd" && node.value.toLowerCase() === "null") return "";
+      // Spec 136: pow/tou/loy/def/m=null and !=null have no Scryfall equivalent — strip
+      const NULLABLE_FACE_FIELDS = new Set(["power", "toughness", "loyalty", "defense", "mana"]);
+      if (canonical && NULLABLE_FACE_FIELDS.has(canonical) && node.value.toLowerCase() === "null") return "";
       // Spec 096: name comparison operators have no Scryfall equivalent — strip
       const nameCmpOps = new Set([">", "<", ">=", "<="]);
       if (canonical === "name" && nameCmpOps.has(node.operator)) return "";

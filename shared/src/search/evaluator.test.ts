@@ -754,6 +754,83 @@ describe("salt (Spec 101)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 136: Nullable face fields
+
+// ---------------------------------------------------------------------------
+
+describe("Spec 136: nullable face fields", () => {
+  test("pow=null matches faces without power (e.g. Lightning Bolt)", () => {
+    // Non-creatures: Bolt, Counterspell, Sol Ring, Azorius Charm, Dismember = 5 cards
+    expect(matchCount("pow=null")).toBe(5);
+  });
+
+  test("pow!=null matches faces with power", () => {
+    expect(matchCount("pow!=null")).toBe(4);
+  });
+
+  test("tou=null matches faces without toughness", () => {
+    expect(matchCount("tou=null")).toBe(5);
+  });
+
+  test("tou!=null matches faces with toughness", () => {
+    expect(matchCount("tou!=null")).toBe(4);
+  });
+
+  test("loy=null matches faces without loyalty (all planeswalkers have loyalty; TEST_DATA has all null)", () => {
+    expect(matchCount("loy=null")).toBe(9);
+  });
+
+  test("def=null matches faces without defense (all in TEST_DATA)", () => {
+    expect(matchCount("def=null")).toBe(9);
+  });
+
+  test("m=null matches faces with no mana cost (Ayara back face)", () => {
+    expect(matchCount("m=null")).toBe(1);
+  });
+
+  test("m!=null matches faces with mana cost", () => {
+    // All 9 cards have at least one face with mana cost (Ayara front has mana)
+    expect(matchCount("m!=null")).toBe(9);
+  });
+
+  test("edhrec=null matches faces without EDHREC rank (all in TEST_DATA)", () => {
+    expect(matchCount("edhrec=null")).toBe(9);
+  });
+
+  test("salt=null matches faces without salt score (all in TEST_DATA)", () => {
+    expect(matchCount("salt=null")).toBe(9);
+  });
+
+  test("pow>null returns error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("pow>null"));
+    expect(result.error).toBe("null cannot be used with comparison operators");
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("pow=null OR tou=null matches non-creatures", () => {
+    expect(matchCount("pow=null OR tou=null")).toBe(5);
+  });
+
+  test("-pow>3 excludes faces without power (operator inversion)", () => {
+    expect(matchCount("-pow>3")).toBe(matchCount("pow<=3"));
+  });
+
+  test("-pow=null matches faces with power (buffer inversion)", () => {
+    expect(matchCount("-pow=null")).toBe(4);
+  });
+
+  test("-m:{R} uses buffer inversion (nulls included)", () => {
+    // Cards without mana cost (Ayara back) should be in -m:{R} result
+    expect(matchCount("-m:{R}")).toBeGreaterThan(0);
+  });
+
+  test("-m=null matches faces with mana cost (buffer inversion)", () => {
+    expect(matchCount("-m=null")).toBe(8);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // CMC / mana value
 // ---------------------------------------------------------------------------
 // Row CMC: #0=1, #1=1, #2=2, #3=1, #4=2, #5=2, #6=2, #7=3, #8=0, #9=3

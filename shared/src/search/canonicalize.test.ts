@@ -89,6 +89,18 @@ describe("toScryfallQuery", () => {
     expect(canon("usd!=null lightning")).toBe("lightning");
   });
 
+  it("strips pow/tou/loy/def/m=null and !=null for Scryfall (Spec 136)", () => {
+    expect(canon("pow=null")).toBe("");
+    expect(canon("pow!=null")).toBe("");
+    expect(canon("tou=null")).toBe("");
+    expect(canon("m=null")).toBe("");
+    expect(canon("m!=null")).toBe("");
+    expect(canon("loy=null")).toBe("");
+    expect(canon("def=null")).toBe("");
+    expect(canon("t:creature pow=null")).toBe("t:creature");
+    expect(canon("pow!=null lightning")).toBe("lightning");
+  });
+
   it("strips name comparison operators for Scryfall (Spec 096)", () => {
     expect(canon("name>M")).toBe("");
     expect(canon("name<M")).toBe("");

@@ -17,6 +17,8 @@ EDHREC saltiness (how often players complain about the card).
 | `:` | Saltiness or percentile | `q=salt:2` |
 | `=` | Exact saltiness | `q=salt=3` |
 | `!=` | Not saltiness | `q=salt!=0` |
+| `=null` | No salt score | `q=salt=null` |
+| `!=null` | Has salt score | `q=salt!=null` |
 | `>`, `<`, `>=`, `<=` | Saltiness comparison | `q=salt>2` |
 | `>N%`, `<N%`, etc. | Percentile (saltiness) | `q=salt>90%` |
 
@@ -27,5 +29,6 @@ EDHREC saltiness (how often players complain about the card).
 
 ## Notes
 
+- **`null`:** Use `q=salt=null` to find cards without a salt score. `q=salt!=null` finds cards with salt data. Comparison operators with `null` are invalid.
 - Saltiness reflects how often players vote "salt" on EDHREC.
 - Percentile is Frantic Search–exclusive (Scryfall does not support it).

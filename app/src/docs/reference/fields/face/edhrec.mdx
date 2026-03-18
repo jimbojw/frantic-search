@@ -17,6 +17,8 @@ EDHREC Commander popularity rank.
 | `:` | Rank or percentile | `q=edhrec:100` |
 | `=` | Exact rank | `q=edhrec=50` |
 | `!=` | Not rank | `q=edhrec!=1` |
+| `=null` | No EDHREC rank | `q=edhrec=null` |
+| `!=null` | Has EDHREC rank | `q=edhrec!=null` |
 | `>`, `<`, `>=`, `<=` | Rank comparison | `q=edhrec<100` |
 | `>N%`, `<N%`, etc. | Percentile (popularity) | `q=edhrec>90%` |
 
@@ -27,5 +29,6 @@ EDHREC Commander popularity rank.
 
 ## Notes
 
+- **`null`:** Use `q=edhrec=null` to find cards without EDHREC rank. `q=edhrec!=null` finds ranked cards. Comparison operators with `null` are invalid.
 - Rank is from EDHREC's Commander data.
 - Percentile is Frantic Search–exclusive (Scryfall does not support it).
