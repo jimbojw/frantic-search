@@ -44,3 +44,46 @@ Across all fields, null or missing values sort **last** regardless of sort direc
 ## Last valid wins
 
 When multiple `sort:` terms exist, the **last valid one** wins (right-to-left). Unknown values (e.g. `q=sort:foo`) produce a visible error and are ignored.
+
+## Gray code ordering
+
+The `sort:color` and `sort:identity` fields use a **Gray code** to order the 32 possible color combinations (2^5 for WUBRG). A Gray code is an ordering where each step changes only one bit — so adjacent groups in the sort differ by exactly one color (add or remove W, U, B, R, or G).
+
+Sorting by raw bitmask (0, 1, 2, 3…) would put `{W}` next to `{U}` (1 vs 2), which differ by two bits. Gray code puts `{W}` next to `{W}{U}` (differ by U only), producing a smooth color progression. Colorless (0) sorts first.
+
+Both `sort:color` and `sort:identity` use the same 32-value sequence. The full ordering:
+
+| Rank | Identity |
+|------|----------|
+| 0 | `cost={c}` |
+| 1 | `cost={w}` |
+| 2 | `cost={w}{u}` |
+| 3 | `cost={u}` |
+| 4 | `cost={u}{b}` |
+| 5 | `cost={w}{u}{b}` |
+| 6 | `cost={w}{b}` |
+| 7 | `cost={b}` |
+| 8 | `cost={b}{r}` |
+| 9 | `cost={w}{b}{r}` |
+| 10 | `cost={w}{u}{b}{r}` |
+| 11 | `cost={u}{b}{r}` |
+| 12 | `cost={u}{r}` |
+| 13 | `cost={w}{u}{r}` |
+| 14 | `cost={w}{r}` |
+| 15 | `cost={r}` |
+| 16 | `cost={r}{g}` |
+| 17 | `cost={w}{r}{g}` |
+| 18 | `cost={w}{u}{r}{g}` |
+| 19 | `cost={u}{r}{g}` |
+| 20 | `cost={u}{b}{r}{g}` |
+| 21 | `cost={w}{u}{b}{r}{g}` |
+| 22 | `cost={w}{b}{r}{g}` |
+| 23 | `cost={b}{r}{g}` |
+| 24 | `cost={b}{g}` |
+| 25 | `cost={w}{b}{g}` |
+| 26 | `cost={w}{u}{b}{g}` |
+| 27 | `cost={u}{b}{g}` |
+| 28 | `cost={u}{g}` |
+| 29 | `cost={w}{u}{g}` |
+| 30 | `cost={w}{g}` |
+| 31 | `cost={g}` |

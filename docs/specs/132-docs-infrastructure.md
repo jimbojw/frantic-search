@@ -55,6 +55,20 @@ Use the `q=` or `query=` prefix inside backticks for query examples that should 
 
 This aligns with URL param naming (`?q=`, `?doc=`).
 
+### Table cells and custom components
+
+**Constraint:** MDX cannot reliably render custom JSX components (e.g. `QueryExample`, `ManaCost`) inside table cells. Direct use of `<QueryExample>...</QueryExample>` or `<ManaCost cost="{w}" />` in a table cell causes parse errors or runtime failures.
+
+**Strategy:** Overload the backtick `code` element via DocCode. Use prefix-based syntax inside backticks; DocCode detects the prefix and renders the appropriate component. This works in tables because backtick code blocks are plain text to the MDX parser.
+
+| Prefix | Component | Example |
+|--------|-----------|---------|
+| `q=` or `query=` | QueryExample | `` `q=t:creature` `` |
+| `cost=` | ManaCost | `` `cost={w}{u}` `` |
+| (none) | plain `<code>` | `` `localStorage` `` |
+
+When adding new custom components that must appear in tables, add a new prefix and handler in `DocCode.tsx` rather than registering the component in the MDX provider.
+
 ## Vite Configuration
 
 - **Dependencies:** `@mdx-js/rollup`, `remark-frontmatter`, `remark-gfm` (optional, for GFM tables)
@@ -169,7 +183,7 @@ Documentation changes are AI-driven. When adding or modifying user-facing docs, 
 ## Shared Components
 
 - **MdxProvider** — minimal provider that supplies the component map to compiled MDX. Use industry-standard MDX + Solid integration; exact API determined at implementation time.
-- **DocCode** — overrides the default `code` element. Renders `q=`/`query=`-prefixed content via QueryExample (syntax highlighting); all other code as plain `<code>`.
+- **DocCode** — overrides the default `code` element. Renders `q=`/`query=`-prefixed content via QueryExample (syntax highlighting); `cost=`-prefixed content via ManaCost (mana symbols); all other code as plain `<code>`. See § "Table cells and custom components" for the rationale (custom components cannot be used directly in table cells).
 
 Other shared components (breadcrumbs, prev/next links) may be added in Spec 133. Interactive components (e.g. clickable query examples) may be added in later specs when needed.
 

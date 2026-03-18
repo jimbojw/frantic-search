@@ -20,6 +20,8 @@ Use `sort:field` to order results by a specific field. See [Sort Fields](?doc=re
 |-------|--------|
 | `sort:name` | Alphabetical A–Z |
 | `sort:mv` | Mana value low-to-high |
+| `sort:color` | By color (Gray code; colorless first) |
+| `sort:identity` | By color identity (Gray code; colorless first) |
 | `sort:usd` | Price low-to-high |
 | `sort:date` | Newest first |
 | `sort:power` | Highest power first |
@@ -32,6 +34,8 @@ Prefix with `-` to reverse the sort direction. The NOT operator inverts the defa
 |-------|--------|
 | `-sort:name` | Alphabetical Z–A |
 | `-sort:mv` | Mana value high-to-low |
+| `-sort:color` | By color descending |
+| `-sort:identity` | By color identity descending |
 | `-sort:usd` | Price high-to-low |
 | `-sort:date` | Oldest first |
 | `-sort:power` | Lowest power first |
