@@ -51,6 +51,10 @@ const _slowland = new Set([
   "overgrown farmland", "rockfall vale", "shattered sanctum", "shipwreck marsh",
   "stormcarved coast", "sundown pass",
 ]);
+// Cards that can be commanders despite lacking "can be your commander" in oracle text.
+// Grist: Legendary Planeswalker that is a creature at deck construction (not on battlefield).
+const COMMANDER_EXCEPTION_NAMES = new Set(["grist, the hunger tide"]);
+
 const _bounceland = new Set([
   "arid archway", "azorius chancery", "boros garrison", "coral atoll",
   "dimir aqueduct", "dormant volcano", "everglades", "golgari rot farm",
@@ -344,9 +348,13 @@ export function evalIsKeyword(
       for (let i = 0; i < n; i++) {
         const tl = index.typeLinesLower[i];
         const isLegendary = tl.includes("legendary");
-        const isCreatureOrPW = tl.includes("creature") || tl.includes("planeswalker");
+        const isFront = cf[i] === i;
+        const isCreature = tl.includes("creature");
+        const isVehicle = tl.includes("vehicle") || tl.includes("spacecraft");
+        const isBackground = tl.includes("background");
         const hasCommanderText = index.oracleTextsLower[i].includes("can be your commander");
-        if ((isLegendary && isCreatureOrPW) || hasCommanderText) buf[cf[i]] = 1;
+        const isException = COMMANDER_EXCEPTION_NAMES.has(index.namesLower[i]);
+        if ((isFront && isLegendary && (isCreature || isVehicle || isBackground)) || hasCommanderText || isException) buf[cf[i]] = 1;
       }
       break;
     case "companion":

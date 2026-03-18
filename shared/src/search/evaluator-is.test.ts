@@ -458,18 +458,18 @@ describe("is: operator", () => {
     expect(indices).not.toContain(10); // Grizzly Bears has non-empty text
   });
 
-  test("is:commander matches legendary creatures and planeswalkers", () => {
+  test("is:commander matches legendary creatures (front face only), oracle text, or exceptions", () => {
     const indices = isMatchIndices("is:commander");
-    expect(indices).toContain(6);  // Thalia (Legendary Creature)
-    expect(indices).toContain(7);  // Ayara (Legendary Creature)
+    expect(indices).toContain(6);  // Thalia (Legendary Creature, front)
+    expect(indices).toContain(7);  // Ayara (Legendary Creature, front)
     expect(indices).toContain(13); // Rograkh (Legendary Creature)
     expect(indices).toContain(14); // Halana and Alena — has "can be your commander"
     expect(indices).toContain(15); // Lurrus (Legendary Creature)
-    expect(indices).toContain(18); // Nicol Bolas (Legendary Planeswalker / Legendary Creature)
-    expect(indices).toContain(23); // Gisela (Legendary Creature)
+    expect(indices).toContain(23); // Gisela (Legendary Creature, front)
     expect(indices).toContain(25); // Akroma (Legendary Creature)
     expect(indices).not.toContain(0);  // Birds (non-legendary creature)
     expect(indices).not.toContain(3);  // Sol Ring (Artifact, not legendary creature)
+    expect(indices).not.toContain(18); // Nicol Bolas — creature type on back face only; isFront excludes
   });
 
   test("is:brawler is an alias for is:commander", () => {

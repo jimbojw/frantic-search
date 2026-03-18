@@ -68,7 +68,7 @@ These compare the face's layout string directly.
 |---|---|
 | `is:vanilla` | Oracle text is empty (after reminder text stripping, which `CardIndex` already performs) |
 | `is:frenchvanilla` | Oracle text, after stripping reminder text, contains only recognized keyword abilities (see § French Vanilla) |
-| `is:commander` | Type line contains `Legendary` AND (`Creature` or `Planeswalker`), OR oracle text contains `"can be your commander"` |
+| `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"`, OR hardcoded exception (e.g. Grist) |
 | `is:brawler` | Same logic as `is:commander` |
 | `is:companion` | Oracle text contains `"Companion —"` |
 | `is:partner` | Oracle text contains `"Partner"` as a keyword line (starts with `Partner` at the beginning of the text or after `\n`, not as a substring of another word) |
@@ -284,7 +284,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 2. Unknown `is:` values match zero cards without throwing.
 3. `is:` with operators other than `:` and `=` matches zero cards.
 4. Negation (`-is:spell`) works correctly via the existing `NOT` node mechanism.
-5. `is:commander` correctly matches both "legendary creature" type lines and cards with "can be your commander" in oracle text.
+5. `is:commander` correctly matches: front-face Legendary Creature/Vehicle/Background, oracle text "can be your commander", and hardcoded exceptions (e.g. Grist). Back-face-only creature types (e.g. Nicol Bolas modal DFC) do not match. Planeswalkers without the clause do not match.
 6. `is:frenchvanilla` matches creatures whose oracle text (after reminder text stripping) contains only recognized keyword ability lines, and does not match `is:vanilla` cards or non-creatures.
 7. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
 8. `is:partner` matches cards with the Partner keyword but not cards that merely contain the substring "partner" in other text.

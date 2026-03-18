@@ -5,19 +5,25 @@ import { KNOWN_ZONES } from "./card-list";
 import type { DeckFormat } from "./list-format";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
+// Cards that can be commanders despite lacking "can be your commander" in oracle text.
+// Grist: Legendary Planeswalker that is a creature at deck construction (not on battlefield).
+const COMMANDER_EXCEPTION_NAMES = new Set(["grist, the hunger tide"]);
+
 /**
- * Check if a card matches is:commander (Spec 032): Legendary + (Creature or Planeswalker)
- * in type line, OR "can be your commander" in oracle text.
+ * Check if a card matches is:commander (Spec 032): Legendary Creature in type line,
+ * OR "can be your commander" in oracle text, OR hardcoded exception (e.g. Grist).
  */
 function isCommander(oracleId: string, display: DisplayColumns): boolean {
   const idx = display.oracle_ids.indexOf(oracleId);
   if (idx < 0) return false;
   const tl = (display.type_lines[idx] ?? "").toLowerCase();
   const ot = (display.oracle_texts[idx] ?? "").toLowerCase();
+  const name = (display.names[idx] ?? "").toLowerCase();
   const isLegendary = tl.includes("legendary");
-  const isCreatureOrPW = tl.includes("creature") || tl.includes("planeswalker");
+  const isCreature = tl.includes("creature");
   const hasCommanderText = ot.includes("can be your commander");
-  return (isLegendary && isCreatureOrPW) || hasCommanderText;
+  const isException = COMMANDER_EXCEPTION_NAMES.has(name);
+  return (isLegendary && isCreature) || hasCommanderText || isException;
 }
 
 /**

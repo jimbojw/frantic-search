@@ -91,6 +91,15 @@
   assertions:
     count: 0
 
+- name: "is:commander t:planeswalker matches only planeswalkers with clause or exception (Issue #145)"
+  query: "is:commander t:planeswalker"
+  scryfall_query: "is:commander t:planeswalker"
+  divergence: "We include Grist (creature at deck construction); Scryfall may not."
+  assertions:
+    count_min: 35
+    contains:
+      - "Grist, the Hunger Tide"
+
 # --- Layout keywords (Issue #80) ---
 
 - name: "is:token finds token cards with include:extras"
