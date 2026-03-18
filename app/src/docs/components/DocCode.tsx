@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { JSX } from 'solid-js'
 import QueryExample from './QueryExample'
 
 function getText(children: unknown): string {
@@ -30,5 +29,5 @@ export default function DocCode(props: { children?: unknown }) {
   if (query !== null) {
     return <QueryExample>{query}</QueryExample>
   }
-  return <code class="font-mono text-sm">{props.children as JSX.Element}</code>
+  return [<code class="font-mono text-sm">{text}</code>]
 }
