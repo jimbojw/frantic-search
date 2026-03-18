@@ -68,7 +68,7 @@ These compare the face's layout string directly.
 |---|---|
 | `is:vanilla` | Oracle text is empty (after reminder text stripping, which `CardIndex` already performs) |
 | `is:frenchvanilla` | Oracle text, after stripping reminder text, contains only recognized keyword abilities (see § French Vanilla) |
-| `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"`, OR hardcoded exception (e.g. Grist) |
+| `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"`, OR hardcoded exception (e.g. Grist); excludes tokens and cards banned in Commander (Scryfall parity, Issue #148) |
 | `is:brawler` | Same logic as `is:commander` |
 | `is:companion` | Oracle text contains `"Companion —"` |
 | `is:partner` | Oracle text contains `"Partner"` as a keyword line (starts with `Partner` at the beginning of the text or after `\n`, not as a substring of another word) |

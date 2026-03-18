@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { CardFlag, Finish, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
+import { CardFlag, Finish, Format, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
 
 // ---------------------------------------------------------------------------
 // is: keyword evaluation (Spec 032)
@@ -346,6 +346,9 @@ export function evalIsKeyword(
     case "commander":
     case "brawler":
       for (let i = 0; i < n; i++) {
+        const layout = index.layouts[i];
+        const isToken = layout === "token" || layout === "double_faced_token";
+        if (isToken) continue;
         const tl = index.typeLinesLower[i];
         const isLegendary = tl.includes("legendary");
         const isFront = cf[i] === i;
@@ -354,7 +357,11 @@ export function evalIsKeyword(
         const isBackground = tl.includes("background");
         const hasCommanderText = index.oracleTextsLower[i].includes("can be your commander");
         const isException = COMMANDER_EXCEPTION_NAMES.has(index.namesLower[i]);
-        if ((isFront && isLegendary && (isCreature || isVehicle || isBackground)) || hasCommanderText || isException) buf[cf[i]] = 1;
+        const notBanned = (index.legalitiesBanned[cf[i]] & Format.Commander) === 0;
+        if (
+          notBanned &&
+          ((isFront && isLegendary && (isCreature || isVehicle || isBackground)) || hasCommanderText || isException)
+        ) buf[cf[i]] = 1;
       }
       break;
     case "companion":
