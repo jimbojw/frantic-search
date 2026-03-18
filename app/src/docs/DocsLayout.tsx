@@ -84,7 +84,7 @@ function SidebarNode(props: {
         />
         <span class="font-medium">{section.title}</span>
       </button>
-      <Show when={isSectionExpanded(section.id) ? docParam() : null} keyed>
+      <Show when={isSectionExpanded(section.id)} keyed>
         <ul class={`${indent} mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 dark:border-gray-700 pl-2`}>
           <For each={section.children}>
             {(child) => (
