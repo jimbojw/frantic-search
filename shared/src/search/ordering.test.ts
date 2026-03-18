@@ -424,7 +424,7 @@ describe("sortByField — face-domain sort", () => {
     }
   });
 
-  test("sort:color sorts by popcount ascending (colorless first)", () => {
+  test("sort:color sorts by Gray code rank (colorless first)", () => {
     const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
     const d: SortDirective = { field: "color", direction: "asc", isPrintingDomain: false };
     sortByField(indices, d, index, 0);

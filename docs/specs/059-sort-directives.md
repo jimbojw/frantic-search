@@ -86,7 +86,7 @@ These fields sort over deduplicated cards (face indices). They work with or with
 |---|---|---|---|---|
 | `name` | — | `combinedNamesNormalized` | asc | Alphabetical (locale-insensitive, case-insensitive) |
 | `mv` | `cmc`, `manavalue` | `manaValue` | asc | Numeric (low-to-high). MV 0 sorts first. |
-| `color` | `c` | `colors` bitmask | asc | By popcount (number of colors), then WUBRG bitmask value for stability. Colorless (0) sorts first. |
+| `color` | `c` | `colors` bitmask | asc | By Gray code rank (0–31) of the 5-bit color bitmask; consecutive identities differ by exactly one color. Colorless (0) sorts first. Sort key is the inverse Gray decode (position in the single-bit-transition sequence). |
 | `power` | `pow` | `numericPowerLookup` | desc | Numeric (highest first). Non-numeric values (`*`, `1+*`) sort last. |
 | `toughness` | `tou` | `numericToughnessLookup` | desc | Same as power. |
 | `edhrec` | `edhrecrank` | `edhrecRank` | asc | EDHREC Commander popularity rank. Lower rank = more popular; rank 1 sorts first. Null/missing sorts last (Spec 099). |
@@ -652,3 +652,4 @@ This spec follows ADR-019 (Scryfall parity by default) with one explicit, princi
 ## Implementation Notes
 
 - 2026-03-08: Spec 107 adds `order:` as Scryfall alias for `sort:`. `findSortDirective`, evaluator, and `clearSortTerms` recognize `order:`; `SORT_CHIP_FIELDS` includes `order` for chip matching.
+- 2026-03-18: sort:color changed from popcount + bitmask to Gray code rank (issue #146). Uses Gray decode (inverse) as sort key so consecutive identities differ by exactly one bit. Sequence: c→W→WU→U→UB→WUB→WB→B→BR→…→G.

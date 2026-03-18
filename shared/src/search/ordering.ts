@@ -148,10 +148,15 @@ export function reorderPrintingsByCardOrder(
 // Spec 059 — field comparators
 // ---------------------------------------------------------------------------
 
-function popcount8(v: number): number {
-  v = (v & 0x55) + ((v >> 1) & 0x55);
-  v = (v & 0x33) + ((v >> 2) & 0x33);
-  return (v + (v >> 4)) & 0x0f;
+/** Gray code rank: position of v in the single-bit-transition sequence (0–31). */
+function grayRank5(v: number): number {
+  let g = v & 0x1f;
+  let n = 0;
+  while (g) {
+    n ^= g;
+    g >>= 1;
+  }
+  return n & 0x1f;
 }
 
 function compareName(a: number, b: number, idx: CardIndex): number {
@@ -167,12 +172,7 @@ function compareMv(a: number, b: number, idx: CardIndex): number {
 }
 
 function compareColor(a: number, b: number, idx: CardIndex): number {
-  const ca = idx.colors[a];
-  const cb = idx.colors[b];
-  const pa = popcount8(ca);
-  const pb = popcount8(cb);
-  if (pa !== pb) return pa - pb;
-  return ca - cb;
+  return grayRank5(idx.colors[a]) - grayRank5(idx.colors[b]);
 }
 
 function compareEdhrec(a: number, b: number, idx: CardIndex): number {
