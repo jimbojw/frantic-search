@@ -11,7 +11,7 @@ const COMMANDER_EXCEPTION_NAMES = new Set(["grist, the hunger tide"]);
 
 /**
  * Check if a card matches is:commander (Spec 032): Legendary Creature in type line,
- * OR "can be your commander" in oracle text, OR hardcoded exception (e.g. Grist).
+ * OR "can be your commander" or "spell commander" in oracle text, OR hardcoded exception (e.g. Grist).
  */
 function isCommander(oracleId: string, display: DisplayColumns): boolean {
   const idx = display.oracle_ids.indexOf(oracleId);
@@ -21,7 +21,8 @@ function isCommander(oracleId: string, display: DisplayColumns): boolean {
   const name = (display.names[idx] ?? "").toLowerCase();
   const isLegendary = tl.includes("legendary");
   const isCreature = tl.includes("creature");
-  const hasCommanderText = ot.includes("can be your commander");
+  const hasCommanderText =
+    ot.includes("can be your commander") || ot.includes("spell commander");
   const isException = COMMANDER_EXCEPTION_NAMES.has(name);
   return (isLegendary && isCreature) || hasCommanderText || isException;
 }

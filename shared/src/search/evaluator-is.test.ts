@@ -54,6 +54,7 @@ import { index } from "./evaluator.test-fixtures";
 // Row #37 Oracle Hybrid Test       | -  | Creature — Elf                          | pow=1 tou=1 cmc=1 | normal  (oracle has {G/U} — hybrid in text only)
 // Row #38 Demonic Tutor             | B  | Sorcery                                 | -      cmc=2      | normal  flags=GameChanger
 // Row #43 Brisela (meld result)      | WB | Legendary Creature — Angel Horror       | pow=4 tou=3 cmc=7 | meld   flags=MeldResult (excluded from is:commander)
+// Row #44 Ransack (spell commander)  | B  | Sorcery                                 | -      cmc=2      | normal (oracle has "Spell commander" — can be commander)
 
 const isExtPowerDict = ["", "0", "*", "2", "3", "4", "1", "6"];
 const isExtToughnessDict = ["", "1", "1+*", "3", "4", "2", "6"];
@@ -82,6 +83,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Goblin Token",
     "Gideon's Emblem",
     "Brisela, Voice of Nightmares",
+    "Ransack, the Lab",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -106,6 +108,7 @@ const IS_TEST_DATA: ColumnarData = {
     "{R}",
     "",
     "{4}{W}{W}{W}",
+    "{1}{B}",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -152,6 +155,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Haste",
     "Creatures you control get +1/+1.",
     "Flying, first strike, lifelink",
+    "Spell commander (This card can be your commander.)\nLook at the top three cards of your library.",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -176,6 +180,7 @@ const IS_TEST_DATA: ColumnarData = {
     Color.Red,
     0,
     Color.White | Color.Black,
+    Color.Black,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -200,6 +205,7 @@ const IS_TEST_DATA: ColumnarData = {
     Color.Red,
     0,
     Color.White | Color.Black,
+    Color.Black,
   ],
   type_lines: [
     "Creature — Elf",
@@ -246,21 +252,22 @@ const IS_TEST_DATA: ColumnarData = {
     "Creature — Goblin",
     "Emblem — Gideon",
     "Legendary Creature — Angel Horror",
+    "Sorcery",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0, 5],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0, 3],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43],
-  scryfall_ids:          Array(44).fill(""),
-  oracle_ids:            Array(44).fill(""),
-  art_crop_thumb_hashes: Array(44).fill(""),
-  card_thumb_hashes:     Array(44).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0, 5, 0],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0, 3, 0],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43, 44],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44],
+  scryfall_ids:          Array(45).fill(""),
+  oracle_ids:            Array(45).fill(""),
+  art_crop_thumb_hashes: Array(45).fill(""),
+  card_thumb_hashes:     Array(45).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -284,6 +291,7 @@ const IS_TEST_DATA: ColumnarData = {
     "token",
     "emblem",
     "meld",
+    "normal",
   ],
   flags: [
     0, 0, 0, 0, 0,
@@ -306,9 +314,10 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     0, 0,
     CardFlag.MeldResult,
+    0,
   ],
-  edhrec_ranks: Array(44).fill(null) as (number | null)[],
-  edhrec_salts: Array(44).fill(null) as (number | null)[],
+  edhrec_ranks: Array(45).fill(null) as (number | null)[],
+  edhrec_salts: Array(45).fill(null) as (number | null)[],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
   loyalty_lookup: [""],
@@ -348,7 +357,7 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    expect(isMatchCount("is:spell")).toBe(34);
+    expect(isMatchCount("is:spell")).toBe(35);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -480,6 +489,12 @@ describe("is: operator", () => {
     expect(indices).not.toContain(3);  // Sol Ring (Artifact, not legendary creature)
     expect(indices).not.toContain(18); // Nicol Bolas — creature type on back face only; isFront excludes
     expect(indices).not.toContain(43); // Brisela (meld result — excluded per Issue #149)
+    expect(indices).toContain(44); // Ransack (spell commander — oracle text)
+  });
+
+  test("is:commander matches spell commander oracle text", () => {
+    const indices = isMatchIndices("is:commander");
+    expect(indices).toContain(44); // Ransack (Sorcery with "Spell commander")
   });
 
   test("is:commander excludes meld result cards", () => {
@@ -652,7 +667,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(39); // 40 unique canonical faces - 1 funny
+    expect(indices.length).toBe(40); // 41 unique canonical faces - 1 funny
   });
 
   // --- Land cycle checks ---

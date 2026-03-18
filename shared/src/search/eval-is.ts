@@ -356,7 +356,9 @@ export function evalIsKeyword(
         const isCreature = tl.includes("creature");
         const isVehicle = tl.includes("vehicle") || tl.includes("spacecraft");
         const isBackground = tl.includes("background");
-        const hasCommanderText = index.oracleTextsLower[i].includes("can be your commander");
+        const hasCommanderText =
+          index.oracleTextsLower[i].includes("can be your commander") ||
+          index.oracleTextsLower[i].includes("spell commander");
         const isException = COMMANDER_EXCEPTION_NAMES.has(index.namesLower[i]);
         const notBanned = (index.legalitiesBanned[cf[i]] & Format.Commander) === 0;
         if (
