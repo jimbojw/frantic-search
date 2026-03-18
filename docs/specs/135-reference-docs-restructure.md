@@ -108,6 +108,8 @@ title: <Field Name>
 
 # <field>
 
+<One-line conceptual description of what the field means.>
+
 **Canonical:** `field`  
 **Aliases:** `a`, `b` (or — if none)  
 **Domain:** Face | Printing
