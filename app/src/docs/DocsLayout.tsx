@@ -108,6 +108,7 @@ export default function DocsLayout(props: {
   docParam: Accessor<string | null>
   onSelectExample?: (q: string) => void
   onBack: () => void
+  onNavigateHome: () => void
   onNavigateToDoc: (docParam: string | null) => void
 }) {
   const [sidebarOpen, setSidebarOpen] = createSignal(false)
@@ -219,6 +220,15 @@ export default function DocsLayout(props: {
             aria-label="Toggle sidebar"
           >
             <IconChevronRight class={`size-5 transition-transform ${sidebarOpen() ? 'rotate-180' : ''}`} />
+          </button>
+          <button
+            type="button"
+            onClick={props.onNavigateHome}
+            class="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Go to home"
+            title="Frantic Search"
+          >
+            <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
           </button>
           <button
             type="button"

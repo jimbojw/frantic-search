@@ -1249,6 +1249,7 @@ function App() {
           docParam={docParam}
           onSelectExample={navigateToQuery}
           onBack={() => history.back()}
+          onNavigateHome={navigateHome}
           onNavigateToDoc={(dp) => {
             const params = new URLSearchParams(location.search)
             if (dp) params.set('doc', dp)
