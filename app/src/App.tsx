@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createEffect, createMemo, Show, onCleanup } from 'solid-js'
+import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
@@ -9,7 +9,7 @@ import CardDetail from './CardDetail'
 import BugReport from './BugReport'
 import DeckBugReport from './DeckBugReport'
 import type { DeckReportContext } from './deck-editor/DeckEditorContext'
-import ListsPage from './ListsPage'
+const ListsPage = lazy(() => import('./ListsPage'))
 import UnifiedBreakdown from './UnifiedBreakdown'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
@@ -41,7 +41,10 @@ import {
   getUniqueTagsFromView,
 } from '@frantic-search/shared'
 import { captureUiInteracted } from './analytics'
-import { DualWieldLayout, useViewportWide } from './DualWieldLayout'
+import { useViewportWide } from './useViewportWide'
+const DualWieldLayout = lazy(() =>
+  import('./DualWieldLayout').then((m) => ({ default: m.DualWieldLayout }))
+)
 import { createPaneState } from './pane-state-factory'
 import { useSearchCapture } from './useSearchCapture'
 import { WorkerErrorBanner } from './WorkerErrorBanner'
@@ -1308,35 +1311,39 @@ function App() {
         })()}
       </Show>
       <Show when={view() === 'lists'}>
-        <ListsPage
-          listTab={listTab()}
-          onTabChange={navigateToListsTab}
-          cardListStore={cardListStore}
-          listVersion={listVersion()}
-          display={display()}
-          printingDisplay={printingDisplay()}
-          workerStatus={workerStatus}
-          onSerializeRequest={serializeDeckList}
-          onValidateRequest={validateLines}
-          onBack={() => history.back()}
-          onDeckReportClick={navigateToDeckReport}
-          onViewInSearch={navigateToViewList}
-        />
+        <Suspense fallback={<div class="mx-auto max-w-2xl px-4 py-6 animate-pulse text-gray-500">Loading list…</div>}>
+          <ListsPage
+            listTab={listTab()}
+            onTabChange={navigateToListsTab}
+            cardListStore={cardListStore}
+            listVersion={listVersion()}
+            display={display()}
+            printingDisplay={printingDisplay()}
+            workerStatus={workerStatus}
+            onSerializeRequest={serializeDeckList}
+            onValidateRequest={validateLines}
+            onBack={() => history.back()}
+            onDeckReportClick={navigateToDeckReport}
+            onViewInSearch={navigateToViewList}
+          />
+        </Suspense>
       </Show>
       <Show when={view() === 'search'}>
         <Show when={showDualWield()}>
-          <DualWieldLayout
-            leftState={leftPaneState}
-            rightState={rightPaneState}
-            setUserEngaged={setUserEngaged}
-            workerStatus={workerStatus}
-            navigateToHelp={navigateToHelp}
-            onListsClick={navigateToLists}
-            onNavigateHome={navigateHome}
-            onLeaveDualWield={leaveDualWield}
-            cardListStore={cardListStore}
-            listVersion={listVersion}
-          />
+          <Suspense fallback={<div class="flex items-center justify-center min-h-[50vh] text-gray-500 animate-pulse">Loading split view…</div>}>
+            <DualWieldLayout
+              leftState={leftPaneState}
+              rightState={rightPaneState}
+              setUserEngaged={setUserEngaged}
+              workerStatus={workerStatus}
+              navigateToHelp={navigateToHelp}
+              onListsClick={navigateToLists}
+              onNavigateHome={navigateHome}
+              onLeaveDualWield={leaveDualWield}
+              cardListStore={cardListStore}
+              listVersion={listVersion}
+            />
+          </Suspense>
         </Show>
         <Show when={!showDualWield()}>
         <SearchProvider value={searchContextValue}>

@@ -155,3 +155,7 @@ When `q2` is absent, the app behaves exactly as today. Single-pane retains the c
 - **Enter affordance:** Button in header? Link in empty state? Keyboard shortcut?
 - **localStorage:** Per-pane keys for pinned query, breakdown expanded, etc., or shared?
 - **Page overlays (out of scope for initial implementation):** Card detail, help, report — when opened from a pane, should they overlay only that pane or full-screen? Deferred; desktop may have better options than the current card detail view anyway.
+
+## Implementation Notes
+
+- 2026-03-18: DualWieldLayout is lazy-loaded via `lazy(() => import('./DualWieldLayout'))` with Suspense to reduce the main bundle (~14 KB). The chunk loads on demand when the user enables split view on a wide viewport. `useViewportWide` was extracted to `useViewportWide.ts` so the breakpoint check can run without loading the layout component.

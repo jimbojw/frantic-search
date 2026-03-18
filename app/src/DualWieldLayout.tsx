@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js'
+import { createSignal, createMemo, Show, onCleanup } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
 import { toScryfallQuery, parse, DEFAULT_LIST_ID, getUniqueTagsFromView } from '@frantic-search/shared'
 import { getMatchingCount } from '@frantic-search/shared'
@@ -26,7 +26,6 @@ import SearchResults from './SearchResults'
 import type { SearchContextValue } from './SearchContext'
 import type { CardListStore } from './card-list-store'
 
-const DUAL_WIELD_BREAKPOINT = 1024
 const SPLIT_STORAGE_KEY = 'frantic-dual-wield-split'
 const SPLIT_MIN = 0.25
 const SPLIT_MAX = 0.75
@@ -38,20 +37,6 @@ function parseStoredSplit(): number {
   const n = Number.parseFloat(stored)
   if (!Number.isFinite(n) || n < SPLIT_MIN || n > SPLIT_MAX) return 0.5
   return n
-}
-
-export function useViewportWide(breakpoint = DUAL_WIELD_BREAKPOINT) {
-  const [wide, setWide] = createSignal(
-    typeof window !== 'undefined' && window.matchMedia(`(min-width: ${breakpoint}px)`).matches
-  )
-  onMount(() => {
-    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`)
-    setWide(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setWide(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  })
-  return wide
 }
 
 export type PaneState = {
