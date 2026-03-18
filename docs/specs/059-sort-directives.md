@@ -35,6 +35,9 @@ sort:date           # newest-first (descending is date's default)
 -sort:date          # oldest-first
 sort:power          # highest-first (descending is power's default)
 -sort:power         # lowest-first
+sort:identity       # color identity ascending (Gray code)
+-sort:identity      # color identity descending
+sort:ci             # same
 ```
 
 ### Grammar
@@ -48,6 +51,7 @@ sort_field = "name" | "mv" | "cmc" | "manavalue"
            | "date" | "released" | "year"
            | "rarity"
            | "color" | "c"
+           | "identity" | "id" | "ci" | "cmd"
            | "power" | "pow"
            | "toughness" | "tou"
            | "edhrec" | "edhrecrank"
@@ -87,6 +91,7 @@ These fields sort over deduplicated cards (face indices). They work with or with
 | `name` | — | `combinedNamesNormalized` | asc | Alphabetical (locale-insensitive, case-insensitive) |
 | `mv` | `cmc`, `manavalue` | `manaValue` | asc | Numeric (low-to-high). MV 0 sorts first. |
 | `color` | `c` | `colors` bitmask | asc | By Gray code rank (0–31) of the 5-bit color bitmask; consecutive identities differ by exactly one color. Colorless (0) sorts first. Sort key is the inverse Gray decode (position in the single-bit-transition sequence). |
+| `identity` | `id`, `ci`, `cmd` | `colorIdentity` bitmask | asc | By Gray code rank (0–31) of the 5-bit color identity bitmask. Same sequence as `sort:color` (c→W→WU→U→UB→…→G). Colorless (0) sorts first. |
 | `power` | `pow` | `numericPowerLookup` | desc | Numeric (highest first). Non-numeric values (`*`, `1+*`) sort last. |
 | `toughness` | `tou` | `numericToughnessLookup` | desc | Same as power. |
 | `edhrec` | `edhrecrank` | `edhrecRank` | asc | EDHREC Commander popularity rank. Lower rank = more popular; rank 1 sorts first. Null/missing sorts last (Spec 099). |
@@ -411,6 +416,7 @@ const SORT_CHIPS: ChipDef[] = [
   { label: 'sort:name', field: SORT_FIELDS, operator: ':', value: 'name', term: 'sort:name' },
   { label: 'sort:mv', field: SORT_FIELDS, operator: ':', value: 'mv', term: 'sort:mv' },
   { label: 'sort:color', field: SORT_FIELDS, operator: ':', value: 'color', term: 'sort:color' },
+  { label: 'sort:identity', field: SORT_FIELDS, operator: ':', value: 'identity', term: 'sort:identity' },
   { label: 'sort:power', field: SORT_FIELDS, operator: ':', value: 'power', term: 'sort:power' },
   { label: 'sort:toughness', field: SORT_FIELDS, operator: ':', value: 'toughness', term: 'sort:toughness' },
   { label: 'sort:edhrec', field: SORT_FIELDS, operator: ':', value: 'edhrec', term: 'sort:edhrec' },
@@ -444,6 +450,7 @@ The field name mapping from Frantic Search to Scryfall:
 | `name` | `name` | `asc` / `desc` |
 | `mv` | `cmc` | `asc` / `desc` |
 | `color` | `color` | `asc` / `desc` |
+| `identity` | `color` | `asc` / `desc` |
 | `power` | `power` | `asc` / `desc` |
 | `toughness` | `toughness` | `asc` / `desc` |
 | `usd` | `$` | `asc` / `desc` |
@@ -653,3 +660,4 @@ This spec follows ADR-019 (Scryfall parity by default) with one explicit, princi
 
 - 2026-03-08: Spec 107 adds `order:` as Scryfall alias for `sort:`. `findSortDirective`, evaluator, and `clearSortTerms` recognize `order:`; `SORT_CHIP_FIELDS` includes `order` for chip matching.
 - 2026-03-18: sort:color changed from popcount + bitmask to Gray code rank (issue #146). Uses Gray decode (inverse) as sort key so consecutive identities differ by exactly one bit. Sequence: c→W→WU→U→UB→WUB→WB→B→BR→…→G.
+- 2026-03-18: Added sort:identity (aliases id, ci, cmd). Uses Gray code rank of colorIdentity bitmask, same as sort:color.

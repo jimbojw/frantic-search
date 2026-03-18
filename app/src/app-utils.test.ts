@@ -194,6 +194,16 @@ describe('buildScryfallSearchUrl', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature v:full sort:name'))
       .toBe('https://scryfall.com/search?q=t%3Acreature&as=full&order=name&dir=asc')
   })
+
+  it('sort:identity maps to order=color (Scryfall has no separate identity sort)', () => {
+    expect(buildScryfallSearchUrl('t:creature', 't:creature sort:identity'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=color&dir=asc')
+  })
+
+  it('sort:ci alias maps to order=color', () => {
+    expect(buildScryfallSearchUrl('t:creature', 't:creature sort:ci'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=color&dir=asc')
+  })
 })
 
 // ---------------------------------------------------------------------------

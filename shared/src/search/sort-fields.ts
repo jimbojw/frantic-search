@@ -18,6 +18,10 @@ export const SORT_FIELDS: Record<string, SortFieldEntry> = {
   manavalue: { canonical: "mv", defaultDir: "asc", isPrintingDomain: false },
   color: { canonical: "color", defaultDir: "asc", isPrintingDomain: false },
   c: { canonical: "color", defaultDir: "asc", isPrintingDomain: false },
+  identity: { canonical: "identity", defaultDir: "asc", isPrintingDomain: false },
+  id: { canonical: "identity", defaultDir: "asc", isPrintingDomain: false },
+  ci: { canonical: "identity", defaultDir: "asc", isPrintingDomain: false },
+  cmd: { canonical: "identity", defaultDir: "asc", isPrintingDomain: false },
   power: { canonical: "power", defaultDir: "desc", isPrintingDomain: false },
   pow: { canonical: "power", defaultDir: "desc", isPrintingDomain: false },
   toughness: {

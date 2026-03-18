@@ -1271,6 +1271,21 @@ describe("sort: sortBy extraction", () => {
     expect(sortBy!.field).toBe("date");
   });
 
+  test("sort:identity → asc face-domain", () => {
+    const { sortBy } = evaluate("t:creature sort:identity");
+    expect(sortBy).toEqual({ field: "identity", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("aliases: sort:ci → field identity", () => {
+    const { sortBy } = evaluate("sort:ci");
+    expect(sortBy).toEqual({ field: "identity", direction: "asc", isPrintingDomain: false });
+  });
+
+  test("-sort:identity → desc (reversed)", () => {
+    const { sortBy } = evaluate("t:creature -sort:identity");
+    expect(sortBy).toEqual({ field: "identity", direction: "desc", isPrintingDomain: false });
+  });
+
   test("last valid wins: sort:name sort:usd → usd", () => {
     const { sortBy } = evaluate("sort:name sort:usd");
     expect(sortBy).toEqual({ field: "usd", direction: "asc", isPrintingDomain: true });

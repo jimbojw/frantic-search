@@ -432,6 +432,22 @@ describe("sortByField — face-domain sort", () => {
     expect(indices[0]).toBe(3); // Sol Ring is colorless
   });
 
+  test("sort:identity sorts by Gray code rank of color identity (colorless first)", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "identity", direction: "asc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    // Sol Ring (color_identity 0) should come first
+    expect(indices[0]).toBe(3); // Sol Ring is colorless
+  });
+
+  test("-sort:identity sorts by color identity descending", () => {
+    const indices = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const d: SortDirective = { field: "identity", direction: "desc", isPrintingDomain: false };
+    sortByField(indices, d, index, 0);
+    // Colorless (Sol Ring) should sort last when descending
+    expect(indices[indices.length - 1]).toBe(3); // Sol Ring is colorless
+  });
+
   test("ties broken by name for face-domain sorts", () => {
     // Sort by mv=1: Birds(1), Bolt(1), Sol Ring(1) all have mv 1.
     // Within tier, they should be alphabetic.

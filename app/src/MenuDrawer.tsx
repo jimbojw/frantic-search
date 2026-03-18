@@ -163,6 +163,7 @@ const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
     sortChip('name'),
     sortChip('mv'),
     sortChip('color'),
+    sortChip('identity'),
     sortChip('power'),
     sortChip('toughness'),
     sortChip('edhrec'),

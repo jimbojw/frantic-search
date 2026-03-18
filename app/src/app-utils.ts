@@ -8,6 +8,7 @@ const SCRYFALL_ORDER: Record<string, string> = {
   name: 'name',
   mv: 'cmc',
   color: 'color',
+  identity: 'color',
   power: 'power',
   toughness: 'toughness',
   usd: '$',

@@ -175,6 +175,10 @@ function compareColor(a: number, b: number, idx: CardIndex): number {
   return grayRank5(idx.colors[a]) - grayRank5(idx.colors[b]);
 }
 
+function compareIdentity(a: number, b: number, idx: CardIndex): number {
+  return grayRank5(idx.colorIdentity[a]) - grayRank5(idx.colorIdentity[b]);
+}
+
 function compareEdhrec(a: number, b: number, idx: CardIndex): number {
   const ra = idx.edhrecRank[a];
   const rb = idx.edhrecRank[b];
@@ -207,6 +211,7 @@ function compareFieldRaw(a: number, b: number, field: string, idx: CardIndex): {
     case "name": return { cmp: compareName(a, b, idx), applyDir: true };
     case "mv": return { cmp: compareMv(a, b, idx), applyDir: true };
     case "color": return { cmp: compareColor(a, b, idx), applyDir: true };
+    case "identity": return { cmp: compareIdentity(a, b, idx), applyDir: true };
     case "power": {
       const va = idx.numericPowerLookup[a];
       const vb = idx.numericPowerLookup[b];
