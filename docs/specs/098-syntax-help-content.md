@@ -4,7 +4,7 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search)
 
-**Referenced by:** Spec 014 (Syntax Help Overlay)
+**Referenced by:** Spec 014 (Syntax Help Overlay), Spec 135 (Reference Docs Restructure)
 
 ## Goal
 
@@ -12,9 +12,9 @@ Define the canonical content for the Syntax Help page so it accurately documents
 
 ## Background
 
-Spec 014 defines the Syntax Help overlay structure and mechanics. The content (field tables, examples, divergences) lives in `app/src/docs/reference/syntax.tsx` as structured data constants. Over time, Frantic Search has added features that Scryfall does not support (name range queries, percentile filters, `usd=null`, bare regex, `**`) and expanded field coverage (set, date, tags, etc.). The help content has drifted out of date.
+Spec 014 defines the Syntax Help overlay structure and mechanics. Spec 135 restructures the reference docs: content is implemented across `app/src/docs/reference/` as granular MDX articles. The cheat sheet at `reference/syntax.mdx` provides the compact quick-reference; per-field, modifier, composition, and special-term docs live in dedicated articles.
 
-This spec is the single source of truth for what the Syntax Help must display. Implementers update `app/src/docs/reference/syntax.tsx` to match this spec when adding or changing query features.
+This spec is the single source of truth for what the Syntax Help must display. Implementers update the relevant articles in `app/src/docs/reference/` to match this spec when adding or changing query features.
 
 ## Content Requirements
 
@@ -132,16 +132,16 @@ When implementing a new query feature:
 1. If it adds a field: add a row to the Fields table (Section 1).
 2. If it extends a field's semantics: update the field's description and add an example.
 3. If it is Frantic Search–exclusive: add to Section 6 (Exclusives) and Section 7 (Differences) as appropriate.
-4. Update `app/src/docs/reference/syntax.tsx` to match this spec.
+4. Update the relevant articles in `app/src/docs/reference/` to match this spec (cheat sheet, per-field docs, etc.). See Spec 135 for structure.
 
 ## File Organization
 
 | File | Responsibility |
 |------|----------------|
 | `docs/specs/098-syntax-help-content.md` | This spec — canonical content definition |
-| `app/src/docs/reference/syntax.tsx` | In-app implementation; renders the content; `FIELDS`, `EXCLUSIVES`, `DIVERGENCES`, etc. must match this spec |
+| `app/src/docs/reference/` | In-app implementation per Spec 135; cheat sheet at `syntax.mdx`; per-field, modifier, composition, and special-term docs in dedicated articles |
 
-The in-app Reference doc at `docs/reference/syntax.tsx` is the canonical implementation. This spec defines its required content. The syntax component includes an `EXCLUSIVES` constant (and `ExclusiveEntry` interface) for the Frantic Search Exclusives section. Structure mirrors `ModifierEntry`: feature name, description, example.
+Content is implemented across `docs/reference/` per Spec 135. Each field, modifier, composition rule, and special term has a dedicated article. The cheat sheet (`reference/syntax.mdx`) provides the compact quick-reference with fields, operators, modifiers, exclusives, and divergences.
 
 ## Acceptance Criteria
 

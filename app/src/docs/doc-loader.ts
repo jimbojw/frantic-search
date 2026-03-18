@@ -19,7 +19,6 @@ const DOC_LOADERS: Record<string, () => Promise<DocModule>> = {
   ...referenceLoaders,
   'tutorials/getting-started': () => import('./tutorials/getting-started.mdx'),
   'how-to/budget-alternatives': () => import('./how-to/budget-alternatives.mdx'),
-  'reference/syntax': () => import('./reference/syntax'),
   'explanation/engine-overview': () => import('./explanation/engine-overview.mdx'),
 }
 

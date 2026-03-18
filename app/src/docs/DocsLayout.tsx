@@ -338,13 +338,13 @@ export default function DocsLayout(props: {
                 <Show when={docModule()} keyed>
                   {(mod) => {
                     const Content = mod.default
-                    const syntaxProps =
-                      props.docParam() === 'reference/syntax'
-                        ? {
-                            onSelectExample: props.onSelectExample ?? (() => {}),
-                            onNavigateToDoc: props.onNavigateToDoc,
-                          }
-                        : {}
+                    const isSyntax = props.docParam() === 'reference/syntax'
+                    const syntaxProps = isSyntax
+                      ? {
+                          onSelectExample: props.onSelectExample ?? (() => {}),
+                          onNavigateToDoc: props.onNavigateToDoc,
+                        }
+                      : {}
                     return (
                       <MDXProvider components={{ QueryExample, code: DocCode }}>
                         <div class="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">

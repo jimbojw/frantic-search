@@ -1,6 +1,6 @@
 # Spec 135: Reference Documentation Restructure
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 132 (Docs Infrastructure), Spec 133 (Docs Navigation), Spec 134 (Docs Content Migration), Spec 098 (Syntax Help Content)
 

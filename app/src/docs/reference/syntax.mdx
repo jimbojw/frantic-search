@@ -1,0 +1,134 @@
+---
+title: Syntax Cheat Sheet
+---
+
+# Syntax Cheat Sheet
+
+[Browse all docs](?doc=)
+
+Frantic Search is based on [Scryfall syntax](https://scryfall.com/docs/syntax) with extensions and some differences.
+
+## Fields
+
+### Face-domain fields
+
+| Field | Aliases | Description | Example |
+|-------|---------|-------------|---------|
+| name | n | Card name: substring, alphabetical range, percentile | `q=n:bolt` |
+| oracle | o | Rules text (substring) | `q=o:trample` |
+| type | t | Type line (substring) | `q=t:creature` |
+| color | c | Card colors | `q=c:rg` |
+| identity | id, ci, cmd | Color identity | `q=id:wubrg` |
+| power | pow | Power (numeric) | `q=pow>=4` |
+| toughness | tou | Toughness (numeric) | `q=tou>5` |
+| loyalty | loy | Loyalty (numeric) | `q=loy>=3` |
+| defense | def | Defense (numeric) | `q=def>3` |
+| mana value | mv, cmc | Mana value (numeric) | `q=mv>=2` |
+| mana | m | Mana cost (symbols) | `q=m:{b/p}` |
+| legal | f, format | Format legality | `q=f:modern` |
+| banned | — | Banned in format | `q=banned:legacy` |
+| restricted | — | Restricted in format | `q=restricted:vintage` |
+| is | — | Mechanics, layouts, roles, finish | `q=is:commander` |
+| kw | keyword | Keyword ability (Scryfall catalog) | `q=kw:flying` |
+| otag | function, oracletag | Oracle tag (community-curated) | `q=otag:ramp` |
+| atag | — | Illustration tag (community-curated) | `q=atag:bolt` |
+| edhrec | edhrecrank | EDHREC Commander popularity; numeric and percentile | `q=edhrec>100` |
+| salt | edhrecsalt, saltiness | EDHREC saltiness; numeric and percentile | `q=salt>2` |
+| my | — | Cards in a list | `q=my:list` |
+
+### Printing-domain fields
+
+| Field | Aliases | Description | Example |
+|-------|---------|-------------|---------|
+| set | s, e, edition | Set code | `q=set:mh2` |
+| rarity | r | Rarity (exact or comparison) | `q=r:mythic` |
+| usd | $ | Price in USD; =null for no price data; percentile | `q=usd>5` |
+| collectornumber | cn, number | Collector number | `q=cn:261` |
+| frame | — | Frame version (1993, 1997, 2003, 2015, future) | `q=frame:2015` |
+| year | — | Release year (YYYY or partial) | `q=year:2021` |
+| date | released | Release date; percentile | `q=date:2021` |
+| game | — | Paper, Arena, MTGO availability | `q=game:arena` |
+| in | — | Game, set, or rarity (disambiguated by value) | `q=in:mh2` |
+
+## Operators
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| : | Contains / has at least | `q=o:destroy` |
+| = | Exactly equals | `q=c=rg` |
+| != | Not equal | `q=c!=r` |
+| \> | Greater than | `q=pow>3` |
+| \< | Less than | `q=mv>3` |
+| \>= | Greater or equal | `q=tou>=5` |
+| \<= | Less or equal | `q=cmc>=2` |
+
+## Combining Queries
+
+| Label | Description | Example |
+|-------|-------------|---------|
+| Implicit AND | Cards matching all terms | `q=t:creature c:green` |
+| OR | Cards matching either term | `q=c:red OR c:blue` |
+| NOT | Exclude matching cards | `q=-c:black` |
+| Parentheses | Group sub-expressions | `q=(c:red OR c:blue) t:instant` |
+| Exact name | Match full card name | `q=!"Lightning Bolt"` |
+
+## Display modifiers
+
+| Alias | Canonical | Effect | Example |
+|-------|-----------|--------|---------|
+| ++ | unique:prints | Show all printings per card | `q=t:bolt ++` |
+| @@ | unique:art | Show one per unique artwork per card | `q=t:bolt @@` |
+| \*\* | include:extras | Include non-playable cards (acorn, silver-border, etc.) | `q=t:bolt **` |
+| sort: | sort:name, sort:mv, etc. | Order results (-sort: reverses direction) | `q=t:creature sort:name` |
+| order: | order:name, order:cmc, etc. | Order results (Scryfall alias for sort:) | `q=t:creature order:name` |
+| view:, v: | v:slim, v:detail, v:images, v:full | Display mode | `q=t:creature v:images` |
+| display: | display:grid, display:full, etc. | Display mode (Scryfall alias for view:) | `q=t:creature display:full` |
+
+`++` and `@@` are Scryfall aliases. `**` is Frantic Search–exclusive. Use `-sort:field` to reverse sort direction.
+
+## Regex
+
+| Label | Description | Example |
+|-------|-------------|---------|
+| Field regex | Regex on a specific field | `q=o:/enters the battlefield/` |
+| Bare regex | Searches name, oracle text, and type line | `q=/bolt/` |
+
+Regex is case-insensitive. The trailing `/` is optional. Bare regex is Frantic Search–exclusive (Scryfall does not support it).
+
+## Frantic Search Exclusives
+
+| Feature | Description | Example |
+|---------|-------------|---------|
+| Bare regex | /pattern searches name, oracle text, and type line | `q=/bolt/` |
+| \*\* (include:extras) | Include non-playable cards (acorn, silver-border, etc.) | `q=t:bolt **` |
+| Name range | Alphabetical comparison on card name | `q=name>M` |
+| Name percentile | Filter by position in alphabetical distribution | `q=name>50%` |
+| Price percentile | Filter by position in price distribution | `q=usd>90%` |
+| Date percentile | Filter by position in release-date distribution | `q=date>90%` |
+| EDHREC percentile | Filter by Commander popularity (rank inversion) | `q=edhrec>90%` |
+| Salt percentile | Filter by EDHREC saltiness | `q=salt>90%` |
+| Percentile chips in Menu | Popularity and Salt sections offer one-tap chips | Open Menu → Popularity or Salt |
+| usd=null | Find printings with no price data | `q=usd=null` |
+| -sort:field | Reverse sort direction (NOT inverts) | `q=-sort:name` |
+
+## Differences from Scryfall
+
+| Behavior | Scryfall | Frantic Search |
+|----------|----------|----------------|
+| Default format filter | Excludes cards not legal in any format | Shows all cards. Use f:standard (etc.) to filter. |
+| Bare regex | Not supported | /pattern searches name, oracle text, and type line |
+| Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy) |
+| Name comparison | Not supported | name>M, name>=X (alphabetical) |
+| Percentile filters | Not supported | usd>90%, date>10%, name>50%, edhrec>90%, salt>90% |
+| usd=null | Not supported | Matches printings with no price data |
+| $ alias | Uses usd | $ is alias for usd |
+| Query speed | Server round-trip | Instant (client-side, every keystroke) |
+
+## Links to granular docs
+
+- [Fields Overview](?doc=reference/fields/index) — Per-field details
+- [Modifiers](?doc=reference/modifiers/include-extras) — include:extras, unique, view
+- [Composition](?doc=reference/composition/and-or) — AND, OR, NOT, pinned
+- [Sorting](?doc=reference/sorting/overview) — Default sort, sort:field
+- [Special](?doc=reference/special/bare-regex) — Bare regex, my:list, #tag
+- [Scryfall Differences](?doc=reference/scryfall/differences) — Full divergences and known gaps
