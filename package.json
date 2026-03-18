@@ -8,6 +8,7 @@
     "etl": "npm run -s run -w etl --",
     "generate-icons": "./scripts/generate-icons.sh",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "setup": "npm install && npm run etl -- download && npm run etl -- download-tags && npm run etl -- download-mtgjson && npm run etl -- process",
     "test": "npm run typecheck && npm test --workspaces --if-present && npm run cli -- compliance"
   },
   "keywords": [],
