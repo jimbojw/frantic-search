@@ -58,7 +58,7 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
         type: 'section',
         id: `reference-${segment}`,
         title: REFERENCE_SECTION_LABELS[segment] ?? segment,
-        indexDocParam: `reference/${segment}/index`,
+        indexDocParam: children[0].docParam,
         children,
       })
     }
@@ -103,32 +103,26 @@ const REFERENCE_ENTRIES: DocEntry[] = [
   { id: 'rarity', docParam: 'reference/fields/printing/rarity', title: 'rarity', quadrant: 'reference', prev: 'reference/fields/printing/in', next: 'reference/fields/printing/set' },
   { id: 'set', docParam: 'reference/fields/printing/set', title: 'set', quadrant: 'reference', prev: 'reference/fields/printing/rarity', next: 'reference/fields/printing/usd' },
   { id: 'usd', docParam: 'reference/fields/printing/usd', title: 'usd', quadrant: 'reference', prev: 'reference/fields/printing/set', next: 'reference/fields/printing/year' },
-  { id: 'year', docParam: 'reference/fields/printing/year', title: 'year', quadrant: 'reference', prev: 'reference/fields/printing/usd', next: 'reference/modifiers/index' },
+  { id: 'year', docParam: 'reference/fields/printing/year', title: 'year', quadrant: 'reference', prev: 'reference/fields/printing/usd', next: 'reference/modifiers/include-extras' },
   // Modifiers
-  { id: 'modifiers-index', docParam: 'reference/modifiers/index', title: 'Modifiers', quadrant: 'reference', prev: 'reference/fields/printing/year', next: 'reference/modifiers/include-extras' },
-  { id: 'include-extras', docParam: 'reference/modifiers/include-extras', title: 'include:extras', quadrant: 'reference', prev: 'reference/modifiers/index', next: 'reference/modifiers/unique' },
+  { id: 'include-extras', docParam: 'reference/modifiers/include-extras', title: 'include:extras', quadrant: 'reference', prev: 'reference/fields/printing/year', next: 'reference/modifiers/unique' },
   { id: 'unique', docParam: 'reference/modifiers/unique', title: 'unique', quadrant: 'reference', prev: 'reference/modifiers/include-extras', next: 'reference/modifiers/view' },
-  { id: 'view', docParam: 'reference/modifiers/view', title: 'view', quadrant: 'reference', prev: 'reference/modifiers/unique', next: 'reference/composition/index' },
+  { id: 'view', docParam: 'reference/modifiers/view', title: 'view', quadrant: 'reference', prev: 'reference/modifiers/unique', next: 'reference/composition/and-or' },
   // Composition
-  { id: 'composition-index', docParam: 'reference/composition/index', title: 'Composition', quadrant: 'reference', prev: 'reference/modifiers/view', next: 'reference/composition/and-or' },
-  { id: 'and-or', docParam: 'reference/composition/and-or', title: 'AND and OR', quadrant: 'reference', prev: 'reference/composition/index', next: 'reference/composition/not' },
+  { id: 'and-or', docParam: 'reference/composition/and-or', title: 'AND and OR', quadrant: 'reference', prev: 'reference/modifiers/view', next: 'reference/composition/not' },
   { id: 'not', docParam: 'reference/composition/not', title: 'NOT', quadrant: 'reference', prev: 'reference/composition/and-or', next: 'reference/composition/pinned' },
-  { id: 'pinned', docParam: 'reference/composition/pinned', title: 'Pinned queries', quadrant: 'reference', prev: 'reference/composition/not', next: 'reference/sorting/index' },
+  { id: 'pinned', docParam: 'reference/composition/pinned', title: 'Pinned queries', quadrant: 'reference', prev: 'reference/composition/not', next: 'reference/sorting/overview' },
   // Sorting
-  { id: 'sorting-index', docParam: 'reference/sorting/index', title: 'Sorting', quadrant: 'reference', prev: 'reference/composition/pinned', next: 'reference/sorting/overview' },
-  { id: 'overview', docParam: 'reference/sorting/overview', title: 'Sorting Overview', quadrant: 'reference', prev: 'reference/sorting/index', next: 'reference/sorting/sort-fields' },
-  { id: 'sort-fields', docParam: 'reference/sorting/sort-fields', title: 'Sort Fields', quadrant: 'reference', prev: 'reference/sorting/overview', next: 'reference/special/index' },
+  { id: 'overview', docParam: 'reference/sorting/overview', title: 'Sorting Overview', quadrant: 'reference', prev: 'reference/composition/pinned', next: 'reference/sorting/sort-fields' },
+  { id: 'sort-fields', docParam: 'reference/sorting/sort-fields', title: 'Sort Fields', quadrant: 'reference', prev: 'reference/sorting/overview', next: 'reference/special/bare-regex' },
   // Special
-  { id: 'special-index', docParam: 'reference/special/index', title: 'Special', quadrant: 'reference', prev: 'reference/sorting/sort-fields', next: 'reference/special/bare-regex' },
-  { id: 'bare-regex', docParam: 'reference/special/bare-regex', title: 'Bare regex', quadrant: 'reference', prev: 'reference/special/index', next: 'reference/special/my-list' },
+  { id: 'bare-regex', docParam: 'reference/special/bare-regex', title: 'Bare regex', quadrant: 'reference', prev: 'reference/sorting/sort-fields', next: 'reference/special/my-list' },
   { id: 'my-list', docParam: 'reference/special/my-list', title: 'my:list', quadrant: 'reference', prev: 'reference/special/bare-regex', next: 'reference/special/tag-filter' },
-  { id: 'tag-filter', docParam: 'reference/special/tag-filter', title: 'Tag filter', quadrant: 'reference', prev: 'reference/special/my-list', next: 'reference/feedback/index' },
+  { id: 'tag-filter', docParam: 'reference/special/tag-filter', title: 'Tag filter', quadrant: 'reference', prev: 'reference/special/my-list', next: 'reference/feedback/query-feedback' },
   // Feedback
-  { id: 'feedback-index', docParam: 'reference/feedback/index', title: 'Feedback', quadrant: 'reference', prev: 'reference/special/tag-filter', next: 'reference/feedback/query-feedback' },
-  { id: 'query-feedback', docParam: 'reference/feedback/query-feedback', title: 'Query Feedback', quadrant: 'reference', prev: 'reference/feedback/index', next: 'reference/scryfall/index' },
+  { id: 'query-feedback', docParam: 'reference/feedback/query-feedback', title: 'Query Feedback', quadrant: 'reference', prev: 'reference/special/tag-filter', next: 'reference/scryfall/differences' },
   // Scryfall
-  { id: 'scryfall-index', docParam: 'reference/scryfall/index', title: 'Scryfall', quadrant: 'reference', prev: 'reference/feedback/query-feedback', next: 'reference/scryfall/differences' },
-  { id: 'differences', docParam: 'reference/scryfall/differences', title: 'Scryfall Differences', quadrant: 'reference', prev: 'reference/scryfall/index', next: 'reference/scryfall/gaps' },
+  { id: 'differences', docParam: 'reference/scryfall/differences', title: 'Scryfall Differences', quadrant: 'reference', prev: 'reference/feedback/query-feedback', next: 'reference/scryfall/gaps' },
   { id: 'gaps', docParam: 'reference/scryfall/gaps', title: 'Known Gaps', quadrant: 'reference', prev: 'reference/scryfall/differences', next: 'reference/lists/index' },
   // Lists
   { id: 'lists-index', docParam: 'reference/lists/index', title: 'Deck Lists', quadrant: 'reference', prev: 'reference/scryfall/gaps' },
