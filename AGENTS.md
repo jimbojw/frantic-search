@@ -71,3 +71,12 @@ data/
 ```
 
 To populate it: `npm run etl -- download` then `npm run etl -- process`.
+
+## Cursor Cloud specific instructions
+
+- **No background services required.** This is a fully client-side SPA — no databases, Docker, or backend servers to start.
+- **Data pipeline must run before the app or CLI search commands work.** The `data/` directory is git-ignored and must be populated each session. Run the full pipeline: `npm run etl -- download`, `npm run etl -- download-tags`, `npm run etl -- download-mtgjson`, then `npm run etl -- process`. The downloads total ~700 MB and processing takes ~30 seconds. The processed output lands in `data/dist/columns.json` (plus `printings.json`, `otags.json`, `atags.json`, `thumb-hashes.json`).
+- **Dev server:** `npm run dev` starts Vite on port 5173 with HMR. Do not run `npm run build` during development sessions.
+- **Lint/typecheck:** `npm run typecheck` runs `tsc --noEmit` across all four workspaces.
+- **Tests:** `npm test` runs typecheck + Vitest in `shared`, `app`, and `etl`, then `npm run cli -- compliance`. All tests are pure unit tests and do not require the data pipeline.
+- **Node.js 22** is required (per `.nvmrc`).
