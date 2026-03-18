@@ -4,4 +4,21 @@ title: Scryfall Differences
 
 # Scryfall Differences
 
-(Placeholder — content in Phase 4.)
+Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/syntax) with additional features and some behavioral differences. This page summarizes the main divergences. Per-field articles include Scryfall notes where relevant.
+
+## Behavioral divergences
+
+| Behavior | Scryfall | Frantic Search |
+|----------|----------|----------------|
+| Default format filter | Excludes cards not legal in any format | Shows all cards. Use [legal](?doc=reference/fields/face/legal) (`f:standard`, etc.) to filter. |
+| [Bare regex](?doc=reference/special/bare-regex) | Not supported | `/pattern` searches name, oracle text, and type line |
+| Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy). See [name](?doc=reference/fields/face/name). |
+| Name comparison | Not supported | [name](?doc=reference/fields/face/name): `name>M`, `name<=X` (alphabetical) |
+| Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/face/edhrec), [salt](?doc=reference/fields/face/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |
+| usd=null | Not supported | [usd](?doc=reference/fields/printing/usd): Matches printings with no price data |
+| $ alias | Uses usd | [usd](?doc=reference/fields/printing/usd): `$` is alias for usd |
+| Query speed | Server round-trip | Instant (client-side, every keystroke) |
+
+## Known missing
+
+Some Scryfall features are not yet implemented. See [Known Gaps](?doc=reference/scryfall/gaps) for details. Examples: `new:rarity` (first printed at new rarity); partial `is:` keyword support. See [is](?doc=reference/fields/face/is).

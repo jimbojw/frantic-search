@@ -4,4 +4,45 @@ title: Tag filter
 
 # Tag filter
 
-(Placeholder — content in Phase 4.)
+The `#tag` syntax filters search results by metadata on cards in your list: zone, tags, collection status, and variant. Matching is substring-based and case-insensitive. Use `#combo` to find cards tagged "combo," `#commander` for the Commander zone, or `#com` to match both. **Frantic Search–exclusive** (no Scryfall equivalent).
+
+## Purpose
+
+When you add cards to your list, you can assign zones (Deck, Sideboard, Commander), custom tags (e.g. `#Land`, `#Ramp`), and collection status. The `#tag` query filters to cards whose metadata matches the pattern. Useful for "show my combo pieces" or "cards in my sideboard."
+
+## Syntax
+
+| Form | Example |
+|------|---------|
+| `#value` | `q=#combo` |
+| Naked `#` | `q=#` (same as `my:list`) |
+| Negation | `q=-#combo` |
+
+The `#` prefix identifies a metadata tag query. The value is matched against zone, each tag, collection_status, and variant.
+
+## Behavior
+
+- **Sources:** Zone (Deck, Sideboard, Commander, etc.), custom tags (from import or in-app), collection status (e.g. Archidekt "Don't Have"), variant.
+- **Substring:** `#com` matches "combo," "commander," "Combo," etc. Normalization strips diacritics and non-alphanumeric characters.
+- **Scope:** Pan-list, trash excluded. `#combo` searches metadata across all non-trash lists (currently the default list).
+- **Naked `#`:** `#` alone returns all cards in non-trash lists — same as `my:list`.
+- **No metadata:** If your list has no tags or zones, `#value` returns empty.
+
+## Examples
+
+- `q=#combo` — Cards with "combo" in zone, tags, or collection status
+- `q=#com` — Matches both "combo" and "commander"
+- `q=my:list #combo` — Cards in your list that have the combo tag
+- `q=-#combo` — Cards without combo metadata
+- `q=#` — All cards in your list (same as `my:list`)
+
+## Relationship to otag and atag
+
+- **`otag:`** and **`atag:`** search the **card database** for community-curated oracle and illustration tags (e.g. ramp, removal, bolt). See [otag](?doc=reference/fields/face/otag) and [atag](?doc=reference/fields/face/atag).
+- **`#tag`** searches **your list's metadata** — zones, custom tags you assign, collection status. Different data source, different use case.
+
+When you paste a deck list from Moxfield or TappedOut, lines may include `#Tag` (e.g. `1 Sol Ring #Ramp`). Those tags are imported into your list metadata and become searchable via `#tag` queries.
+
+## Scryfall
+
+Scryfall has no equivalent. This feature is Frantic Search–exclusive.

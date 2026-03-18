@@ -4,4 +4,37 @@ title: Bare regex
 
 # Bare regex
 
-(Placeholder — content in Phase 4.)
+Bare regex lets you search card name, oracle text, and type line with a pattern — no field prefix required. It is **Frantic Search–exclusive** (Scryfall does not support it).
+
+## Purpose
+
+Typing `/pattern/` in the search box matches cards whose name, oracle text, or type line contains the pattern. Unlike field-prefixed regex (e.g. `name:/bolt/`), bare regex searches all three fields at once. Useful for quick exploratory searches.
+
+## Syntax
+
+| Form | Example |
+|------|---------|
+| `/pattern/` | `q=/bolt/` |
+| Trailing `/` optional | `q=/bolt` |
+
+Matching is **case-insensitive**. The pattern uses JavaScript regex syntax.
+
+## Behavior
+
+- **Fields searched:** Card name, oracle text, type line. A card matches if the pattern appears in any of these.
+- **No field prefix:** Bare regex is a standalone term. It does not use `name:`, `o:`, or `t:`.
+- **Composition:** Combines with other terms via AND. `q=/trample/ t:creature` finds creatures with trample in their rules text.
+
+## Examples
+
+- `q=/bolt/` — Cards with "bolt" in name, oracle text, or type line (e.g. Lightning Bolt, Bolt Bend)
+- `q=/enters the battlefield/` — Cards with that phrase in rules text
+- `q=/trample/ t:creature` — Creatures that have trample
+
+## Field-prefixed regex
+
+For regex on a single field, use the field prefix: `name:/bolt/`, `o:/trample/`, `t:/creature/`. See [name](?doc=reference/fields/face/name) and [oracle](?doc=reference/fields/face/oracle) for field-specific regex behavior.
+
+## Scryfall
+
+Scryfall does not support bare regex. Use field-prefixed regex (e.g. `o:/pattern/`) when translating queries to Scryfall.

@@ -4,4 +4,12 @@ title: Known Gaps
 
 # Known Gaps
 
-(Placeholder — content in Phase 4.)
+Scryfall features that Frantic Search does not yet support. See [Scryfall Differences](?doc=reference/scryfall/differences) for behavioral divergences.
+
+## Not supported
+
+- **`new:rarity`** — Scryfall's `new:rarity` finds reprint cards printed at a new rarity for the first time (e.g. `new:mythic`). Frantic Search has no equivalent. Use [in](?doc=reference/fields/printing/in) (`in:rarity`) for cards that have ever been printed at that rarity.
+
+## Partial support
+
+- **`is:`** — Frantic Search supports a subset of Scryfall's `is:` keywords. Some values (e.g. `is:shockland` for typed dual lands) are not yet implemented. See [is](?doc=reference/fields/face/is) for supported keywords. Missing values are documented as discovered.

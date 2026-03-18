@@ -4,4 +4,46 @@ title: my:list
 
 # my:list
 
-(Placeholder — content in Phase 4.)
+The `my:` field filters search results to cards (or printings) in your stored list. `my:list` returns list contents; `-my:list` returns the complement. Composes with all other query terms. **Frantic Search–exclusive** (no Scryfall equivalent).
+
+## Purpose
+
+Use `my:list` to search within your collection — find creatures in your list, foil printings you own, or cards not yet in your list. The list is persisted in the app; paste decklists, add cards from search, or remove them to trash.
+
+## Syntax
+
+| Form | Example |
+|------|---------|
+| `my:list` | `q=my:list` |
+| `my:default` | Same as `my:list` |
+| `my:trash` | Cards in trash (removed from list) |
+| `-my:list` | Complement (cards not in list) |
+
+Operators `:` and `=` both mean "in list." Negation uses `-my:list` (NOT node).
+
+## Behavior
+
+- **List names:** `list` and `default` both refer to your main list. `trash` refers to cards you've removed.
+- **Domain:** Face vs printing is determined by list contents at runtime:
+  - **Face-only** (list has card names only): `my:` is face-domain. Matches canonical faces.
+  - **Printing-only** (list has specific printings): `my:` is printing-domain. Matches exact printings.
+  - **Mixed** (both): Printing-domain. Generic entries expand to all printings; combine with `unique:prints` to show one per generic entry.
+- **Composition:** `my:list t:creature` finds creatures in your list. `-my:list` finds cards not in your list.
+
+## Examples
+
+- `q=my:list` — All cards in your list
+- `q=-my:list t:creature` — Creatures not in your list
+- `q=my:list is:foil` — Foil printings in your list
+- `q=my:trash` — Cards in trash
+- `q=my:list unique:prints` — One tile per printing in list (Images/Full view)
+
+## Notes
+
+- Empty list: `my:list` returns 0 results; `-my:list` returns all cards.
+- Unknown list name (e.g. `my:foo`) produces an error in the breakdown; the term is ignored for filtering.
+- For field-level details (operators, values), see [my](?doc=reference/fields/face/my).
+
+## Scryfall
+
+Scryfall has no equivalent to `my:list`. This feature is Frantic Search–exclusive.

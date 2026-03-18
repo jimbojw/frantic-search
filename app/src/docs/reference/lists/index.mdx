@@ -4,4 +4,43 @@ title: Deck Lists
 
 # Deck Lists
 
-(Placeholder — content in Phase 4.)
+The My List feature lets you paste decklists and transform them into other formats. This page covers import and export syntax — separate from the [query syntax](?doc=reference/syntax) used in the search bar.
+
+## Purpose
+
+Paste a deck list from Arena, Moxfield, Archidekt, or other tools; the importer parses it and adds cards to your list. Export your list to a format compatible with another tool. Tags, zones, and collection status are preserved where the format supports them.
+
+## Supported import formats
+
+| Format | Line syntax | Notes |
+|--------|-------------|-------|
+| **Arena** | `quantity cardname` | Simple: `1 Lightning Bolt`, `4 Birds of Paradise` |
+| **Moxfield** | `quantity cardname (SET) collector [*F*\|*E*] [#Tag...]` | `(SET)` space before collector; `*F*` foil, `*E*` etched; custom tags per [Moxfield help](https://moxfield.com/help/managing-custom-tags) |
+| **Archidekt** | `quantityx cardname (set) collector [tags] ^Status,#hex^` | Lowercase set; `x` suffix on quantity; `^Status,#hex^` collection marker |
+| **MTGGoldfish** | `quantity cardname <variant> [SET] (F\|E)?` or `quantity cardname [SET] (F\|E)?` | `<variant>` = collector or variant name; `(F)` foil, `(E)` etched |
+| **TappedOut** | `1x name (SET:num) *f* #Tag` | Inline `#Tag`, `*CMDR*`/`*CMPN*` for roles, `(SET:num)` for set+collector |
+| **Melee.gg** | `quantity name` | `MainDeck` and `Sideboard` section headers |
+| **MTG Salvation** | `1 Card Name` | Type-based sections (Creature, Enchantment, Land, etc.) |
+
+## Section headers
+
+Standalone lines that divide zones. Case-insensitive; optional trailing colon.
+
+- **Arena / Moxfield:** `About`, `Deck`, `Sideboard`, `Commander`
+- **Melee:** `MainDeck`, `Main Deck`, `Sideboard`
+- **MTG Salvation:** `Creature`, `Enchantment`, `Land`, `Artifact`, `Instant`, `Sorcery`, `Planeswalker`, `Tribal`
+
+## Metadata markers
+
+- **Category:** `[Land]`, `[Removal]`, `[Commander{top}]` — Moxfield/Archidekt style
+- **Tags:** `#Land`, `#Ramp/Reduction` — inline on card lines; searchable via [tag filter](?doc=reference/special/tag-filter)
+- **Collection status:** `^Have,#37d67a^`, `^Don't Have,#334455^` — Archidekt
+- **Finish:** `*F*` foil, `*E*` etched, `*A*` alter — Moxfield; `(F)`, `(E)` — MTGGoldfish
+
+## Supported export formats
+
+Arena, Moxfield, Archidekt, MTGGoldfish, TCGPlayer Mass Entry, Mana Pool, Melee.gg, TappedOut, MTG Salvation. Each preserves zones and tags where the format supports them.
+
+## Comments
+
+Lines starting with `//` or `#` are comments and ignored during import.
