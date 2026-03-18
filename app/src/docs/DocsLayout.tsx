@@ -264,7 +264,7 @@ export default function DocsLayout(props: {
       <div class="flex flex-1 min-h-0">
         {/* Sidebar */}
         <aside
-          class={`absolute md:relative inset-y-0 left-0 z-10 w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+          class={`absolute md:relative top-14 bottom-0 left-0 md:top-auto md:bottom-auto md:left-auto z-10 w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 md:translate-x-0 ${
             sidebarOpen() ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
           onClick={(e) => {
