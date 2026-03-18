@@ -26,6 +26,11 @@ interface CardFace {
   defense?: string;
 }
 
+interface AllPart {
+  id?: string;
+  component?: string;
+}
+
 interface Card {
   id?: string;
   oracle_id?: string;
@@ -50,6 +55,7 @@ interface Card {
   promo_types?: string[];
   card_faces?: CardFace[];
   keywords?: string[];
+  all_parts?: AllPart[];
 }
 
 // ---------------------------------------------------------------------------
@@ -110,12 +116,26 @@ function isUniversesBeyond(card: Card, oracleIdsWithUB: Set<string>): boolean {
   return oid != null && oracleIdsWithUB.has(oid);
 }
 
+function isMeldResult(card: Card): boolean {
+  const layout = card.layout ?? "normal";
+  const allParts = card.all_parts;
+  if (layout !== "meld" || !allParts) return false;
+  const cardId = card.id;
+  const oracleId = card.oracle_id;
+  return allParts.some(
+    (p) =>
+      p.component === "meld_result" &&
+      (p.id === cardId || p.id === oracleId),
+  );
+}
+
 function encodeFlags(card: Card, oracleIdsWithUB: Set<string>): number {
   let flags = 0;
   if (card.reserved) flags |= CardFlag.Reserved;
   if (isFunny(card)) flags |= CardFlag.Funny;
   if (isUniversesBeyond(card, oracleIdsWithUB)) flags |= CardFlag.UniversesBeyond;
   if (card.game_changer) flags |= CardFlag.GameChanger;
+  if (isMeldResult(card)) flags |= CardFlag.MeldResult;
   return flags;
 }
 

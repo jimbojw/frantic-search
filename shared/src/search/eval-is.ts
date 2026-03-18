@@ -349,6 +349,7 @@ export function evalIsKeyword(
         const layout = index.layouts[i];
         const isToken = layout === "token" || layout === "double_faced_token";
         if (isToken) continue;
+        if ((index.flags[i] & CardFlag.MeldResult) !== 0) continue;
         const tl = index.typeLinesLower[i];
         const isLegendary = tl.includes("legendary");
         const isFront = cf[i] === i;

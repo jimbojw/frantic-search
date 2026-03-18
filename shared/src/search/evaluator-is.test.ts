@@ -53,6 +53,7 @@ import { index } from "./evaluator.test-fixtures";
 // Row #36 Blinding Souleater       | -  | Artifact Creature — Cleric              | pow=1 tou=3 cmc=3 | normal  (oracle has {W/P} — Phyrexian in text only)
 // Row #37 Oracle Hybrid Test       | -  | Creature — Elf                          | pow=1 tou=1 cmc=1 | normal  (oracle has {G/U} — hybrid in text only)
 // Row #38 Demonic Tutor             | B  | Sorcery                                 | -      cmc=2      | normal  flags=GameChanger
+// Row #43 Brisela (meld result)      | WB | Legendary Creature — Angel Horror       | pow=4 tou=3 cmc=7 | meld   flags=MeldResult (excluded from is:commander)
 
 const isExtPowerDict = ["", "0", "*", "2", "3", "4", "1", "6"];
 const isExtToughnessDict = ["", "1", "1+*", "3", "4", "2", "6"];
@@ -80,6 +81,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Augment Card",
     "Goblin Token",
     "Gideon's Emblem",
+    "Brisela, Voice of Nightmares",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -103,6 +105,7 @@ const IS_TEST_DATA: ColumnarData = {
     "{2}",
     "{R}",
     "",
+    "{4}{W}{W}{W}",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -148,6 +151,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Augment {1}{R}",
     "Haste",
     "Creatures you control get +1/+1.",
+    "Flying, first strike, lifelink",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -171,6 +175,7 @@ const IS_TEST_DATA: ColumnarData = {
     0,
     Color.Red,
     0,
+    Color.White | Color.Black,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -194,6 +199,7 @@ const IS_TEST_DATA: ColumnarData = {
     0,
     Color.Red,
     0,
+    Color.White | Color.Black,
   ],
   type_lines: [
     "Creature — Elf",
@@ -239,21 +245,22 @@ const IS_TEST_DATA: ColumnarData = {
     "Creature — Augment",
     "Creature — Goblin",
     "Emblem — Gideon",
+    "Legendary Creature — Angel Horror",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42],
-  scryfall_ids:          Array(43).fill(""),
-  oracle_ids:            Array(43).fill(""),
-  art_crop_thumb_hashes: Array(43).fill(""),
-  card_thumb_hashes:     Array(43).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0, 5],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0, 3],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43],
+  scryfall_ids:          Array(44).fill(""),
+  oracle_ids:            Array(44).fill(""),
+  art_crop_thumb_hashes: Array(44).fill(""),
+  card_thumb_hashes:     Array(44).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -276,6 +283,7 @@ const IS_TEST_DATA: ColumnarData = {
     "augment",
     "token",
     "emblem",
+    "meld",
   ],
   flags: [
     0, 0, 0, 0, 0,
@@ -297,9 +305,10 @@ const IS_TEST_DATA: ColumnarData = {
     CardFlag.GameChanger,
     0, 0,
     0, 0,
+    CardFlag.MeldResult,
   ],
-  edhrec_ranks: Array(43).fill(null) as (number | null)[],
-  edhrec_salts: Array(43).fill(null) as (number | null)[],
+  edhrec_ranks: Array(44).fill(null) as (number | null)[],
+  edhrec_salts: Array(44).fill(null) as (number | null)[],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
   loyalty_lookup: [""],
@@ -339,7 +348,7 @@ describe("is: operator", () => {
   });
 
   test("is:spell matches non-land cards", () => {
-    expect(isMatchCount("is:spell")).toBe(33);
+    expect(isMatchCount("is:spell")).toBe(34);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -395,7 +404,7 @@ describe("is: operator", () => {
 
   test("is:meld matches meld layout", () => {
     const indices = isMatchIndices("is:meld");
-    expect(indices).toEqual([23]); // Gisela
+    expect(indices).toEqual([23, 43]); // Gisela (meld part), Brisela (meld result)
   });
 
   test("is:adventure matches adventure layout", () => {
@@ -465,11 +474,17 @@ describe("is: operator", () => {
     expect(indices).toContain(13); // Rograkh (Legendary Creature)
     expect(indices).toContain(14); // Halana and Alena — has "can be your commander"
     expect(indices).toContain(15); // Lurrus (Legendary Creature)
-    expect(indices).toContain(23); // Gisela (Legendary Creature, front)
+    expect(indices).toContain(23); // Gisela (Legendary Creature, meld part)
     expect(indices).toContain(25); // Akroma (Legendary Creature)
     expect(indices).not.toContain(0);  // Birds (non-legendary creature)
     expect(indices).not.toContain(3);  // Sol Ring (Artifact, not legendary creature)
     expect(indices).not.toContain(18); // Nicol Bolas — creature type on back face only; isFront excludes
+    expect(indices).not.toContain(43); // Brisela (meld result — excluded per Issue #149)
+  });
+
+  test("is:commander excludes meld result cards", () => {
+    const indices = isMatchIndices("is:commander");
+    expect(indices).not.toContain(43); // Brisela (Legendary Creature but meld result)
   });
 
   test("is:brawler is an alias for is:commander", () => {
@@ -637,7 +652,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(38); // 39 unique cards - 1 funny
+    expect(indices.length).toBe(39); // 40 unique canonical faces - 1 funny
   });
 
   // --- Land cycle checks ---
