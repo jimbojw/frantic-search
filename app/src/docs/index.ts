@@ -24,10 +24,23 @@ export interface SidebarSection {
   id: string
   title: string
   indexDocParam: string
-  children: SidebarLink[]
+  children: ReferenceSidebarNode[]
 }
 
 export type ReferenceSidebarNode = { type: 'link' } & SidebarLink | { type: 'section' } & SidebarSection
+
+/** Recursively check if a section contains docParam (any descendant link matches). */
+export function sectionContainsDocParam(section: SidebarSection, docParam: string): boolean {
+  if (docParam === section.indexDocParam) return true
+  for (const child of section.children) {
+    if (child.type === 'link') {
+      if (child.docParam === docParam) return true
+    } else {
+      if (sectionContainsDocParam(child as SidebarSection, docParam)) return true
+    }
+  }
+  return false
+}
 
 const REFERENCE_SECTION_LABELS: Record<string, string> = {
   fields: 'Fields',
@@ -50,15 +63,58 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
 
   for (const segment of ['fields', 'modifiers', 'composition', 'sorting', 'special', 'feedback', 'scryfall', 'lists']) {
     const prefix = `reference/${segment}/`
-    const children = refEntries
-      .filter((e) => e.docParam.startsWith(prefix))
-      .map((e) => ({ docParam: e.docParam, title: e.title }))
-    if (children.length > 0) {
+    const segmentEntries = refEntries.filter((e) => e.docParam.startsWith(prefix))
+
+    if (segment === 'fields' && segmentEntries.length > 0) {
+      // Nested structure: Fields Overview + Face Fields + Printing Fields
+      const fieldsIndex = segmentEntries.find((e) => e.docParam === 'reference/fields/index')
+      const faceEntries = segmentEntries
+        .filter((e) => e.docParam.startsWith('reference/fields/face/'))
+        .map((e) => ({ type: 'link' as const, docParam: e.docParam, title: e.title }))
+      const printingEntries = segmentEntries
+        .filter((e) => e.docParam.startsWith('reference/fields/printing/'))
+        .map((e) => ({ type: 'link' as const, docParam: e.docParam, title: e.title }))
+
+      const fieldsChildren: ReferenceSidebarNode[] = []
+      if (fieldsIndex) {
+        fieldsChildren.push({ type: 'link', docParam: fieldsIndex.docParam, title: fieldsIndex.title })
+      }
+      if (faceEntries.length > 0) {
+        fieldsChildren.push({
+          type: 'section',
+          id: 'reference-fields-face',
+          title: 'Face Fields',
+          indexDocParam: faceEntries[0].docParam,
+          children: faceEntries,
+        })
+      }
+      if (printingEntries.length > 0) {
+        fieldsChildren.push({
+          type: 'section',
+          id: 'reference-fields-printing',
+          title: 'Printing Fields',
+          indexDocParam: printingEntries[0].docParam,
+          children: printingEntries,
+        })
+      }
+      result.push({
+        type: 'section',
+        id: 'reference-fields',
+        title: REFERENCE_SECTION_LABELS.fields,
+        indexDocParam: fieldsIndex?.docParam ?? faceEntries[0]?.docParam ?? printingEntries[0]?.docParam ?? prefix,
+        children: fieldsChildren,
+      })
+    } else if (segmentEntries.length > 0) {
+      const children: ReferenceSidebarNode[] = segmentEntries.map((e) => ({
+        type: 'link' as const,
+        docParam: e.docParam,
+        title: e.title,
+      }))
       result.push({
         type: 'section',
         id: `reference-${segment}`,
         title: REFERENCE_SECTION_LABELS[segment] ?? segment,
-        indexDocParam: children[0].docParam,
+        indexDocParam: segmentEntries[0].docParam,
         children,
       })
     }

@@ -5,8 +5,10 @@ import {
   DOC_INDEX,
   VISIBLE_QUADRANTS,
   buildReferenceSidebarTree,
+  sectionContainsDocParam,
   type DocEntry,
   type DocQuadrant,
+  type ReferenceSidebarNode,
   type SidebarSection,
 } from './index'
 import { getDocLoader } from './doc-loader'
@@ -31,6 +33,75 @@ function buildDocUrl(docParam: string | null): string {
   return `?${params.toString()}`
 }
 
+function SidebarNode(props: {
+  node: ReferenceSidebarNode
+  depth: number
+  docParam: string | null
+  buildDocUrl: (docParam: string | null) => string
+  toggleSection: (id: string) => void
+  isSectionExpanded: (id: string) => boolean
+}) {
+  const { node, depth, docParam, buildDocUrl, toggleSection, isSectionExpanded } = props
+  const indent = depth > 0 ? 'ml-4' : ''
+  const linkClass = (active: boolean) =>
+    `block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+      active
+        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+    }`
+  const topLinkClass = (active: boolean) =>
+    `block px-3 py-2 rounded-lg text-sm transition-colors ${
+      active
+        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+    }`
+
+  if (node.type === 'link') {
+    return (
+      <li>
+        <a
+          href={buildDocUrl(node.docParam)}
+          class={depth === 0 ? topLinkClass(docParam === node.docParam) : linkClass(docParam === node.docParam)}
+        >
+          {node.title}
+        </a>
+      </li>
+    )
+  }
+
+  const section = node
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => toggleSection(section.id)}
+        aria-expanded={isSectionExpanded(section.id)}
+        class="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      >
+        <IconChevronRight
+          class={`size-4 shrink-0 transition-transform ${isSectionExpanded(section.id) ? 'rotate-90' : ''}`}
+        />
+        <span class="font-medium">{section.title}</span>
+      </button>
+      <Show when={isSectionExpanded(section.id)}>
+        <ul class={`${indent} mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 dark:border-gray-700 pl-2`}>
+          <For each={section.children}>
+            {(child) => (
+              <SidebarNode
+                node={child}
+                depth={depth + 1}
+                docParam={docParam}
+                buildDocUrl={buildDocUrl}
+                toggleSection={toggleSection}
+                isSectionExpanded={isSectionExpanded}
+              />
+            )}
+          </For>
+        </ul>
+      </Show>
+    </li>
+  )
+}
 
 export default function DocsLayout(props: {
   docParam: string | null
@@ -66,26 +137,41 @@ export default function DocsLayout(props: {
 
   const referenceTree = () => buildReferenceSidebarTree(DOC_INDEX)
 
+  function findSectionById(nodes: ReferenceSidebarNode[], id: string): SidebarSection | null {
+    for (const node of nodes) {
+      if (node.type === 'section' && node.id === id) return node
+      if (node.type === 'section') {
+        const found = findSectionById(node.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   const [expandedSections, setExpandedSections] = createSignal<Set<string>>(new Set())
   const [collapsedByUser, setCollapsedByUser] = createSignal<Set<string>>(new Set())
   createEffect(() => {
     const docParam = props.docParam
     if (!docParam || !docParam.startsWith('reference/')) return
-    for (const node of referenceTree()) {
-      if (node.type === 'section') {
-        const section = node as SidebarSection
-        const contains =
-          docParam === section.indexDocParam || section.children.some((c) => c.docParam === docParam)
-        if (contains) {
-          setExpandedSections((s) => new Set(s).add(section.id))
-          setCollapsedByUser((s) => {
-            const next = new Set(s)
-            next.delete(section.id)
-            return next
-          })
-          break
+    const doc: string = docParam
+    const tree = referenceTree()
+    const toExpand: string[] = []
+    function collectSectionsToExpand(nodes: ReferenceSidebarNode[]) {
+      for (const node of nodes) {
+        if (node.type === 'section' && sectionContainsDocParam(node, doc)) {
+          toExpand.push(node.id)
+          collectSectionsToExpand(node.children)
         }
       }
+    }
+    collectSectionsToExpand(tree)
+    if (toExpand.length > 0) {
+      setExpandedSections((s) => new Set([...s, ...toExpand]))
+      setCollapsedByUser((s) => {
+        const next = new Set(s)
+        for (const id of toExpand) next.delete(id)
+        return next
+      })
     }
   })
 
@@ -105,11 +191,9 @@ export default function DocsLayout(props: {
 
   const isSectionExpanded = (sectionId: string): boolean => {
     const docParam = props.docParam
-    const tree = referenceTree()
-    const node = tree.find((n) => n.type === 'section' && (n as SidebarSection).id === sectionId)
-    if (!node || node.type !== 'section') return false
-    const section = node as SidebarSection
-    const contains = docParam && (docParam === section.indexDocParam || section.children.some((c) => c.docParam === docParam))
+    const section = findSectionById(referenceTree(), sectionId)
+    if (!section) return false
+    const contains = docParam && sectionContainsDocParam(section, docParam)
     const expanded = expandedSections().has(sectionId) || !!contains
     return expanded && !collapsedByUser().has(sectionId)
   }
@@ -197,58 +281,16 @@ export default function DocsLayout(props: {
                     {quadrant === 'reference' ? (
                       <ul class="flex flex-col gap-0.5">
                         <For each={referenceTree()}>
-                          {(node) =>
-                            node.type === 'link' ? (
-                              <li>
-                                <a
-                                  href={buildDocUrl(node.docParam)}
-                                  class={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                                    props.docParam === node.docParam
-                                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                  }`}
-                                >
-                                  {node.title}
-                                </a>
-                              </li>
-                            ) : (
-                              <li>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleSection((node as SidebarSection).id)}
-                                  aria-expanded={isSectionExpanded((node as SidebarSection).id)}
-                                  class="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                >
-                                  <IconChevronRight
-                                    class={`size-4 shrink-0 transition-transform ${
-                                      isSectionExpanded((node as SidebarSection).id) ? 'rotate-90' : ''
-                                    }`}
-                                  />
-                                  <span class="font-medium">{(node as SidebarSection).title}</span>
-                                </button>
-                                <Show when={isSectionExpanded((node as SidebarSection).id)}>
-                                  <ul class="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 dark:border-gray-700 pl-2">
-                                    <For each={(node as SidebarSection).children}>
-                                      {(child) => (
-                                        <li>
-                                          <a
-                                            href={buildDocUrl(child.docParam)}
-                                            class={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                                              props.docParam === child.docParam
-                                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                            }`}
-                                          >
-                                            {child.title}
-                                          </a>
-                                        </li>
-                                      )}
-                                    </For>
-                                  </ul>
-                                </Show>
-                              </li>
-                            )
-                          }
+                          {(node) => (
+                            <SidebarNode
+                              node={node}
+                              depth={0}
+                              docParam={props.docParam}
+                              buildDocUrl={buildDocUrl}
+                              toggleSection={toggleSection}
+                              isSectionExpanded={isSectionExpanded}
+                            />
+                          )}
                         </For>
                       </ul>
                     ) : (
