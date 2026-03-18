@@ -4,4 +4,35 @@ title: name
 
 # name
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `name`  
+**Aliases:** `n`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (contains) | `q=n:bolt` |
+| `=` | Substring (contains) | `q=name:bolt` |
+| `!=` | Does not contain | `q=name!=bolt` |
+| `>`, `<`, `>=`, `<=` | Alphabetical comparison | `q=name>M`, `q=name<=Lightning` |
+| `>N%`, `<N%`, etc. | Percentile in alphabetical distribution | `q=name>50%` |
+
+## Allowed values
+
+- **Substring:** Any text. Matching is case-insensitive. `q=n:bolt` matches "Lightning Bolt", "Bolt Bend", etc.
+- **Range:** A string for lexicographic comparison. Uses the same normalization as `q=sort:name` (lowercase, alphanumeric only).
+- **Percentile:** Integer 1–99. `q=name>50%` matches cards in the top half of the alphabet; `q=name<10%` matches the first 10%.
+
+Regex is supported with a field prefix: `q=name:/bolt/`. For bare regex (no field), see [Bare regex](?doc=reference/special/bare-regex).
+
+## Notes
+
+- Exact name match: use `q=!"Lightning Bolt"` (quoted exact).
+- Negation: `q=-name>M` ⟺ `q=name<=M` (operator inversion).
+
+## Scryfall
+
+- **Bare words:** Scryfall uses fuzzy matching on name; Frantic Search uses substring (no fuzzy).
+- **Name range:** Not supported on Scryfall. `q=name>M` is Frantic Search–exclusive.
+- **Name percentile:** Not supported on Scryfall. `q=name>50%` is Frantic Search–exclusive.

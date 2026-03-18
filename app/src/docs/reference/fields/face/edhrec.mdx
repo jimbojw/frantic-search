@@ -4,4 +4,26 @@ title: edhrec
 
 # edhrec
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `edhrec`  
+**Aliases:** `edhrecrank`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Rank or percentile | `q=edhrec:100` |
+| `=` | Exact rank | `q=edhrec=50` |
+| `!=` | Not rank | `q=edhrec!=1` |
+| `>`, `<`, `>=`, `<=` | Rank comparison | `q=edhrec<100` |
+| `>N%`, `<N%`, etc. | Percentile (popularity) | `q=edhrec>90%` |
+
+## Allowed values
+
+- **Numeric:** EDHREC Commander popularity rank. Lower = more popular. `q=edhrec<100` matches top 100 most popular.
+- **Percentile:** Integer 1–99. `q=edhrec>90%` = top 10% most popular (rank inversion: higher % = more popular). `q=edhrec<10%` = bottom 10%.
+
+## Notes
+
+- Rank is from EDHREC's Commander data.
+- Percentile is Frantic Search–exclusive (Scryfall does not support it).

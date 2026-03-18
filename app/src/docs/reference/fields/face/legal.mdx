@@ -4,4 +4,27 @@ title: legal
 
 # legal
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `legal`  
+**Aliases:** `f`, `format`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Legal in format | `q=f:modern` |
+| `=` | Legal in format | `q=legal:commander` |
+| `!=` | Not legal in format | `q=f!=standard` |
+
+## Allowed values
+
+Format codes: `standard`, `pioneer`, `modern`, `legacy`, `vintage`, `commander`, `pauper`, etc. Matching is case-insensitive. Use Scryfall's format names.
+
+## Notes
+
+- By default, Frantic Search shows all cards. Use `q=f:modern` (or `q=f:commander`, etc.) to filter by format legality.
+- For banned/restricted, use [banned](?doc=reference/fields/face/banned) and [restricted](?doc=reference/fields/face/restricted).
+
+## Scryfall
+
+Scryfall excludes cards not legal in any format by default. Frantic Search shows all cards; use `q=f:format` to filter.

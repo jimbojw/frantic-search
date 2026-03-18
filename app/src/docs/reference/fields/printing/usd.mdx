@@ -4,4 +4,31 @@ title: usd
 
 # usd
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `usd`  
+**Aliases:** `$`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:`, `=` | Numeric or `null` | `q=usd<5`, `q=usd=null` |
+| `!=` | Not equal (or has/ lacks data) | `q=usd!=10`, `q=usd!=null` |
+| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=usd>10`, `q=$<1` |
+| `>N%`, `<N%`, etc. | Percentile in price distribution | `q=usd>90%` |
+
+## Allowed values
+
+- **Numeric:** Decimal price in USD. `q=usd<5` matches printings under $5.
+- **`null`:** Matches printings with no price data. `q=usd=null` finds printings where `price_usd` is missing. `q=usd!=null` finds printings with price data. Comparison operators (`>`, `<`, etc.) with `null` are invalid.
+- **Percentile:** Integer 1–99. `q=usd>90%` matches the most expensive 10%; `q=usd<10%` matches the cheapest 10%.
+
+## Notes
+
+- Negation uses operator inversion: `q=-usd>10` ⟺ `q=usd<=10`. Both exclude printings with no price data. See [NOT](?doc=reference/composition/not).
+- The `q=$` alias is equivalent to `q=usd`.
+
+## Scryfall
+
+- **`usd=null`:** Not supported on Scryfall. Frantic Search–exclusive.
+- **Percentile:** Not supported on Scryfall. `q=usd>90%` is Frantic Search–exclusive.

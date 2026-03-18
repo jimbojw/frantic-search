@@ -4,4 +4,55 @@ title: Fields Overview
 
 # Fields Overview
 
-Face vs printing domain, operator summary. (Placeholder — content in Phase 3.)
+Filter fields are organized by **domain**: face (card-level) vs printing (edition-level). Face fields match cards by their oracle characteristics; printing fields match by edition-specific attributes.
+
+## Face vs printing
+
+| Domain | Description | Examples |
+|--------|-------------|----------|
+| **Face** | Card identity: name, type, color, rules text, mana cost, format legality, etc. | `q=name:bolt`, `q=t:creature`, `q=c:green` |
+| **Printing** | Edition-specific: set, rarity, price, release date, collector number, etc. | `q=set:mh2`, `q=usd<5`, `q=date:2021` |
+
+When you combine face and printing fields, results are printing-level: each row is a specific printing that matches both. Use `q=unique:cards` (or `q=++` for unique prints) to control deduplication.
+
+## Operators
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `:` | Contains / has at least | `q=o:destroy` |
+| `=` | Exactly equals | `q=c=rg` |
+| `!=` | Not equal | `q=c!=r` |
+| `>` | Greater than | `q=pow>3` |
+| `<` | Less than | `q=mv<3` |
+| `>=` | Greater or equal | `q=tou>=5` |
+| `<=` | Less or equal | `q=cmc<=2` |
+
+Not all fields support all operators. For example, `q=game:` supports only `:`, `=`, and `!=`. See each field's article for details.
+
+## Face fields
+
+- [name](?doc=reference/fields/face/name) — Card name (substring, range, percentile)
+- [oracle](?doc=reference/fields/face/oracle) — Rules text
+- [type](?doc=reference/fields/face/type) — Type line
+- [color](?doc=reference/fields/face/color) — Card colors
+- [identity](?doc=reference/fields/face/identity) — Color identity
+- [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) — Numeric stats
+- [mana value](?doc=reference/fields/face/mana-value), [mana](?doc=reference/fields/face/mana) — Mana cost
+- [legal](?doc=reference/fields/face/legal), [banned](?doc=reference/fields/face/banned), [restricted](?doc=reference/fields/face/restricted) — Format legality
+- [is](?doc=reference/fields/face/is) — Mechanics, layouts, roles, finish
+- [kw](?doc=reference/fields/face/kw) — Keyword ability
+- [otag](?doc=reference/fields/face/otag), [atag](?doc=reference/fields/face/atag) — Tags
+- [edhrec](?doc=reference/fields/face/edhrec), [salt](?doc=reference/fields/face/salt) — EDHREC popularity and saltiness
+- [my](?doc=reference/fields/face/my) — Cards in a list
+
+## Printing fields
+
+- [set](?doc=reference/fields/printing/set) — Set code
+- [rarity](?doc=reference/fields/printing/rarity) — Rarity
+- [usd](?doc=reference/fields/printing/usd) — Price in USD
+- [collectornumber](?doc=reference/fields/printing/collectornumber) — Collector number
+- [frame](?doc=reference/fields/printing/frame) — Frame version
+- [year](?doc=reference/fields/printing/year) — Release year
+- [date](?doc=reference/fields/printing/date) — Release date
+- [game](?doc=reference/fields/printing/game) — Paper, Arena, MTGO availability
+- [in](?doc=reference/fields/printing/in) — Game, set, or rarity (disambiguated by value)

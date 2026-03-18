@@ -4,4 +4,22 @@ title: game
 
 # game
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `game`  
+**Aliases:** —  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Available in | `q=game:arena` |
+| `=` | Available in | `q=game=arena` |
+| `!=` | Not available in | `q=game!=paper` |
+
+## Allowed values
+
+Game availability: `paper`, `arena`, `mtgo`. Matches printings available in that game. Comparison operators (`>`, `<`, etc.) are not supported — only `:`, `=`, and `!=`.
+
+## Notes
+
+- `q=game:arena` finds cards on Arena; `q=game:paper` finds paper printings; `q=game:mtgo` finds MTGO availability.

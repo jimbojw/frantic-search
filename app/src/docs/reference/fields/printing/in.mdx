@@ -4,4 +4,26 @@ title: in
 
 # in
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `in`  
+**Aliases:** —  
+**Domain:** Printing (disambiguated by value)
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | In (game, set, or rarity) | `q=in:mh2` |
+| `=` | In | `q=in=arena` |
+| `!=` | Not in | `q=in!=paper` |
+
+## Allowed values
+
+The `q=in:` qualifier is **disambiguated by value**:
+
+| Value type | Resolves to | Example |
+|------------|-------------|---------|
+| Set code | Set | `q=in:mh2` → printings in MH2 |
+| Game | Game availability | `q=in:arena` → printings on Arena |
+| Rarity | Rarity | `q=in:mythic` → mythic printings |
+
+Use `q=in:mh2` for "printed in MH2", `q=in:arena` for "on Arena", `q=in:mythic` for mythic rarity. The evaluator infers intent from the value.

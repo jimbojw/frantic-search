@@ -4,4 +4,26 @@ title: salt
 
 # salt
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `salt`  
+**Aliases:** `edhrecsalt`, `saltiness`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Saltiness or percentile | `q=salt:2` |
+| `=` | Exact saltiness | `q=salt=3` |
+| `!=` | Not saltiness | `q=salt!=0` |
+| `>`, `<`, `>=`, `<=` | Saltiness comparison | `q=salt>2` |
+| `>N%`, `<N%`, etc. | Percentile (saltiness) | `q=salt>90%` |
+
+## Allowed values
+
+- **Numeric:** EDHREC saltiness score. Higher = saltier. `q=salt>2` matches cards with saltiness above 2.
+- **Percentile:** Integer 1–99. `q=salt>90%` = top 10% saltiest cards. `q=salt<10%` = bottom 10%.
+
+## Notes
+
+- Saltiness reflects how often players vote "salt" on EDHREC.
+- Percentile is Frantic Search–exclusive (Scryfall does not support it).

@@ -4,4 +4,18 @@ title: collectornumber
 
 # collectornumber
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `collectornumber`  
+**Aliases:** `cn`, `number`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (contains) | `q=cn:261` |
+| `=` | Exact collector number | `q=collectornumber=261` |
+| `!=` | Not this number | `q=cn!=1` |
+
+## Allowed values
+
+Collector number as printed on the card. May be numeric or alphanumeric (e.g. `261`, `261a`). Matching is substring-based.

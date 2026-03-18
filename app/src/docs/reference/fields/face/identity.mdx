@@ -4,4 +4,28 @@ title: identity
 
 # identity
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `identity`  
+**Aliases:** `id`, `ci`, `cmd`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Has at least these colors in identity | `q=id:wubrg` |
+| `=` | Exactly these colors in identity | `q=ci=rg` |
+| `!=` | Not exactly these colors | `q=identity!=w` |
+
+## Allowed values
+
+Color codes: `w`, `u`, `b`, `r`, `g`. Color identity includes all mana symbols in the cost (including hybrid and Phyrexian) plus any color indicators. Used for Commander format rules.
+
+| Query | Meaning |
+|-------|---------|
+| `q=id:g` | Color identity includes green |
+| `q=ci=rg` | Exactly red and green identity |
+| `q=cmd:wubrg` | Five-color identity |
+
+## Notes
+
+- Color identity differs from [color](?doc=reference/fields/face/color): a card with `{G}` in its cost has green color identity even if it's colorless (e.g. artifact).

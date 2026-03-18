@@ -4,4 +4,25 @@ title: type
 
 # type
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `type`  
+**Aliases:** `t`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (contains) | `q=t:creature` |
+| `=` | Substring (contains) | `q=type:creature` |
+| `!=` | Does not contain | `q=type!=artifact` |
+
+## Allowed values
+
+Any substring of the type line. Matching is case-insensitive. `q=t:creature` matches "Creature", "Creature — Human", "Legendary Creature — God", etc.
+
+Regex is supported: `q=t:/creature|artifact/`.
+
+## Notes
+
+- The type line includes supertypes, types, and subtypes (e.g. "Legendary Creature — Human Warrior").
+- Bare regex (`q=/creature/`) searches name, oracle text, and type line — see [Bare regex](?doc=reference/special/bare-regex).

@@ -4,4 +4,23 @@ title: my
 
 # my
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `my`  
+**Aliases:** —  
+**Domain:** Face (derived from list contents)
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | In list | `q=my:list` |
+| `=` | In list | `q=my:trash` |
+
+## Allowed values
+
+- **`list`:** Cards in your list (My List). Matches cards you've added to your list.
+- **`trash`:** Cards in your trash. Matches cards you've removed from your list.
+
+## Notes
+
+- `q=my:list` filters to cards in the user's My List. Use with [my:list](?doc=reference/special/my-list) for semantics.
+- Domain (face vs printing) is determined by list contents: if the list has card names, face; if printings, printing.

@@ -4,4 +4,19 @@ title: rarity
 
 # rarity
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `rarity`  
+**Aliases:** `r`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Exact or substring | `q=r:mythic` |
+| `=` | Exact rarity | `q=rarity=mythic` |
+| `!=` | Not rarity | `q=r!=common` |
+| `>`, `<`, `>=`, `<=` | Rarity comparison (common < uncommon < rare < mythic) | `q=r>=rare` |
+
+## Allowed values
+
+Rarity codes: `common`, `uncommon`, `rare`, `mythic`. Matching is case-insensitive. Comparison uses rarity tier order.

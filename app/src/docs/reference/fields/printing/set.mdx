@@ -4,4 +4,23 @@ title: set
 
 # set
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `set`  
+**Aliases:** `s`, `e`, `edition`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (contains) | `q=set:mh` |
+| `=` | Exact set code | `q=set:mh2` |
+| `!=` | Not this set | `q=set!=mh2` |
+
+## Allowed values
+
+Set codes (e.g. `mh2`, `dmu`, `one`). Matching is case-insensitive. Use `q=set:mh2` for exact match, or `q=set:mh` to match any set code containing "mh" (e.g. mh1, mh2, mh3).
+
+## Notes
+
+- Set codes follow Scryfall's [set list](https://scryfall.com/sets).
+- For "cards printed in set X", combine with face fields: `q=t:creature set:mh2`.

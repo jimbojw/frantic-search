@@ -4,4 +4,18 @@ title: otag
 
 # otag
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `otag`  
+**Aliases:** `function`, `oracletag`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Has tag | `q=otag:ramp` |
+| `=` | Has tag | `q=function:ramp` |
+| `!=` | Does not have tag | `q=otag!=removal` |
+
+## Allowed values
+
+Oracle tags are community-curated labels that describe card function (e.g. ramp, removal, draw). Matching is substring-based. Tags come from the tag data model; see [tag-filter](?doc=reference/special/tag-filter) for `#tag` filtering.

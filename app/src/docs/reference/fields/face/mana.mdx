@@ -4,4 +4,24 @@ title: mana
 
 # mana
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `mana`  
+**Aliases:** `m`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Contains symbol(s) | `q=m:{b/p}` |
+| `=` | Exactly contains | `q=mana:{w}{u}{b}{r}{g}` |
+| `!=` | Does not contain | `q=m!=g` |
+
+## Allowed values
+
+Mana symbols: `{w}`, `{u}`, `{b}`, `{r}`, `{g}`, `{c}` (colorless), `{x}`, `{s}` (snow), hybrid `{w/u}`, Phyrexian `{w/p}`, etc. Use Scryfall's mana symbol syntax.
+
+| Query | Meaning |
+|-------|---------|
+| `q=m:{b/p}` | Has Phyrexian black or Phyrexian (2 life) |
+| `q=m:g` | Has green in mana cost |
+| `q=m!=c` | Has at least one colored symbol |

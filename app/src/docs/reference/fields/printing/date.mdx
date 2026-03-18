@@ -4,4 +4,29 @@ title: date
 
 # date
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `date`  
+**Aliases:** `released`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Release date | `q=date:2021` |
+| `=` | Release date | `q=date:2021-06` |
+| `!=` | Not date | `q=date!=2020` |
+| `>`, `<`, `>=`, `<=` | Date comparison | `q=date>2020` |
+| `>N%`, `<N%`, etc. | Percentile in release-date distribution | `q=date>90%` |
+
+## Allowed values
+
+- **YYYY:** Full year. `q=date:2021` matches printings from 2021.
+- **YYYY-MM:** Year and month. `q=date:2021-06` matches June 2021.
+- **YYYY-MM-DD:** Full date.
+- **Set code:** `q=date:mh2` matches printings from that set's release.
+- **`now`:** Current date (for "newest" queries).
+- **Percentile:** Integer 1–99. `q=date>90%` = newest 10%; `q=date<10%` = oldest 10%.
+
+## Notes
+
+- Percentile is Frantic Search–exclusive (Scryfall does not support it).

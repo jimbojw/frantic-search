@@ -4,4 +4,25 @@ title: oracle
 
 # oracle
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `oracle`  
+**Aliases:** `o`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (contains) | `q=o:trample` |
+| `=` | Substring (contains) | `q=oracle:trample` |
+| `!=` | Does not contain | `q=o!=destroy` |
+
+## Allowed values
+
+Any substring of the rules text (oracle text). Matching is case-insensitive. `q=o:trample` matches cards whose rules text contains "trample".
+
+Regex is supported: `q=o:/enters the battlefield/`.
+
+## Notes
+
+- Oracle text is the standardized rules text, not reminder text.
+- Bare regex (`q=/trample/`) searches name, oracle text, and type line — see [Bare regex](?doc=reference/special/bare-regex).

@@ -4,4 +4,29 @@ title: color
 
 # color
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `color`  
+**Aliases:** `c`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Has at least these colors | `q=c:rg` |
+| `=` | Exactly these colors | `q=c=rg` |
+| `!=` | Not exactly these colors | `q=c!=r` |
+
+## Allowed values
+
+Color codes: `w` (white), `u` (blue), `b` (black), `r` (red), `g` (green). Combine for multicolor: `q=c:rg` matches cards that are red, green, or both.
+
+| Query | Meaning |
+|-------|---------|
+| `q=c:g` | Has green (includes multicolor) |
+| `q=c=rg` | Exactly red and green (no other colors) |
+| `q=c!=w` | Not exactly white (colorless or multicolor) |
+
+## Notes
+
+- Color is determined by the mana cost. Hybrid and Phyrexian mana count toward their colors.
+- For color identity (Commander rules), use [identity](?doc=reference/fields/face/identity).

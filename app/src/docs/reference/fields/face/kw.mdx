@@ -4,4 +4,23 @@ title: kw
 
 # kw
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `kw`  
+**Aliases:** `keyword`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Has keyword | `q=kw:flying` |
+| `=` | Has keyword | `q=keyword:flying` |
+| `!=` | Does not have keyword | `q=kw!=trample` |
+
+## Allowed values
+
+Keyword ability names from the Scryfall catalog. Matching is case-insensitive. `q=kw:flying` matches cards with flying; `q=kw:deathtouch` matches deathtouch.
+
+## Notes
+
+- Keywords are normalized (e.g. "first strike" vs "double strike").
+- For oracle text substring search, use [oracle](?doc=reference/fields/face/oracle).

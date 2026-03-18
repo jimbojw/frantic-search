@@ -4,4 +4,23 @@ title: toughness
 
 # toughness
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `toughness`  
+**Aliases:** `tou`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Equals or has value | `q=tou:5` |
+| `=` | Equals | `q=toughness=5` |
+| `!=` | Not equal | `q=tou!=1` |
+| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=tou>5` |
+
+## Allowed values
+
+Numeric toughness. Use `q=tou:*` to match cards with variable toughness. Non-creatures and cards without toughness are excluded from numeric comparisons.
+
+## Notes
+
+- Negation: `q=-tou>5` ⟺ `q=tou<=5` (operator inversion).

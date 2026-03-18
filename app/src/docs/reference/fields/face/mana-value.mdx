@@ -4,4 +4,19 @@ title: mana value
 
 # mana value
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `mana value`  
+**Aliases:** `mv`, `cmc`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Equals or has value | `q=mv:2` |
+| `=` | Equals | `q=cmc=2` |
+| `!=` | Not equal | `q=mv!=0` |
+| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=mv<=2` |
+
+## Allowed values
+
+Numeric mana value (converted mana cost). Hybrid and Phyrexian mana count as the higher cost (e.g. `{b/p}` = 1). `{X}` counts as 0 for MV.

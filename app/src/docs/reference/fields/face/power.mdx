@@ -4,4 +4,23 @@ title: power
 
 # power
 
-(Placeholder — content in Phase 3.)
+**Canonical:** `power`  
+**Aliases:** `pow`  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Equals or has value | `q=pow:4` |
+| `=` | Equals | `q=power=4` |
+| `!=` | Not equal | `q=pow!=0` |
+| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=pow>=4` |
+
+## Allowed values
+
+Numeric power. Use `q=pow:*` to match cards with variable power (e.g. "X", "*"). Non-creatures have no power and are excluded from numeric comparisons.
+
+## Notes
+
+- Negation: `q=-pow>=4` ⟺ `q=pow<4` (operator inversion; excludes non-creatures).
