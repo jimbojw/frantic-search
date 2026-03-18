@@ -356,6 +356,10 @@ export function evalIsKeyword(
         const isCreature = tl.includes("creature");
         const isVehicle = tl.includes("vehicle") || tl.includes("spacecraft");
         const isBackground = tl.includes("background");
+        // Vehicle/Spacecraft must have printed power and toughness (can become a creature); Eternity Elevator has none
+        const powStr = index.powerLookup[index.powers[i]] ?? "";
+        const touStr = index.toughnessLookup[index.toughnesses[i]] ?? "";
+        const hasPowerToughness = powStr.length > 0 && touStr.length > 0;
         const hasCommanderText =
           index.oracleTextsLower[i].includes("can be your commander") ||
           index.oracleTextsLower[i].includes("spell commander");
@@ -363,7 +367,11 @@ export function evalIsKeyword(
         const notBanned = (index.legalitiesBanned[cf[i]] & Format.Commander) === 0;
         if (
           notBanned &&
-          ((isFront && isLegendary && (isCreature || isVehicle || isBackground)) || hasCommanderText || isException)
+          ((isFront &&
+            isLegendary &&
+            (isCreature || (isVehicle && hasPowerToughness) || isBackground)) ||
+            hasCommanderText ||
+            isException)
         ) buf[cf[i]] = 1;
       }
       break;
