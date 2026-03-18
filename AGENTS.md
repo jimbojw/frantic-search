@@ -21,6 +21,12 @@ Install everything from the repo root:
 npm install
 ```
 
+First-time setup (installs deps + downloads and processes card data):
+
+```
+npm run setup
+```
+
 ## Before You Write Code
 
 1. Read the ADRs in `docs/adr/` to understand architectural constraints. Start with `docs/adr/008-documentation-strategy.md` — it explains how this project uses ADRs (decisions) and Specs (feature designs).
@@ -75,7 +81,7 @@ To populate it: `npm run etl -- download` then `npm run etl -- process`.
 ## Cursor Cloud specific instructions
 
 - **No background services required.** This is a fully client-side SPA — no databases, Docker, or backend servers to start.
-- **Data pipeline must run before the app or CLI search commands work.** The `data/` directory is git-ignored and must be populated each session. Run the full pipeline: `npm run etl -- download`, `npm run etl -- download-tags`, `npm run etl -- download-mtgjson`, then `npm run etl -- process`. The downloads total ~700 MB and processing takes ~30 seconds. The processed output lands in `data/dist/columns.json` (plus `printings.json`, `otags.json`, `atags.json`, `thumb-hashes.json`).
+- **Data pipeline must run before the app or CLI search commands work.** The `data/` directory is git-ignored and must be populated each session. Run `npm run setup` (which chains install + all ETL downloads + process), or run the steps individually: `npm run etl -- download`, `npm run etl -- download-tags`, `npm run etl -- download-mtgjson`, then `npm run etl -- process`. The downloads total ~700 MB and processing takes ~30 seconds. The processed output lands in `data/dist/columns.json` (plus `printings.json`, `otags.json`, `atags.json`, `thumb-hashes.json`).
 - **Dev server:** `npm run dev` starts Vite on port 5173 with HMR. Do not run `npm run build` during development sessions.
 - **Lint/typecheck:** `npm run typecheck` runs `tsc --noEmit` across all four workspaces.
 - **Tests:** `npm test` runs typecheck + Vitest in `shared`, `app`, and `etl`, then `npm run cli -- compliance`. All tests are pure unit tests and do not require the data pipeline.
