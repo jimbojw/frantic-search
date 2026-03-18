@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Modified by:** Spec 137 (Persistent Search App Bar — bar is always visible from first load)
+
 **Depends on:** Spec 013 (URL State), Spec 086 (Dual Wield)
 
 **Modifies:** Spec 086 (adds Copy URL button to left rail)
@@ -56,16 +58,16 @@ When no query is present, neither button is shown.
 
 ### Single-pane layout
 
-Left-aligned next to the Home button. Order: Home, Back (if visible), Copy URL (if visible).
+Left-aligned next to the Home button. Order: Home, Split view (wide only), Back (if visible), Copy URL (if visible).
 
 ```
-[ Home ] [ Back ] [ Copy URL ] ... [ My List ] [ Menu ]
+[ Home ] [ Split View ] [ Back ] [ Copy URL ] ... [ My List ] [ Menu ]
 ```
 
-- **Left group:** Home, Back (narrow only), Copy URL — all conditionally visible.
+- **Left group:** Home (always), Split view (when `viewportWide`), Back (narrow only), Copy URL — conditionally visible per rules above.
 - **Right group:** My List, Menu — unchanged.
 
-The Split view button (when `viewportWide`) remains between Home and the right group, per current layout.
+The app bar is **persistent** (Spec 137): always visible from first load, including when the hero is shown.
 
 ### Dual Wield layout
 

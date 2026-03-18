@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Modified by:** Spec 137 (Persistent Search App Bar — filter icon removed; Menu sole entry point)
+
 **Depends on:** Spec 026 (Results Box with Options Drawer)
 
 ## Goal
@@ -60,15 +62,14 @@ The drawer is **not** rendered on non-search views (help, card detail, bug repor
 
 ### Mobile engagement (two presentation modes)
 
-When the user has not yet interacted (home/landing state), the header shows full branding and the TERMS drawer appears **inline** above the search input, toggled by a filter icon on the right of the input.
+Spec 137 (Persistent Search App Bar) introduces a persistent app bar. The Menu (burger) in the bar is the **sole entry point** for filters in all states. The filter icon inside the search box has been removed.
 
-Once the user interacts (types a query, focuses the input, or opens the drawer), the header collapses to a slim bar with a home button (left) and burger menu button (right). In this engaged state:
+When the user has not yet interacted (home/landing state), the header shows full branding (hero) below the persistent bar. Opening the Menu or focusing the search box collapses the hero immediately — in anticipation of search or filter activity.
 
-- The TERMS drawer content moves into a **slide-out panel** opened by the burger button. The panel slides in from the right, with a semi-transparent backdrop; tapping the backdrop or the close button dismisses it.
-- The filter icon is removed from the search input; the burger is the sole entry point for filters.
-- The search input gains full width (no right padding reserved for the terms button).
+- **Modal overlay** — When the Menu is open (`termsExpanded`). The MenuDrawer slides in from the right with a semi-transparent backdrop; tapping the backdrop or close button dismisses it. Opening the Menu collapses the hero (Spec 137).
+- **Inline** — When the Menu is open and the hero has not yet collapsed (edge case: e.g. programmatic open). Constrained height above the search input. In practice, opening the Menu triggers collapse, so the overlay is the typical presentation.
 
-This keeps the home state welcoming while giving engaged users a compact, Scryfall-style header with clear affordances.
+The search input has full width at all times (no right padding reserved for a filter button).
 
 ### Default state
 

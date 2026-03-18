@@ -57,7 +57,6 @@ import {
 import { useDebouncedGhostText } from './useDebouncedGhostText'
 import CopyUrlButton from './CopyUrlButton'
 import {
-  IconAdjustmentsHorizontal,
   IconBars3,
   IconChevronLeft,
   IconList,
@@ -180,11 +179,9 @@ function App() {
       return next
     })
   }
-  const [inputFocused, setInputFocused] = createSignal(false)
-  const urlEngaged = () => {
-    const p = new URLSearchParams(location.search)
-    return p.has('q') && p.get('q') === ''
-  }
+  const [urlHasQueryParam, setUrlHasQueryParam] = createSignal(
+    initialParams.has('q') || (isDualWield(initialParams) && (initialParams.has('q1') || initialParams.has('q2')))
+  )
   const [userEngaged, setUserEngaged] = createSignal(
     initialParams.has('q') && initialParams.get('q') === ''
   )
@@ -380,10 +377,9 @@ function App() {
   const totalCards = () => indices().length
 
   const headerCollapsed = () =>
-    urlEngaged() ||
+    urlHasQueryParam() ||
     query().trim() !== '' ||
-    termsExpanded() ||
-    (inputFocused() && userEngaged())
+    termsExpanded()
   const scryfallUrl = () => {
     const q = effectiveQuery().trim()
     if (!q) return ''
@@ -772,6 +768,7 @@ function App() {
       else params.delete('q1')
       params.set('q2', query2())
       params.delete('q')
+      setUrlHasQueryParam(params.has('q1') || params.has('q2'))
     } else {
       const q = query().trim()
       if (q) {
@@ -783,6 +780,7 @@ function App() {
       }
       params.delete('q1')
       params.delete('q2')
+      setUrlHasQueryParam(params.has('q'))
     }
     const url = params.toString() ? `?${params}` : location.pathname
     pushIfNeeded()
@@ -802,6 +800,9 @@ function App() {
     setQuery2(right)
     setCardId(params.get('card') ?? '')
     setUserEngaged(params.has('q') && params.get('q') === '')
+    setUrlHasQueryParam(
+      params.has('q') || (isDualWield(params) && (params.has('q1') || params.has('q2')))
+    )
 
     const scrollY = history.state?.scrollY ?? 0
     requestAnimationFrame(() => window.scrollTo(0, scrollY))
@@ -1000,6 +1001,33 @@ function App() {
       setTermsExpanded(false)
       localStorage.setItem('frantic-terms-expanded', 'false')
       return
+    }
+
+    const params = new URLSearchParams(location.search)
+
+    // Search view, single-pane: two-step clear of q param (Spec 137)
+    if (view() === 'search' && !showDualWield() && !cardId()) {
+      if (params.has('q')) {
+        const qVal = params.get('q') ?? ''
+        cancelPendingCommit()
+        saveScrollPosition()
+        if (qVal.trim() !== '') {
+          // First tap: q=foo → q= (empty)
+          params.set('q', '')
+          history.pushState(null, '', params.toString() ? `?${params}` : location.pathname)
+          setQuery('')
+          setUserEngaged(true)
+        } else {
+          // Second tap: q= → remove q (parameterless)
+          params.delete('q')
+          history.pushState(null, '', params.toString() ? `?${params}` : location.pathname)
+          setQuery('')
+          setUserEngaged(false)
+          setUrlHasQueryParam(false)
+        }
+        window.scrollTo(0, 0)
+        return
+      }
     }
 
     const isAtHome =
@@ -1347,104 +1375,105 @@ function App() {
         </Show>
         <Show when={!showDualWield()}>
         <SearchProvider value={searchContextValue}>
-      <header class={`mx-auto max-w-4xl px-4 transition-all duration-200 ease-out ${headerCollapsed() ? 'pt-[max(1rem,env(safe-area-inset-top))] pb-4' : 'pt-[max(4rem,env(safe-area-inset-top))] pb-8'}`}>
-        <Show when={headerCollapsed()} fallback={
-          <>
+      <header class={`mx-auto max-w-4xl px-4 transition-all duration-200 ease-out pt-[max(1rem,env(safe-area-inset-top))] ${headerCollapsed() ? 'pb-4' : 'pb-8'}`}>
+        {/* Persistent app bar (Spec 137) — always at top */}
+        <div class={`flex h-11 items-center justify-between shrink-0 ${headerCollapsed() ? 'mb-2' : ''}`}>
+          <div class="flex items-center gap-1">
             <button
               type="button"
               onClick={() => navigateHome()}
               aria-label="Go to home"
-              class="relative w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 h-14 bg-[center_20%] rounded-xl mb-4"
-              style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
+              class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <img
-                src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
-                alt="Frantic Search card art by Mitchell Malloy"
-                onLoad={() => setHeaderArtLoaded(true)}
-                class="h-full w-full object-cover pointer-events-none object-[center_20%]"
-                style={{
-                  opacity: headerArtLoaded() ? dataProgress() : 0,
-                  'clip-path': headerArtLoaded() ? `inset(0 ${(1 - dataProgress()) * 100}% 0 0)` : 'inset(0 100% 0 0)',
-                  transition: 'clip-path 100ms linear, opacity 100ms linear',
-                }}
-              />
-              <div
-                class="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 rounded-b-xl"
-                style={{
-                  width: `${dataProgress() * 100}%`,
-                  opacity: 1 - (dataProgress() ** 20),
-                  transition: 'width 100ms linear, opacity 200ms ease-out',
-                }}
-              />
+              <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
             </button>
-            <div class="overflow-hidden transition-all duration-200 ease-out max-h-80 opacity-100">
-              <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
-                Frantic Search
-              </h1>
-              <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
-                Instant MTG card search
-              </p>
-            </div>
-          </>
-        }>
-          <div class="flex h-11 items-center justify-between mb-2">
-            <div class="flex items-center gap-1">
+            <Show when={viewportWide()}>
               <button
                 type="button"
-                onClick={() => navigateHome()}
-                aria-label="Go to home"
-                class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
-              </button>
-              <Show when={!viewportWide() && query().trim() !== ''}>
-                <button
-                  type="button"
-                  onClick={() => history.back()}
-                  aria-label="Go back"
-                  class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <IconChevronLeft class="size-5" />
-                </button>
-              </Show>
-              <Show when={query().trim() !== ''}>
-                <CopyUrlButton variant="header" />
-              </Show>
-              <Show when={viewportWide()}>
-                <button
-                  type="button"
-                  onClick={enterDualWield}
-                  aria-label="Split view"
-                  title="Split view"
-                  class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
-                    <rect x="3" y="3" width="9" height="18" rx="1" />
-                    <rect x="12" y="3" width="9" height="18" rx="1" />
-                  </svg>
-                  <span class="text-sm whitespace-nowrap">Split view</span>
-                </button>
-              </Show>
-            </div>
-            <div class="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => navigateToLists()}
-                aria-label="My list"
+                onClick={enterDualWield}
+                aria-label="Split view"
+                title="Split view"
                 class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <IconList class="size-5 shrink-0" />
-                <span class="text-sm whitespace-nowrap">My list</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
+                  <rect x="3" y="3" width="9" height="18" rx="1" />
+                  <rect x="12" y="3" width="9" height="18" rx="1" />
+                </svg>
+                <span class="text-sm whitespace-nowrap">Split view</span>
               </button>
+            </Show>
+            <Show when={!viewportWide() && query().trim() !== ''}>
               <button
                 type="button"
-                onClick={toggleTerms}
-                aria-label="Menu"
-                class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                onClick={() => history.back()}
+                aria-label="Go back"
+                class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <IconBars3 class="size-6" />
+                <IconChevronLeft class="size-5" />
               </button>
-            </div>
+            </Show>
+            <Show when={query().trim() !== ''}>
+              <CopyUrlButton variant="header" />
+            </Show>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => navigateToLists()}
+              aria-label="My list"
+              class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <IconList class="size-5 shrink-0" />
+              <span class="text-sm whitespace-nowrap">My list</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleTerms}
+              aria-label="Menu"
+              class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            >
+              <IconBars3 class="size-6" />
+            </button>
+          </div>
+        </div>
+
+        <Show when={!headerCollapsed()}>
+          <div class="mt-16">
+          <button
+            type="button"
+            onClick={() => navigateHome()}
+            aria-label="Go to home"
+            class="relative w-full overflow-hidden shadow-md bg-cover block text-left border-0 p-0 cursor-pointer transition-all duration-200 ease-out hover:opacity-95 active:opacity-90 h-14 bg-[center_20%] rounded-xl mb-4"
+            style={{ "background-image": `url(${HEADER_ART_BLUR})` }}
+          >
+            <img
+              src="https://cards.scryfall.io/art_crop/front/1/9/1904db14-6df7-424f-afa5-e3dfab31300a.jpg?1764758766"
+              alt="Frantic Search card art by Mitchell Malloy"
+              onLoad={() => setHeaderArtLoaded(true)}
+              class="h-full w-full object-cover pointer-events-none object-[center_20%]"
+              style={{
+                opacity: headerArtLoaded() ? dataProgress() : 0,
+                'clip-path': headerArtLoaded() ? `inset(0 ${(1 - dataProgress()) * 100}% 0 0)` : 'inset(0 100% 0 0)',
+                transition: 'clip-path 100ms linear, opacity 100ms linear',
+              }}
+            />
+            <div
+              class="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 rounded-b-xl"
+              style={{
+                width: `${dataProgress() * 100}%`,
+                opacity: 1 - (dataProgress() ** 20),
+                transition: 'width 100ms linear, opacity 200ms ease-out',
+              }}
+            />
+          </button>
+          <div class="overflow-hidden transition-all duration-200 ease-out max-h-80 opacity-100">
+            <h1 class="text-3xl font-bold tracking-tight text-center mb-1">
+              Frantic Search
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
+              Instant MTG card search
+            </p>
+          </div>
           </div>
         </Show>
 
@@ -1494,7 +1523,7 @@ function App() {
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             >
-              <div ref={textareaHlRef} class={`hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}>
+              <div ref={textareaHlRef} class="hl-layer overflow-hidden whitespace-pre-wrap break-words px-4 py-3 pl-11 pr-4">
                 <QueryHighlight
                   query={query()}
                   breakdown={breakdown()}
@@ -1535,10 +1564,10 @@ function App() {
                   updateSelection(e.currentTarget)
                 }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                onFocus={(e) => { setInputFocused(true); updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
-                onBlur={() => { setInputFocused(false); flushSearchCapture() }}
+                onFocus={(e) => { updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
+                onBlur={() => { flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
-                class={`hl-input w-full bg-transparent px-4 py-3 pl-11 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y ${headerCollapsed() ? 'pr-4' : 'pr-10'}`}
+                class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
               />
               <Show when={ghostText()}>
                 <div
@@ -1549,16 +1578,6 @@ function App() {
                 />
               </Show>
             </div>
-            <Show when={!headerCollapsed()}>
-              <button
-                type="button"
-                onClick={toggleTerms}
-                class={`absolute right-0 top-0 py-3 px-3 flex items-center justify-center transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                aria-label="Toggle search filters"
-              >
-                <IconAdjustmentsHorizontal class="size-5" />
-              </button>
-            </Show>
           </div>
           <Show when={pinnedBreakdown() || (query().trim() !== '' && breakdown())}>
             <UnifiedBreakdown
