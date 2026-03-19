@@ -60,6 +60,7 @@ These are the most important ADRs. Read them in full before making changes in th
 
 ## Code Conventions
 
+- **Commit messages:** Use Conventional Commits (ADR-021). Format: `type(scope): description`. Common types: `fix`, `feat`, `docs`, `perf`, `refactor`, `test`.
 - TypeScript everywhere. The project is fully ESM (`"type": "module"` in every `package.json`).
 - Shared code is imported via workspace resolution: `@frantic-search/shared`.
 - Bitmask constants live in `shared/src/bits.ts` and are the single source of truth for encoding/decoding.
