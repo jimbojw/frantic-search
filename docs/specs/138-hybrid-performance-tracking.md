@@ -1,6 +1,6 @@
 # Spec 138: Hybrid Performance Tracking
 
-**Status:** Draft
+**Status:** In Progress
 
 **Implements:** [GitHub #152](https://github.com/jimbojw/frantic-search/issues/152)
 

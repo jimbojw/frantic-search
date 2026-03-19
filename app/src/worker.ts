@@ -189,6 +189,7 @@ async function fetchColumns(url: URL): Promise<FetchResult> {
 }
 
 async function init(): Promise<void> {
+  self.performance.mark('worker-init-start')
   post({ type: 'status', status: 'loading' })
 
   const printingsPromise = fetchPrintings()
@@ -246,10 +247,23 @@ async function init(): Promise<void> {
   const displayRef = extractDisplayColumns(data)
   const printingDisplayRef = printingData ? extractPrintingDisplayColumns(printingData) : null
 
-  post({ type: 'status', status: 'ready', display: displayRef, keywordLabels: Object.keys(keywordsIndex) })
+  const facesMeasure = self.performance.measure('faces-load', 'worker-init-start')
+  post({
+    type: 'status',
+    status: 'ready',
+    display: displayRef,
+    keywordLabels: Object.keys(keywordsIndex),
+    facesLoadDurationMs: Math.round(facesMeasure.duration),
+  })
 
   if (printingData) {
-    post({ type: 'status', status: 'printings-ready', printingDisplay: printingDisplayRef! })
+    const printingsMeasure = self.performance.measure('printings-load', 'worker-init-start')
+    post({
+      type: 'status',
+      status: 'printings-ready',
+      printingDisplay: printingDisplayRef!,
+      printingsLoadDurationMs: Math.round(printingsMeasure.duration),
+    })
   }
 
   function serializeList(

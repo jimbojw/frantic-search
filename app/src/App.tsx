@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup } from 'solid-js'
+import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup, onMount } from 'solid-js'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
@@ -24,7 +24,7 @@ import {
 } from './app-utils'
 import type { View } from './app-utils'
 import {
-  saveScrollPosition, pushIfNeeded, scheduleReplaceState,
+  saveScrollPosition, pushIfNeeded, pushStateAndCapturePageview, scheduleReplaceState,
   flushPendingCommit, cancelPendingCommit,
 } from './history-debounce'
 import { appendTerm, parseBreakdown, sealQuery, getMyListIdFromBreakdown } from './query-edit'
@@ -40,7 +40,7 @@ import {
   getMatchingCount,
   getUniqueTagsFromView,
 } from '@frantic-search/shared'
-import { captureUiInteracted } from './analytics'
+import { captureUiInteracted, capturePageview, captureFacesLoaded, capturePrintingsLoaded } from './analytics'
 import { useViewportWide } from './useViewportWide'
 const DualWieldLayout = lazy(() =>
   import('./DualWieldLayout').then((m) => ({ default: m.DualWieldLayout }))
@@ -72,6 +72,7 @@ const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 
 function App() {
   history.scrollRestoration = 'manual'
+  onMount(() => capturePageview())
   const viewportWide = useViewportWide()
 
   const initialParams = new URLSearchParams(location.search)
@@ -540,6 +541,9 @@ function App() {
         } else if (msg.status === 'atags-ready') {
           setIllustrationTagLabels(msg.tagLabels)
         } else if (msg.status === 'printings-ready') {
+          if (msg.printingsLoadDurationMs !== undefined) {
+            capturePrintingsLoaded({ duration_ms: msg.printingsLoadDurationMs })
+          }
           setPrintingDisplay(msg.printingDisplay)
           const view = cardListStore.getView()
           const listIds = [...new Set([...view.lists.keys(), TRASH_LIST_ID])]
@@ -550,6 +554,9 @@ function App() {
           }
         } else {
           if (msg.status === 'ready') {
+            if (msg.facesLoadDurationMs !== undefined) {
+              captureFacesLoaded({ duration_ms: msg.facesLoadDurationMs })
+            }
             setDataProgress(1)
             setDisplay(msg.display)
             setKeywordLabels(msg.keywordLabels ?? [])
@@ -789,6 +796,7 @@ function App() {
 
   window.addEventListener('popstate', () => {
     cancelPendingCommit()
+    capturePageview()
 
     const params = new URLSearchParams(location.search)
     setDualWieldActive(isDualWield(params))
@@ -824,7 +832,7 @@ function App() {
     if (docParamValue) params.set('doc', docParamValue)
     else params.set('doc', '')
     params.delete('help')
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setDocParam(docParamValue ?? null)
     setView('docs')
     window.scrollTo(0, 0)
@@ -840,7 +848,7 @@ function App() {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
     const url = params.toString() ? `?${params}` : location.pathname
-    history.pushState(null, '', url)
+    pushStateAndCapturePageview(url)
     setQuery(q)
     setQuery2('')
     setView('search')
@@ -854,7 +862,7 @@ function App() {
     params.delete('help')
     params.delete('doc')
     params.set('card', scryfallId)
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setCardId(scryfallId)
     setView('card')
     window.scrollTo(0, 0)
@@ -872,7 +880,7 @@ function App() {
         : effectiveQuery().trim()
     if (q) params.set('q', q)
     params.set('report', '')
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setView('report')
     window.scrollTo(0, 0)
   }
@@ -889,7 +897,7 @@ function App() {
     const params = new URLSearchParams()
     params.set('report', '')
     params.set('deck', '1')
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setView('report')
     window.scrollTo(0, 0)
   }
@@ -900,7 +908,7 @@ function App() {
     captureUiInteracted({ element_name: 'lists', action: 'clicked' })
     const params = new URLSearchParams()
     params.set('list', tab === 'trash' ? 'trash' : '')
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setListTab(tab)
     setView('lists')
     window.scrollTo(0, 0)
@@ -909,7 +917,7 @@ function App() {
   function navigateToListsTab(tab: 'default' | 'trash') {
     const params = new URLSearchParams(location.search)
     params.set('list', tab === 'trash' ? 'trash' : '')
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setListTab(tab)
   }
 
@@ -923,7 +931,7 @@ function App() {
     params.delete('q')
     params.set('q1', current)
     params.set('q2', right)
-    history.pushState(null, '', `?${params}`)
+    pushStateAndCapturePageview(`?${params}`)
     setDualWieldActive(true)
     setQuery(current)
     setQuery2(right)
@@ -944,7 +952,7 @@ function App() {
     params.delete('q1')
     params.delete('q2')
     const url = params.toString() ? `?${params}` : location.pathname
-    history.pushState(null, '', url)
+    pushStateAndCapturePageview(url)
     setDualWieldActive(false)
     setQuery2('')
     setView('search')
@@ -1014,13 +1022,13 @@ function App() {
         if (qVal.trim() !== '') {
           // First tap: q=foo → q= (empty)
           params.set('q', '')
-          history.pushState(null, '', params.toString() ? `?${params}` : location.pathname)
+          pushStateAndCapturePageview(params.toString() ? `?${params}` : location.pathname)
           setQuery('')
           setUserEngaged(true)
         } else {
           // Second tap: q= → remove q (parameterless)
           params.delete('q')
-          history.pushState(null, '', params.toString() ? `?${params}` : location.pathname)
+          pushStateAndCapturePageview(params.toString() ? `?${params}` : location.pathname)
           setQuery('')
           setUserEngaged(false)
           setUrlHasQueryParam(false)
@@ -1045,7 +1053,7 @@ function App() {
     // Not at home — soft reset to initial state
     cancelPendingCommit()
     saveScrollPosition()
-    history.pushState(null, '', location.pathname)
+    pushStateAndCapturePageview(location.pathname)
     setDualWieldActive(false)
     setQuery('')
     setQuery2('')
@@ -1286,7 +1294,7 @@ function App() {
             if (dp) params.set('doc', dp)
             else params.set('doc', '')
             params.delete('help')
-            history.pushState(null, '', `?${params}`)
+            pushStateAndCapturePageview(`?${params}`)
             setDocParam(dp)
             window.scrollTo(0, 0)
           }}
