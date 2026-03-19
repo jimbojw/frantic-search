@@ -17,6 +17,7 @@ import {
   parseView,
   parseListTab,
   parseDocParam,
+  stripUtmParams,
 } from './app-utils'
 
 // ---------------------------------------------------------------------------
@@ -423,6 +424,46 @@ describe('parseListTab', () => {
   it('returns "default" when list has other values', () => {
     expect(parseListTab(new URLSearchParams('list=default'))).toBe('default')
     expect(parseListTab(new URLSearchParams('list=foo'))).toBe('default')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// stripUtmParams (Spec 013 § Campaign attribution params)
+// ---------------------------------------------------------------------------
+
+describe('stripUtmParams', () => {
+  it('removes standard UTM params in place', () => {
+    const params = new URLSearchParams('q=t:creature&utm_source=reddit&utm_medium=social&utm_campaign=launch')
+    stripUtmParams(params)
+    expect(params.toString()).toBe('q=t%3Acreature')
+  })
+
+  it('removes all utm_* params including custom', () => {
+    const params = new URLSearchParams('utm_source=x&utm_custom=foo&q=bar')
+    stripUtmParams(params)
+    expect(params.get('q')).toBe('bar')
+    expect(params.has('utm_source')).toBe(false)
+    expect(params.has('utm_custom')).toBe(false)
+  })
+
+  it('leaves non-utm params unchanged', () => {
+    const params = new URLSearchParams('q=foo&help&doc=reference/syntax')
+    stripUtmParams(params)
+    expect(params.get('q')).toBe('foo')
+    expect(params.has('help')).toBe(true)
+    expect(params.get('doc')).toBe('reference/syntax')
+  })
+
+  it('is a no-op when no utm params present', () => {
+    const params = new URLSearchParams('q=t:creature')
+    stripUtmParams(params)
+    expect(params.toString()).toBe('q=t%3Acreature')
+  })
+
+  it('strips to empty when only utm params present', () => {
+    const params = new URLSearchParams('utm_source=reddit&utm_medium=social')
+    stripUtmParams(params)
+    expect(params.toString()).toBe('')
   })
 })
 

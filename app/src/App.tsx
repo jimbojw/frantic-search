@@ -21,6 +21,7 @@ import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex, buildScryfallSearchUrl,
   parseView, parseListTab, parseDocParam, isDualWield, getPaneQueries,
+  stripUtmParams,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -72,7 +73,16 @@ const HEADER_ART_BLUR = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 
 function App() {
   history.scrollRestoration = 'manual'
-  onMount(() => capturePageview())
+  onMount(() => {
+    capturePageview()
+    const params = new URLSearchParams(location.search)
+    const hadUtm = [...params.keys()].some((k) => k.startsWith('utm_'))
+    if (hadUtm) {
+      stripUtmParams(params)
+      const cleanUrl = params.toString() ? `?${params}` : location.pathname
+      history.replaceState(history.state, '', cleanUrl)
+    }
+  })
   const viewportWide = useViewportWide()
 
   const initialParams = new URLSearchParams(location.search)
@@ -769,6 +779,7 @@ function App() {
     const engaged = userEngaged() || termsExpanded()
     if (view() !== 'search') return
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     if (isDualWield(params)) {
       const q1 = query().trim()
       if (q1) params.set('q1', query())
@@ -829,6 +840,7 @@ function App() {
       captureUiInteracted({ element_name: 'syntax_help', action: 'clicked' })
     }
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     if (docParamValue) params.set('doc', docParamValue)
     else params.set('doc', '')
     params.delete('help')
@@ -859,6 +871,7 @@ function App() {
     cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     params.delete('help')
     params.delete('doc')
     params.set('card', scryfallId)
@@ -916,6 +929,7 @@ function App() {
 
   function navigateToListsTab(tab: 'default' | 'trash') {
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     params.set('list', tab === 'trash' ? 'trash' : '')
     pushStateAndCapturePageview(`?${params}`)
     setListTab(tab)
@@ -925,6 +939,7 @@ function App() {
     cancelPendingCommit()
     saveScrollPosition()
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     const current = query().trim() || query2().trim() || params.get('q1') || params.get('q') || ''
     const lastQ2 = localStorage.getItem('frantic-last-q2')
     const right = lastQ2 ?? current
@@ -946,6 +961,7 @@ function App() {
     if (right) localStorage.setItem('frantic-last-q2', right)
     else localStorage.removeItem('frantic-last-q2')
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
     const left = query().trim()
     if (left) params.set('q', left)
     else params.delete('q')
@@ -1012,6 +1028,7 @@ function App() {
     }
 
     const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
 
     // Search view, single-pane: two-step clear of q param (Spec 137)
     if (view() === 'search' && !showDualWield() && !cardId()) {
@@ -1291,6 +1308,7 @@ function App() {
           onNavigateHome={navigateHome}
           onNavigateToDoc={(dp) => {
             const params = new URLSearchParams(location.search)
+            stripUtmParams(params)
             if (dp) params.set('doc', dp)
             else params.set('doc', '')
             params.delete('help')

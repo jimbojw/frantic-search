@@ -164,3 +164,10 @@ export function getPaneQueries(params: URLSearchParams): { left: string; right: 
   const right = params.get('q2') ?? ''
   return { left, right }
 }
+
+/** Remove utm_* params in place (Spec 013 § Campaign attribution params). */
+export function stripUtmParams(params: URLSearchParams): void {
+  for (const key of [...params.keys()]) {
+    if (key.startsWith('utm_')) params.delete(key)
+  }
+}

@@ -145,6 +145,14 @@ function navigateToQuery(q: string) {
 }
 ```
 
+### Campaign attribution params (utm_*)
+
+Ad campaigns (e.g. Reddit) append `utm_source`, `utm_medium`, `utm_campaign`, etc. to landing URLs. PostHog captures these on the first `$pageview` for funnel attribution. We strip them from the URL bar immediately after that capture so users see a clean, shareable URL.
+
+- **When:** Right after `capturePageview()` in `onMount` (initial load).
+- **How:** Parse `location.search`, remove params matching `/^utm_/`, `replaceState` with the cleaned URL.
+- **Defense:** The URL sync effect builds params from `location.search`; a shared helper strips `utm_*` when constructing URLs so they never reappear on subsequent syncs or navigations.
+
 ## GitHub Pages Compatibility
 
 The app deploys to GitHub Pages with `base: './'` (relative paths). GitHub Pages does not support server-side routing — navigating directly to a URL with query params works because query params are not part of the path. No `404.html` redirect hack is needed.
