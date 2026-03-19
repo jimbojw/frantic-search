@@ -99,8 +99,8 @@ export type PrintingDisplayColumns = {
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'progress'; fraction: number }
-  | { type: 'status'; status: 'ready'; display: DisplayColumns; keywordLabels?: string[] }
-  | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
+  | { type: 'status'; status: 'ready'; display: DisplayColumns; keywordLabels?: string[]; facesLoadDurationMs?: number }
+  | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns; printingsLoadDurationMs?: number }
   | { type: 'status'; status: 'otags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'atags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { capturePageview } from './analytics'
 
 const HISTORY_DEBOUNCE_MS = 2000
 const REPLACE_DEBOUNCE_MS = 200
@@ -23,12 +24,17 @@ export function saveScrollPosition() {
   history.replaceState({ ...history.state, scrollY: window.scrollY }, '')
 }
 
+export function pushStateAndCapturePageview(url: string, state?: object | null): void {
+  history.pushState(state ?? null, '', url)
+  capturePageview()
+}
+
 export function pushIfNeeded() {
   if (!needsPush) return
   needsPush = false
   clearReplaceDebounce()
   saveScrollPosition()
-  history.pushState(history.state, '', location.href)
+  pushStateAndCapturePageview(location.href, history.state)
 }
 
 export function scheduleReplaceState(url: string) {
