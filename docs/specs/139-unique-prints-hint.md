@@ -1,6 +1,6 @@
 # Spec 139: Recommend `unique:prints` When Printings Hidden
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Implements:** [GitHub #155](https://github.com/jimbojw/frantic-search/issues/155)
 
