@@ -43,7 +43,7 @@ Fire `$pageview` in three cases:
 
 | Event | Location | Rationale |
 |-------|----------|-----------|
-| **Initial load** | App mount (e.g., in `App.tsx` or `index.tsx` after first render) | First pageview of the session; fixes 0 pageviews. Then strip `utm_*` params (Spec 013 § Campaign attribution params). |
+| **Initial load** | App mount (e.g., in `App.tsx` or `index.tsx` after first render) | First pageview of the session; fixes 0 pageviews. Then strip platform tracking params (Spec 013 § Platform tracking params). |
 | **pushState** | Inside `pushStateAndCapturePageview` | Every navigation we trigger, including debounced commits. |
 | **popstate** | `popstate` event handler in `App.tsx` | Back/forward button — user navigated to a previous URL. |
 

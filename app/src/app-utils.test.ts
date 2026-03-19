@@ -465,6 +465,27 @@ describe('stripUtmParams', () => {
     stripUtmParams(params)
     expect(params.toString()).toBe('')
   })
+
+  it('removes rdt_* params (Reddit click ID, etc.)', () => {
+    const params = new URLSearchParams('q=foo&rdt_cid=abc123')
+    stripUtmParams(params)
+    expect(params.get('q')).toBe('foo')
+    expect(params.has('rdt_cid')).toBe(false)
+  })
+
+  it('strips both utm_* and rdt_* when present', () => {
+    const params = new URLSearchParams('q=bar&utm_source=reddit&rdt_cid=xyz')
+    stripUtmParams(params)
+    expect(params.toString()).toBe('q=bar')
+  })
+
+  it('removes fbclid and gclid (Facebook, Google click IDs)', () => {
+    const params = new URLSearchParams('q=foo&fbclid=abc&gclid=xyz')
+    stripUtmParams(params)
+    expect(params.get('q')).toBe('foo')
+    expect(params.has('fbclid')).toBe(false)
+    expect(params.has('gclid')).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------

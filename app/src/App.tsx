@@ -22,6 +22,7 @@ import {
   buildPrintingScryfallGroupIndex, buildScryfallSearchUrl,
   parseView, parseListTab, parseDocParam, isDualWield, getPaneQueries,
   stripUtmParams,
+  isTrackingParam,
 } from './app-utils'
 import type { View } from './app-utils'
 import {
@@ -76,8 +77,8 @@ function App() {
   onMount(() => {
     capturePageview()
     const params = new URLSearchParams(location.search)
-    const hadUtm = [...params.keys()].some((k) => k.startsWith('utm_'))
-    if (hadUtm) {
+    const hadTrackingParams = [...params.keys()].some(isTrackingParam)
+    if (hadTrackingParams) {
       stripUtmParams(params)
       const cleanUrl = params.toString() ? `?${params}` : location.pathname
       history.replaceState(history.state, '', cleanUrl)

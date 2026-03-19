@@ -145,13 +145,13 @@ function navigateToQuery(q: string) {
 }
 ```
 
-### Campaign attribution params (utm_*)
+### Platform tracking params (utm_*, rdt_*, etc.)
 
-Ad campaigns (e.g. Reddit) append `utm_source`, `utm_medium`, `utm_campaign`, etc. to landing URLs. PostHog captures these on the first `$pageview` for funnel attribution. We strip them from the URL bar immediately after that capture so users see a clean, shareable URL.
+Ad campaigns and social platforms append tracking params to landing URLs. Examples: `utm_source`, `utm_medium`, `utm_campaign` (UTM); `rdt_cid` (Reddit); `fbclid` (Facebook); `gclid` (Google). PostHog captures these on the first `$pageview` for funnel attribution. We strip them from the URL bar immediately after that capture so users see a clean, shareable URL.
 
 - **When:** Right after `capturePageview()` in `onMount` (initial load).
-- **How:** Parse `location.search`, remove params matching `/^utm_/`, `replaceState` with the cleaned URL.
-- **Defense:** The URL sync effect builds params from `location.search`; a shared helper strips `utm_*` when constructing URLs so they never reappear on subsequent syncs or navigations.
+- **How:** Parse `location.search`, remove params matching `/^utm_/`, `/^rdt_/`, or exact names `fbclid`, `gclid`; `replaceState` with the cleaned URL.
+- **Defense:** The URL sync effect builds params from `location.search`; a shared helper strips these params when constructing URLs so they never reappear on subsequent syncs or navigations.
 
 ## GitHub Pages Compatibility
 
@@ -172,3 +172,8 @@ In standalone mode (`display: standalone` in the web app manifest), the browser 
 7. The URL always reflects the current app state (query and view).
 8. Works correctly in standalone PWA mode (back gesture navigates history).
 9. Works on GitHub Pages (no server-side routing required).
+
+## Implementation Notes
+
+- 2026-03-19: Extended platform tracking param stripping to include `rdt_*` (Reddit click ID, etc.) alongside `utm_*`.
+- 2026-03-19: Added `fbclid` (Facebook), `gclid` (Google) to exact-match strip list.

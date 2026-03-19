@@ -165,9 +165,19 @@ export function getPaneQueries(params: URLSearchParams): { left: string; right: 
   return { left, right }
 }
 
-/** Remove utm_* params in place (Spec 013 § Campaign attribution params). */
+const TRACKING_PARAM_PREFIXES = ['utm_', 'rdt_'] as const
+const TRACKING_PARAM_EXACT = new Set(['fbclid', 'gclid'])
+
+export function isTrackingParam(key: string): boolean {
+  return (
+    TRACKING_PARAM_PREFIXES.some((p) => key.startsWith(p)) ||
+    TRACKING_PARAM_EXACT.has(key)
+  )
+}
+
+/** Remove platform tracking params in place (Spec 013 § Platform tracking params). */
 export function stripUtmParams(params: URLSearchParams): void {
   for (const key of [...params.keys()]) {
-    if (key.startsWith('utm_')) params.delete(key)
+    if (isTrackingParam(key)) params.delete(key)
   }
 }
