@@ -51,16 +51,21 @@ The existing `fnv1a` function is reused for seed derivation. `mulberry32` is no 
 
 ### Bare-word extraction from the AST
 
-To determine which cards get a prefix boost, the sort needs to know what name-related terms the user typed. A walk of the AST collects all `BARE` node values that are not under a `NOT`:
+To determine which cards get a prefix boost, the sort needs to know what name-related terms the user typed. A walk of the AST collects all `BARE` node values and `name:`/`n:` field values (substring operators `:` and `=`) that are not under a `NOT` (Issue #86):
 
 ```typescript
 function collectBareWords(ast: ASTNode): string[] {
   switch (ast.type) {
     case "BARE": return [ast.value];
+    case "FIELD":
+      if (ast.value && (ast.operator === ":" || ast.operator === "=") &&
+          FIELD_ALIASES[ast.field.toLowerCase()] === "name")
+        return [ast.value];
+      return [];
     case "AND":
     case "OR":   return ast.children.flatMap(collectBareWords);
     case "NOT":  return [];   // negated terms are exclusions, not search intent
-    default:     return [];   // FIELD, EXACT, REGEX_FIELD don't signal name search
+    default:     return [];   // EXACT, REGEX_FIELD don't signal name search
   }
 }
 ```
@@ -68,6 +73,8 @@ function collectBareWords(ast: ASTNode): string[] {
 | Query | AST structure | Extracted terms | Boost behavior |
 |---|---|---|---|
 | `light` | `BARE("light")` | `["light"]` | startsWith "light" |
+| `name:bolt` | `FIELD("name", ":", "bolt")` | `["bolt"]` | startsWith "bolt" |
+| `n:bolt` | `FIELD("n", ":", "bolt")` | `["bolt"]` | startsWith "bolt" |
 | `light t:creature` | `AND(BARE, FIELD)` | `["light"]` | startsWith "light" |
 | `light bolt` | `AND(BARE, BARE)` | `["light", "bolt"]` | startsWith either |
 | `light OR bolt` | `OR(BARE, BARE)` | `["light", "bolt"]` | startsWith either |
@@ -263,6 +270,8 @@ These signals could be added as additional sort tiers between the prefix tier an
 5. Mixed: `AND(NOT(BARE("fire")), BARE("bolt"))` → `["bolt"]`.
 6. No bare words: `AND(FIELD("t","creature"), FIELD("c","red"))` → `[]`.
 7. OR of bare words: `OR(BARE("light"), BARE("bolt"))` → `["light", "bolt"]`.
+8. name: field (Issue #86): `FIELD("name", ":", "bolt")` → `["bolt"]`; `FIELD("n", ":", "bolt")` → `["bolt"]`.
+9. Negated name: field: `NOT(FIELD("name", ":", "bolt"))` → `[]`.
 
 **`seededSort`:**
 1. **Prefix boost**: Given names `["Lightning Bolt", "Twilight Shepherd", "Lightmine Field"]` and bare word `"light"`, the two names starting with "light" appear before "Twilight Shepherd".

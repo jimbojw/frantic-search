@@ -3,6 +3,7 @@ import type { ASTNode, SortDirective } from "./ast";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { RARITY_ORDER } from "../bits";
+import { FIELD_ALIASES } from "./eval-leaves";
 
 export function fnv1a(str: string): number {
   let h = 0x811c9dc5;
@@ -25,14 +26,26 @@ export function seededRank(seedHash: number, index: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+const NAME_SUBSTRING_OPS = new Set([":", "="]);
+
 /**
- * Walk the AST and collect values from BARE nodes that are not under a NOT.
- * These represent the user's name-search intent for prefix boosting.
+ * Walk the AST and collect values from BARE nodes and name-field terms
+ * (name:value, n:value) that are not under a NOT. These represent the
+ * user's name-search intent for prefix boosting (Issue #86).
  */
 export function collectBareWords(ast: ASTNode): string[] {
   switch (ast.type) {
     case "BARE":
       return [ast.value];
+    case "FIELD":
+      if (
+        ast.value &&
+        NAME_SUBSTRING_OPS.has(ast.operator) &&
+        FIELD_ALIASES[ast.field.toLowerCase()] === "name"
+      ) {
+        return [ast.value];
+      }
+      return [];
     case "AND":
     case "OR":
       return ast.children.flatMap(collectBareWords);

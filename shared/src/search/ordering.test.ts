@@ -110,6 +110,27 @@ describe("collectBareWords", () => {
     );
     expect(collectBareWords(ast)).toEqual([]);
   });
+
+  test("name: field terms are collected (Issue #86)", () => {
+    expect(collectBareWords(field("name", ":", "bolt"))).toEqual(["bolt"]);
+    expect(collectBareWords(and(field("name", ":", "bolt"), field("t", ":", "instant")))).toEqual(["bolt"]);
+  });
+
+  test("n: alias is collected (Issue #86)", () => {
+    expect(collectBareWords(field("n", ":", "bolt"))).toEqual(["bolt"]);
+  });
+
+  test("name= field terms are collected", () => {
+    expect(collectBareWords(field("name", "=", "Lightning"))).toEqual(["Lightning"]);
+  });
+
+  test("negated name: field yields nothing", () => {
+    expect(collectBareWords(not(field("name", ":", "bolt")))).toEqual([]);
+  });
+
+  test("name: and bare word both collected", () => {
+    expect(collectBareWords(and(bare("light"), field("name", ":", "bolt")))).toEqual(["light", "bolt"]);
+  });
 });
 
 // --- seededSort ---
