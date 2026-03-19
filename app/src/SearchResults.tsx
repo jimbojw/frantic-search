@@ -710,6 +710,24 @@ export default function SearchResults() {
             </div>
           </Show>
           <Show when={(() => {
+            if (ctx.uniqueMode() === 'prints') return false
+            const total = ctx.totalPrintingItems()
+            const displayed = ctx.totalDisplayItems()
+            return total > 0 && total > displayed
+          })()}>
+            <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
+              Additional printings not shown. Try again with{' '}
+              <button
+                type="button"
+                onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'unique:prints', ctx.parseBreakdown(ctx.query())))}
+                class="inline-flex items-center justify-center min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-2 py-2 md:py-0.5 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              >
+                <HighlightedLabel label="unique:prints" />
+              </button>
+              ?
+            </div>
+          </Show>
+          <Show when={(() => {
             const extras = ctx.indicesIncludingExtras()
             if (extras === undefined) return false
             const hidden = extras - ctx.totalCards()
