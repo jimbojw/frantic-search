@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import posthog from 'posthog-js'
 
+/** Earliest moment in app bundle load (Spec 140). Used for search_resolved_from_url duration_ms. */
+export const pageLoadStartTime = performance.now()
+
 if (!import.meta.env.DEV) {
   const key = import.meta.env.VITE_POSTHOG_KEY
   if (key) {
@@ -41,4 +44,12 @@ export function captureFacesLoaded(params: { duration_ms: number }): void {
 
 export function capturePrintingsLoaded(params: { duration_ms: number }): void {
   posthog.capture('printings_loaded', params)
+}
+
+export function captureSearchResolvedFromUrl(params: {
+  duration_ms: number
+  results_count: number
+  had_results: boolean
+}): void {
+  posthog.capture('search_resolved_from_url', params)
 }

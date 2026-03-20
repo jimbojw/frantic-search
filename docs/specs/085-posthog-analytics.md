@@ -70,10 +70,11 @@ Do not use the `defaults` option; it enables behavior we explicitly disable.
 
 Standardize event properties for easy grouping in the PostHog dashboard:
 
-| Event            | Properties                                                              |
-|------------------|-------------------------------------------------------------------------|
-| `search_executed`| `{ query: string, used_extension: boolean, results_count: number }`      |
-| `ui_interacted`  | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
+| Event                     | Properties                                                              |
+|---------------------------|-------------------------------------------------------------------------|
+| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number }`      |
+| `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
+| `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
 
 ### 5. `used_extension` Definition
 

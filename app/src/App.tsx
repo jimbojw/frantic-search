@@ -42,7 +42,14 @@ import {
   getMatchingCount,
   getUniqueTagsFromView,
 } from '@frantic-search/shared'
-import { captureUiInteracted, capturePageview, captureFacesLoaded, capturePrintingsLoaded } from './analytics'
+import {
+  captureUiInteracted,
+  capturePageview,
+  captureFacesLoaded,
+  capturePrintingsLoaded,
+  captureSearchResolvedFromUrl,
+  pageLoadStartTime,
+} from './analytics'
 import { useViewportWide } from './useViewportWide'
 const DualWieldLayout = lazy(() =>
   import('./DualWieldLayout').then((m) => ({ default: m.DualWieldLayout }))
@@ -88,6 +95,7 @@ function App() {
 
   const initialParams = new URLSearchParams(location.search)
   const initialQueries = getPaneQueries(initialParams)
+  const hadQueryInUrlOnInit = !!(initialQueries.left?.trim() || initialQueries.right?.trim())
   const [dualWieldActive, setDualWieldActive] = createSignal(isDualWield(initialParams))
   const [query, setQuery] = createSignal(initialQueries.left)
   const [query2, setQuery2] = createSignal(initialQueries.right)
@@ -424,6 +432,7 @@ function App() {
   let validateRequestId = 0
   const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
+  let searchResolvedFromUrlFired = false
 
   function serializeDeckList(instances: InstanceState[], format: DeckFormat, listName?: string): Promise<string> {
     const requestId = ++serializeRequestId
@@ -657,6 +666,14 @@ function App() {
               ? msg.printingIndices.length
               : msg.indices.length
             scheduleSearchCapture(eq, usedExtension, resultsCount)
+            if (hadQueryInUrlOnInit && !searchResolvedFromUrlFired && query().trim() === initialQueries.left.trim()) {
+              searchResolvedFromUrlFired = true
+              captureSearchResolvedFromUrl({
+                duration_ms: Math.round(performance.now() - pageLoadStartTime),
+                results_count: resultsCount,
+                had_results: resultsCount > 0,
+              })
+            }
           }
         }
         break
