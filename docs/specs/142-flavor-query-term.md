@@ -17,7 +17,7 @@ Scryfall supports:
 - Quotes for text with spaces or punctuation: `ft:"draw a card"`
 - Regex with slashes: `ft:/\b(orc|orcs)\b/` (see [Scryfall Regular Expressions](https://scryfall.com/docs/regular-expressions))
 
-Spec 141 provides the strided inverted index (`flavor_text_index`) in printings.json — `(canonical_face_index, printing_row_index)` pairs, same layout as `atags.json` (Spec 092). This spec adds the query engine support.
+Spec 141 provides the strided inverted index in `flavor-index.json` — a separate supplemental file loaded after printings, like `atags.json` (Spec 092). The file stores raw flavor text as keys; the worker builds a normalized index (lowercase, trim, collapse whitespace) at load time for search. This spec adds the query engine support.
 
 ## Domain
 
@@ -29,6 +29,7 @@ Spec 141 provides the strided inverted index (`flavor_text_index`) in printings.
 |------|--------|
 | 002 | Add `flavor`, `ft` to Supported Fields |
 | 047 | Add `flavor` to `PRINTING_FIELDS` |
+| 024 | Add `flavor-ready` status (worker posts when flavor-index.json loaded); add `flavorUnavailable` to query result |
 | 098 | Add `flavor`, `ft` to syntax help Fields table |
 
 **Note:** Bare regex `/pattern/` stays as OR(name, oracle, type) — flavor is **not** included. Scryfall supports an undocumented `lore:` field that searches flavor text, oracle text, name, and type line. A future spec will implement `lore:` to give users an all-four term.
@@ -57,10 +58,11 @@ Add `"flavor"` to `PRINTING_FIELDS` so `isPrintingField("flavor")` returns true.
 Add a `flavor` case to `evalPrintingField()`:
 
 - **Operators:** `:` and `=` only (substring semantics; Scryfall parity)
-- **Value normalization:** Lowercase, trim, collapse internal whitespace to single space (same as index keys in Spec 141)
-- **Algorithm:** Iterate over `flavor_text_index` keys. For each key where `key.includes(normalizedValue)`, iterate the strided array in pairs (stride 2): `for (let i = 0; i < arr.length; i += 2)` — odd-indexed elements are printing row indices; set `buf[arr[i + 1]] = 1` for each pair.
+- **Value normalization:** Lowercase, trim, collapse internal whitespace to single space (matches the normalized index keys built at load per Spec 141)
+- **Algorithm:** Iterate over `flavor_text_index` keys (from `tagDataRef.flavor`). For each key where `key.includes(normalizedValue)`, iterate the strided array in pairs (stride 2): `for (let i = 0; i < arr.length; i += 2)` — odd-indexed elements are printing row indices; set `buf[arr[i + 1]] = 1` for each pair.
 - **Empty value:** Match all printings that have flavor text (union of all strided arrays — collect printing indices from odd positions). Per Spec 002 § "Error Recovery", trailing operator with no value is often neutral. **Recommendation:** Empty value matches all printings that have flavor text.
-- **PrintingIndex null:** Return error `"flavor requires printing data"` or match nothing. Per Spec 047, printing-domain fields match nothing when printings not loaded. Use same pattern: match nothing, evaluator flags `printingsUnavailable` if flavor was present.
+- **PrintingIndex null:** Match nothing; evaluator flags `printingsUnavailable` if flavor was present. Per Spec 047, printing-domain fields match nothing when printings not loaded.
+- **Flavor index null:** Match nothing; evaluator flags `flavorUnavailable` when flavor index not yet loaded (printings ready but `flavor-index.json` still fetching). Enables progressive enhancement — search works without flavor until the supplemental file arrives.
 
 ### 4. Regex evaluation — `REGEX_FIELD` for flavor
 
@@ -73,33 +75,32 @@ The `REGEX_FIELD` case currently calls `evalLeafRegex(ast, this.index, buf)` whi
 - **B:** Add `evalLeafFlavorRegex(node, pIdx, buf)` in eval-printing.ts that fills a printing-domain buffer. The evaluator's REGEX_FIELD case dispatches to it when field is flavor, then promotes.
 
 **Algorithm for flavor regex:**
-- Iterate over `flavor_text_index` keys
+- Iterate over `flavor_text_index` keys (from `tagDataRef.flavor`)
 - For each key, `if (new RegExp(pattern, "i").test(key))` then iterate the strided array (stride 2); set `buf[arr[i + 1]] = 1` for each printing row index (odd positions)
 - Invalid regex: catch, return error `"invalid regex"`
 - Promote printing buffer to face buffer before returning
 
 **Evaluator change:** In the `REGEX_FIELD` branch, before calling `evalLeafRegex`:
-- If canonical field is `flavor` and `this._printingIndex` is non-null and has `flavor_text_index`:
+- If canonical field is `flavor` and `this._printingIndex` is non-null and `this._tagDataRef?.flavor` is non-null:
   - Allocate `printBuf = new Uint8Array(printingCount)`
-  - Call new `evalFlavorRegex(pattern, pIdx, printBuf)` (or equivalent)
+  - Call new `evalFlavorRegex(pattern, tagDataRef.flavor, pIdx, printBuf)` (or equivalent)
   - Promote `printBuf` to face `buf`
   - Set `domain: "face"` (promoted)
-- Else if canonical is `flavor` and PrintingIndex is null:
-  - Set `buf` to zeros, `domain: "face"`, optionally set `error` or leave matchCount 0
+- Else if canonical is `flavor` and (PrintingIndex is null or flavor index is null):
+  - Set `buf` to zeros, `domain: "face"`. Flag `printingsUnavailable` if PrintingIndex null; flag `flavorUnavailable` if PrintingIndex present but flavor index null.
 - Else: existing `evalLeafRegex` path for name, oracle, type
 
-### 5. PrintingIndex: expose flavor_text_index
+### 5. TagDataRef: add flavor
 
-**Module:** `shared/src/search/printing-index.ts`
+**Module:** `shared/src/search/evaluator.ts`
 
-Ensure `PrintingIndex` holds `flavor_text_index` from `PrintingColumnarData` and exposes it for evaluation. Add a getter or readonly property, e.g. `flavorTextIndex: Record<string, number[]> | undefined`.
+Extend `TagDataRef` to include `flavor: FlavorTagData | null`. The worker populates `tagDataRef.flavor` when `flavor-index.json` arrives. The evaluator reads from `tagDataRef.flavor` for both literal and regex flavor evaluation. No change to `PrintingIndex` — flavor data is supplemental, like `atags`.
 
 ### 6. Unavailability handling
 
-When printing data is not loaded:
-- `flavor:` and `ft:` (both FIELD and REGEX_FIELD) produce all-zero buffers (match nothing)
-- Evaluator flags `printingsUnavailable: true` when flavor was present in the query
-- No face-fallback (unlike `is:universesbeyond`); flavor text lives only in printing data
+- **Printing data not loaded:** `flavor:` and `ft:` produce all-zero buffers; evaluator flags `printingsUnavailable: true`.
+- **Flavor index not loaded:** When printings are ready but `flavor-index.json` has not arrived, `flavor:` produces all-zero buffers; evaluator flags `flavorUnavailable: true`. Enables progressive enhancement — `flavor-ready` status posts when the file loads; UI can show "flavor search loading" or simply work once ready.
+- No face-fallback (unlike `is:universesbeyond`); flavor text lives only in printing-domain supplemental data.
 
 ## Edge cases
 
@@ -117,7 +118,7 @@ When printing data is not loaded:
 
 ### Evaluator tests
 
-- `flavor:mishra` with synthetic printing data that has flavor_text_index
+- `flavor:mishra` with synthetic flavor index in tagDataRef
 - `ft:"draw a card"` — substring with spaces
 - `flavor:/orc/` — regex match
 - `t:creature flavor:x` — cross-domain AND
@@ -134,9 +135,9 @@ When printing data is not loaded:
 | File | Changes |
 |------|---------|
 | `shared/src/search/eval-leaves.ts` | Add `flavor`, `ft` to `FIELD_ALIASES` |
-| `shared/src/search/eval-printing.ts` | Add `flavor` to `PRINTING_FIELDS`; add `flavor` case to `evalPrintingField`; add `evalFlavorRegex` |
-| `shared/src/search/printing-index.ts` | Expose `flavorTextIndex` from data |
-| `shared/src/search/evaluator.ts` | REGEX_FIELD branch: dispatch flavor to printing-domain eval + promote |
+| `shared/src/search/eval-printing.ts` | Add `flavor` to `PRINTING_FIELDS`; add `flavor` case to `evalPrintingField` (receives flavor index from caller); add `evalFlavorRegex` |
+| `shared/src/search/evaluator.ts` | Extend `TagDataRef` with `flavor`; REGEX_FIELD branch: dispatch flavor to printing-domain eval + promote; pass `tagDataRef.flavor` to flavor eval; add `flavorUnavailable` to result when flavor term present but index null |
+| `app/src/worker.ts` | Fetch flavor-index.json after printings; store in tagDataRef.flavor; post `flavor-ready` |
 | `shared/src/search/eval-printing.test.ts` | Tests for flavor literal and regex |
 | `shared/src/search/evaluator-printing.test.ts` | Integration tests for flavor in cross-domain queries |
 | `docs/specs/002-query-engine.md` | Add flavor, ft to Supported Fields |
@@ -150,5 +151,6 @@ When printing data is not loaded:
 4. `t:creature flavor:x` returns creatures with matching flavor (cross-domain AND)
 5. `-flavor:x` negates correctly
 6. When printing data is not loaded, `flavor:` matches nothing and `printingsUnavailable` is set
-7. Invalid regex in `flavor:/.../` produces error or matches zero
-8. All existing tests pass
+7. When flavor index is not yet loaded (printings ready, flavor-index.json still fetching), `flavor:` matches nothing and `flavorUnavailable` is set
+8. Invalid regex in `flavor:/.../` produces error or matches zero
+9. All existing tests pass
