@@ -313,6 +313,7 @@ export function SearchPane(props: {
   const [cursorOffset, setCursorOffset] = createSignal(0)
   const [selectionEnd, setSelectionEnd] = createSignal(0)
   const [isComposing, setIsComposing] = createSignal(false)
+  const [isFocused, setIsFocused] = createSignal(false)
 
   function updateSelection(el: HTMLTextAreaElement) {
     setCursorOffset(el.selectionStart ?? 0)
@@ -331,6 +332,7 @@ export function SearchPane(props: {
     selectionEnd,
     isComposing,
     autocompleteData,
+    isFocused,
   )
   const handleInput = (e: Event) => {
     const el = e.target as HTMLTextAreaElement
@@ -430,8 +432,8 @@ export function SearchPane(props: {
                   updateSelection(e.target as HTMLTextAreaElement)
                 }}
                 onScroll={props.onScroll}
-                onFocus={(e) => { updateSelection(e.target as HTMLTextAreaElement); props.onFocus(e) }}
-                onBlur={props.onBlur}
+                onFocus={(e) => { updateSelection(e.target as HTMLTextAreaElement); setIsFocused(true); props.onFocus(e) }}
+                onBlur={() => { setIsFocused(false); props.onBlur() }}
                 disabled={props.workerStatus() === 'error'}
                 class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
               />

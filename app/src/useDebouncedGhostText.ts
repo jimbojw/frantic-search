@@ -12,6 +12,7 @@ export function useDebouncedGhostText(
   selectionEnd: Accessor<number>,
   isComposing: Accessor<boolean>,
   autocompleteData: Accessor<AutocompleteData | null>,
+  isFocused?: Accessor<boolean>,
 ): Accessor<string | null> {
   const [ghostText, setGhostText] = createSignal<string | null>(null)
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -24,6 +25,11 @@ export function useDebouncedGhostText(
       }
     }
 
+    if (isFocused !== undefined && !isFocused()) {
+      clearTimer()
+      setGhostText(null)
+      return
+    }
     if (isComposing() || !autocompleteData()) {
       clearTimer()
       setGhostText(null)

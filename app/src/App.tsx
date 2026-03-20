@@ -208,6 +208,7 @@ function App() {
   const [cursorOffset, setCursorOffset] = createSignal(0)
   const [selectionEnd, setSelectionEnd] = createSignal(0)
   const [isComposing, setIsComposing] = createSignal(false)
+  const [isSearchFocused, setIsSearchFocused] = createSignal(false)
 
   function updateSelection(el: HTMLTextAreaElement) {
     setCursorOffset(el.selectionStart ?? 0)
@@ -224,7 +225,7 @@ function App() {
       keyword: keywordLabels(),
     })
   )
-  const ghostText = useDebouncedGhostText(query, cursorOffset, selectionEnd, isComposing, autocompleteData)
+  const ghostText = useDebouncedGhostText(query, cursorOffset, selectionEnd, isComposing, autocompleteData, isSearchFocused)
 
   function acceptGhostCompletion() {
     const ctx = getCompletionContext(query(), cursorOffset())
@@ -1608,8 +1609,8 @@ function App() {
                   updateSelection(e.currentTarget)
                 }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
-                onFocus={(e) => { updateSelection(e.currentTarget); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
-                onBlur={() => { flushSearchCapture() }}
+                onFocus={(e) => { updateSelection(e.currentTarget); setIsSearchFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
+                onBlur={() => { setIsSearchFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
                 class="hl-input w-full bg-transparent px-4 py-3 pl-11 pr-4 text-base leading-normal font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none transition-all disabled:opacity-50 resize-y"
               />

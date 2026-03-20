@@ -143,6 +143,7 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 - **DualWieldLayout:** Each pane has independent query and cursor. Autocomplete state is per-pane; no cross-talk.
 - **Worker error state:** Input disabled; no completion.
 - **Rapid typing:** Ghost text may flicker. Debouncing reduces this; acceptable for v1.
+- **Focus:** When the search input is not focused, do not show ghost text. The ghost must disappear on blur (click away, switch pane, etc.) and reappear when the user refocuses.
 
 ## Acceptance criteria
 
@@ -158,6 +159,7 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 10. No ghost text during IME composition.
 11. No completion before `display` is ready; no `set:` completion before `printings-ready`.
 12. No regressions to syntax highlighting, scroll sync, or focus management.
+13. Ghost text is hidden when the search input loses focus; it reappears when the user refocuses and conditions for completion are met.
 
 ## Implementation Notes
 
@@ -167,3 +169,4 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 - 2026-03-06: Tap target uses Option B (right-half overlay) rather than measuring ghost span bounds; simpler and sufficient for v1.
 - 2026-03-06: `applyCompletion` for exact names: `computeSuggestion` returns `"CardName"` (with both quotes); the prefix starts after `!` at the opening quote, so replacement includes the full quoted name.
 - 2026-03-08: Spec 097: Name field autocomplete. Value context now detected when previous token is any operator (not just COLON), so `name>M` and `name:bolt` suggest card names instead of field aliases. `computeSuggestion` adds `name`/`n` branch with prefix match on `names`.
+- 2026-03-19: Clear ghost on blur (Issue #157). `useDebouncedGhostText` now accepts optional `isFocused` accessor; ghost is suppressed when not focused.
