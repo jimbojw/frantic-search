@@ -4,6 +4,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { index, printingIndex, TEST_PRINTING_DATA } from "./evaluator.test-fixtures";
 import { PrintingIndex } from "./printing-index";
+import type { FlavorTagData } from "../data";
 
 // ---------------------------------------------------------------------------
 // Printing-domain integration tests (through NodeCache.evaluate)
@@ -14,8 +15,25 @@ import { PrintingIndex } from "./printing-index";
 // (face 3) have printings in this dataset.
 // ---------------------------------------------------------------------------
 
+const FLAVOR_INDEX: FlavorTagData = {
+  "mishra's artifact": [1, 0, 1, 2],
+  "draw a card": [3, 3, 3, 4],
+  "lightning strikes twice": [1, 5],
+};
+
+const tagDataRefWithFlavor = {
+  oracle: null,
+  illustration: null,
+  flavor: FLAVOR_INDEX,
+};
+
 function evaluate(query: string) {
   const cache = new NodeCache(index, printingIndex);
+  return cache.evaluate(parse(query));
+}
+
+function evaluateWithFlavor(query: string) {
+  const cache = new NodeCache(index, printingIndex, null, tagDataRefWithFlavor);
   return cache.evaluate(parse(query));
 }
 
@@ -587,6 +605,68 @@ describe("printing metadata flags", () => {
     const cache = new NodeCache(index);
     const { printingsUnavailable } = cache.evaluate(parse("set:mh2"));
     expect(printingsUnavailable).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// flavor: / ft: (Spec 142)
+// ---------------------------------------------------------------------------
+
+describe("flavor: evaluator", () => {
+  test("flavor:mishra matches cards with that substring in flavor text", () => {
+    const { indices } = evaluateWithFlavor("flavor:mishra");
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(1);
+  });
+
+  test("ft: draw matches Sol Ring", () => {
+    const { indices } = evaluateWithFlavor('ft:"draw a card"');
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(3);
+  });
+
+  test("t:instant flavor:mishra cross-domain AND", () => {
+    const { indices } = evaluateWithFlavor("t:instant flavor:mishra");
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(1);
+  });
+
+  test("-flavor:mishra negates correctly", () => {
+    const { indices } = evaluateWithFlavor("-flavor:mishra");
+    expect(indices.length).toBeGreaterThan(0);
+  });
+
+  test("flavor:/orc/ regex match", () => {
+    const idx: FlavorTagData = { "orc tribe": [1, 0], "orcs attack": [1, 2] };
+    const cache = new NodeCache(index, printingIndex, null, {
+      oracle: null,
+      illustration: null,
+      flavor: idx,
+    });
+    const { indices } = cache.evaluate(parse("flavor:/orc/"));
+    expect(indices.length).toBe(1);
+  });
+
+  test("flavor:x when PrintingIndex null produces printingsUnavailable", () => {
+    const cache = new NodeCache(index, null, null, tagDataRefWithFlavor);
+    const out = cache.evaluate(parse("flavor:mishra"));
+    expect(out.printingsUnavailable).toBe(true);
+  });
+
+  test("flavor:x when flavor index null produces flavorUnavailable", () => {
+    const cache = new NodeCache(index, printingIndex, null, {
+      oracle: null,
+      illustration: null,
+      flavor: null,
+    });
+    const out = cache.evaluate(parse("flavor:mishra"));
+    expect(out.flavorUnavailable).toBe(true);
+    expect(out.indices.length).toBe(0);
+  });
+
+  test("invalid regex in flavor:/.../ returns error", () => {
+    const out = evaluateWithFlavor("flavor:/[invalid/");
+    expect(out.result.error).toBe("invalid regex");
   });
 });
 

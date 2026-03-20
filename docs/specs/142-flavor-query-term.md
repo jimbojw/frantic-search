@@ -1,6 +1,6 @@
 # Spec 142: Flavor Text Query Term (`flavor:` / `ft:`)
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#138](https://github.com/jimbojw/frantic-search/issues/138)
 

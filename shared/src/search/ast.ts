@@ -132,6 +132,8 @@ export interface EvalOutput {
   printingIndices?: Uint32Array;
   hasPrintingConditions: boolean;
   printingsUnavailable: boolean;
+  /** True when query has flavor: term but flavor-index.json not yet loaded. Spec 142. */
+  flavorUnavailable?: boolean;
   uniqueMode: UniqueMode;
   includeExtras: boolean;
   sortBy: SortDirective | null;

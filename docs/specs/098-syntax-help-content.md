@@ -61,6 +61,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `date` | `released` | Release date (YYYY, YYYY-MM, YYYY-MM-DD, set code, now); percentile (`>90%`) | `date:2021`, `date>90%` |
 | `game` | — | Paper, Arena, MTGO availability | `game:arena` |
 | `in` | — | Game, set, or rarity (disambiguated by value) | `in:mh2`, `in:arena` |
+| `flavor` | `ft` | Flavor text (substring); regex via `/pattern/` | `flavor:mishra`, `ft:"draw a card"`, `flavor:/orc/` |
 
 ### Section 2: Operators
 

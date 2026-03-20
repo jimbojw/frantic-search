@@ -9,7 +9,7 @@ import {
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
-import { isPrintingField, evalPrintingField, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
+import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
 import type { GetMetadataIndex } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
@@ -228,9 +228,11 @@ export class NodeCache {
     const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
+    const hasFlavorLeaves = this._hasFlavorLeaves(ast);
+    const flavorUnavailable = hasFlavorLeaves && this._printingIndex != null && !this._tagDataRef?.flavor;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, uniqueMode, includeExtras, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -292,7 +294,27 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, uniqueMode, includeExtras, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, uniqueMode, includeExtras, sortBy };
+  }
+
+  private _hasFlavorLeaves(ast: ASTNode): boolean {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        return canonical === "flavor";
+      }
+      case "REGEX_FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        return canonical === "flavor";
+      }
+      case "NOT":
+        return this._hasFlavorLeaves(ast.child);
+      case "AND":
+      case "OR":
+        return ast.children.some((c) => this._hasFlavorLeaves(c));
+      default:
+        return false;
+    }
   }
 
   private _getUniqueMode(ast: ASTNode): UniqueMode {
@@ -579,6 +601,14 @@ export class NodeCache {
               const atagVal = resolveForField("atag", ast.value, this._getResolutionContext());
               error = evalIllustrationTag(atagVal, this._tagDataRef?.illustration ?? null, buf);
             }
+          } else if (canonical === "flavor") {
+            if (ast.operator !== ":" && ast.operator !== "=") {
+              error = `flavor: does not support operator "${ast.operator}"`;
+            } else if (!this._tagDataRef?.flavor) {
+              error = null; // all-zero buf; flavorUnavailable set at evaluate() level
+            } else {
+              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), this._tagDataRef.flavor);
+            }
           } else if (canonical && ast.value !== "") {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext());
           }
@@ -708,6 +738,38 @@ export class NodeCache {
         break;
       }
       case "REGEX_FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (canonical === "flavor") {
+          if (!this._printingIndex) {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: "printing data not loaded",
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          if (!this._tagDataRef?.flavor) {
+            interned.computed = {
+              buf: new Uint8Array(n), domain: "face", matchCount: 0, productionMs: 0,
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          const pIdx = this._printingIndex;
+          const pn = pIdx.printingCount;
+          const printBuf = new Uint8Array(pn);
+          const t0 = performance.now();
+          const err = evalFlavorRegex(ast.pattern, this._tagDataRef.flavor, pIdx, printBuf);
+          const ms = performance.now() - t0;
+          if (err) {
+            interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };
+          } else {
+            const faceBuf = this._promoteBufToFace(printBuf);
+            interned.computed = { buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms };
+          }
+          timings.set(interned.key, { cached: false, evalMs: err ? 0 : ms });
+          break;
+        }
         const buf = new Uint8Array(n);
         const t0 = performance.now();
         const error = evalLeafRegex(ast, this.index, buf);

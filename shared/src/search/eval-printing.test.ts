@@ -3,11 +3,12 @@ import { describe, test, expect } from "vitest";
 import { PrintingIndex } from "./printing-index";
 import {
   evalPrintingField,
+  evalFlavorRegex,
   isPrintingField,
   promotePrintingToFace,
   promoteFaceToPrinting,
 } from "./eval-printing";
-import type { PrintingColumnarData } from "../data";
+import type { PrintingColumnarData, FlavorTagData } from "../data";
 import { Rarity, Finish, Frame, Game } from "../bits";
 
 // ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in"]) {
+    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in", "flavor"]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -763,6 +764,73 @@ describe("date field", () => {
     const { buf, error } = evalField("date", ":", "mh2");
     expect(error).toBeNull();
     expect(marked(buf)).toEqual([0, 1, 3, 4]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// flavor (Spec 142)
+// ---------------------------------------------------------------------------
+
+const FLAVOR_INDEX: FlavorTagData = {
+  "mishra's artifact": [1, 0, 1, 2],
+  "draw a card": [3, 3, 3, 4],
+  "lightning strikes twice": [1, 5],
+};
+
+function evalFlavorField(op: string, val: string): { buf: Uint8Array; error: string | null } {
+  const buf = new Uint8Array(pIdx.printingCount);
+  const error = evalPrintingField("flavor", op, val, pIdx, buf, undefined, undefined, FLAVOR_INDEX);
+  return { buf, error };
+}
+
+describe("flavor field", () => {
+  test("substring match flavor:mishra", () => {
+    expect(marked(evalFlavorField(":", "mishra").buf)).toEqual([0, 2]);
+  });
+
+  test("substring match ft:draw", () => {
+    expect(marked(evalFlavorField(":", "draw").buf)).toEqual([3, 4]);
+  });
+
+  test("substring with spaces (draw a card)", () => {
+    expect(marked(evalFlavorField(":", "draw a card").buf)).toEqual([3, 4]);
+  });
+
+  test("empty value matches all printings with flavor", () => {
+    expect(marked(evalFlavorField(":", "").buf)).toEqual([0, 2, 3, 4, 5]);
+  });
+
+  test("returns error when flavor index null", () => {
+    const buf = new Uint8Array(pIdx.printingCount);
+    const error = evalPrintingField("flavor", ":", "x", pIdx, buf, undefined, undefined, null);
+    expect(error).toBe("flavor index not loaded");
+  });
+
+  test("returns error for unsupported operator", () => {
+    const { error } = evalFlavorField("!=", "mishra");
+    expect(error).toBe('flavor: does not support operator "!="');
+  });
+});
+
+describe("evalFlavorRegex", () => {
+  test("regex match orc", () => {
+    const idx: FlavorTagData = { "orc tribe": [1, 0], "orcs attack": [1, 2] };
+    const buf = new Uint8Array(7);
+    const error = evalFlavorRegex("orc", idx, pIdx, buf);
+    expect(error).toBeNull();
+    expect(marked(buf)).toEqual([0, 2]);
+  });
+
+  test("invalid regex returns error", () => {
+    const buf = new Uint8Array(7);
+    const error = evalFlavorRegex("[invalid", FLAVOR_INDEX, pIdx, buf);
+    expect(error).toBe("invalid regex");
+  });
+
+  test("null flavor index returns error", () => {
+    const buf = new Uint8Array(7);
+    const error = evalFlavorRegex("mishra", null, pIdx, buf);
+    expect(error).toBe("flavor index not loaded");
   });
 });
 

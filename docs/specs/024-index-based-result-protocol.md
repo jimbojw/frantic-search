@@ -137,6 +137,7 @@ export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
+  | { type: 'status'; status: 'flavor-ready' }  // Spec 141: flavor-index.json loaded
   | { type: 'status'; status: 'error'; error: string }
   | {
       type: 'result'
@@ -145,6 +146,7 @@ export type FromWorker =
       printingIndices?: Uint32Array
       hasPrintingConditions: boolean
       uniqueMode: UniqueMode
+      flavorUnavailable?: boolean  // Spec 142: flavor: term present but flavor-index not loaded
       breakdown: BreakdownNode
       histograms: Histograms
       // ... pinnedBreakdown, pinnedIndicesCount, indicesIncludingExtras, etc.

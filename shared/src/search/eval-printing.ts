@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
+import type { FlavorTagData } from "../data";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
@@ -70,7 +71,7 @@ const KNOWN_LANGUAGES = new Set([
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
-  "game", "legal", "banned", "restricted", "in", "atag",
+  "game", "legal", "banned", "restricted", "in", "atag", "flavor",
 ]);
 
 export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
@@ -109,6 +110,7 @@ export function evalPrintingField(
   buf: Uint8Array,
   cardIndex?: CardIndex,
   context?: ResolutionContext,
+  flavorIndex?: FlavorTagData | null,
 ): string | null {
   const n = pIdx.printingCount;
   const valLower = val.toLowerCase();
@@ -321,8 +323,63 @@ export function evalPrintingField(
       }
       break;
     }
+    case "flavor": {
+      if (op !== ":" && op !== "=") {
+        return `flavor: does not support operator "${op}"`;
+      }
+      if (!flavorIndex) return "flavor index not loaded";
+      const normVal = val.toLowerCase().trim().replace(/\s+/g, " ");
+      if (normVal === "") {
+        for (const key in flavorIndex) {
+          const arr = flavorIndex[key]!;
+          for (let i = 1; i < arr.length; i += 2) {
+            const pi = arr[i]!;
+            if (pi < n) buf[pi] = 1;
+          }
+        }
+      } else {
+        for (const key in flavorIndex) {
+          if (!key.includes(normVal)) continue;
+          const arr = flavorIndex[key]!;
+          for (let i = 0; i < arr.length; i += 2) {
+            const pi = arr[i + 1]!;
+            if (pi < n) buf[pi] = 1;
+          }
+        }
+      }
+      break;
+    }
     default:
       return `unknown printing field "${canonical}"`;
+  }
+  return null;
+}
+
+/**
+ * Evaluate flavor regex in printing domain. Spec 142.
+ * Returns error string or null on success.
+ */
+export function evalFlavorRegex(
+  pattern: string,
+  flavorIndex: FlavorTagData | null,
+  pIdx: PrintingIndex,
+  buf: Uint8Array,
+): string | null {
+  if (!flavorIndex) return "flavor index not loaded";
+  let re: RegExp;
+  try {
+    re = new RegExp(pattern, "i");
+  } catch {
+    return "invalid regex";
+  }
+  const n = pIdx.printingCount;
+  for (const key in flavorIndex) {
+    if (!re.test(key)) continue;
+    const arr = flavorIndex[key]!;
+    for (let i = 0; i < arr.length; i += 2) {
+      const pi = arr[i + 1]!;
+      if (pi < n) buf[pi] = 1;
+    }
   }
   return null;
 }

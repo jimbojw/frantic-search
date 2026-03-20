@@ -1,0 +1,23 @@
+---
+title: flavor
+---
+
+# flavor
+
+Flavor text printed on the card. Substring match (literal) or regex match.
+
+**Canonical:** `flavor`  
+**Aliases:** `ft`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (case-insensitive) | `q=flavor:mishra` |
+| `=` | Substring (case-insensitive) | `q=ft:"draw a card"` |
+| Regex | Pattern match on flavor text | `q=flavor:/orc/` |
+
+## Allowed values
+
+Literal text (substring) or regex pattern in `/.../`. Quotes preserve spaces and punctuation: `q=ft:"draw a card"`. Empty value matches all printings that have flavor text. When the flavor index is not yet loaded, the evaluator flags `flavorUnavailable` and matches nothing.

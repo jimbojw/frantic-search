@@ -143,6 +143,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
       uniqueMode: pinnedEval.uniqueMode,
       includeExtras: pinnedEval.includeExtras,
+      ...(pinnedEval.flavorUnavailable && { flavorUnavailable: true }),
     }
     return result
   }
@@ -156,6 +157,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let hasPrintingConditions = liveEval.hasPrintingConditions
   let uniqueMode = liveEval.uniqueMode
   let includeExtras = liveEval.includeExtras
+  let flavorUnavailable = liveEval.flavorUnavailable
   let liveSortBy = liveEval.sortBy
   let pinnedBreakdown: BreakdownNode | undefined
   let pinnedIndicesCount: number | undefined
@@ -190,6 +192,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
     uniqueMode = getUniqueModeFromQuery(`${msg.pinnedQuery} ${msg.query}`)
     includeExtras = includeExtras || pinnedEval.includeExtras
+    flavorUnavailable = flavorUnavailable || pinnedEval.flavorUnavailable || false
     if (!liveSortBy) liveSortBy = pinnedEval.sortBy
   } else {
     deduped = Array.from(liveEval.indices)
@@ -448,6 +451,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
     printingIndices, hasPrintingConditions, uniqueMode, includeExtras,
     effectiveBreakdown,
+    ...(flavorUnavailable && { flavorUnavailable: true }),
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
