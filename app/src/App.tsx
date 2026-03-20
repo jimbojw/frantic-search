@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup, onMount } from 'solid-js'
+import { Portal } from 'solid-js/web'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
@@ -1422,6 +1423,7 @@ function App() {
         </Show>
         <Show when={!showDualWield()}>
         <SearchProvider value={searchContextValue}>
+      <Portal mount={document.getElementById('app-header-slot')!}>
       <header class={`mx-auto max-w-4xl px-4 transition-all duration-200 ease-out pt-[max(1rem,env(safe-area-inset-top))] ${headerCollapsed() ? 'pb-4' : 'pb-8'}`}>
         {/* Persistent app bar (Spec 137) — always at top */}
         <div class={`flex h-11 items-center justify-between shrink-0 ${headerCollapsed() ? 'mb-2' : ''}`}>
@@ -1644,6 +1646,7 @@ function App() {
           </Show>
         </div>
       </header>
+      </Portal>
 
       <main class="mx-auto max-w-4xl px-4">
         <WorkerErrorBanner

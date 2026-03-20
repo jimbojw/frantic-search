@@ -4,10 +4,10 @@ import './analytics'
 import { render } from 'solid-js/web'
 import './index.css'
 import { injectEtchedNoiseTiles } from './noise-tile'
-import App from './App.tsx'
+import AppShell from './AppShell.tsx'
 
 injectEtchedNoiseTiles()
 
 const root = document.getElementById('root')
 
-render(() => <App />, root!)
+render(() => <AppShell />, root!)
