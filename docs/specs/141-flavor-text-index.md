@@ -30,14 +30,20 @@ Scryfall's `default_cards` bulk file (same as Spec 046). Per the [Scryfall Card 
 - **Card level:** `flavor_text` — "The flavor text, if any." (single-face cards)
 - **Card face:** `flavor_text` — "The flavor text printed on this face, if any." (multiface cards)
 
-For single-face cards, use `card.flavor_text` and `card.oracle_id` → canonical face index. For multiface cards, iterate `card_faces[]`; each face has `flavor_text` and `oracle_id` → canonical face index for that face.
+**Extraction by layout:**
+
+| Layout type | Source of `flavor_text` | Source of `oracle_id` |
+|-------------|-------------------------|------------------------|
+| Single-face | `card.flavor_text` | `card.oracle_id ?? card.card_faces?.[0]?.oracle_id` |
+| Multiface (including reversible_card) | `card_faces[i].flavor_text` | `card_faces[i].oracle_id` |
 
 ## Spec Updates
 
 | Spec | Update |
 |------|--------|
 | 003 | Document `flavor-index.json` in ETL output |
-| 045 | Add `flavor-index.json` to supplemental files list |
+| 024 | Add `flavor-ready` status (worker posts when flavor-index.json loaded) |
+| 045 | Add `flavor-index.json` to supplemental files list (same pattern as atags.json) |
 
 ## Technical Details
 
@@ -51,12 +57,12 @@ For single-face cards, use `card.flavor_text` and `card.oracle_id` → canonical
    - Single-face: one "face" with `card.flavor_text` and `card.oracle_id` (or `card_faces[0]` if present)
    - Multiface: iterate `card_faces[]`; each face has `flavor_text` and `oracle_id`
 2. For each face with non-empty `flavor_text`:
-   - Resolve `oracle_id` → canonical face index. The existing `oracle_id → canonical_face_ref` map (from `buildOracleIdMap` or equivalent) must include per-face `oracle_id`s for DFCs — Scryfall puts `oracle_id` on each `card_face`. Extend the map if it currently only covers the primary face.
+   - Resolve `oracle_id` → canonical face index. Scryfall puts `oracle_id` on each `card_face` for DFCs (each face has a distinct oracle_id). The existing `buildOracleIdMap` uses `oracle-cards.json` and only stores one oracle_id per card, so it misses back faces. Build a per-face map from `columns.json` instead: iterate `columns.oracle_ids` and for each non-empty `oracle_ids[i]`, map it to face row index `i`. This yields oracle_id → face index for every face, including DFC backs.
    - Use the raw flavor text as the key (no normalization — preserve Scryfall's exact string for display use)
    - For each finish row emitted for this printing, append `(canonical_face_index, printing_row_index)` to the strided array for that key
 3. If a face has no flavor text, omit (no entry for that face)
 
-**Output:** Write to `data/dist/flavor-index.json` — a separate file, not bundled in `printings.json`. Same `process` command; `processPrintings()` writes both `printings.json` and `flavor-index.json`.
+**Output:** Write to `data/dist/flavor-index.json` — a separate file, not bundled in `printings.json`. Same `process` command; `processPrintings()` writes both `printings.json` and `flavor-index.json`. With `--verbose`, log flavor index stats (unique keys, total pairs, file size).
 
 ### 2. Data model
 
@@ -100,10 +106,12 @@ Same strided layout as `atags.json` (Spec 092 § "atags.json — Illustration ta
 ### 4. App data loading (Spec 045 pattern)
 
 1. **Vite plugin:** Extend `serveData` to serve and copy `flavor-index.json` (dev middleware + `closeBundle` build hook + `__FLAVOR_INDEX_FILENAME__` define).
-2. **Worker:** Fetch `flavor-index.json` after `printings.json` is ready (flavor depends on printing row indices). Build normalized search index from raw keys (lowercase, trim, collapse whitespace; merge pairs when multiple raw keys normalize to same). Store normalized index in `tagDataRef.flavor` for evaluator. Post `flavor-ready` when loaded. Raw data remains available for a future spec to build (face, printing) → flavor text for card detail display.
+2. **Worker:** Fetch `flavor-index.json` after `printings.json` is ready (flavor depends on printing row indices). Build normalized search index from raw keys: lowercase, trim, collapse internal whitespace to single space. When multiple raw keys normalize to the same string, merge their strided arrays (deduplicate pairs, sort by `(face, printing)`). Store normalized index in `tagDataRef.flavor` for evaluator. Post `flavor-ready` when loaded. Raw data remains available for a future spec to build (face, printing) → flavor text for card detail display.
 3. **PWA cache:** Add runtime cache rule for `flavor-index.[hash].json`.
 
 **Loading sequence:** Same as `atags.json` — flavor loads after printings. Users who never search flavor avoid the ~1 MB transfer; `flavor:` queries become available when the file arrives.
+
+**Graceful degradation:** When `processPrintings` skips (e.g. missing `default-cards.json`), no `flavor-index.json` is produced. When the file is missing or fetch fails, the worker leaves `tagDataRef.flavor` null; the evaluator flags `flavorUnavailable` for `flavor:` queries (Spec 142).
 
 ### 5. Comparison with atags.json
 
@@ -142,7 +150,7 @@ export const FLAVOR_INDEX_PATH = path.join(DIST_DIR, "flavor-index.json");
 | `app/src/worker.ts` | Fetch flavor-index.json after printings; store in tagDataRef; post `flavor-ready` |
 | `app/src/sw.ts` | Add PWA cache rule for flavor-index.[hash].json |
 | `docs/specs/003-etl-process.md` | Document flavor-index.json in ETL output |
-| `docs/specs/045-split-data-files.md` | Add flavor-index.json to supplemental files (if applicable) |
+| `docs/specs/045-split-data-files.md` | Add flavor-index.json to supplemental files list |
 
 ## Follow-up
 
@@ -159,4 +167,6 @@ See **Spec 142** for query engine support (`flavor:`, `ft:`). The evaluator iter
 7. Vite plugin serves and copies flavor-index.json in dev and build
 8. Worker fetches flavor-index.json after printings, stores in tagDataRef, posts `flavor-ready`
 9. PWA cache includes flavor-index.json
-10. Typecheck and existing tests pass
+10. When `default-cards.json` is missing, `processPrintings` skips and no flavor-index.json is produced
+11. `--verbose` logs flavor index stats (unique keys, total pairs, file size)
+12. Typecheck and existing tests pass
