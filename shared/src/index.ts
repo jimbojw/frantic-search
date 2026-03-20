@@ -30,6 +30,7 @@ export type {
   SetLookupEntry,
   OracleTagData,
   IllustrationTagData,
+  FlavorTagData,
   KeywordData,
 } from "./data";
 

@@ -31,6 +31,10 @@ registerRoute(
   new CacheFirst({ cacheName: 'card-data' })
 )
 registerRoute(
+  ({ url }) => /flavor-index\.[a-f0-9]+\.json$/.test(url.pathname),
+  new CacheFirst({ cacheName: 'card-data' })
+)
+registerRoute(
   ({ url }) => url.origin === 'https://cards.scryfall.io',
   new StaleWhileRevalidate({ cacheName: 'card-art' })
 )

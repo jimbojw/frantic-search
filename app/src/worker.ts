@@ -6,6 +6,7 @@ import type {
   FromWorker,
   OracleTagData,
   IllustrationTagData,
+  FlavorTagData,
 } from '@frantic-search/shared'
 import {
   CardIndex,
@@ -32,6 +33,7 @@ declare const __COLUMNS_FILESIZE__: number
 declare const __PRINTINGS_FILENAME__: string
 declare const __OTAGS_FILENAME__: string
 declare const __ATAGS_FILENAME__: string
+declare const __FLAVOR_INDEX_FILENAME__: string
 
 function post(msg: FromWorker, transfer?: Transferable[]): void {
   self.postMessage(msg, transfer ?? [])
@@ -97,6 +99,62 @@ async function fetchAtags(): Promise<IllustrationTagData | null> {
   } catch {
     return null
   }
+}
+
+async function fetchFlavorIndex(): Promise<FlavorTagData | null> {
+  try {
+    const url = new URL(/* @vite-ignore */ `../${__FLAVOR_INDEX_FILENAME__}`, import.meta.url)
+    const response = await fetch(url)
+    if (!response.ok) return null
+    return (await response.json()) as FlavorTagData
+  } catch {
+    return null
+  }
+}
+
+function normalizeFlavorKey(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+/** Build normalized search index from raw flavor keys. Merges keys that normalize to same string. */
+function buildNormalizedFlavorIndex(raw: FlavorTagData): FlavorTagData {
+  const byNormalized = new Map<string, Array<[number, number]>>()
+  for (const [key, arr] of Object.entries(raw)) {
+    const norm = normalizeFlavorKey(key)
+    if (!norm) continue
+    const pairs: Array<[number, number]> = []
+    for (let i = 0; i < arr.length; i += 2) {
+      pairs.push([arr[i], arr[i + 1]])
+    }
+    const existing = byNormalized.get(norm)
+    if (existing) {
+      existing.push(...pairs)
+    } else {
+      byNormalized.set(norm, pairs)
+    }
+  }
+  const result: FlavorTagData = {}
+  for (const [norm, pairs] of byNormalized) {
+    const seen = new Set<string>()
+    const unique: Array<[number, number]> = []
+    for (const [f, p] of pairs) {
+      const k = `${f},${p}`
+      if (!seen.has(k)) {
+        seen.add(k)
+        unique.push([f, p])
+      }
+    }
+    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]))
+    const strided: number[] = []
+    for (const [f, p] of unique) {
+      strided.push(f, p)
+    }
+    result[norm] = strided
+  }
+  return result
 }
 
 /** Build reverse index: face index → otag labels. */
@@ -233,6 +291,7 @@ async function init(): Promise<void> {
   const tagDataRef = {
     oracle: null as OracleTagData | null,
     illustration: null as Map<string, Uint32Array> | null,
+    flavor: null as FlavorTagData | null,
   }
   const keywordsIndex = data.keywords_index ?? {}
   const keywordDataRef = { keywords: keywordsIndex }
@@ -310,6 +369,11 @@ async function init(): Promise<void> {
       tagDataRef.illustration = resolved
       printingToAtags = buildPrintingToAtags(resolved)
       post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
+    }
+    const flavorRaw = await fetchFlavorIndex()
+    if (flavorRaw) {
+      tagDataRef.flavor = buildNormalizedFlavorIndex(flavorRaw)
+      post({ type: 'status', status: 'flavor-ready' })
     }
   })
 

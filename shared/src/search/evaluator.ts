@@ -23,7 +23,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
     && PERCENTILE_RE.test(value);
 }
 import { parse } from "./parser";
-import type { OracleTagData, KeywordData } from "../data";
+import type { OracleTagData, FlavorTagData, KeywordData } from "../data";
 import { resolveForField } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
@@ -129,6 +129,7 @@ export type { GetMetadataIndex };
 export type TagDataRef = {
   oracle: OracleTagData | null;
   illustration: Map<string, Uint32Array> | null;
+  flavor: FlavorTagData | null;
 };
 
 export type KeywordDataRef = {

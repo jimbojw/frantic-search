@@ -561,6 +561,8 @@ function App() {
           setOracleTagLabels(msg.tagLabels)
         } else if (msg.status === 'atags-ready') {
           setIllustrationTagLabels(msg.tagLabels)
+        } else if (msg.status === 'flavor-ready') {
+          // Flavor index loaded; flavor: queries available (Spec 141)
         } else if (msg.status === 'printings-ready') {
           if (msg.printingsLoadDurationMs !== undefined) {
             capturePrintingsLoaded({ duration_ms: msg.printingsLoadDurationMs })

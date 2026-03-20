@@ -122,8 +122,10 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 | Path                                | Contents                        |
 |-------------------------------------|---------------------------------|
 | `data/dist/columns.json`            | Columnar JSON (`ColumnarData`)  |
+| `data/dist/printings.json`         | Printing-level data (Spec 046)  |
+| `data/dist/flavor-index.json`      | Flavor text inverted index (Spec 141) |
 
-The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` from `default-cards.json`.
+The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` and `data/dist/flavor-index.json` from `default-cards.json`.
 
 ### Keywords (`keywords_index` in columns.json)
 
@@ -183,3 +185,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   built during processCards from the `keywords` array in oracle-cards.json.
   Bundled with columns.json as core face-level data. Enables `kw:` and `keyword:`
   query support in later phases.
+- 2026-03-20: Added `flavor-index.json` (Spec 141). Strided inverted index of
+  raw flavor text → (canonical_face_index, printing_row_index) pairs. Produced
+  by processPrintings() alongside printings.json. Supplemental file loaded by
+  the worker after printings for `flavor:` query support (Spec 142).

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
@@ -97,8 +97,8 @@ export type RunSearchParams = {
   index: CardIndex
   printingIndex: PrintingIndex | null
   sessionSalt: number
-  /** Tag data for otag:/atag: (Spec 092); evaluator integration is future spec. */
-  tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null }
+  /** Tag data for otag:/atag:/flavor: (Spec 092, 141). */
+  tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null }
 }
 
 export type SearchResult = Extract<FromWorker, { type: 'result' }>

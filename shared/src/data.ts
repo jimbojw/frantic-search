@@ -81,5 +81,12 @@ export type OracleTagData = Record<string, number[]>;
  */
 export type IllustrationTagData = Record<string, number[]>;
 
+/**
+ * Flavor text inverted index: raw flavor text → strided (face, printing) pairs.
+ * Same strided layout as atags.json (Spec 092): even indices = canonical_face_index,
+ * odd indices = printing_row_index. Loaded from flavor-index.json. Spec 141.
+ */
+export type FlavorTagData = Record<string, number[]>;
+
 /** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. */
 export type KeywordData = Record<string, number[]>;

@@ -1,6 +1,6 @@
 # Spec 141: Flavor Text Inverted Index (ETL + Data Model)
 
-**Status:** Draft
+**Status:** Implemented 
 
 **GitHub Issue:** [#138](https://github.com/jimbojw/frantic-search/issues/138)
 

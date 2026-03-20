@@ -5,6 +5,7 @@ import {
   ORACLE_CARDS_PATH,
   COLUMNS_PATH,
   PRINTINGS_PATH,
+  FLAVOR_INDEX_PATH,
   TCGCSV_PRODUCT_MAP_PATH,
   ensureDistDir,
 } from "./paths";
@@ -31,6 +32,7 @@ interface DefaultCardFace {
   name?: string;
   printed_name?: string;
   flavor_name?: string;
+  flavor_text?: string;
 }
 
 interface DefaultCard {
@@ -41,6 +43,7 @@ interface DefaultCard {
   name?: string;
   printed_name?: string;
   flavor_name?: string;
+  flavor_text?: string;
   layout?: string;
   set?: string;
   set_name?: string;
@@ -255,6 +258,28 @@ function buildCanonicalScryfallIdMap(): Map<number, string> {
   return map;
 }
 
+/** Build oracle_id → canonical face index from columns (per-face; includes DFC backs). Spec 141. */
+function buildOracleIdToFaceMapFromColumns(verbose: boolean): Map<string, number> {
+  log("Building oracle_id → canonical face map from columns (for flavor index)…", verbose);
+  const columnsRaw = fs.readFileSync(COLUMNS_PATH, "utf-8");
+  const columns: ColumnarData = JSON.parse(columnsRaw);
+  const oracleIds = columns.oracle_ids;
+  if (!oracleIds || oracleIds.length !== columns.canonical_face.length) {
+    throw new Error(
+      "columns.json must have oracle_ids (run processCards first); oracle_ids length must match canonical_face",
+    );
+  }
+  const map = new Map<string, number>();
+  for (let i = 0; i < oracleIds.length; i++) {
+    const oid = oracleIds[i];
+    if (oid && !map.has(oid)) {
+      map.set(oid, columns.canonical_face[i]);
+    }
+  }
+  log(`Mapped ${map.size} oracle_ids to canonical face indices (per-face)`, verbose);
+  return map;
+}
+
 /** Front-face illustration_id (multiface uses card_faces[0]). */
 function getFrontIllustrationId(card: DefaultCard): string | undefined {
   return card.card_faces?.[0]?.illustration_id ?? card.illustration_id;
@@ -278,6 +303,7 @@ export function processPrintings(verbose: boolean): void {
 
   const oracleIdMap = buildOracleIdMap(verbose);
   const canonicalScryfallIdMap = buildCanonicalScryfallIdMap();
+  const oracleIdToFaceMap = buildOracleIdToFaceMapFromColumns(verbose);
 
   log(`Reading ${DEFAULT_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
@@ -371,6 +397,7 @@ export function processPrintings(verbose: boolean): void {
   let dropped = 0;
   let totalEntries = 0;
   const altNamesIndex: Record<string, number[]> = {};
+  const flavorIndex: Record<string, Array<[number, number]>> = {};
 
   for (const card of defaultCards) {
     // reversible_card layout: Scryfall puts oracle_id on card_faces[0], not top-level (Issue #98)
@@ -474,6 +501,32 @@ export function processPrintings(verbose: boolean): void {
         }
       }
     }
+
+    // Flavor text inverted index (Spec 141): raw flavor text → (canonical_face, printing_row) pairs
+    const facesWithFlavor: Array<{ flavorText: string; oracleId: string }> = [];
+    if (card.card_faces?.length) {
+      for (const face of card.card_faces) {
+        const ft = face.flavor_text?.trim();
+        const oid = face.oracle_id ?? "";
+        if (ft && oid) facesWithFlavor.push({ flavorText: ft, oracleId: oid });
+      }
+    } else {
+      const ft = card.flavor_text?.trim();
+      const oid = card.oracle_id ?? card.card_faces?.[0]?.oracle_id ?? "";
+      if (ft && oid) facesWithFlavor.push({ flavorText: ft, oracleId: oid });
+    }
+    for (const { flavorText, oracleId } of facesWithFlavor) {
+      const canonicalFace = oracleIdToFaceMap.get(oracleId);
+      if (canonicalFace === undefined) continue;
+      let pairs = flavorIndex[flavorText];
+      if (!pairs) {
+        pairs = [];
+        flavorIndex[flavorText] = pairs;
+      }
+      for (let pi = printingRowStart; pi < totalEntries; pi++) {
+        pairs.push([canonicalFace, pi]);
+      }
+    }
   }
 
   // Sort each alternate name's printing row array (Spec 111)
@@ -483,6 +536,37 @@ export function processPrintings(verbose: boolean): void {
   if (Object.keys(altNamesIndex).length > 0) {
     data.alternate_names_index = altNamesIndex;
   }
+
+  // Flavor index: dedupe, sort by (face, printing), write strided format (Spec 141)
+  const flavorIndexStrided: Record<string, number[]> = {};
+  let flavorTotalPairs = 0;
+  for (const [key, pairs] of Object.entries(flavorIndex)) {
+    const seen = new Set<string>();
+    const unique: Array<[number, number]> = [];
+    for (const [f, p] of pairs) {
+      const k = `${f},${p}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        unique.push([f, p]);
+      }
+    }
+    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]));
+    const strided: number[] = [];
+    for (const [f, p] of unique) {
+      strided.push(f, p);
+    }
+    flavorIndexStrided[key] = strided;
+    flavorTotalPairs += strided.length / 2;
+  }
+  const flavorIndexJson = JSON.stringify(flavorIndexStrided) + "\n";
+  ensureDistDir();
+  fs.writeFileSync(FLAVOR_INDEX_PATH, flavorIndexJson);
+  const flavorIndexBytes = Buffer.byteLength(flavorIndexJson, "utf8");
+  log(`Wrote ${FLAVOR_INDEX_PATH}`, true);
+  log(
+    `Flavor index: ${Object.keys(flavorIndexStrided).length} unique keys, ${flavorTotalPairs} pairs, ${(flavorIndexBytes / 1024).toFixed(1)} KB`,
+    verbose,
+  );
 
   data.set_lookup = setEncoder.lookup();
 

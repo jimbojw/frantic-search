@@ -23,11 +23,13 @@ function serveData(): Plugin {
   const printingsFile = path.resolve(__dirname, '..', 'data', 'dist', 'printings.json')
   const otagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'otags.json')
   const atagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'atags.json')
+  const flavorFile = path.resolve(__dirname, '..', 'data', 'dist', 'flavor-index.json')
   let columnsFilename = 'columns.json'
   let thumbsFilename = 'thumb-hashes.json'
   let printingsFilename = 'printings.json'
   let otagsFilename = 'otags.json'
   let atagsFilename = 'atags.json'
+  let flavorFilename = 'flavor-index.json'
 
   return {
     name: 'serve-data',
@@ -49,6 +51,9 @@ function serveData(): Plugin {
         if (fs.existsSync(atagsFile)) {
           atagsFilename = `atags.${contentHash(atagsFile)}.json`
         }
+        if (fs.existsSync(flavorFile)) {
+          flavorFilename = `flavor-index.${contentHash(flavorFile)}.json`
+        }
       }
       const columnsSize = fs.existsSync(columnsFile) ? fs.statSync(columnsFile).size : 0
       return {
@@ -59,6 +64,7 @@ function serveData(): Plugin {
           __PRINTINGS_FILENAME__: JSON.stringify(printingsFilename),
           __OTAGS_FILENAME__: JSON.stringify(otagsFilename),
           __ATAGS_FILENAME__: JSON.stringify(atagsFilename),
+          __FLAVOR_INDEX_FILENAME__: JSON.stringify(flavorFilename),
         },
       }
     },
@@ -70,6 +76,7 @@ function serveData(): Plugin {
         ['/printings.json', printingsFile],
         ['/otags.json', otagsFile],
         ['/atags.json', atagsFile],
+        ['/flavor-index.json', flavorFile],
       ] as const) {
         server.middlewares.use(route, (_req, res) => {
           if (!fs.existsSync(file)) {
@@ -104,6 +111,10 @@ function serveData(): Plugin {
       if (fs.existsSync(atagsFile)) {
         fs.copyFileSync(atagsFile, path.join(outDir, atagsFilename))
         fs.copyFileSync(atagsFile, path.join(outDir, 'atags.json'))
+      }
+      if (fs.existsSync(flavorFile)) {
+        fs.copyFileSync(flavorFile, path.join(outDir, flavorFilename))
+        fs.copyFileSync(flavorFile, path.join(outDir, 'flavor-index.json'))
       }
     },
   }
