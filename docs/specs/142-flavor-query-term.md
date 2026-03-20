@@ -17,7 +17,7 @@ Scryfall supports:
 - Quotes for text with spaces or punctuation: `ft:"draw a card"`
 - Regex with slashes: `ft:/\b(orc|orcs)\b/` (see [Scryfall Regular Expressions](https://scryfall.com/docs/regular-expressions))
 
-Spec 141 provides the inverted index (`flavor_text_index`) in printings.json. This spec adds the query engine support.
+Spec 141 provides the strided inverted index (`flavor_text_index`) in printings.json — `(canonical_face_index, printing_row_index)` pairs, same layout as `atags.json` (Spec 092). This spec adds the query engine support.
 
 ## Domain
 
@@ -58,8 +58,8 @@ Add a `flavor` case to `evalPrintingField()`:
 
 - **Operators:** `:` and `=` only (substring semantics; Scryfall parity)
 - **Value normalization:** Lowercase, trim, collapse internal whitespace to single space (same as index keys in Spec 141)
-- **Algorithm:** Iterate over `flavor_text_index` keys. For each key where `key.includes(normalizedValue)`, set `buf[pi] = 1` for every printing index `pi` in that key's array
-- **Empty value:** Match all printings that have flavor text (union of all index arrays). Or: if empty value, fill canonical (match all). Per Spec 002 § "Error Recovery", trailing operator with no value is often neutral. For flavor, matching "all printings with flavor text" is a reasonable interpretation; alternatively match nothing. **Recommendation:** Empty value matches all printings that have flavor text (union of all arrays).
+- **Algorithm:** Iterate over `flavor_text_index` keys. For each key where `key.includes(normalizedValue)`, iterate the strided array in pairs (stride 2): `for (let i = 0; i < arr.length; i += 2)` — odd-indexed elements are printing row indices; set `buf[arr[i + 1]] = 1` for each pair.
+- **Empty value:** Match all printings that have flavor text (union of all strided arrays — collect printing indices from odd positions). Per Spec 002 § "Error Recovery", trailing operator with no value is often neutral. **Recommendation:** Empty value matches all printings that have flavor text.
 - **PrintingIndex null:** Return error `"flavor requires printing data"` or match nothing. Per Spec 047, printing-domain fields match nothing when printings not loaded. Use same pattern: match nothing, evaluator flags `printingsUnavailable` if flavor was present.
 
 ### 4. Regex evaluation — `REGEX_FIELD` for flavor
@@ -74,7 +74,7 @@ The `REGEX_FIELD` case currently calls `evalLeafRegex(ast, this.index, buf)` whi
 
 **Algorithm for flavor regex:**
 - Iterate over `flavor_text_index` keys
-- For each key, `if (new RegExp(pattern, "i").test(key))` then set `buf[pi] = 1` for every `pi` in that key's array
+- For each key, `if (new RegExp(pattern, "i").test(key))` then iterate the strided array (stride 2); set `buf[arr[i + 1]] = 1` for each printing row index (odd positions)
 - Invalid regex: catch, return error `"invalid regex"`
 - Promote printing buffer to face buffer before returning
 
