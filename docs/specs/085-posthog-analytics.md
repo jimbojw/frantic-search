@@ -72,7 +72,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 
 | Event                     | Properties                                                              |
 |---------------------------|-------------------------------------------------------------------------|
-| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number }`      |
+| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user" }` (Spec 144) |
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
 

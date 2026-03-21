@@ -5,15 +5,26 @@ const DEBOUNCE_MS = 750
 
 export function useSearchCapture() {
   let searchCaptureTimer: ReturnType<typeof setTimeout> | null = null
-  let pendingSearchCapture: { query: string; used_extension: boolean; results_count: number } | null = null
+  let pendingSearchCapture: {
+    query: string
+    used_extension: boolean
+    results_count: number
+    triggered_by: 'url' | 'user'
+  } | null = null
 
   function scheduleSearchCapture(
     query: string,
     usedExtension: boolean,
-    resultsCount: number
+    resultsCount: number,
+    triggeredBy: 'url' | 'user'
   ): void {
     if (!query.trim()) return
-    pendingSearchCapture = { query: query.trim(), used_extension: usedExtension, results_count: resultsCount }
+    pendingSearchCapture = {
+      query: query.trim(),
+      used_extension: usedExtension,
+      results_count: resultsCount,
+      triggered_by: triggeredBy,
+    }
     if (searchCaptureTimer) clearTimeout(searchCaptureTimer)
     searchCaptureTimer = setTimeout(() => {
       if (pendingSearchCapture) {

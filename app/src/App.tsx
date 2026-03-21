@@ -669,7 +669,13 @@ function App() {
             const resultsCount = msg.printingIndices && msg.printingIndices.length > 0 && (viewMode() === 'images' || viewMode() === 'full')
               ? msg.printingIndices.length
               : msg.indices.length
-            scheduleSearchCapture(eq, usedExtension, resultsCount)
+            const triggeredBy =
+              hadQueryInUrlOnInit &&
+              !searchResolvedFromUrlFired &&
+              query().trim() === initialQueries.left.trim()
+                ? 'url'
+                : 'user'
+            scheduleSearchCapture(eq, usedExtension, resultsCount, triggeredBy)
             if (hadQueryInUrlOnInit && !searchResolvedFromUrlFired && query().trim() === initialQueries.left.trim()) {
               searchResolvedFromUrlFired = true
               captureSearchResolvedFromUrl({

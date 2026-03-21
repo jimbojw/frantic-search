@@ -22,6 +22,7 @@ export function captureSearchExecuted(params: {
   query: string
   used_extension: boolean
   results_count: number
+  triggered_by: 'url' | 'user'
 }): void {
   posthog.capture('search_executed', params)
 }
