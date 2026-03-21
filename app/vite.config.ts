@@ -24,6 +24,8 @@ function serveData(): Plugin {
   const otagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'otags.json')
   const atagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'atags.json')
   const flavorFile = path.resolve(__dirname, '..', 'data', 'dist', 'flavor-index.json')
+  const outDir = path.resolve(__dirname, 'dist')
+  let workerFileName: string | null = null
   let columnsFilename = 'columns.json'
   let thumbsFilename = 'thumb-hashes.json'
   let printingsFilename = 'printings.json'
@@ -90,8 +92,78 @@ function serveData(): Plugin {
       }
     },
 
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        const bundle = ctx.bundle as Record<string, { type: string; fileName: string; name?: string }> | undefined
+        if (!bundle) return
+
+        type HeadTag = { tag: string; attrs?: Record<string, string | boolean>; injectTo?: 'head' | 'body' | 'head-prepend' | 'body-prepend' }
+        const tags: HeadTag[] = []
+
+        const workerChunk = Object.values(bundle).find(
+          (c) =>
+            c.type === 'chunk' &&
+            (c.fileName.toLowerCase().includes('worker') || (c.name && c.name.toLowerCase().includes('worker'))),
+        )
+        if (workerChunk) {
+          const href = workerChunk.fileName.startsWith('/') ? workerChunk.fileName : `./${workerChunk.fileName}`
+          tags.push({ tag: 'link', attrs: { rel: 'modulepreload', href }, injectTo: 'head-prepend' })
+          tags.push({ tag: 'link', attrs: { rel: 'preload', href, as: 'worker' }, injectTo: 'head-prepend' })
+        }
+
+        for (const [filename, exists] of [
+          [columnsFilename, fs.existsSync(columnsFile)],
+          [printingsFilename, fs.existsSync(printingsFile)],
+          [otagsFilename, fs.existsSync(otagsFile)],
+          [atagsFilename, fs.existsSync(atagsFile)],
+          [flavorFilename, fs.existsSync(flavorFile)],
+        ] as const) {
+          if (exists) {
+            const href = `./${filename}`
+            tags.push({
+              tag: 'link',
+              attrs: { rel: 'preload', href, as: 'fetch', crossorigin: 'anonymous' },
+              injectTo: 'head-prepend',
+            })
+          }
+        }
+
+        return tags
+      },
+    },
+
+    generateBundle(_outputOptions, bundle) {
+      const workerEntry = Object.values(bundle).find(
+        (c) => c.type === 'chunk' && 'fileName' in c && String(c.fileName).toLowerCase().includes('worker'),
+      ) as { fileName: string } | undefined
+      if (workerEntry) workerFileName = workerEntry.fileName
+    },
+
     closeBundle() {
-      const outDir = path.resolve(__dirname, 'dist')
+      if (!workerFileName && fs.existsSync(outDir)) {
+        const assetsDir = path.join(outDir, 'assets')
+        if (fs.existsSync(assetsDir)) {
+          const match = fs.readdirSync(assetsDir).find((n) => n.toLowerCase().startsWith('worker') && n.endsWith('.js'))
+          if (match) workerFileName = `assets/${match}`
+        }
+      }
+      if (workerFileName) {
+        const indexPath = path.join(outDir, 'index.html')
+        if (fs.existsSync(indexPath)) {
+          const href = workerFileName.startsWith('/') ? workerFileName : `./${workerFileName}`
+          const workerLinks = [
+            `<link rel="modulepreload" href="${href}">`,
+            `<link rel="preload" href="${href}" as="worker">`,
+          ].join('\n    ')
+          const html = fs.readFileSync(indexPath, 'utf-8')
+          const patched = html.replace(
+            /(<head[^>]*>)/,
+            `$1\n    ${workerLinks}`,
+          )
+          if (patched !== html) fs.writeFileSync(indexPath, patched)
+        }
+      }
       if (fs.existsSync(columnsFile)) {
         fs.copyFileSync(columnsFile, path.join(outDir, columnsFilename))
         fs.copyFileSync(columnsFile, path.join(outDir, 'columns.json'))

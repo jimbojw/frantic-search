@@ -6,6 +6,8 @@
 
 **Extends:** Spec 137 (adds shell phase — bar is first a placeholder, then full bar when App loads)
 
+**Extended by Spec 145:** Browser hints in the app shell HTML front-load asset fetching for first-visit performance.
+
 ## Goal
 
 Show a minimal app shell (header bar) immediately while the rest of the app loads asynchronously, reducing perceived load time and mobile drop-off.
