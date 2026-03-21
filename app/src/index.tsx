@@ -2,7 +2,6 @@
 /* @refresh reload */
 import './analytics'
 import { render } from 'solid-js/web'
-import './index.css'
 import { injectEtchedNoiseTiles } from './noise-tile'
 import AppShell from './AppShell.tsx'
 
