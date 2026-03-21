@@ -101,12 +101,25 @@ button, [role="button"] {
   }
 }
 
+/* Hero loading fallback: gentle opacity pulse (Spec 143) */
+@keyframes loading-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.animate-loading-pulse {
+  animation: loading-pulse 2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .foil-overlay::after {
     animation: none;
   }
   .etched-overlay::before,
   .etched-overlay::after {
+    animation: none;
+  }
+  .animate-loading-pulse {
     animation: none;
   }
 }

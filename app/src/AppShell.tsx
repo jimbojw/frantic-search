@@ -5,6 +5,7 @@
  */
 import { Suspense, lazy, onMount } from 'solid-js'
 import { useViewportWide } from './useViewportWide'
+import { HEADER_ART_BLUR } from './hero-constants'
 
 const App = lazy(() => import('./App'))
 
@@ -59,8 +60,16 @@ function MinimalBar() {
 
 function LoadingFallback() {
   return (
-    <div class="mx-auto max-w-4xl px-4 py-8 animate-pulse text-gray-500 dark:text-gray-400 text-center">
-      Loading search…
+    <div class="mt-16">
+      <div
+        class="h-14 w-full overflow-hidden rounded-xl mb-4 shadow-md bg-cover bg-[center_20%] animate-loading-pulse"
+        style={{ "background-image": `url("${HEADER_ART_BLUR}")` }}
+      />
+      <div class="overflow-hidden max-h-80">
+        <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
+          Untap, upkeep, draw…
+        </p>
+      </div>
     </div>
   )
 }
