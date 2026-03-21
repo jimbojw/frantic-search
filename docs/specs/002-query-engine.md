@@ -483,3 +483,7 @@ test("trailing operator", () => {
   Numeric detection (`/^\d+$/`) runs before the existing color-name/letter
   pipeline. The `:` operator means equality for numeric values (matching
   Scryfall). See Spec 055 for full design and test strategy.
+- 2026-03-21: Scryfall `not:` convenience field. `not:x` is equivalent to
+  `-is:x`; `-not:x` is equivalent to `is:x`. Uses the same keywords as `is:`
+  (face-domain and printing-domain). Canonicalizes to `not:` for Scryfall
+  outlinks (Scryfall supports both).

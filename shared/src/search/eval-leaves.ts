@@ -28,6 +28,7 @@ export const FIELD_ALIASES: Record<string, string> = {
   banned: "banned",
   restricted: "restricted",
   is: "is",
+  not: "not",
   set: "set", s: "set", e: "set", edition: "set",
   rarity: "rarity", r: "rarity",
   usd: "usd", $: "usd",
@@ -457,6 +458,15 @@ export function evalLeafField(
       const status = evalIsKeyword(isVal.toLowerCase(), index, buf, n);
       if (status === "unsupported") return `unsupported keyword "${node.value}"`;
       if (status === "unknown") return `unknown keyword "${node.value}"`;
+      break;
+    }
+    case "not": {
+      if (op !== ":" && op !== "=") break;
+      const isVal = resolveForField("is", val, context);
+      const status = evalIsKeyword(isVal.toLowerCase(), index, buf, n);
+      if (status === "unsupported") return `unsupported keyword "${node.value}"`;
+      if (status === "unknown") return `unknown keyword "${node.value}"`;
+      for (let i = 0; i < n; i++) if (cf[i] === i) buf[i] ^= 1;
       break;
     }
     default:

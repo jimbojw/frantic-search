@@ -411,6 +411,16 @@ describe("is: operator", () => {
     expect(indices).not.toContain(26); // Incubation (split)
   });
 
+  test("not:dfc is same as -is:dfc (Scryfall convenience)", () => {
+    expect(isMatchCount("not:dfc")).toBe(isMatchCount("-is:dfc"));
+    expect(isMatchIndices("not:dfc")).toEqual(isMatchIndices("-is:dfc"));
+  });
+
+  test("-not:dfc is same as is:dfc (Scryfall convenience)", () => {
+    expect(isMatchCount("-not:dfc")).toBe(isMatchCount("is:dfc"));
+    expect(isMatchIndices("-not:dfc")).toEqual(isMatchIndices("is:dfc"));
+  });
+
   test("is:meld matches meld layout", () => {
     const indices = isMatchIndices("is:meld");
     expect(indices).toEqual([23, 43]); // Gisela (meld part), Brisela (meld result)

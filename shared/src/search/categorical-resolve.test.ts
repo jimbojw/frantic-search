@@ -100,6 +100,11 @@ describe("resolveForField", () => {
       expect(resolveForField("is", "per")).toBe("permanent");
       expect(resolveForField("is", "commander")).toBe("commander");
     });
+
+    it("resolves not keywords (same set as is)", () => {
+      expect(resolveForField("not", "per")).toBe("permanent");
+      expect(resolveForField("not", "commander")).toBe("commander");
+    });
   });
 
   describe("runtime fields", () => {

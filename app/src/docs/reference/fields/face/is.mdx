@@ -7,7 +7,7 @@ title: is
 Mechanics, layouts, roles, and finish (e.g. commander, dfc, foil).
 
 **Canonical:** `is`  
-**Aliases:** —  
+**Aliases:** `not`  
 **Domain:** Face
 
 ## Operators
@@ -16,6 +16,15 @@ Mechanics, layouts, roles, and finish (e.g. commander, dfc, foil).
 |----------|----------|---------|
 | `:` | Has property | `q=is:commander` |
 | `=` | Has property | `q=is:dfc` |
+
+## Convenience: not:
+
+The `not:` field is a Scryfall convenience for `-is:`. It uses the same keywords and operators.
+
+| Query | Equivalent to |
+|-------|---------------|
+| `q=not:dfc` | `q=-is:dfc` |
+| `q=-not:dfc` | `q=is:dfc` |
 
 ## Allowed values
 

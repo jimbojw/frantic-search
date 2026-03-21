@@ -190,3 +190,7 @@ The `creatureland`/`manland` set (48 cards) grows whenever a new creature land i
 6. Pathway DFCs match `is:pathway` regardless of which face name is checked.
 7. Negation (`-is:bikeland`) works correctly via the existing NOT node mechanism.
 8. Compliance suite entries pass in local mode.
+
+### `not:` convenience field (2026-03-21)
+
+Scryfall supports `not:` as a convenience for `-is:`. Frantic Search implements the same: `not:x` ≡ `-is:x`, and `-not:x` ≡ `is:x`. Uses the same keyword set as `is:` for both face-domain and printing-domain evaluation.

@@ -274,6 +274,14 @@ describe("NOT with printing domain", () => {
     expect(cardCount("-is:foil")).toBe(2);
   });
 
+  test("not:foil is same as -is:foil (Scryfall convenience)", () => {
+    expect(cardCount("not:foil")).toBe(cardCount("-is:foil"));
+  });
+
+  test("-not:foil is same as is:foil (Scryfall convenience)", () => {
+    expect(cardCount("-not:foil")).toBe(cardCount("is:foil"));
+  });
+
   test("-rarity:rare matches cards with non-rare printings", () => {
     // NOT stays in printing domain: non-rare rows = {2,3,4,5}.
     // Promotes to face: Bolt + Sol Ring = 2 cards.

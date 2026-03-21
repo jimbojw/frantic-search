@@ -56,7 +56,7 @@ export function resolveCategoricalValue(
 const CATEGORICAL_FIELDS = new Set([
   "view", "display", "unique", "sort", "order", "include",
   "legal", "f", "format", "banned", "restricted",
-  "rarity", "r", "game", "frame", "is",
+  "rarity", "r", "game", "frame", "is", "not",
   "set", "in", "otag", "atag", "kw", "keyword",
 ]);
 
@@ -90,6 +90,7 @@ function getCandidatesForField(
     case "frame":
       return Object.keys(FRAME_NAMES);
     case "is":
+    case "not":
       return IS_KEYWORDS;
     case "set":
       return context?.knownSetCodes ?? null;

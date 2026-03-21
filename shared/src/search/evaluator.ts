@@ -572,8 +572,8 @@ export class NodeCache {
 
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
-        // Check if this is a printing-domain field or is: keyword
-        const isPrintingIs = canonical === "is"
+        // Check if this is a printing-domain field or is:/not: keyword
+        const isPrintingIs = (canonical === "is" || canonical === "not")
           && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
         const isPrintingDomain = isPrintingIs
           || (canonical !== undefined && isPrintingField(canonical));
@@ -593,6 +593,9 @@ export class NodeCache {
                 ast.value.toLowerCase(), pIdx, buf, pn,
               );
               if (status === "unknown") error = `unknown keyword "${ast.value}"`;
+              else if (canonical === "not") {
+                for (let i = 0; i < pn; i++) buf[i] ^= 1;
+              }
             }
           } else if (canonical === "atag") {
             if (ast.operator !== ":" && ast.operator !== "=") {

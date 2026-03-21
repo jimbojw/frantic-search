@@ -40,7 +40,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `legal` | `f`, `format` | Format legality | `f:modern` |
 | `banned` | — | Banned in format | `banned:legacy` |
 | `restricted` | — | Restricted in format | `restricted:vintage` |
-| `is` | — | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil, etc.) | `is:commander` |
+| `is` | `not` | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil); `not:` = `-is:` | `is:commander`, `not:dfc` |
 | `kw` | `keyword` | Keyword ability (Scryfall catalog) | `kw:flying` |
 | `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
