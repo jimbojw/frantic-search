@@ -1648,7 +1648,7 @@ function App() {
       </header>
       </Portal>
 
-      <main class="mx-auto max-w-4xl px-4">
+      <main class="mx-auto max-w-4xl">
         <WorkerErrorBanner
           workerStatus={workerStatus}
           errorCause={errorCause}

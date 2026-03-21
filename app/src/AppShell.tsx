@@ -5,6 +5,7 @@
  */
 import { Suspense, lazy, onMount } from 'solid-js'
 import { useViewportWide } from './useViewportWide'
+import { IconList } from './Icons'
 import { HEADER_ART_BLUR } from './hero-constants'
 
 const App = lazy(() => import('./App'))
@@ -40,9 +41,7 @@ function MinimalBar() {
           aria-label="My list"
           class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-          </svg>
+          <IconList class="size-5 shrink-0" />
           <span class="text-sm whitespace-nowrap">My list</span>
         </a>
         <div
@@ -60,7 +59,7 @@ function MinimalBar() {
 
 function LoadingFallback() {
   return (
-    <div class="mt-16">
+    <div class="mt-10">
       <div
         class="h-14 w-full overflow-hidden rounded-xl mb-4 shadow-md bg-cover bg-[center_20%] animate-loading-pulse"
         style={{ "background-image": `url("${HEADER_ART_BLUR}")` }}
@@ -90,9 +89,12 @@ export default function AppShell() {
 
   return (
     <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
-      <header class="mx-auto max-w-4xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4">
+      <header>
         <div id="app-header-slot" />
-        <div id="shell-minimal-bar">
+        <div
+          id="shell-minimal-bar"
+          class="mx-auto max-w-4xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4"
+        >
           <MinimalBar />
         </div>
       </header>
