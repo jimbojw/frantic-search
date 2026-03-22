@@ -1,0 +1,43 @@
+---
+title: produces
+---
+
+# produces
+
+Mana the card can produce (lands, mana rocks, rituals). Distinct from [mana](?doc=reference/fields/face/mana) (mana cost).
+
+**Canonical:** `produces`  
+**Aliases:** —  
+**Domain:** Face
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Produces at least these symbols (superset) | `q=produces:wu` |
+| `=` | Produces exactly these symbols | `q=produces=wu` |
+| `!=` | Does not produce exactly | `q=produces!=c` |
+| `<` | Produces subset of query | `q=produces<g` |
+| `>` | Produces strict superset | `q=produces>wu` |
+| `<=` | Produces subset or equal | `q=produces<=wubrg` |
+| `>=` | Produces superset or equal | `q=produces>=wu` |
+
+## Allowed values
+
+- **Symbols:** `w`, `u`, `b`, `r`, `g`, `c` (colorless), `t` (Sole Performer). Combine: `produces:wu` = at least W and U.
+- **Named combos:** `azorius`, `bant`, `colorless`, `multicolor`, etc. (same as [color](?doc=reference/fields/face/color)).
+- **Numeric:** Count of distinct symbol types. `produces=0` = no mana; `produces=2` = exactly 2 types; `produces:6` = 6+ types.
+- **Empty:** `produces:` = same as `produces>0` (produces any mana).
+
+| Query | Meaning |
+|-------|---------|
+| `q=produces:wu` | Produces at least W and U (dual lands, Birds of Paradise) |
+| `q=produces=c` | Produces only colorless (Sol Ring) |
+| `q=produces=0` | Produces no mana |
+| `q=produces:multicolor` | Produces 2+ distinct symbol types |
+| `q=produces:azorius` | Produces at least W and U (named combo) |
+
+## Notes
+
+- A card can produce both colorless and colored mana (e.g. `produces:cw` for lands with &#123;T&#125;: Add &#123;C&#125; or &#123;W&#125;).
+- `produces:t` matches Sole Performer; Scryfall returns an error for the T symbol.

@@ -44,6 +44,7 @@ app/src/docs/reference/
 │   │   ├── defense.mdx
 │   │   ├── mana-value.mdx
 │   │   ├── mana.mdx
+│   │   ├── produces.mdx
 │   │   ├── legal.mdx
 │   │   ├── banned.mdx
 │   │   ├── restricted.mdx

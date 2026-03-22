@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search), Spec 147 (Produces Evaluator)
 
 **Referenced by:** Spec 014 (Syntax Help Overlay), Spec 135 (Reference Docs Restructure)
 
@@ -37,6 +37,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `defense` | `def` | Defense (numeric) | `def>3` |
 | `mana value` | `mv`, `cmc` | Mana value (numeric) | `mv<=2` |
 | `mana` | `m` | Mana cost (symbols) | `m:{b/p}` |
+| `produces` | — | Mana the card can produce (lands, rocks, rituals); W,U,B,R,G,C,T; named combos (azorius, multicolor); numeric count; `:` = at least, `=` = exactly | `produces:wu`, `produces=0`, `produces:multicolor` |
 | `legal` | `f`, `format` | Format legality | `f:modern` |
 | `banned` | — | Banned in format | `banned:legacy` |
 | `restricted` | — | Restricted in format | `restricted:vintage` |

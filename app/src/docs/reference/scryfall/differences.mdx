@@ -17,6 +17,8 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 | Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/face/edhrec), [salt](?doc=reference/fields/face/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |
 | usd=null | Not supported | [usd](?doc=reference/fields/printing/usd): Matches printings with no price data |
 | $ alias | Uses usd | [usd](?doc=reference/fields/printing/usd): `$` is alias for usd |
+| [produces](?doc=reference/fields/face/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
+| [produces](?doc=reference/fields/face/produces):cw (C+colored) | May error | Valid: cards can produce both (e.g. many nonbasic lands) |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
 
 ## Known missing

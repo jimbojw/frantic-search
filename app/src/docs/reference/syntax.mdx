@@ -25,6 +25,7 @@ Frantic Search is based on [Scryfall syntax](https://scryfall.com/docs/syntax) w
 | defense | def | Defense (numeric); =null for no defense | `q=def>3` |
 | mana value | mv, cmc | Mana value (numeric) | `q=mv>=2` |
 | mana | m | Mana cost (symbols); =null for no cost | `q=m:{b/p}` |
+| produces | — | Mana the card can produce; symbols (wu, c), named (azorius, multicolor), numeric count | `q=produces:wu`, `q=produces=0` |
 | legal | f, format | Format legality | `q=f:modern` |
 | banned | — | Banned in format | `q=banned:legacy` |
 | restricted | — | Restricted in format | `q=restricted:vintage` |
