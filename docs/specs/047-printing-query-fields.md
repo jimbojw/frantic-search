@@ -263,7 +263,7 @@ const FIELD_ALIASES: Record<string, string> = {
 ```typescript
 const PRINTING_FIELDS = new Set([
   "set", "rarity", "usd", "collectornumber", "frame",
-  "year", "date", "game", "legal", "banned", "restricted", "in", "atag", "flavor",
+  "year", "date", "game", "legal", "banned", "restricted", "in", "atag", "flavor", "artist",
 ]);
 ```
 

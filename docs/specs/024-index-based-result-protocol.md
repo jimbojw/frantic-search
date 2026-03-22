@@ -138,6 +138,7 @@ export type FromWorker =
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
   | { type: 'status'; status: 'printings-ready'; printingDisplay: PrintingDisplayColumns }
   | { type: 'status'; status: 'flavor-ready' }  // Spec 141: flavor-index.json loaded
+  | { type: 'status'; status: 'artist-ready'; tagLabels?: string[] }  // Spec 148/149: artist-index.json loaded
   | { type: 'status'; status: 'error'; error: string }
   | {
       type: 'result'
@@ -147,6 +148,7 @@ export type FromWorker =
       hasPrintingConditions: boolean
       uniqueMode: UniqueMode
       flavorUnavailable?: boolean  // Spec 142: flavor: term present but flavor-index not loaded
+      artistUnavailable?: boolean  // Spec 149: a:/artist: term present but artist-index not loaded
       breakdown: BreakdownNode
       histograms: Histograms
       // ... pinnedBreakdown, pinnedIndicesCount, indicesIncludingExtras, etc.

@@ -8,7 +8,7 @@ import {
   promotePrintingToFace,
   promoteFaceToPrinting,
 } from "./eval-printing";
-import type { PrintingColumnarData, FlavorTagData } from "../data";
+import type { PrintingColumnarData, FlavorTagData, ArtistIndexData } from "../data";
 import { Rarity, Finish, Frame, Game } from "../bits";
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in", "flavor"]) {
+    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in", "flavor", "artist"]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -809,6 +809,51 @@ describe("flavor field", () => {
   test("returns error for unsupported operator", () => {
     const { error } = evalFlavorField("!=", "mishra");
     expect(error).toBe('flavor: does not support operator "!="');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// artist (Spec 149)
+// ---------------------------------------------------------------------------
+
+const ARTIST_INDEX: ArtistIndexData = {
+  "vincent proce": [0, 0, 0, 1, 0, 2],
+  "scott murphy": [0, 3, 0, 4],
+  "anthony s. waters": [1, 3, 1, 4],
+};
+
+function evalArtistField(op: string, val: string): { buf: Uint8Array; error: string | null } {
+  const buf = new Uint8Array(pIdx.printingCount);
+  const error = evalPrintingField("artist", op, val, pIdx, buf, undefined, undefined, undefined, ARTIST_INDEX);
+  return { buf, error };
+}
+
+describe("artist field", () => {
+  test("substring match a:proce", () => {
+    expect(marked(evalArtistField(":", "proce").buf)).toEqual([0, 1, 2]);
+  });
+
+  test("substring match artist:vincent", () => {
+    expect(marked(evalArtistField(":", "vincent").buf)).toEqual([0, 1, 2]);
+  });
+
+  test("substring match artist:scott", () => {
+    expect(marked(evalArtistField(":", "scott").buf)).toEqual([3, 4]);
+  });
+
+  test("empty value matches all printings with artist data", () => {
+    expect(marked(evalArtistField(":", "").buf)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  test("returns error when artist index null", () => {
+    const buf = new Uint8Array(pIdx.printingCount);
+    const error = evalPrintingField("artist", ":", "x", pIdx, buf, undefined, undefined, undefined, null);
+    expect(error).toBe("artist index not loaded");
+  });
+
+  test("returns error for unsupported operator", () => {
+    const { error } = evalArtistField("!=", "proce");
+    expect(error).toBe('artist: does not support operator "!="');
   });
 });
 

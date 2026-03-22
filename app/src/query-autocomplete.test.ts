@@ -211,6 +211,24 @@ describe('computeSuggestion', () => {
     expect(computeSuggestion(ctx, data)).toBeNull()
   })
 
+  it('suggests Proce for a:pro when artistTagLabels has Proce (Spec 149)', () => {
+    const tagData = makeData({ artistTagLabels: ['Proce', 'Vincent', 'Murphy', 'Scott'] })
+    const ctx = getCompletionContext('a:pro', 5)!
+    expect(ctx.fieldName).toBe('artist')
+    expect(computeSuggestion(ctx, tagData)).toBe('Proce')
+  })
+
+  it('suggests Vincent for artist:vin (substring match)', () => {
+    const tagData = makeData({ artistTagLabels: ['Proce', 'Vincent', 'Murphy'] })
+    const ctx = getCompletionContext('artist:vin', 10)!
+    expect(computeSuggestion(ctx, tagData)).toBe('Vincent')
+  })
+
+  it('returns null for a: when artistTagLabels empty', () => {
+    const ctx = getCompletionContext('a:pro', 5)!
+    expect(computeSuggestion(ctx, data)).toBeNull()
+  })
+
   it('returns null for empty data names', () => {
     const ctx = getCompletionContext('!"gris', 6)!
     expect(computeSuggestion(ctx, makeData({ names: [] }))).toBeNull()

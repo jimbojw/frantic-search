@@ -4,7 +4,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { index, printingIndex, TEST_PRINTING_DATA } from "./evaluator.test-fixtures";
 import { PrintingIndex } from "./printing-index";
-import type { FlavorTagData } from "../data";
+import type { FlavorTagData, ArtistIndexData } from "../data";
 
 // ---------------------------------------------------------------------------
 // Printing-domain integration tests (through NodeCache.evaluate)
@@ -28,6 +28,18 @@ const tagDataRefWithFlavor = {
   artist: null,
 };
 
+const ARTIST_INDEX: ArtistIndexData = {
+  "vincent proce": [0, 0, 0, 1, 0, 2],
+  "scott murphy": [0, 3, 0, 4],
+};
+
+const tagDataRefWithArtist = {
+  oracle: null,
+  illustration: null,
+  flavor: null,
+  artist: ARTIST_INDEX,
+};
+
 function evaluate(query: string) {
   const cache = new NodeCache(index, printingIndex);
   return cache.evaluate(parse(query));
@@ -35,6 +47,11 @@ function evaluate(query: string) {
 
 function evaluateWithFlavor(query: string) {
   const cache = new NodeCache(index, printingIndex, null, tagDataRefWithFlavor);
+  return cache.evaluate(parse(query));
+}
+
+function evaluateWithArtist(query: string) {
+  const cache = new NodeCache(index, printingIndex, null, tagDataRefWithArtist);
   return cache.evaluate(parse(query));
 }
 
@@ -685,6 +702,66 @@ describe("flavor: evaluator", () => {
   test("invalid regex in flavor:/.../ returns error", () => {
     const out = evaluateWithFlavor("flavor:/[invalid/");
     expect(out.result.error).toBe("invalid regex");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// a: / artist: (Spec 149)
+// ---------------------------------------------------------------------------
+
+describe("artist: evaluator", () => {
+  test("a:proce matches cards with artist containing proce", () => {
+    const { indices } = evaluateWithArtist("a:proce");
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(1);
+  });
+
+  test("artist:vincent substring match", () => {
+    const { indices } = evaluateWithArtist("artist:vincent");
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(1);
+  });
+
+  test("artist: empty value matches all printings with artist data", () => {
+    const { indices } = evaluateWithArtist("artist:");
+    expect(indices.length).toBe(2);
+    expect([...indices].sort()).toEqual([1, 3]);
+  });
+
+  test("t:creature a:proce cross-domain AND", () => {
+    const { indices } = evaluateWithArtist("t:instant a:proce");
+    expect(indices.length).toBe(1);
+    expect(indices[0]).toBe(1);
+  });
+
+  test("-a:proce negates correctly", () => {
+    const { indices } = evaluateWithArtist("-a:proce");
+    expect(indices.length).toBeGreaterThan(0);
+    // Bolt has proce printings (0,1,2) and non-proce (5,6,8,9,10); Sol Ring has non-proce (3,4,7)
+    expect(indices.includes(3)).toBe(true);
+  });
+
+  test("a:x when PrintingIndex null produces printingsUnavailable", () => {
+    const cache = new NodeCache(index, null, null, tagDataRefWithArtist);
+    const out = cache.evaluate(parse("a:proce"));
+    expect(out.printingsUnavailable).toBe(true);
+  });
+
+  test("a:x when artist index null produces artistUnavailable", () => {
+    const cache = new NodeCache(index, printingIndex, null, {
+      oracle: null,
+      illustration: null,
+      flavor: null,
+      artist: null,
+    });
+    const out = cache.evaluate(parse("a:proce"));
+    expect(out.artistUnavailable).toBe(true);
+    expect(out.indices.length).toBe(0);
+  });
+
+  test("artist!=foo returns error (Scryfall syntax artist:!=foo parses as artist: empty)", () => {
+    const out = evaluateWithArtist("artist!=foo");
+    expect(out.result.error).toBe('artist: does not support operator "!="');
   });
 });
 

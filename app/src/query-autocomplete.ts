@@ -21,6 +21,7 @@ export type AutocompleteData = {
   oracleTagLabels: string[]
   illustrationTagLabels: string[]
   keywordLabels: string[]
+  artistTagLabels?: string[]
 }
 
 const OPERATORS = new Set<string>([
@@ -228,6 +229,11 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
         const match = firstMatchByPrefix(data.keywordLabels, prefix)
         return match
       }
+      if (fn === 'artist' || fn === 'a') {
+        if (!data.artistTagLabels?.length) return null
+        const match = firstMatchSubstring(data.artistTagLabels, prefix)
+        return match
+      }
       if (fn === 'view' || fn === 'v') {
         const viewCandidates = ['slim', 'detail', 'images', 'full']
         return firstMatchByPrefix(viewCandidates, prefix)
@@ -278,10 +284,21 @@ export function computeSuggestion(ctx: CompletionContext, data: AutocompleteData
   }
 }
 
+function deriveArtistTagLabels(artistNames?: string[]): string[] {
+  if (!artistNames?.length) return []
+  const words = new Set<string>()
+  for (const name of artistNames) {
+    for (const word of name.split(/\s+/)) {
+      if (word) words.add(word)
+    }
+  }
+  return [...words]
+}
+
 export function buildAutocompleteData(
   display: DisplayColumns | null,
   printingDisplay: PrintingDisplayColumns | null,
-  tagLabels?: { oracle?: string[]; illustration?: string[]; keyword?: string[] }
+  tagLabels?: { oracle?: string[]; illustration?: string[]; keyword?: string[]; artist?: string[] }
 ): AutocompleteData | null {
   if (!display) return null
   const setCodes = printingDisplay?.set_codes
@@ -299,6 +316,7 @@ export function buildAutocompleteData(
     oracleTagLabels: tagLabels?.oracle ?? [],
     illustrationTagLabels: tagLabels?.illustration ?? [],
     keywordLabels: tagLabels?.keyword ?? [],
+    artistTagLabels: deriveArtistTagLabels(tagLabels?.artist),
   }
 }
 

@@ -1,6 +1,6 @@
 # Spec 149: Artist Query — Evaluator, Autocomplete, and Docs
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 148 (Artist ETL and Worker), Spec 002 (Query Engine), Spec 047 (Printing Query Fields)
 

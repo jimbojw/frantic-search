@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
 import type { CardIndex } from "./card-index";
-import type { FlavorTagData } from "../data";
+import type { FlavorTagData, ArtistIndexData } from "../data";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
@@ -71,7 +71,7 @@ const KNOWN_LANGUAGES = new Set([
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
-  "game", "legal", "banned", "restricted", "in", "atag", "flavor",
+  "game", "legal", "banned", "restricted", "in", "atag", "flavor", "artist",
 ]);
 
 export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
@@ -111,6 +111,7 @@ export function evalPrintingField(
   cardIndex?: CardIndex,
   context?: ResolutionContext,
   flavorIndex?: FlavorTagData | null,
+  artistIndex?: ArtistIndexData | null,
 ): string | null {
   const n = pIdx.printingCount;
   const valLower = val.toLowerCase();
@@ -341,6 +342,32 @@ export function evalPrintingField(
         for (const key in flavorIndex) {
           if (!key.includes(normVal)) continue;
           const arr = flavorIndex[key]!;
+          for (let i = 0; i < arr.length; i += 2) {
+            const pi = arr[i + 1]!;
+            if (pi < n) buf[pi] = 1;
+          }
+        }
+      }
+      break;
+    }
+    case "artist": {
+      if (op !== ":" && op !== "=") {
+        return `artist: does not support operator "${op}"`;
+      }
+      if (!artistIndex) return "artist index not loaded";
+      const normVal = val.toLowerCase().trim().replace(/\s+/g, " ");
+      if (normVal === "") {
+        for (const key in artistIndex) {
+          const arr = artistIndex[key]!;
+          for (let i = 1; i < arr.length; i += 2) {
+            const pi = arr[i]!;
+            if (pi < n) buf[pi] = 1;
+          }
+        }
+      } else {
+        for (const key in artistIndex) {
+          if (!key.includes(normVal)) continue;
+          const arr = artistIndex[key]!;
           for (let i = 0; i < arr.length; i += 2) {
             const pi = arr[i + 1]!;
             if (pi < n) buf[pi] = 1;

@@ -231,9 +231,11 @@ export class NodeCache {
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
     const hasFlavorLeaves = this._hasFlavorLeaves(ast);
     const flavorUnavailable = hasFlavorLeaves && this._printingIndex != null && !this._tagDataRef?.flavor;
+    const hasArtistLeaves = this._hasArtistLeaves(ast);
+    const artistUnavailable = hasArtistLeaves && this._printingIndex != null && !this._tagDataRef?.artist;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, uniqueMode, includeExtras, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -295,7 +297,23 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, uniqueMode, includeExtras, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, sortBy };
+  }
+
+  private _hasArtistLeaves(ast: ASTNode): boolean {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        return canonical === "artist";
+      }
+      case "NOT":
+        return this._hasArtistLeaves(ast.child);
+      case "AND":
+      case "OR":
+        return ast.children.some((c) => this._hasArtistLeaves(c));
+      default:
+        return false;
+    }
   }
 
   private _hasFlavorLeaves(ast: ASTNode): boolean {
@@ -611,7 +629,15 @@ export class NodeCache {
             } else if (!this._tagDataRef?.flavor) {
               error = null; // all-zero buf; flavorUnavailable set at evaluate() level
             } else {
-              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), this._tagDataRef.flavor);
+              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), this._tagDataRef.flavor, undefined);
+            }
+          } else if (canonical === "artist") {
+            if (ast.operator !== ":" && ast.operator !== "=") {
+              error = `artist: does not support operator "${ast.operator}"`;
+            } else if (!this._tagDataRef?.artist) {
+              error = null; // all-zero buf; artistUnavailable set at evaluate() level
+            } else {
+              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), undefined, this._tagDataRef.artist);
             }
           } else if (canonical && ast.value !== "") {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext());

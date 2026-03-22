@@ -63,6 +63,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `game` | — | Paper, Arena, MTGO availability | `game:arena` |
 | `in` | — | Game, set, or rarity (disambiguated by value) | `in:mh2`, `in:arena` |
 | `flavor` | `ft` | Flavor text (substring); regex via `/pattern/` | `flavor:mishra`, `ft:"draw a card"`, `flavor:/orc/` |
+| `artist` | `a` | Artist name (substring) | `a:proce`, `artist:"Scott Murphy"` |
 
 ### Section 2: Operators
 

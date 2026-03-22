@@ -140,6 +140,7 @@ function App() {
     atags: { label: string; prints: number }[]
   } | null>(null)
   const [keywordLabels, setKeywordLabels] = createSignal<string[]>([])
+  const [artistNames, setArtistNames] = createSignal<string[]>([])
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
@@ -225,6 +226,7 @@ function App() {
       oracle: oracleTagLabels(),
       illustration: illustrationTagLabels(),
       keyword: keywordLabels(),
+      artist: artistNames(),
     })
   )
   const ghostText = useDebouncedGhostText(query, cursorOffset, selectionEnd, isComposing, autocompleteData, isSearchFocused)
@@ -566,7 +568,7 @@ function App() {
         } else if (msg.status === 'flavor-ready') {
           // Flavor index loaded; flavor: queries available (Spec 141)
         } else if (msg.status === 'artist-ready') {
-          // Artist index loaded; a: queries supported when evaluator spec lands (Spec 148)
+          setArtistNames(msg.tagLabels ?? [])
         } else if (msg.status === 'printings-ready') {
           if (msg.printingsLoadDurationMs !== undefined) {
             capturePrintingsLoaded({ duration_ms: msg.printingsLoadDurationMs })
@@ -1195,6 +1197,7 @@ function App() {
     oracleTagLabels,
     illustrationTagLabels,
     keywordLabels,
+    artistNames,
     breakdownExpanded,
     setBreakdownExpanded,
     histogramsExpanded,
@@ -1233,6 +1236,7 @@ function App() {
     oracleTagLabels,
     illustrationTagLabels,
     keywordLabels,
+    artistNames,
     breakdownExpanded: breakdownExpanded2,
     setBreakdownExpanded: setBreakdownExpanded2,
     histogramsExpanded: histogramsExpanded2,

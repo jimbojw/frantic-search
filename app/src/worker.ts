@@ -436,7 +436,7 @@ async function init(): Promise<void> {
     }
     if (artistRaw) {
       tagDataRef.artist = buildNormalizedArtistIndex(artistRaw)
-      post({ type: 'status', status: 'artist-ready' })
+      post({ type: 'status', status: 'artist-ready', tagLabels: Object.keys(tagDataRef.artist) })
     }
   })
 

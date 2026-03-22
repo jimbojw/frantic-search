@@ -1,0 +1,22 @@
+---
+title: artist
+---
+
+# artist
+
+Artist (illustrator) name for the card. Substring match, case-insensitive.
+
+**Canonical:** `artist`  
+**Aliases:** `a`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Substring (case-insensitive) | `q=a:proce` |
+| `=` | Substring (case-insensitive) | `q=artist:"Scott Murphy"` |
+
+## Allowed values
+
+Literal text (substring). Quotes preserve spaces and punctuation: `q=artist:"Scott Murphy"`. Empty value matches all printings that have artist data. When the artist index is not yet loaded, the evaluator flags `artistUnavailable` and matches nothing.

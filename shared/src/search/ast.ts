@@ -134,6 +134,8 @@ export interface EvalOutput {
   printingsUnavailable: boolean;
   /** True when query has flavor: term but flavor-index.json not yet loaded. Spec 142. */
   flavorUnavailable?: boolean;
+  /** True when query has a:/artist: term but artist-index.json not yet loaded. Spec 149. */
+  artistUnavailable?: boolean;
   uniqueMode: UniqueMode;
   includeExtras: boolean;
   sortBy: SortDirective | null;

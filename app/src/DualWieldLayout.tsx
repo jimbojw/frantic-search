@@ -61,6 +61,7 @@ export type PaneState = {
   printingDisplay: () => PrintingDisplayColumns | null
   oracleTagLabels: () => string[]
   illustrationTagLabels: () => string[]
+  artistNames: () => string[]
   keywordLabels: () => string[]
   breakdownExpanded: () => boolean
   toggleBreakdown: () => void
@@ -324,6 +325,7 @@ export function SearchPane(props: {
       oracle: props.state.oracleTagLabels(),
       illustration: props.state.illustrationTagLabels(),
       keyword: props.state.keywordLabels(),
+      artist: props.state.artistNames(),
     })
   )
   const ghostText = useDebouncedGhostText(

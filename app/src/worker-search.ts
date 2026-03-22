@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery } from './query-edit'
@@ -97,8 +97,8 @@ export type RunSearchParams = {
   index: CardIndex
   printingIndex: PrintingIndex | null
   sessionSalt: number
-  /** Tag data for otag:/atag:/flavor: (Spec 092, 141). */
-  tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null }
+  /** Tag data for otag:/atag:/flavor:/artist: (Spec 092, 141, 149). */
+  tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null; artist: ArtistIndexData | null }
 }
 
 export type SearchResult = Extract<FromWorker, { type: 'result' }>
@@ -144,6 +144,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       uniqueMode: pinnedEval.uniqueMode,
       includeExtras: pinnedEval.includeExtras,
       ...(pinnedEval.flavorUnavailable && { flavorUnavailable: true }),
+      ...(pinnedEval.artistUnavailable && { artistUnavailable: true }),
     }
     return result
   }
@@ -158,6 +159,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let uniqueMode = liveEval.uniqueMode
   let includeExtras = liveEval.includeExtras
   let flavorUnavailable = liveEval.flavorUnavailable
+  let artistUnavailable = liveEval.artistUnavailable
   let liveSortBy = liveEval.sortBy
   let pinnedBreakdown: BreakdownNode | undefined
   let pinnedIndicesCount: number | undefined
@@ -193,6 +195,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     uniqueMode = getUniqueModeFromQuery(`${msg.pinnedQuery} ${msg.query}`)
     includeExtras = includeExtras || pinnedEval.includeExtras
     flavorUnavailable = flavorUnavailable || pinnedEval.flavorUnavailable || false
+    artistUnavailable = artistUnavailable || pinnedEval.artistUnavailable || false
     if (!liveSortBy) liveSortBy = pinnedEval.sortBy
   } else {
     deduped = Array.from(liveEval.indices)
@@ -452,6 +455,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     printingIndices, hasPrintingConditions, uniqueMode, includeExtras,
     effectiveBreakdown,
     ...(flavorUnavailable && { flavorUnavailable: true }),
+    ...(artistUnavailable && { artistUnavailable: true }),
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),

@@ -214,6 +214,7 @@ These fields map to columns available in the current ETL output.
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
 | `kw`, `keyword`    | `keywords_index`            | Card has the given keyword ability (Scryfall catalog) | `:` and `=` only (Spec 105) |
 | `flavor`, `ft`     | `flavor-index` (supplemental) | Flavor text substring; regex via `/pattern/` (printing-domain) | `:` and `=` only (Spec 142) |
+| `artist`, `a`      | `artist-index` (supplemental) | Artist name substring (printing-domain) | `:` and `=` only (Spec 149) |
 | (bare word)        | `names`                     | Case-insensitive substring             | —                                          |
 
 ### Color value parsing

@@ -8,7 +8,7 @@
 
 ## Goal
 
-Add an artist index to support eventual `a:` and `artist:` queries (e.g. `a:proce`). The design uses a **strided inverted index** of `(face_index_within_card, printing_row_index)` pairs, matching the flavor index (Spec 141). The face index is the position within the card's `card_faces` array (0 for front, 1 for back, etc.; single-face cards use 0). No illustration IDs or intermediate structures are persisted. This spec covers ETL extraction, storage format, and worker load. **Evaluator support is deferred to a future spec.**
+Add an artist index to support eventual `a:` and `artist:` queries (e.g. `a:proce`). The design uses a **strided inverted index** of `(face_index_within_card, printing_row_index)` pairs, matching the flavor index (Spec 141). The face index is the position within the card's `card_faces` array (0 for front, 1 for back, etc.; single-face cards use 0). No illustration IDs or intermediate structures are persisted. This spec covers ETL extraction, storage format, and worker load. Evaluator, autocomplete, and reference docs are implemented in Spec 149.
 
 ## Data Model
 
