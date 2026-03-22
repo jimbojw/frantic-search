@@ -2,8 +2,10 @@
 /**
  * Minimal app shell for fast first paint (Spec 143).
  * Renders immediately; App loads asynchronously and portals its header into #app-header-slot.
+ * Hides bar and relaxes main constraint when docs or Dual Wield are active (full-screen modes).
  */
-import { Suspense, lazy, onMount } from 'solid-js'
+import { createSignal, Suspense, lazy, onMount } from 'solid-js'
+import { ShellContext } from './ShellContext'
 import { useViewportWide } from './useViewportWide'
 import { IconList } from './Icons'
 import { HEADER_ART_BLUR } from './hero-constants'
@@ -74,6 +76,8 @@ function LoadingFallback() {
 }
 
 export default function AppShell() {
+  const [fullScreenMode, setFullScreenMode] = createSignal(false)
+
   onMount(() => {
     const slot = document.getElementById('app-header-slot')
     const minimalBar = document.getElementById('shell-minimal-bar')
@@ -88,21 +92,29 @@ export default function AppShell() {
   })
 
   return (
-    <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
-      <header>
-        <div id="app-header-slot" />
-        <div
-          id="shell-minimal-bar"
-          class="mx-auto max-w-4xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4"
+    <ShellContext.Provider value={setFullScreenMode}>
+      <div class="min-h-dvh overscroll-y-none bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+        <header hidden={fullScreenMode()}>
+          <div id="app-header-slot" />
+          <div
+            id="shell-minimal-bar"
+            class="mx-auto max-w-4xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4"
+          >
+            <MinimalBar />
+          </div>
+        </header>
+        <main
+          class={
+            fullScreenMode()
+              ? 'min-h-dvh'
+              : 'mx-auto max-w-4xl px-4'
+          }
         >
-          <MinimalBar />
-        </div>
-      </header>
-      <main class="mx-auto max-w-4xl px-4">
-        <Suspense fallback={<LoadingFallback />}>
-          <App />
-        </Suspense>
-      </main>
-    </div>
+          <Suspense fallback={<LoadingFallback />}>
+            <App />
+          </Suspense>
+        </main>
+      </div>
+    </ShellContext.Provider>
   )
 }

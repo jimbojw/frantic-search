@@ -15,6 +15,7 @@ import UnifiedBreakdown from './UnifiedBreakdown'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
 import { SearchProvider } from './SearchContext'
+import { useSetShellFullScreen } from './ShellContext'
 import SearchResults from './SearchResults'
 import { BATCH_SIZES, isViewMode } from './view-mode'
 import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
@@ -1139,6 +1140,13 @@ function App() {
 
   const showDualWield = () =>
     view() === 'search' && dualWieldActive() && viewportWide()
+
+  const setFullScreen = useSetShellFullScreen()
+  createEffect(() => {
+    const full =
+      view() === 'docs' || (view() === 'search' && dualWieldActive() && viewportWide())
+    setFullScreen?.(full)
+  })
 
   const listEntryCountPerCard = createMemo(() => {
     const listId = getMyListIdFromBreakdown(effectiveBreakdown())
