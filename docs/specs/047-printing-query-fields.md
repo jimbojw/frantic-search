@@ -65,6 +65,15 @@ Each keyword maps to a bit in the `printing_flags` bitmask column. Evaluation: `
 
 These move from `UNSUPPORTED_IS_KEYWORDS` in the evaluator to active printing-domain evaluation.
 
+### `is:default` / `is:atypical` — Frame treatment (Issue #173)
+
+| Keyword | Scryfall semantics | Implementation |
+|---------|-------------------|----------------|
+| `is:default` | Default Magic frame (no atypical treatments) | `!(printing_flags[i] & ATYPICAL_FRAME_MASK)` |
+| `is:atypical` | Atypical frame treatments (borderless, extended art, showcase, etc.) | `printing_flags[i] & ATYPICAL_FRAME_MASK` |
+
+**ATYPICAL_FRAME_MASK** = `FullArt | Borderless | ExtendedArt | Masterpiece | Colorshifted | Showcase | Inverted | Nyxtouched`. All map to existing `PrintingFlag` bits (Spec 046); no new bits or ETL changes.
+
 ### `is:rainbowfoil` / `is:poster` / `is:boosterfun` / … — Promo types (Scryfall `promo_types`)
 
 | Operator | Semantics |
@@ -437,3 +446,4 @@ Add printing-field entries once the full dataset is available.
 ## Implementation Notes
 
 - 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (52 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced`, `glossy` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.
+- 2026-03-22: Added `is:default` and `is:atypical` for Issue #173. Derived from existing PrintingFlags; no ETL changes.

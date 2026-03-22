@@ -204,6 +204,17 @@ function isFrenchVanilla(oracleTextLower: string, typeLineLower: string): boolea
 
 const PARTNER_RE = /(?:^|\n)partner(?:\n|$)/;
 
+/** Mask of PrintingFlags that indicate atypical frame treatments (Scryfall is:atypical). */
+const ATYPICAL_FRAME_MASK =
+  PrintingFlag.FullArt |
+  PrintingFlag.Borderless |
+  PrintingFlag.ExtendedArt |
+  PrintingFlag.Masterpiece |
+  PrintingFlag.Colorshifted |
+  PrintingFlag.Showcase |
+  PrintingFlag.Inverted |
+  PrintingFlag.Nyxtouched;
+
 function hasHybridSymbol(text: string): boolean {
   let i = 0;
   while ((i = text.indexOf('{', i)) !== -1) {
@@ -235,6 +246,7 @@ export const PRINTING_IS_KEYWORDS = new Set([
   "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
   "borderless", "extended", "oversized",
   "spotlight", "booster", "masterpiece", "colorshifted", "showcase", "inverted", "nyxtouched",
+  "default", "atypical",
   ...Object.keys(PROMO_TYPE_FLAGS),
 ]);
 
@@ -506,6 +518,12 @@ export function evalPrintingIsKeyword(
       break;
     case "nyxtouched":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Nyxtouched) buf[i] = 1;
+      break;
+    case "atypical":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & ATYPICAL_FRAME_MASK) buf[i] = 1;
+      break;
+    case "default":
+      for (let i = 0; i < n; i++) if (!(pIdx.printingFlags[i] & ATYPICAL_FRAME_MASK)) buf[i] = 1;
       break;
     default: {
       const entry = PROMO_TYPE_FLAGS[keyword];

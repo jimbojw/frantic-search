@@ -5,7 +5,7 @@ import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { Color, CardFlag } from "../bits";
 import type { ColumnarData } from "../data";
-import { index } from "./evaluator.test-fixtures";
+import { index, printingIndex, matchCountWithPrintings } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Extended card pool for is: operator (Spec 032 / 040)
@@ -589,6 +589,37 @@ describe("is: operator", () => {
     const result = cache.evaluate(parse("is:spotlight")).result;
     expect(result.error).toBe("printing data not loaded");
     expect(result.matchCount).toBe(-1);
+  });
+
+  test("is:default and is:atypical without printings return printing data not loaded", () => {
+    const cache = new NodeCache(index);
+    expect(cache.evaluate(parse("is:default")).result.error).toBe("printing data not loaded");
+    expect(cache.evaluate(parse("is:atypical")).result.error).toBe("printing data not loaded");
+  });
+
+  // --- is:default / is:atypical (Issue #173) ---
+
+  test("is:default matches printings with no atypical frame treatment", () => {
+    // Fixture: printings 0-9 have no FullArt/Borderless/ExtendedArt/Masterpiece/etc.; printing 10 has Masterpiece
+    // Pure is:default yields printing-domain root → matchCount = printing count
+    expect(matchCountWithPrintings("is:default")).toBe(10);
+    // With unique:prints, AND with face-domain match-all promotes to face → 2 cards (Bolt, Sol Ring)
+    expect(matchCountWithPrintings("is:default unique:prints")).toBe(2);
+  });
+
+  test("is:atypical matches printings with atypical frame treatment", () => {
+    // Fixture: only printing 10 has Masterpiece (in ATYPICAL_FRAME_MASK)
+    expect(matchCountWithPrintings("is:atypical")).toBe(1);
+    expect(matchCountWithPrintings("is:atypical unique:prints")).toBe(1);
+  });
+
+  test("is:default and is:atypical are mutually exclusive at printing level", () => {
+    const cache = new NodeCache(index, printingIndex);
+    const defaultOut = cache.evaluate(parse("is:default unique:prints"));
+    const atypicalOut = cache.evaluate(parse("is:atypical unique:prints"));
+    expect(defaultOut.printingIndices?.length ?? 0).toBe(10);
+    expect(atypicalOut.printingIndices?.length ?? 0).toBe(1);
+    expect((defaultOut.printingIndices?.length ?? 0) + (atypicalOut.printingIndices?.length ?? 0)).toBe(11);
   });
 
   test("is: with comparison operators matches zero cards", () => {

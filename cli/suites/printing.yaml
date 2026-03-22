@@ -95,6 +95,18 @@
   assertions:
     count_min: 100
 
+- name: "is:default finds default-frame printings (Issue #173)"
+  query: "is:default"
+  scryfall_query: "is:default include:extras"
+  assertions:
+    count_min: 30000
+
+- name: "is:atypical finds atypical-frame printings (Issue #173)"
+  query: "is:atypical"
+  scryfall_query: "is:atypical include:extras"
+  assertions:
+    count_min: 1000
+
 - name: "is:reprint finds reprints"
   query: "is:reprint t:creature c:r"
   scryfall_query: "is:reprint t:creature c:r include:extras"
