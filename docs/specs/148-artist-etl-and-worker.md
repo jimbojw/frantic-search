@@ -1,6 +1,6 @@
 # Spec 148: Artist Index — ETL and Worker (Illustration Domain)
 
-**Status:** Draft
+**Status:** Implemented 
 
 **GitHub Issue:** [#128](https://github.com/jimbojw/frantic-search/issues/128)
 

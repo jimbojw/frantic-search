@@ -565,6 +565,8 @@ function App() {
           setIllustrationTagLabels(msg.tagLabels)
         } else if (msg.status === 'flavor-ready') {
           // Flavor index loaded; flavor: queries available (Spec 141)
+        } else if (msg.status === 'artist-ready') {
+          // Artist index loaded; a: queries supported when evaluator spec lands (Spec 148)
         } else if (msg.status === 'printings-ready') {
           if (msg.printingsLoadDurationMs !== undefined) {
             capturePrintingsLoaded({ duration_ms: msg.printingsLoadDurationMs })

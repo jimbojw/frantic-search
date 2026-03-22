@@ -124,8 +124,9 @@ For single-face cards, both equal the row's own index. For multi-face cards, `ca
 | `data/dist/columns.json`            | Columnar JSON (`ColumnarData`)  |
 | `data/dist/printings.json`         | Printing-level data (Spec 046)  |
 | `data/dist/flavor-index.json`      | Flavor text inverted index (Spec 141) |
+| `data/dist/artist-index.json`      | Artist inverted index (Spec 148) |
 
-The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json` and `data/dist/flavor-index.json` from `default-cards.json`.
+The output conforms to the `ColumnarData` interface defined in `shared/src/data.ts`. The `process` command also invokes `processPrintings()` (Spec 046), which produces `data/dist/printings.json`, `data/dist/flavor-index.json`, and `data/dist/artist-index.json` from `default-cards.json`.
 
 ### Keywords (`keywords_index` in columns.json)
 
@@ -197,3 +198,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   mapping uppercase mana symbols to sorted canonical face indices. Extracted
   from Scryfall `produced_mana` during face expansion. Worker materializes into
   `producesData` (Uint8Array bitmask) and `producesMasks` at load time.
+- 2026-03-22: Added `artist-index.json` (Spec 148). Strided inverted index of
+  raw artist name → (face_index_within_card, printing_row_index) pairs. Produced
+  by processPrintings() alongside printings.json and flavor-index.json. Supplemental
+  file loaded by the worker after printings for future `a:` / `artist:` query support.

@@ -104,6 +104,7 @@ export type FromWorker =
   | { type: 'status'; status: 'otags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'atags-ready'; tagLabels: string[] }
   | { type: 'status'; status: 'flavor-ready' }
+  | { type: 'status'; status: 'artist-ready' }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; flavorUnavailable?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide; oracleHint?: { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } }

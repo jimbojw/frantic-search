@@ -25,6 +25,7 @@ const tagDataRefWithFlavor = {
   oracle: null,
   illustration: null,
   flavor: FLAVOR_INDEX,
+  artist: null,
 };
 
 function evaluate(query: string) {
@@ -657,6 +658,7 @@ describe("flavor: evaluator", () => {
       oracle: null,
       illustration: null,
       flavor: idx,
+      artist: null,
     });
     const { indices } = cache.evaluate(parse("flavor:/orc/"));
     expect(indices.length).toBe(1);
@@ -673,6 +675,7 @@ describe("flavor: evaluator", () => {
       oracle: null,
       illustration: null,
       flavor: null,
+      artist: null,
     });
     const out = cache.evaluate(parse("flavor:mishra"));
     expect(out.flavorUnavailable).toBe(true);

@@ -31,6 +31,7 @@ export type {
   OracleTagData,
   IllustrationTagData,
   FlavorTagData,
+  ArtistIndexData,
   KeywordData,
 } from "./data";
 

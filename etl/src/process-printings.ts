@@ -6,6 +6,7 @@ import {
   COLUMNS_PATH,
   PRINTINGS_PATH,
   FLAVOR_INDEX_PATH,
+  ARTIST_INDEX_PATH,
   TCGCSV_PRODUCT_MAP_PATH,
   ensureDistDir,
 } from "./paths";
@@ -33,6 +34,7 @@ interface DefaultCardFace {
   printed_name?: string;
   flavor_name?: string;
   flavor_text?: string;
+  artist?: string;
 }
 
 interface DefaultCard {
@@ -44,6 +46,7 @@ interface DefaultCard {
   printed_name?: string;
   flavor_name?: string;
   flavor_text?: string;
+  artist?: string;
   layout?: string;
   set?: string;
   set_name?: string;
@@ -375,6 +378,7 @@ export function processPrintings(verbose: boolean): void {
   let totalEntries = 0;
   const altNamesIndex: Record<string, number[]> = {};
   const flavorIndex: Record<string, Array<[number, number]>> = {};
+  const artistIndex: Record<string, Array<[number, number]>> = {};
 
   for (const card of defaultCards) {
     // reversible_card layout: Scryfall puts oracle_id on card_faces[0], not top-level (Issue #98)
@@ -500,6 +504,28 @@ export function processPrintings(verbose: boolean): void {
         pairs.push([faceIndex, pi]);
       }
     }
+
+    // Artist inverted index (Spec 148): raw artist name → (face_index_within_card, printing_row) pairs
+    const facesWithArtist: Array<{ artist: string; faceIndex: number }> = [];
+    if (card.card_faces?.length) {
+      for (let i = 0; i < card.card_faces.length; i++) {
+        const a = card.card_faces[i].artist?.trim();
+        if (a) facesWithArtist.push({ artist: a, faceIndex: i });
+      }
+    } else {
+      const a = card.artist?.trim();
+      if (a) facesWithArtist.push({ artist: a, faceIndex: 0 });
+    }
+    for (const { artist, faceIndex } of facesWithArtist) {
+      let pairs = artistIndex[artist];
+      if (!pairs) {
+        pairs = [];
+        artistIndex[artist] = pairs;
+      }
+      for (let pi = printingRowStart; pi < totalEntries; pi++) {
+        pairs.push([faceIndex, pi]);
+      }
+    }
   }
 
   // Sort each alternate name's printing row array (Spec 111)
@@ -538,6 +564,36 @@ export function processPrintings(verbose: boolean): void {
   log(`Wrote ${FLAVOR_INDEX_PATH}`, true);
   log(
     `Flavor index: ${Object.keys(flavorIndexStrided).length} unique keys, ${flavorTotalPairs} pairs, ${(flavorIndexBytes / 1024).toFixed(1)} KB`,
+    verbose,
+  );
+
+  // Artist index: dedupe, sort by (face, printing), write strided format (Spec 148)
+  const artistIndexStrided: Record<string, number[]> = {};
+  let artistTotalPairs = 0;
+  for (const [key, pairs] of Object.entries(artistIndex)) {
+    const seen = new Set<string>();
+    const unique: Array<[number, number]> = [];
+    for (const [f, p] of pairs) {
+      const k = `${f},${p}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        unique.push([f, p]);
+      }
+    }
+    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]));
+    const strided: number[] = [];
+    for (const [f, p] of unique) {
+      strided.push(f, p);
+    }
+    artistIndexStrided[key] = strided;
+    artistTotalPairs += strided.length / 2;
+  }
+  const artistIndexJson = JSON.stringify(artistIndexStrided) + "\n";
+  fs.writeFileSync(ARTIST_INDEX_PATH, artistIndexJson);
+  const artistIndexBytes = Buffer.byteLength(artistIndexJson, "utf8");
+  log(`Wrote ${ARTIST_INDEX_PATH}`, true);
+  log(
+    `Artist index: ${Object.keys(artistIndexStrided).length} artists, ${artistTotalPairs} pairs, ${(artistIndexBytes / 1024).toFixed(1)} KB`,
     verbose,
   );
 

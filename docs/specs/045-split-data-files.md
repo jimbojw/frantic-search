@@ -6,7 +6,7 @@
 
 ## Goal
 
-Split the monolithic `columns.json` into a core data file (searchable fields) and supplemental files (thumb-hashes, printings). The app becomes searchable before thumb-hash data arrives. The architecture supports multiple supplemental files: `thumb-hashes.json` (display placeholders), `printings.json` (printing-level data, Spec 046), `flavor-index.json` (flavor text inverted index, Spec 141), with room for future additions (e.g. prices in a separate file if needed).
+Split the monolithic `columns.json` into a core data file (searchable fields) and supplemental files (thumb-hashes, printings). The app becomes searchable before thumb-hash data arrives. The architecture supports multiple supplemental files: `thumb-hashes.json` (display placeholders), `printings.json` (printing-level data, Spec 046), `flavor-index.json` (flavor text inverted index, Spec 141), `artist-index.json` (artist inverted index, Spec 148), with room for future additions (e.g. prices in a separate file if needed).
 
 ## Background
 
@@ -287,3 +287,4 @@ Users with the pre-split `columns.<hash>.json` cached will receive a new service
 
 - 2026-03-04: The supplemental-file pattern established here was extended to `printings.json` (Spec 046). The worker fetches printings after columns; the main thread receives `printings-ready` with `PrintingDisplayColumns`. The Vite plugin (Spec 005) serves and copies all three data files.
 - 2026-03-20: Added `flavor-index.json` (Spec 141). Worker fetches after printings; posts `flavor-ready` when loaded. Same serve/copy/cache pattern as otags.json and atags.json.
+- 2026-03-22: Added `artist-index.json` (Spec 148). Worker fetches after printings (parallel with flavor); posts `artist-ready` when loaded. Same serve/copy/cache pattern as flavor-index.json.

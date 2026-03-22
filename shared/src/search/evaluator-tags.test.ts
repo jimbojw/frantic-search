@@ -18,6 +18,7 @@ const tagDataRef = {
   oracle: oracleTags,
   illustration: illustrationTags,
   flavor: null,
+  artist: null,
 };
 
 describe("otag: evaluator", () => {
@@ -50,7 +51,7 @@ describe("otag: evaluator", () => {
   });
 
   test("otag: without oracle tags returns error", () => {
-    const cache = new NodeCache(index, null, null, { oracle: null, illustration: null, flavor: null });
+    const cache = new NodeCache(index, null, null, { oracle: null, illustration: null, flavor: null, artist: null });
     const out = cache.evaluate(parse("otag:ramp"));
     expect(out.result.matchCount).toBe(-1);
     expect(out.result.error).toBe("oracle tags not loaded");
@@ -118,6 +119,7 @@ describe("atag: evaluator", () => {
       oracle: oracleTags,
       illustration: null,
       flavor: null,
+      artist: null,
     });
     const out = cache.evaluate(parse("atag:chair"));
     expect(out.result.matchCount).toBe(-1);

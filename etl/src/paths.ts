@@ -21,6 +21,7 @@ export const PRINTINGS_PATH = path.join(DIST_DIR, "printings.json");
 export const OTAGS_PATH = path.join(DIST_DIR, "otags.json");
 export const ATAGS_PATH = path.join(DIST_DIR, "atags.json");
 export const FLAVOR_INDEX_PATH = path.join(DIST_DIR, "flavor-index.json");
+export const ARTIST_INDEX_PATH = path.join(DIST_DIR, "artist-index.json");
 export const THUMBHASH_DIR = path.join(PROJECT_ROOT, "data", "thumbhash");
 export const ART_CROP_MANIFEST_PATH = path.join(THUMBHASH_DIR, "art-crop-thumbhash-manifest.json");
 export const CARD_MANIFEST_PATH = path.join(THUMBHASH_DIR, "card-thumbhash-manifest.json");

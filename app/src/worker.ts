@@ -7,6 +7,7 @@ import type {
   OracleTagData,
   IllustrationTagData,
   FlavorTagData,
+  ArtistIndexData,
 } from '@frantic-search/shared'
 import {
   CardIndex,
@@ -34,6 +35,7 @@ declare const __PRINTINGS_FILENAME__: string
 declare const __OTAGS_FILENAME__: string
 declare const __ATAGS_FILENAME__: string
 declare const __FLAVOR_INDEX_FILENAME__: string
+declare const __ARTIST_INDEX_FILENAME__: string
 
 function post(msg: FromWorker, transfer?: Transferable[]): void {
   self.postMessage(msg, transfer ?? [])
@@ -112,6 +114,17 @@ async function fetchFlavorIndex(): Promise<FlavorTagData | null> {
   }
 }
 
+async function fetchArtistIndex(): Promise<ArtistIndexData | null> {
+  try {
+    const url = new URL(/* @vite-ignore */ `../${__ARTIST_INDEX_FILENAME__}`, import.meta.url)
+    const response = await fetch(url)
+    if (!response.ok) return null
+    return (await response.json()) as ArtistIndexData
+  } catch {
+    return null
+  }
+}
+
 function normalizeFlavorKey(s: string): string {
   return s
     .toLowerCase()
@@ -137,6 +150,51 @@ function buildNormalizedFlavorIndex(raw: FlavorTagData): FlavorTagData {
     }
   }
   const result: FlavorTagData = {}
+  for (const [norm, pairs] of byNormalized) {
+    const seen = new Set<string>()
+    const unique: Array<[number, number]> = []
+    for (const [f, p] of pairs) {
+      const k = `${f},${p}`
+      if (!seen.has(k)) {
+        seen.add(k)
+        unique.push([f, p])
+      }
+    }
+    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]))
+    const strided: number[] = []
+    for (const [f, p] of unique) {
+      strided.push(f, p)
+    }
+    result[norm] = strided
+  }
+  return result
+}
+
+function normalizeArtistKey(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+/** Build normalized search index from raw artist keys. Merges keys that normalize to same string. */
+function buildNormalizedArtistIndex(raw: ArtistIndexData): ArtistIndexData {
+  const byNormalized = new Map<string, Array<[number, number]>>()
+  for (const [key, arr] of Object.entries(raw)) {
+    const norm = normalizeArtistKey(key)
+    if (!norm) continue
+    const pairs: Array<[number, number]> = []
+    for (let i = 0; i < arr.length; i += 2) {
+      pairs.push([arr[i], arr[i + 1]])
+    }
+    const existing = byNormalized.get(norm)
+    if (existing) {
+      existing.push(...pairs)
+    } else {
+      byNormalized.set(norm, pairs)
+    }
+  }
+  const result: ArtistIndexData = {}
   for (const [norm, pairs] of byNormalized) {
     const seen = new Set<string>()
     const unique: Array<[number, number]> = []
@@ -292,6 +350,7 @@ async function init(): Promise<void> {
     oracle: null as OracleTagData | null,
     illustration: null as Map<string, Uint32Array> | null,
     flavor: null as FlavorTagData | null,
+    artist: null as ArtistIndexData | null,
   }
   const keywordsIndex = data.keywords_index ?? {}
   const keywordDataRef = { keywords: keywordsIndex }
@@ -370,10 +429,14 @@ async function init(): Promise<void> {
       printingToAtags = buildPrintingToAtags(resolved)
       post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
     }
-    const flavorRaw = await fetchFlavorIndex()
+    const [flavorRaw, artistRaw] = await Promise.all([fetchFlavorIndex(), fetchArtistIndex()])
     if (flavorRaw) {
       tagDataRef.flavor = buildNormalizedFlavorIndex(flavorRaw)
       post({ type: 'status', status: 'flavor-ready' })
+    }
+    if (artistRaw) {
+      tagDataRef.artist = buildNormalizedArtistIndex(artistRaw)
+      post({ type: 'status', status: 'artist-ready' })
     }
   })
 

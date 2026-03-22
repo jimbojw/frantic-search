@@ -24,6 +24,7 @@ function serveData(): Plugin {
   const otagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'otags.json')
   const atagsFile = path.resolve(__dirname, '..', 'data', 'dist', 'atags.json')
   const flavorFile = path.resolve(__dirname, '..', 'data', 'dist', 'flavor-index.json')
+  const artistFile = path.resolve(__dirname, '..', 'data', 'dist', 'artist-index.json')
   const outDir = path.resolve(__dirname, 'dist')
   let workerFileName: string | null = null
   let columnsFilename = 'columns.json'
@@ -32,6 +33,7 @@ function serveData(): Plugin {
   let otagsFilename = 'otags.json'
   let atagsFilename = 'atags.json'
   let flavorFilename = 'flavor-index.json'
+  let artistFilename = 'artist-index.json'
 
   return {
     name: 'serve-data',
@@ -56,6 +58,9 @@ function serveData(): Plugin {
         if (fs.existsSync(flavorFile)) {
           flavorFilename = `flavor-index.${contentHash(flavorFile)}.json`
         }
+        if (fs.existsSync(artistFile)) {
+          artistFilename = `artist-index.${contentHash(artistFile)}.json`
+        }
       }
       const columnsSize = fs.existsSync(columnsFile) ? fs.statSync(columnsFile).size : 0
       return {
@@ -67,6 +72,7 @@ function serveData(): Plugin {
           __OTAGS_FILENAME__: JSON.stringify(otagsFilename),
           __ATAGS_FILENAME__: JSON.stringify(atagsFilename),
           __FLAVOR_INDEX_FILENAME__: JSON.stringify(flavorFilename),
+          __ARTIST_INDEX_FILENAME__: JSON.stringify(artistFilename),
         },
       }
     },
@@ -79,6 +85,7 @@ function serveData(): Plugin {
         ['/otags.json', otagsFile],
         ['/atags.json', atagsFile],
         ['/flavor-index.json', flavorFile],
+        ['/artist-index.json', artistFile],
       ] as const) {
         server.middlewares.use(route, (_req, res) => {
           if (!fs.existsSync(file)) {
@@ -118,6 +125,7 @@ function serveData(): Plugin {
           [otagsFilename, fs.existsSync(otagsFile)],
           [atagsFilename, fs.existsSync(atagsFile)],
           [flavorFilename, fs.existsSync(flavorFile)],
+          [artistFilename, fs.existsSync(artistFile)],
         ] as const) {
           if (exists) {
             const href = `./${filename}`
@@ -187,6 +195,10 @@ function serveData(): Plugin {
       if (fs.existsSync(flavorFile)) {
         fs.copyFileSync(flavorFile, path.join(outDir, flavorFilename))
         fs.copyFileSync(flavorFile, path.join(outDir, 'flavor-index.json'))
+      }
+      if (fs.existsSync(artistFile)) {
+        fs.copyFileSync(artistFile, path.join(outDir, artistFilename))
+        fs.copyFileSync(artistFile, path.join(outDir, 'artist-index.json'))
       }
     },
   }

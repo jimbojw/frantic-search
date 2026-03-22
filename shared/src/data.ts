@@ -90,5 +90,12 @@ export type IllustrationTagData = Record<string, number[]>;
  */
 export type FlavorTagData = Record<string, number[]>;
 
+/**
+ * Artist index: raw artist name → strided (face, printing) pairs.
+ * Same strided layout as FlavorTagData (Spec 141): even indices = face_index_within_card (0=front, 1=back),
+ * odd indices = printing_row_index. Materialized at ETL; worker does direct lookup. Spec 148.
+ */
+export type ArtistIndexData = Record<string, number[]>;
+
 /** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. */
 export type KeywordData = Record<string, number[]>;
