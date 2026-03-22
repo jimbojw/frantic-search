@@ -100,6 +100,30 @@ describe("colorless+color contradiction", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Produces unknown symbol (Spec 147)
+// ---------------------------------------------------------------------------
+
+describe("produces unknown symbol (Spec 147)", () => {
+  function getResult(query: string) {
+    const cache = new NodeCache(index);
+    return cache.evaluate(parse(query)).result;
+  }
+
+  test("produces:x produces error", () => {
+    const result = getResult("produces:x");
+    expect(result.error).toBe('unknown symbol "X"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("produces:cw is valid (cards can produce both C and W)", () => {
+    const result = getResult("produces:cw");
+    expect(result.error).toBeUndefined();
+    // Minimal fixture has no C+W producer; matchCount 0
+    expect(result.matchCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Color count out of range (Spec 055)
 // ---------------------------------------------------------------------------
 

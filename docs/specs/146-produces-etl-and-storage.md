@@ -172,3 +172,5 @@ For a query like `produces:wu`, the evaluator computes `queryMask = producesMask
   sorted canonical face indices. CardIndex materializes `producesData`
   (Uint8Array) and `producesMasks` (Record) at load time with fan-out for
   multi-face cards.
+- 2026-03-22: Evaluator implemented in Spec 147. `produces:wu`, `produces=2`,
+  `produces:multicolor`, etc. supported in eval-leaves.

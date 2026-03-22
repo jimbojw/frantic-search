@@ -313,6 +313,26 @@ describe("evaluate", () => {
     expect(matchCount("mana<=uu")).toBe(2);  // Sol Ring {}, Counterspell {U}{U}
   });
 
+  test("produces (Spec 147)", () => {
+    expect(matchCount("produces:c")).toBe(1);       // Sol Ring
+    expect(matchCount("produces:g")).toBe(1);      // Birds
+    expect(matchCount("produces:wu")).toBe(1);      // Birds
+    expect(matchCount("produces:wug")).toBe(1);    // Birds
+    expect(matchCount("produces=wubrg")).toBe(1);  // Birds (exactly all five)
+    expect(matchCount("produces=wu")).toBe(0);     // no card produces exactly WU
+    expect(matchCount("produces<g")).toBe(7);      // cards producing nothing (subset of {G})
+    expect(matchCount("produces:azorius")).toBe(1);  // Birds produces at least WU
+    expect(matchCount("produces=azorius")).toBe(0);  // no card produces exactly WU
+    expect(matchCount("produces:")).toBe(2);      // empty = produces any (Birds, Sol Ring)
+    expect(matchCount("produces=0")).toBe(7);     // cards producing no mana
+    expect(matchCount("produces>0")).toBe(2);     // Birds, Sol Ring
+    expect(matchCount("-produces=0")).toBe(2);     // NOT produces nothing
+    expect(matchCount("produces:multicolor")).toBe(1);  // Birds (5 types)
+    expect(matchCount("produces=2")).toBe(0);     // minimal fixture: Birds=5, Sol Ring=1
+    expect(matchCount("produces>2")).toBe(1);     // Birds
+    expect(matchCount("produces<2")).toBe(8);      // 7 non-producers + Sol Ring
+  });
+
   test("exact name with !", () => {
     expect(matchCount('!"Lightning Bolt"')).toBe(1);
     expect(matchCount("!bolt")).toBe(0);

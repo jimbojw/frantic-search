@@ -95,7 +95,10 @@ export const TEST_DATA: ColumnarData = {
   loyalty_lookup:  [""],
   defense_lookup:  [""],
   keywords_index:  {},
-  produces:        {},
+  produces:        {
+    C: [3],                    // Sol Ring (canonical face 3)
+    W: [0], U: [0], B: [0], R: [0], G: [0],  // Birds of Paradise (any color)
+  },
 };
 
 export const index = new CardIndex(TEST_DATA);

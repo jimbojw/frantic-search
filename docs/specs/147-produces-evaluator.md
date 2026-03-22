@@ -1,6 +1,6 @@
 # Spec 147: Produces Mana — Evaluator
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 146 (Produces ETL and Storage), Spec 002 (Query Engine)
 
@@ -36,8 +36,7 @@ Resolution order:
    - **Color bitmask** (e.g. `azorius` → WU, `bant` → GWU): Convert to produces mask by iterating W,U,B,R,G; for each bit set in the color mask, OR in `producesMasks[letter]` (if that symbol exists in the data).
    - **`colorless` / `c`:** Use `producesMasks["C"]` (if present). If C is not in data, query mask is 0.
    - **`multicolor` / `m`:** Match cards that **produce 2 or more different colors/types, including colorless**. E.g. [[Adarkar Unicorn]] produces either `{U}` or `{U}{C}`; when it produces `{U}{C}` that is 2 distinct types (blue + colorless), so it satisfies `produces:multicolor`. Implementation: `popcount(producesData[i]) >= 2`. This is a count-based predicate, not a symbol-set query — the standard operators (`:`, `=`, `<`, etc.) do not apply; treat `produces:multicolor` and `produces=multicolor` equivalently as "count >= 2".
-   - **`COLOR_IMPOSSIBLE`** (e.g. `cw`): Return error: `"a card cannot be both colored and colorless"` (same as color field).
-3. **Letter-sequence fallback.** Each character in `val.toUpperCase()` is looked up in `producesMasks`. If **any** character has no entry, return error: `unknown symbol "X"` (uppercase the offending character in the message). This informs the user immediately that they typed something wrong.
+3. **Letter-sequence fallback.** Each character in `val.toUpperCase()` is looked up in `producesMasks`. If **any** character has no entry, return error: `unknown symbol "X"` (uppercase the offending character in the message). A card *can* produce both colorless and colored mana (e.g. many nonbasic lands); `produces:cw` is valid and matches such cards — no special error.
 4. **Build query mask:** `queryMask = OR of producesMasks[ch]` for each resolved symbol.
 
 Examples:
@@ -111,12 +110,12 @@ Add a new `case "produces":` in the `switch (canonical)` block. **Empty-value gu
 2. **Resolve value** (use a helper e.g. `parseProducesValue(val, producesMasks)`):
    - **Numeric:** If `val` parses as non-negative integer `n`, use count-based semantics: for each face, let `c = popcount(producesData[i])`; apply operator: `=` → `c === n`, `!=` → `c !== n`, `<` → `c < n`, `<=` → `c <= n`, `>` → `c > n`, `>=` / `:` → `c >= n`.
    - **multicolor:** If named lookup yields `COLOR_MULTICOLOR`, use count-based semantics: match iff `popcount(producesData[i]) >= 2`. Operators `:` and `=` both behave the same (count >= 2).
-   - **Named lookup** via `COLOR_NAMES` for other values. Convert color bitmask → produces mask by iterating `COLOR_FROM_LETTER` keys; for each bit set, OR in `producesMasks[letter]`. Handle colorless, COLOR_IMPOSSIBLE (error).
+   - **Named lookup** via `COLOR_NAMES` for other values. Convert color bitmask → produces mask by iterating `COLOR_FROM_LETTER` keys; for each bit set, OR in `producesMasks[letter]`. Handle colorless.
    - **Letter-sequence fallback:** for each `ch` in `val.toUpperCase()`, look up `producesMasks[ch]`. If any is `undefined`, return error `unknown symbol "X"` (X = first bad character).
    - If resolution yields `queryMask === 0` (e.g. colorless but C not in data), return error `unknown symbol "c"` or equivalent.
 3. **Iterate over faces:** For symbol-set queries, let `card = index.producesData[i]` and apply operator logic. For count-based (numeric, multicolor), use the special logic above. Write to `buf[cf[i]]` (canonical-face indexing per Spec 033).
 
-Import `COLOR_NAMES`, `COLOR_FROM_LETTER`, `COLOR_COLORLESS`, `COLOR_MULTICOLOR`, `COLOR_IMPOSSIBLE` from `../bits` as needed.
+Import `COLOR_NAMES`, `COLOR_FROM_LETTER`, `COLOR_COLORLESS`, `COLOR_MULTICOLOR` from `../bits` as needed.
 
 ### Edge cases
 
@@ -127,7 +126,7 @@ Import `COLOR_NAMES`, `COLOR_FROM_LETTER`, `COLOR_COLORLESS`, `COLOR_MULTICOLOR`
 | `produces:azorius` | Resolved via COLOR_NAMES → WU |
 | `produces:multicolor` | Match cards with `popcount(producesData[i]) >= 2` (2+ symbol types) |
 | `produces=2` | Match cards where `popcount(producesData[i]) === 2`; `produces>2` matches Abzan Banner (3 types) |
-| `produces:cw` | Error: `a card cannot be both colored and colorless` |
+| `produces:cw` | Valid: matches cards that produce at least C and W (e.g. lands with "{T}: Add {C} or {W}") |
 | `produces:` (empty value) | Same result as `produces>0` |
 | `produces=0` | Match cards that produce no mana |
 | `produces>0` | Match cards that produce any mana |
@@ -183,7 +182,7 @@ For richer tests (`produces=wu`, `produces<g` with a G-only producer), consider 
 - Unknown field: unchanged — `produces` is a known field after this spec.
 - Unknown symbols produce error: `produces:x` returns error `unknown symbol "X"`.
 - `produces:multicolor` is a valid query (match cards with 2+ symbol types); no longer an error.
-- `produces:cw` (impossible) returns error `a card cannot be both colored and colorless`.
+- `produces:cw` is valid: cards can produce both colorless and colored mana (e.g. many nonbasic lands).
 - `produces=0` and `produces>0` are valid queries (not errors); test in evaluator.test.ts.
 
 ## File Changes Summary

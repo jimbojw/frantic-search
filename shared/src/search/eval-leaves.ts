@@ -53,6 +53,7 @@ export const FIELD_ALIASES: Record<string, string> = {
   salt: "salt",
   edhrecsalt: "salt",
   saltiness: "salt",
+  produces: "produces",
 };
 
 function parseColorValue(value: string): number {
@@ -71,6 +72,53 @@ function parseColorValue(value: string): number {
     return mask !== 0 ? COLOR_IMPOSSIBLE : COLOR_COLORLESS;
   }
   return mask;
+}
+
+function popcountByte(v: number): number {
+  v = (v & 0x55) + ((v >> 1) & 0x55);
+  v = (v & 0x33) + ((v >> 2) & 0x33);
+  return (v + (v >> 4)) & 0x0f;
+}
+
+type ProducesResolution =
+  | { type: "count"; n: number }
+  | { type: "multicolor" }
+  | { type: "mask"; queryMask: number }
+  | { type: "error"; msg: string };
+
+function parseProducesValue(
+  val: string,
+  producesMasks: Record<string, number>,
+): ProducesResolution {
+  if (/^\d+$/.test(val)) {
+    const n = Number(val);
+    if (Number.isInteger(n) && n >= 0) return { type: "count", n };
+  }
+  const named = COLOR_NAMES[val.toLowerCase()];
+  if (named !== undefined) {
+    if (named === COLOR_MULTICOLOR) return { type: "multicolor" };
+    if (named === COLOR_COLORLESS) {
+      const mask = producesMasks["C"] ?? 0;
+      if (mask === 0) return { type: "error", msg: `unknown symbol "C"` };
+      return { type: "mask", queryMask: mask };
+    }
+    let queryMask = 0;
+    for (const letter of Object.keys(COLOR_FROM_LETTER)) {
+      if ((named & COLOR_FROM_LETTER[letter]!) !== 0) {
+        const m = producesMasks[letter];
+        if (m !== undefined) queryMask |= m;
+      }
+    }
+    if (queryMask === 0) return { type: "error", msg: "no matching symbol types in data" };
+    return { type: "mask", queryMask };
+  }
+  let queryMask = 0;
+  for (const ch of val.toUpperCase()) {
+    const m = producesMasks[ch];
+    if (m === undefined) return { type: "error", msg: `unknown symbol "${ch}"` };
+    queryMask |= m;
+  }
+  return { type: "mask", queryMask };
 }
 
 const NAME_CMP_OPS = new Set([">", "<", ">=", "<="]);
@@ -104,8 +152,11 @@ export function evalLeafField(
     return `unknown field "${node.field}"`;
   }
   if (val === "") {
-    fillCanonical(buf, cf, n);
-    return null;
+    if (canonical !== "produces") {
+      fillCanonical(buf, cf, n);
+      return null;
+    }
+    // produces: empty value falls through to case "produces" (same as produces>0)
   }
 
   const valLower = val.toLowerCase();
@@ -467,6 +518,55 @@ export function evalLeafField(
       if (status === "unsupported") return `unsupported keyword "${node.value}"`;
       if (status === "unknown") return `unknown keyword "${node.value}"`;
       for (let i = 0; i < n; i++) if (cf[i] === i) buf[i] ^= 1;
+      break;
+    }
+    case "produces": {
+      const pd = index.producesData;
+      const pm = index.producesMasks;
+      if (val === "") {
+        for (let i = 0; i < n; i++) if (pd[i] !== 0) buf[cf[i]] = 1;
+        break;
+      }
+      const resolved = parseProducesValue(val, pm);
+      if (resolved.type === "error") return resolved.msg;
+      const effectiveOp = op === ":" ? ">=" : op;
+      if (resolved.type === "count") {
+        const qn = resolved.n;
+        for (let i = 0; i < n; i++) {
+          const c = popcountByte(pd[i]);
+          const match =
+            effectiveOp === "=" ? c === qn
+            : effectiveOp === "!=" ? c !== qn
+            : effectiveOp === "<" ? c < qn
+            : effectiveOp === "<=" ? c <= qn
+            : effectiveOp === ">" ? c > qn
+            : effectiveOp === ">=" ? c >= qn
+            : false;
+          if (match) buf[cf[i]] = 1;
+        }
+        break;
+      }
+      if (resolved.type === "multicolor") {
+        for (let i = 0; i < n; i++) if (popcountByte(pd[i]) >= 2) buf[cf[i]] = 1;
+        break;
+      }
+      const query = resolved.queryMask;
+      for (let i = 0; i < n; i++) {
+        const card = pd[i];
+        const superset = (card & query) === query;
+        const exact = superset && (card & ~query) === 0;
+        const subset = (card & ~query) === 0;
+        let match = false;
+        switch (effectiveOp) {
+          case ">=": match = superset; break;
+          case "=": match = exact; break;
+          case ">": match = superset && !exact; break;
+          case "<=": match = subset; break;
+          case "<": match = subset && !exact; break;
+          case "!=": match = !exact; break;
+        }
+        if (match) buf[cf[i]] = 1;
+      }
       break;
     }
     default:

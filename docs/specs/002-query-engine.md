@@ -208,6 +208,7 @@ These fields map to columns available in the current ETL output.
 | `loyalty`, `loy`   | `loyalties` + `loyalty_lookup`   | Numeric equality                  | Numeric comparison via lookup              |
 | `defense`, `def`   | `defenses` + `defense_lookup`    | Numeric equality                  | Numeric comparison via lookup              |
 | `mana`, `m`        | `mana_costs`                | Card has at least these mana symbols (component-wise ≥ on parsed symbol map; see Spec 008) | —                |
+| `produces`         | `produces` (bitmask)        | Card produces at least these mana symbols (⊇); supports W,U,B,R,G,C,T + named combos, numeric count, multicolor (Spec 147) | `=` exact, `<=` subset, `>=` superset; `:` aliases `>=`; count-based for numeric/`multicolor` |
 | `legal`, `f`, `format` | `legalities_legal`      | Card is legal in the given format      | —                                          |
 | `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
