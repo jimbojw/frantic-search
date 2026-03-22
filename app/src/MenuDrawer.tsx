@@ -4,6 +4,7 @@ import { IconBookOpen, IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip, CI_FIELDS, getIdentityColorChipState, toggleIdentityColorChip, toggleIdentityColorlessChip, cycleCiNumericChip } from './query-edit'
+import { ChipButton } from './ChipButton'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import type { ViewMode } from './view-mode'
@@ -224,12 +225,6 @@ function getChipState(
 // TermChip component
 // ---------------------------------------------------------------------------
 
-const CHIP_CLASSES: Record<ChipState, string> = {
-  neutral: 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
-  positive: 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500',
-  negative: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 line-through hover:bg-red-200 dark:hover:bg-red-900/60',
-}
-
 function TermChip(props: {
   chip: ChipDef
   state: ChipState
@@ -238,10 +233,9 @@ function TermChip(props: {
   onSetQuery: (query: string) => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={props.state}
       onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, props.chip))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -254,7 +248,7 @@ function TermChip(props: {
       ) : (
         props.chip.label
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -269,14 +263,9 @@ function ViewChip(props: {
   onChange: (mode: ViewMode) => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      active={props.active}
       onClick={() => props.onChange(props.mode)}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
-        props.active
-          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
-          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-      }`}
     >
       {props.active ? (
         props.label
@@ -289,7 +278,7 @@ function ViewChip(props: {
           }
         </For>
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -306,14 +295,9 @@ function UniqueChip(props: {
   onChange: (mode: 'cards' | 'art' | 'prints') => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      active={props.active}
       onClick={() => props.onChange(props.mode)}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
-        props.active
-          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
-          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-      }`}
     >
       {props.active ? (
         props.label
@@ -326,7 +310,7 @@ function UniqueChip(props: {
           }
         </For>
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -338,13 +322,12 @@ function MetadataTagChip(props: {
 }) {
   const state = () => getMetadataTagChipState(props.breakdown(), props.tag)
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={state()}
       onClick={() => props.onSetQuery(cycleMetadataTagChip(props.query, props.breakdown(), { tag: props.tag, term: `#${props.tag}` }))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[state()]}`}
     >
       #{props.tag}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -355,14 +338,9 @@ function IncludeExtrasChip(props: {
   onSetQuery: (query: string) => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      active={props.active}
       onClick={() => props.onSetQuery(toggleIncludeExtras(props.query, props.breakdown))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
-        props.active
-          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
-          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-      }`}
     >
       {props.active ? (
         'include:extras'
@@ -375,7 +353,7 @@ function IncludeExtrasChip(props: {
           }
         </For>
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -400,10 +378,9 @@ function PercentileTermChip(props: {
   onSetQuery: (query: string) => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={props.state}
       onClick={() => props.onSetQuery(cyclePercentileChip(props.query, props.breakdown, props.chip))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -416,7 +393,7 @@ function PercentileTermChip(props: {
       ) : (
         props.chip.label
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -448,14 +425,10 @@ function IdentityColorChip(props: {
       ? props.onSetQuery(toggleIdentityColorlessChip(props.query, props.breakdown))
       : props.onSetQuery(toggleIdentityColorChip(props.query, props.breakdown, props.color))
   return (
-    <button
-      type="button"
+    <ChipButton
+      active={props.active}
+      class="gap-0.5"
       onClick={onClick}
-      class={`inline-flex items-center justify-center gap-0.5 min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${
-        props.active
-          ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-500'
-          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-      }`}
     >
       {props.active ? (
         <>
@@ -474,7 +447,7 @@ function IdentityColorChip(props: {
           <i class={`ms ms-cost ${MANA_CLASSES[props.color] ?? 'ms-c'}`} />
         </>
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -487,10 +460,9 @@ function IdentityNumericChip(props: {
 }) {
   const label = `ci=${props.n}`
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={props.state}
       onClick={() => props.onSetQuery(cycleCiNumericChip(props.query, props.breakdown, props.n))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(label)}>
@@ -503,7 +475,7 @@ function IdentityNumericChip(props: {
       ) : (
         label
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -514,10 +486,9 @@ function IdentityMulticolorChip(props: {
   onSetQuery: (query: string) => void
 }) {
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={props.state}
       onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, { field: CI_FIELDS, operator: ':', value: 'm', term: 'ci:m' }))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${CHIP_CLASSES[props.state]}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans('ci:m')}>
@@ -530,7 +501,7 @@ function IdentityMulticolorChip(props: {
       ) : (
         'ci:m'
       )}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -599,17 +570,13 @@ function SortTermChip(props: {
   onSetQuery: (query: string) => void
 }) {
   const arrow = () => sortArrow(props.chip.value, props.state)
-  const classes = () => {
-    if (props.state === 'neutral') return CHIP_CLASSES.neutral
-    if (props.state === 'positive') return CHIP_CLASSES.positive
-    return 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60'
-  }
+  const chipState = (): 'neutral' | 'positive' | 'negative' | 'alt-negative' =>
+    props.state === 'negative' ? 'alt-negative' : props.state
 
   return (
-    <button
-      type="button"
+    <ChipButton
+      state={chipState()}
       onClick={() => props.onSetQuery(cycleSortChip(props.query, props.breakdown, props.chip))}
-      class={`inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors ${classes()}`}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -622,7 +589,7 @@ function SortTermChip(props: {
       ) : (
         <>{props.chip.label}{arrow()}</>
       )}
-    </button>
+    </ChipButton>
   )
 }
 

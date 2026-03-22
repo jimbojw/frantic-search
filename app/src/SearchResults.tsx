@@ -13,6 +13,7 @@ import { useSearchContext } from './SearchContext'
 import { hasMyInQuery, hasHashInQuery } from './query-edit'
 import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
+import { ChipButton } from './ChipButton'
 import { HighlightedLabel, formatDualCount } from './InlineBreakdown'
 import { Outlink } from './Outlink'
 
@@ -147,13 +148,12 @@ export default function SearchResults() {
                     return (
                       <p class="mt-1">
                         Try again with{' '}
-                        <button
-                          type="button"
+                        <ChipButton
+                          state="neutral"
                           onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                          class="inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                         >
                           <HighlightedLabel label="include:extras" />
-                        </button>
+                        </ChipButton>
                         {' '}({extrasCount()} {extrasCount() === 1 ? 'card' : 'cards'}
                         <Show when={showPrintings()}>
                           , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
@@ -168,10 +168,10 @@ export default function SearchResults() {
                     return (
                       <p class="mt-1 flex flex-wrap items-center gap-x-1">
                         Did you mean to search oracle text? Try{' '}
-                        <button
-                          type="button"
+                        <ChipButton
+                          state="neutral"
+                          layout="col"
                           onClick={() => ctx.setQuery(h.query)}
-                          class="inline-flex flex-col items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-left"
                         >
                           <span class="flex items-center gap-1">
                             <HighlightedLabel label={h.label} />
@@ -179,7 +179,7 @@ export default function SearchResults() {
                           <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                             {formatDualCount(h.count, h.printingCount)}
                           </span>
-                        </button>
+                        </ChipButton>
                         ?
                       </p>
                     )
@@ -717,13 +717,12 @@ export default function SearchResults() {
           })()}>
             <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
               Additional printings not shown. Try again with{' '}
-              <button
-                type="button"
+              <ChipButton
+                state="neutral"
                 onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'unique:prints', ctx.parseBreakdown(ctx.query())))}
-                class="inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               >
                 <HighlightedLabel label="unique:prints" />
-              </button>
+              </ChipButton>
               ?
             </div>
           </Show>
@@ -748,13 +747,12 @@ export default function SearchResults() {
                     {' '}({hiddenPrintings} {hiddenPrintings === 1 ? 'printing' : 'printings'})
                   </Show>
                   {' not shown. Try again with '}
-                  <button
-                    type="button"
+                  <ChipButton
+                    state="neutral"
                     onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                    class="inline-flex items-center justify-center min-h-11 min-w-11 px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                   >
                     <HighlightedLabel label="include:extras" />
-                  </button>
+                  </ChipButton>
                   ?
                 </div>
               )

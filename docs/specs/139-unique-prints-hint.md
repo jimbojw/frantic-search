@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Extended by:** Spec 150 (ChipButton)
+
 **Implements:** [GitHub #155](https://github.com/jimbojw/frantic-search/issues/155)
 
 **Depends on:** Spec 048 (Printing-Aware Display), Spec 057 (include:extras)

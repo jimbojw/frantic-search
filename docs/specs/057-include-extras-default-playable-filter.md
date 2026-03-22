@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Extended by:** Spec 150 (ChipButton — suggestion chips)
+
 **Depends on:** Spec 002 (Query Engine), Spec 032 (is: Operator), Spec 054 (Pinned Search Criteria), Spec 056 (Printing-Level Format Legality), ADR-009 (Bitmask-per-Node AST)
 
 ## Goal

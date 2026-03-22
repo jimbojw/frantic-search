@@ -1,6 +1,8 @@
 # Spec 044: Terms Drawer Redesign
 
-**Status:** Implemented 
+**Status:** Implemented
+
+**Extended by:** Spec 150 (ChipButton — chip styling)
 
 **Depends on:** Spec 037 (Histogram Toggles), Spec 036 (Source Spans), Spec 040 (Extended `is:` Keywords)
 
