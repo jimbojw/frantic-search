@@ -182,6 +182,17 @@ describe('computeSuggestion', () => {
     expect(computeSuggestion(ctx, data)).toBeNull()
   })
 
+  it('ft:e has value context with fieldName flavor, not set (no spurious set completion)', () => {
+    const ctx = getCompletionContext('ft:e', 4)
+    expect(ctx).not.toBeNull()
+    expect(ctx!.type).toBe('value')
+    expect(ctx!.fieldName).toBe('flavor')
+    expect(ctx!.prefix).toBe('e')
+    // flavor has no value autocomplete — must not fall through to set completion
+    const dataWithSetE = makeData({ setCodes: ['eld', 'emn', 'eve'] })
+    expect(computeSuggestion(ctx!, dataWithSetE)).toBeNull()
+  })
+
   it('suggests keyword for kw:fly', () => {
     const tagData = makeData({ keywordLabels: ['flying', 'first strike', 'flash'] })
     const ctx = getCompletionContext('kw:fly', 6)

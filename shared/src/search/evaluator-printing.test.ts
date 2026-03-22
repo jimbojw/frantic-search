@@ -633,6 +633,13 @@ describe("flavor: evaluator", () => {
     expect(indices[0]).toBe(3);
   });
 
+  test("ft:e matches same as flavor:e (alias parity)", () => {
+    const { indices: flavorIndices } = evaluateWithFlavor("flavor:e");
+    const { indices: ftIndices } = evaluateWithFlavor("ft:e");
+    expect(ftIndices.length).toBe(flavorIndices.length);
+    expect([...ftIndices].sort()).toEqual([...flavorIndices].sort());
+  });
+
   test("t:instant flavor:mishra cross-domain AND", () => {
     const { indices } = evaluateWithFlavor("t:instant flavor:mishra");
     expect(indices.length).toBe(1);
