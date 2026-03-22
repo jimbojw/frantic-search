@@ -615,6 +615,7 @@ describe("evaluate", () => {
       loyalty_lookup: [""],
       defense_lookup: [""],
       keywords_index: {},
+      produces: {},
     };
     const idx = new CardIndex(minimal);
     const cache = new NodeCache(idx);

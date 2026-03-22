@@ -57,6 +57,7 @@ interface Card {
   card_faces?: CardFace[];
   keywords?: string[];
   all_parts?: AllPart[];
+  produced_mana?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +376,7 @@ export function processCards(verbose: boolean): void {
     loyalty_lookup: [],
     defense_lookup: [],
     keywords_index: {},
+    produces: {},
   };
 
   const thumbs: ThumbHashData = { art_crop: [], card: [] };
@@ -391,6 +393,12 @@ export function processCards(verbose: boolean): void {
       if (kw) (keywordsIndex[kw] ??= []).push(faceRowStart);
     }
 
+    const producedMana = card.produced_mana ?? [];
+    for (const letter of producedMana) {
+      const key = letter.toUpperCase();
+      if (key) (data.produces[key] ??= []).push(faceRowStart);
+    }
+
     if (MULTI_FACE_LAYOUTS.has(layout) && card.card_faces && card.card_faces.length > 0) {
       for (const face of card.card_faces) {
         pushFaceRow(data, thumbs, face, card, cardIdx, faceRowStart, leg, oracleIdsWithUB, artCropManifest,
@@ -403,6 +411,9 @@ export function processCards(verbose: boolean): void {
   }
 
   for (const arr of Object.values(keywordsIndex)) {
+    arr.sort((a, b) => a - b);
+  }
+  for (const arr of Object.values(data.produces)) {
     arr.sort((a, b) => a - b);
   }
 

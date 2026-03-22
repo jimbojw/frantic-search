@@ -95,6 +95,7 @@ export const TEST_DATA: ColumnarData = {
   loyalty_lookup:  [""],
   defense_lookup:  [""],
   keywords_index:  {},
+  produces:        {},
 };
 
 export const index = new CardIndex(TEST_DATA);

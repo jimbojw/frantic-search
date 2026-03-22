@@ -1,6 +1,6 @@
 # Spec 146: Produces Mana — ETL, Storage, and Load-Time Materialization
 
-**Status:** Draft
+**Status:** Implemented
 
 **GitHub Issue:** [#123](https://github.com/jimbojw/frantic-search/issues/123)
 
@@ -167,4 +167,8 @@ For a query like `produces:wu`, the evaluator computes `queryMask = producesMask
 
 ## Implementation Notes
 
-*(To be added as implementation proceeds.)*
+- 2026-03-22: Implemented ETL extraction, storage, and CardIndex materialization.
+  ETL reads `produced_mana` during face expansion and builds `produces` with
+  sorted canonical face indices. CardIndex materializes `producesData`
+  (Uint8Array) and `producesMasks` (Record) at load time with fan-out for
+  multi-face cards.

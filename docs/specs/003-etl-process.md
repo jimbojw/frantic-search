@@ -131,6 +131,10 @@ The output conforms to the `ColumnarData` interface defined in `shared/src/data.
 
 The `keywords_index` property is an inverted index mapping lowercase keyword strings to sorted arrays of canonical face indices. Same shape as `otags.json` (Spec 092). Extracted from the `keywords` array in oracle-cards.json during the face-expansion pass. Keywords are card-level in Scryfall; for multi-face cards, the same `keywords` array applies to all faces, and the index stores one canonical face index per card per keyword. Bundled with columns.json as core face-level data (Spec 105).
 
+### Produces (`produces` in columns.json)
+
+The `produces` property is an inverted index mapping uppercase mana symbols (W, U, B, R, G, C, T, etc.) to sorted arrays of canonical face indices. Extracted from Scryfall `produced_mana` during face expansion. Cards that produce no mana do not appear in any array. Multi-face cards contribute one canonical index per symbol. Enables `produces:` query support (Spec 146).
+
 With the current Scryfall dataset (~37k raw oracle cards), the process expands ~800 multi-face cards into ~1,600 face rows and emits ~37,500 total face rows (all layouts indexed).
 
 ## Error Handling
@@ -189,3 +193,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   raw flavor text → (canonical_face_index, printing_row_index) pairs. Produced
   by processPrintings() alongside printings.json. Supplemental file loaded by
   the worker after printings for `flavor:` query support (Spec 142).
+- 2026-03-22: Added `produces` to columns.json (Spec 146). Inverted index
+  mapping uppercase mana symbols to sorted canonical face indices. Extracted
+  from Scryfall `produced_mana` during face expansion. Worker materializes into
+  `producesData` (Uint8Array bitmask) and `producesMasks` at load time.

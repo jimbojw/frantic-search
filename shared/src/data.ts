@@ -32,6 +32,8 @@ export interface ColumnarData {
   defense_lookup: string[];
   /** Keyword inverted index: keyword (lowercase) → sorted canonical face indices. Spec 105. */
   keywords_index: Record<string, number[]>;
+  /** Produced-symbol inverted index. Keys are uppercase letters (W, U, B, R, G, C, T, etc.) discovered from data. Spec 146. */
+  produces: Record<string, number[]>;
   /** Alternate names (printed_name, flavor_name) → canonical face index. Spec 111. */
   alternate_names_index?: Record<string, number>;
 }

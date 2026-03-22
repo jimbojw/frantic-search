@@ -114,6 +114,10 @@ export class CardIndex {
   readonly sortedSaltCount: number;
   /** Alternate name (normalized) → canonical face index. Spec 111. */
   readonly alternateNamesIndex: Record<string, number>;
+  /** Per-face bitmask of produced mana symbols. Spec 146. */
+  readonly producesData: Uint8Array;
+  /** Symbol → bit value for produces queries. Spec 146. */
+  readonly producesMasks: Record<string, number>;
 
   private readonly _facesOf: Map<number, number[]>;
 
@@ -203,6 +207,25 @@ export class CardIndex {
       }
       faces.push(i);
     }
+
+    // Spec 146: materialize produces inverted index into bitmask
+    const producesRaw = data.produces ?? {};
+    const keys = Object.keys(producesRaw).sort();
+    const producesMasks: Record<string, number> = {};
+    keys.forEach((k, i) => {
+      producesMasks[k] = 1 << i;
+    });
+    this.producesMasks = producesMasks;
+
+    const producesData = new Uint8Array(this.faceCount);
+    for (const [key, indices] of Object.entries(producesRaw)) {
+      const mask = producesMasks[key];
+      if (mask === undefined) continue;
+      for (const cf of indices) {
+        for (const f of this.facesOf(cf)) producesData[f] |= mask;
+      }
+    }
+    this.producesData = producesData;
   }
 
   facesOf(canonicalIndex: number): number[] {

@@ -323,6 +323,7 @@ const IS_TEST_DATA: ColumnarData = {
   loyalty_lookup: [""],
   defense_lookup: [""],
   keywords_index: {},
+  produces: {},
 };
 
 const isIndex = new CardIndex(IS_TEST_DATA);

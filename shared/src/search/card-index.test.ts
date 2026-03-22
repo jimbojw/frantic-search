@@ -33,6 +33,7 @@ function makeData(overrides: Partial<ColumnarData> = {}): ColumnarData {
     loyalty_lookup: [],
     defense_lookup: [],
     keywords_index: {},
+    produces: {},
     ...overrides,
   };
   const len = merged.names.length;
@@ -258,5 +259,82 @@ describe("CardIndex.edhrecSalt", () => {
     expect(index.edhrecSalt).toEqual([null, null]);
     expect(index.sortedSaltCount).toBe(0);
     expect(index.sortedSaltIndices.length).toBe(0);
+  });
+});
+
+describe("CardIndex.producesData and producesMasks", () => {
+  it("materializes producesData and producesMasks from inverted index", () => {
+    const data = makeData({
+      names: ["Beck", "Call", "Lightning Bolt"],
+      mana_costs: ["{G}{U}", "{4}{W}{U}", "{R}"],
+      oracle_texts: ["Draw.", "Tokens.", "Damage."],
+      colors: [0, 0, 0],
+      color_identity: [0, 0, 0],
+      type_lines: ["Instant", "Instant", "Instant"],
+      powers: [0, 0, 0],
+      toughnesses: [0, 0, 0],
+      loyalties: [0, 0, 0],
+      defenses: [0, 0, 0],
+      legalities_legal: [0, 0, 0],
+      legalities_banned: [0, 0, 0],
+      legalities_restricted: [0, 0, 0],
+      card_index: [0, 0, 1],
+      canonical_face: [0, 0, 2],
+      produces: { W: [0], U: [2] },
+    });
+    const index = new CardIndex(data);
+    expect(index.producesMasks).toEqual({ U: 1, W: 2 });
+    expect(index.producesData[0]).toBe(2);
+    expect(index.producesData[1]).toBe(2);
+    expect(index.producesData[2]).toBe(1);
+  });
+
+  it("fans out multi-face cards: both faces get the produces bit", () => {
+    const data = makeData({
+      names: ["Beck", "Call"],
+      mana_costs: ["{G}{U}", "{4}{W}{U}"],
+      oracle_texts: ["Draw.", "Tokens."],
+      colors: [0, 0],
+      color_identity: [0, 0],
+      type_lines: ["Instant", "Instant"],
+      powers: [0, 0],
+      toughnesses: [0, 0],
+      loyalties: [0, 0],
+      defenses: [0, 0],
+      legalities_legal: [0, 0],
+      legalities_banned: [0, 0],
+      legalities_restricted: [0, 0],
+      card_index: [0, 0],
+      canonical_face: [0, 0],
+      produces: { W: [0] },
+    });
+    const index = new CardIndex(data);
+    expect(index.producesMasks).toEqual({ W: 1 });
+    expect(index.producesData[0]).toBe(1);
+    expect(index.producesData[1]).toBe(1);
+  });
+
+  it("handles empty produces with zeroed producesData", () => {
+    const data = makeData({
+      names: ["A"],
+      mana_costs: ["{1}"],
+      oracle_texts: [""],
+      colors: [0],
+      color_identity: [0],
+      type_lines: ["Creature"],
+      powers: [0],
+      toughnesses: [0],
+      loyalties: [0],
+      defenses: [0],
+      legalities_legal: [0],
+      legalities_banned: [0],
+      legalities_restricted: [0],
+      card_index: [0],
+      canonical_face: [0],
+      produces: {},
+    });
+    const index = new CardIndex(data);
+    expect(index.producesMasks).toEqual({});
+    expect(index.producesData[0]).toBe(0);
   });
 });

@@ -530,6 +530,7 @@ describe("validateDeckListWithEngine", () => {
       loyalty_lookup: [""],
       defense_lookup: [""],
       keywords_index: {},
+      produces: {},
     };
     const gloinIndex = new CardIndex(gloinData);
     const gloinDisplay: DisplayColumns = {
