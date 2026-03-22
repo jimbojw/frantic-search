@@ -258,28 +258,6 @@ function buildCanonicalScryfallIdMap(): Map<number, string> {
   return map;
 }
 
-/** Build oracle_id → canonical face index from columns (per-face; includes DFC backs). Spec 141. */
-function buildOracleIdToFaceMapFromColumns(verbose: boolean): Map<string, number> {
-  log("Building oracle_id → canonical face map from columns (for flavor index)…", verbose);
-  const columnsRaw = fs.readFileSync(COLUMNS_PATH, "utf-8");
-  const columns: ColumnarData = JSON.parse(columnsRaw);
-  const oracleIds = columns.oracle_ids;
-  if (!oracleIds || oracleIds.length !== columns.canonical_face.length) {
-    throw new Error(
-      "columns.json must have oracle_ids (run processCards first); oracle_ids length must match canonical_face",
-    );
-  }
-  const map = new Map<string, number>();
-  for (let i = 0; i < oracleIds.length; i++) {
-    const oid = oracleIds[i];
-    if (oid && !map.has(oid)) {
-      map.set(oid, columns.canonical_face[i]);
-    }
-  }
-  log(`Mapped ${map.size} oracle_ids to canonical face indices (per-face)`, verbose);
-  return map;
-}
-
 /** Front-face illustration_id (multiface uses card_faces[0]). */
 function getFrontIllustrationId(card: DefaultCard): string | undefined {
   return card.card_faces?.[0]?.illustration_id ?? card.illustration_id;
@@ -303,7 +281,6 @@ export function processPrintings(verbose: boolean): void {
 
   const oracleIdMap = buildOracleIdMap(verbose);
   const canonicalScryfallIdMap = buildCanonicalScryfallIdMap();
-  const oracleIdToFaceMap = buildOracleIdToFaceMapFromColumns(verbose);
 
   log(`Reading ${DEFAULT_CARDS_PATH}…`, verbose);
   const raw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
@@ -502,29 +479,25 @@ export function processPrintings(verbose: boolean): void {
       }
     }
 
-    // Flavor text inverted index (Spec 141): raw flavor text → (canonical_face, printing_row) pairs
-    const facesWithFlavor: Array<{ flavorText: string; oracleId: string }> = [];
+    // Flavor text inverted index (Spec 141): raw flavor text → (face_index_within_card, printing_row) pairs
+    const facesWithFlavor: Array<{ flavorText: string; faceIndex: number }> = [];
     if (card.card_faces?.length) {
-      for (const face of card.card_faces) {
-        const ft = face.flavor_text?.trim();
-        const oid = face.oracle_id ?? "";
-        if (ft && oid) facesWithFlavor.push({ flavorText: ft, oracleId: oid });
+      for (let i = 0; i < card.card_faces.length; i++) {
+        const ft = card.card_faces[i].flavor_text?.trim();
+        if (ft) facesWithFlavor.push({ flavorText: ft, faceIndex: i });
       }
     } else {
       const ft = card.flavor_text?.trim();
-      const oid = card.oracle_id ?? card.card_faces?.[0]?.oracle_id ?? "";
-      if (ft && oid) facesWithFlavor.push({ flavorText: ft, oracleId: oid });
+      if (ft) facesWithFlavor.push({ flavorText: ft, faceIndex: 0 });
     }
-    for (const { flavorText, oracleId } of facesWithFlavor) {
-      const canonicalFace = oracleIdToFaceMap.get(oracleId);
-      if (canonicalFace === undefined) continue;
+    for (const { flavorText, faceIndex } of facesWithFlavor) {
       let pairs = flavorIndex[flavorText];
       if (!pairs) {
         pairs = [];
         flavorIndex[flavorText] = pairs;
       }
       for (let pi = printingRowStart; pi < totalEntries; pi++) {
-        pairs.push([canonicalFace, pi]);
+        pairs.push([faceIndex, pi]);
       }
     }
   }
