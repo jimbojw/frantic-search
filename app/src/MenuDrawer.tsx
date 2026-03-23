@@ -4,6 +4,7 @@ import { IconBookOpen, IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
 import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip, CI_FIELDS, getIdentityColorChipState, toggleIdentityColorChip, toggleIdentityColorlessChip, cycleCiNumericChip } from './query-edit'
+import { captureMenuChipUsed } from './analytics'
 import { ChipButton } from './ChipButton'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
@@ -230,12 +231,16 @@ function TermChip(props: {
   state: ChipState
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   return (
     <ChipButton
       state={props.state}
-      onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, props.chip))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: props.chip.label })
+        props.onSetQuery(cycleChip(props.query, props.breakdown, props.chip))
+      }}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -260,12 +265,16 @@ function ViewChip(props: {
   mode: ViewMode
   label: string
   active: boolean
+  section: string
   onChange: (mode: ViewMode) => void
 }) {
   return (
     <ChipButton
       active={props.active}
-      onClick={() => props.onChange(props.mode)}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: props.label })
+        props.onChange(props.mode)
+      }}
     >
       {props.active ? (
         props.label
@@ -292,12 +301,16 @@ function UniqueChip(props: {
   mode: 'cards' | 'art' | 'prints'
   label: string
   active: boolean
+  section: string
   onChange: (mode: 'cards' | 'art' | 'prints') => void
 }) {
   return (
     <ChipButton
       active={props.active}
-      onClick={() => props.onChange(props.mode)}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: props.label })
+        props.onChange(props.mode)
+      }}
     >
       {props.active ? (
         props.label
@@ -318,13 +331,17 @@ function MetadataTagChip(props: {
   tag: string
   query: string
   breakdown: () => BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   const state = () => getMetadataTagChipState(props.breakdown(), props.tag)
   return (
     <ChipButton
       state={state()}
-      onClick={() => props.onSetQuery(cycleMetadataTagChip(props.query, props.breakdown(), { tag: props.tag, term: `#${props.tag}` }))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: `#${props.tag}` })
+        props.onSetQuery(cycleMetadataTagChip(props.query, props.breakdown(), { tag: props.tag, term: `#${props.tag}` }))
+      }}
     >
       #{props.tag}
     </ChipButton>
@@ -335,12 +352,16 @@ function IncludeExtrasChip(props: {
   active: boolean
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   return (
     <ChipButton
       active={props.active}
-      onClick={() => props.onSetQuery(toggleIncludeExtras(props.query, props.breakdown))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: 'include:extras' })
+        props.onSetQuery(toggleIncludeExtras(props.query, props.breakdown))
+      }}
     >
       {props.active ? (
         'include:extras'
@@ -375,12 +396,16 @@ function PercentileTermChip(props: {
   state: ChipState
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   return (
     <ChipButton
       state={props.state}
-      onClick={() => props.onSetQuery(cyclePercentileChip(props.query, props.breakdown, props.chip))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: props.chip.label })
+        props.onSetQuery(cyclePercentileChip(props.query, props.breakdown, props.chip))
+      }}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -417,13 +442,17 @@ function IdentityColorChip(props: {
   active: boolean
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   const isC = props.color === 'c'
-  const onClick = () =>
+  const chipLabel = `${props.prefix}${props.color}`
+  const onClick = () => {
+    captureMenuChipUsed({ section: props.section, chip_label: chipLabel })
     isC
       ? props.onSetQuery(toggleIdentityColorlessChip(props.query, props.breakdown))
       : props.onSetQuery(toggleIdentityColorChip(props.query, props.breakdown, props.color))
+  }
   return (
     <ChipButton
       active={props.active}
@@ -456,13 +485,17 @@ function IdentityNumericChip(props: {
   state: 'neutral' | 'positive' | 'negative'
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   const label = `ci=${props.n}`
   return (
     <ChipButton
       state={props.state}
-      onClick={() => props.onSetQuery(cycleCiNumericChip(props.query, props.breakdown, props.n))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: label })
+        props.onSetQuery(cycleCiNumericChip(props.query, props.breakdown, props.n))
+      }}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(label)}>
@@ -483,12 +516,16 @@ function IdentityMulticolorChip(props: {
   state: 'neutral' | 'positive' | 'negative'
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   return (
     <ChipButton
       state={props.state}
-      onClick={() => props.onSetQuery(cycleChip(props.query, props.breakdown, { field: CI_FIELDS, operator: ':', value: 'm', term: 'ci:m' }))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: 'ci:m' })
+        props.onSetQuery(cycleChip(props.query, props.breakdown, { field: CI_FIELDS, operator: ':', value: 'm', term: 'ci:m' }))
+      }}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans('ci:m')}>
@@ -508,6 +545,7 @@ function IdentityMulticolorChip(props: {
 function ColorSection(props: {
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   const state = () => getIdentityColorChipState(props.breakdown)
@@ -522,6 +560,7 @@ function ColorSection(props: {
               active={state().wubrg[color as 'w' | 'u' | 'b' | 'r' | 'g']}
               query={props.query}
               breakdown={props.breakdown}
+              section={props.section}
               onSetQuery={props.onSetQuery}
             />
           )}
@@ -532,6 +571,7 @@ function ColorSection(props: {
           active={state().colorless}
           query={props.query}
           breakdown={props.breakdown}
+          section={props.section}
           onSetQuery={props.onSetQuery}
         />
       </div>
@@ -543,6 +583,7 @@ function ColorSection(props: {
               state={state().numeric[n]}
               query={props.query}
               breakdown={props.breakdown}
+              section={props.section}
               onSetQuery={props.onSetQuery}
             />
           )}
@@ -551,6 +592,7 @@ function ColorSection(props: {
           state={state().multicolor}
           query={props.query}
           breakdown={props.breakdown}
+          section={props.section}
           onSetQuery={props.onSetQuery}
         />
       </div>
@@ -567,6 +609,7 @@ function SortTermChip(props: {
   state: ChipState
   query: string
   breakdown: BreakdownNode | null
+  section: string
   onSetQuery: (query: string) => void
 }) {
   const arrow = () => sortArrow(props.chip.value, props.state)
@@ -576,7 +619,10 @@ function SortTermChip(props: {
   return (
     <ChipButton
       state={chipState()}
-      onClick={() => props.onSetQuery(cycleSortChip(props.query, props.breakdown, props.chip))}
+      onClick={() => {
+        captureMenuChipUsed({ section: props.section, chip_label: props.chip.label })
+        props.onSetQuery(cycleSortChip(props.query, props.breakdown, props.chip))
+      }}
     >
       {props.state === 'neutral' ? (
         <For each={buildSpans(props.chip.label)}>
@@ -751,6 +797,7 @@ export default function MenuDrawer(props: {
                   state={getChipState(bd(), myChip('list'))}
                   query={props.query}
                   breakdown={bd()}
+                  section="mylist"
                   onSetQuery={props.onSetQuery}
                 />
                 <For each={ctx.deckTags?.() ?? []}>
@@ -759,6 +806,7 @@ export default function MenuDrawer(props: {
                       tag={tag}
                       query={props.query}
                       breakdown={bd}
+                      section="mylist"
                       onSetQuery={props.onSetQuery}
                     />
                   )}
@@ -777,6 +825,7 @@ export default function MenuDrawer(props: {
                       mode={mode}
                       label={`view:${mode}`}
                       active={ctx.viewMode() === mode}
+                      section="views"
                       onChange={ctx.changeViewMode}
                     />
                   )}
@@ -789,6 +838,7 @@ export default function MenuDrawer(props: {
                       mode={mode}
                       label={`unique:${mode}`}
                       active={ctx.uniqueMode() === mode}
+                      section="views"
                       onChange={ctx.changeUniqueMode}
                     />
                   )}
@@ -799,6 +849,7 @@ export default function MenuDrawer(props: {
                   active={hasIncludeExtras(bd())}
                   query={props.query}
                   breakdown={bd()}
+                  section="views"
                   onSetQuery={props.onSetQuery}
                 />
               </div>
@@ -815,6 +866,7 @@ export default function MenuDrawer(props: {
                       <ColorSection
                         query={props.query}
                         breakdown={bd()}
+                        section="color"
                         onSetQuery={props.onSetQuery}
                       />
                     </Show>
@@ -829,6 +881,7 @@ export default function MenuDrawer(props: {
                                   state={getChipState(bd(), chip)}
                                   query={props.query}
                                   breakdown={bd()}
+                                  section={section}
                                   onSetQuery={props.onSetQuery}
                                 />
                               </Show>
@@ -838,6 +891,7 @@ export default function MenuDrawer(props: {
                                   state={getChipState(bd(), chip)}
                                   query={props.query}
                                   breakdown={bd()}
+                                  section={section}
                                   onSetQuery={props.onSetQuery}
                                 />
                               </Show>
@@ -847,6 +901,7 @@ export default function MenuDrawer(props: {
                                   state={getChipState(bd(), chip)}
                                   query={props.query}
                                   breakdown={bd()}
+                                  section={section}
                                   onSetQuery={props.onSetQuery}
                                 />
                               </Show>

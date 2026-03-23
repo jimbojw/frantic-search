@@ -65,3 +65,10 @@ export function captureSuggestionApplied(params: {
 }): void {
   posthog.capture('suggestion_applied', params)
 }
+
+export function captureMenuChipUsed(params: {
+  section: string
+  chip_label: string
+}): void {
+  posthog.capture('menu_chip_used', params)
+}

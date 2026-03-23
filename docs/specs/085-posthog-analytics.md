@@ -76,6 +76,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
+| `menu_chip_used`           | `{ section: string, chip_label: string }` (Spec 083) |
 
 ### 5. `used_extension` Definition
 
@@ -115,6 +116,8 @@ Add `captureUiInteracted({ element_name, action, state? })` at these locations:
 | `bug_report`  | clicked  | BugReport opened                            |
 
 Suggestion chips (Spec 151, Spec 153) use a dedicated `suggestion_applied` event via `captureSuggestionApplied()`, fired in SuggestionList when the user taps a chip. Properties include `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider) for funnel analysis.
+
+MenuDrawer filter chips (Spec 083) use `menu_chip_used` via `captureMenuChipUsed()`, fired in each chip's onClick when the user taps. Properties: `section` (mylist, views, formats, color, layouts, etc.) and `chip_label` (e.g. `f:commander`, `view:images`, `ci:w`).
 
 ### 9. Offline Resilience (Background Sync)
 

@@ -81,6 +81,8 @@ LAYOUTS
 
 **TERMS:** Chip behavior (tri-state, modifiers, sort arrows) unchanged from Spec 044 and Spec 059.
 
+**PostHog (Spec 085):** Tapping any MenuDrawer chip fires `menu_chip_used` with `section` and `chip_label` for funnel analysis.
+
 ### Data source for VIEWS
 
 MenuDrawer is rendered within `SearchProvider` in both modal and inline contexts. It uses `useSearchContext()` to obtain:
