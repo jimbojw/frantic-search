@@ -96,7 +96,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       count: indicesIncludingExtras,
       printingCount: printingIndicesIncludingExtras,
       docRef: 'reference/modifiers/include-extras',
-      priority: 10,
+      priority: 90,
       variant: 'rewrite',
     })
   }
@@ -118,7 +118,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       count,
       printingCount: printingIndicesIncludingExtras,
       docRef: 'reference/modifiers/include-extras',
-      priority: 10,
+      priority: 90,
       variant: 'rewrite',
     })
   }

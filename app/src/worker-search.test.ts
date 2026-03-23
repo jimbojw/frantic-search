@@ -188,6 +188,7 @@ describe('default playable filter (Spec 057)', () => {
     })
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext).toBeDefined()
+    expect(ext!.priority).toBe(90)
     expect(ext!.count).toBe(4)
   })
 
@@ -253,6 +254,7 @@ describe('default playable filter (Spec 057)', () => {
     })
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext).toBeDefined()
+    expect(ext!.priority).toBe(90)
     expect(ext!.printingCount).toBe(8)
   })
 
@@ -282,6 +284,7 @@ describe('default playable filter (Spec 057)', () => {
     expect(result.indices.length).toBe(0)
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext?.count).toBe(1)
+    expect(ext!.priority).toBe(90)
   })
 
   it('histograms reflect filtered results, not unfiltered', () => {
@@ -316,6 +319,7 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext?.count).toBe(1)
     expect(ext?.printingCount).toBe(1)
+    expect(ext!.priority).toBe(90)
   })
 
   it('set query with include:extras shows non-tournament printings', () => {

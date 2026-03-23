@@ -50,7 +50,7 @@ One row per offending term. Each row uses the same flex-row pattern as other sug
 
 When both the `include:extras` hint (Spec 057) and the empty-list CTA could apply (e.g., `my:list` + empty list + playable filter removed results), show the **empty-list CTA** — it is more actionable for new users who have no list yet. The `include:extras` hint addresses "filter hid results"; the empty list is a different problem.
 
-Empty-state priority order: empty-list CTA (Spec 126) > `include:extras` hint (Spec 057) > oracle "did you mean?" hint (Spec 131).
+Empty-state ordering (unified Spec 151): **empty-list** stays first (priority 0). All other chips sort by `Suggestion.priority`. **`include:extras` is last among empty-state rewrite hints** (priority 90) so users see list, field, oracle, and bare-term refinements before the broad playable-filter bypass.
 
 ### Data flow
 

@@ -109,16 +109,16 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | id | priority | Rationale |
 |----|----------|-----------|
 | empty-list | 0 | Highest — user cannot get results without a list |
-| include-extras | 10 | Unblocks hidden playable-filtered results |
 | oracle | 20 | Reformulates bare tokens to oracle search |
 | wrong-field | 22 | Right value in wrong field; suggest correct field (Spec 153) |
 | unique-prints | 30 | Rider context; expand printings |
 | bare-term-upgrade | 16 | Bare term matches known field value; suggest field prefix (e.g. "landfall" → kw:landfall). Spec 154. |
-| (future) card-type | 15 | Type token reformulation; between extras and oracle (e.g. "creatures" → t:creature) |
+| (future) card-type | 15 | Type token reformulation; before oracle (e.g. "creatures" → t:creature) |
 | artist-atag | 25 | Cross-detect atag vs a; suggest the field that returns results. Unified by Spec 153. |
 | (future) near-miss | 18 | Unquoted multi-word field value; suggest quoted form when it would match |
 | (future) relaxed | 35 | "Try broader" alternative |
 | example-query | 40 | Fallback — when no other empty-state suggestion applies; ensures we never fail silently |
+| include-extras | 90 | Lowest among empty-state rewrites — broad escape hatch (non-playable printings); show after targeted field/oracle/wrong-field/bare-term hints and after reserved future tiers through example-query |
 
 ### Wire protocol
 
@@ -178,7 +178,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 - **Wrong-field (Spec 153):** Unified by Spec 153. In `buildSuggestions`, when totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0. Uses `evaluateAlternative` from `worker-alternative-eval.ts`.
 - **Artist-atag (Spec 153):** In `buildSuggestions`, when totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
-- **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']`. Priority governs empty-state order only.
+- **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']` in `SuggestionList` (`RIDER_ORDER`). That order is unchanged by `include-extras` priority — priority governs **empty-state** sort only (`mode="empty"`).
 
 ## Scope of Changes
 
