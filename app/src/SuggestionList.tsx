@@ -82,8 +82,8 @@ export function SuggestionList(props: {
               : null
 
             return (
-              <div class="flex flex-row items-start gap-3">
-                <div class="shrink-0">
+              <div class="flex flex-row gap-3">
+                <div class="shrink-0 self-start">
                   {s.variant === 'cta' ? (
                     <ChipButton
                       state="neutral"
@@ -117,7 +117,7 @@ export function SuggestionList(props: {
                     </ChipButton>
                   )}
                 </div>
-                <div class="flex-1 min-w-0 text-base">
+                <div class="flex-1 min-w-0 text-base self-center">
                   {desc().text}
                   {descLinkForEmptyList ? (
                     <button
