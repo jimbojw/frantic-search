@@ -6,6 +6,7 @@ import type {
   Histograms,
   UniqueMode,
   BreakdownNode,
+  Suggestion,
 } from '@frantic-search/shared'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
@@ -53,10 +54,8 @@ export interface CreatePaneStateOpts {
   printingIndices: Accessor<Uint32Array | undefined>
   hasPrintingConditions: Accessor<boolean>
   uniqueMode: Accessor<UniqueMode>
-  indicesIncludingExtras: Accessor<number | undefined>
-  printingIndicesIncludingExtras: Accessor<number | undefined>
-  /** Spec 131: Oracle "did you mean?" hint when zero results and trailing bare tokens. */
-  oracleHint?: Accessor<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>
+  /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
+  suggestions: Accessor<Suggestion[]>
   display: Accessor<DisplayColumns | null>
   printingDisplay: Accessor<PrintingDisplayColumns | null>
   oracleTagLabels: Accessor<string[]>
@@ -162,9 +161,7 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     printingIndices: opts.printingIndices,
     hasPrintingConditions: opts.hasPrintingConditions,
     uniqueMode: opts.uniqueMode,
-    indicesIncludingExtras: opts.indicesIncludingExtras,
-    printingIndicesIncludingExtras: opts.printingIndicesIncludingExtras,
-    oracleHint: opts.oracleHint,
+    suggestions: opts.suggestions,
     display: opts.display,
     printingDisplay: opts.printingDisplay,
     oracleTagLabels: opts.oracleTagLabels,

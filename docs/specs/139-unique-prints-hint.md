@@ -4,6 +4,8 @@
 
 **Extended by:** Spec 150 (ChipButton)
 
+**Unified by:** Spec 151 (Suggestion System)
+
 **Implements:** [GitHub #155](https://github.com/jimbojw/frantic-search/issues/155)
 
 **Depends on:** Spec 048 (Printing-Aware Display), Spec 057 (include:extras)

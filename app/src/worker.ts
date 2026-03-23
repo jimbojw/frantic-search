@@ -493,6 +493,7 @@ async function init(): Promise<void> {
       printingIndex,
       sessionSalt,
       tagData: tagDataRef,
+      getListMask,
     })
 
     const resultWithSide = msg.side !== undefined ? { ...resultMsg, side: msg.side } : resultMsg

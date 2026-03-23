@@ -10,12 +10,11 @@ import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { hasMyInQuery, hasHashInQuery } from './query-edit'
 import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
-import { ChipButton } from './ChipButton'
-import { HighlightedLabel, formatDualCount } from './InlineBreakdown'
+import { formatDualCount } from './InlineBreakdown'
 import { Outlink } from './Outlink'
+import { SuggestionList } from './SuggestionList'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -121,8 +120,7 @@ export default function SearchResults() {
             <Show when={
               ctx.cardListStore &&
               ctx.navigateToLists &&
-              (hasMyInQuery(ctx.parseBreakdown(ctx.query())) || hasHashInQuery(ctx.parseBreakdown(ctx.query()))) &&
-              (ctx.defaultListEmpty?.() ?? false)
+              ctx.suggestions()?.some((s) => s.id === 'empty-list')
             } fallback={
               <>
                 <p class="text-gray-700 dark:text-gray-300">No cards found</p>
@@ -141,50 +139,16 @@ export default function SearchResults() {
                     Report a problem
                   </button>
                 </p>
-                <Show when={ctx.indicesIncludingExtras()}>
-                  {(extrasCount) => {
-                    const pExtras = ctx.printingIndicesIncludingExtras()
-                    const showPrintings = () => pExtras !== undefined && (ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions())
-                    return (
-                      <p class="mt-1">
-                        Try again with{' '}
-                        <ChipButton
-                          state="neutral"
-                          onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                        >
-                          <HighlightedLabel label="include:extras" />
-                        </ChipButton>
-                        {' '}({extrasCount()} {extrasCount() === 1 ? 'card' : 'cards'}
-                        <Show when={showPrintings()}>
-                          , {pExtras} {pExtras === 1 ? 'printing' : 'printings'}
-                        </Show>)?
-                      </p>
-                    )
+                <SuggestionList
+                  suggestions={ctx.suggestions() ?? []}
+                  mode="empty"
+                  onApplyQuery={(q) => ctx.setQuery(q)}
+                  onCta={(action) => {
+                    if (action === 'navigateToLists') ctx.navigateToLists?.()
                   }}
-                </Show>
-                <Show when={!ctx.indicesIncludingExtras() && ctx.oracleHint?.()}>
-                  {(hint) => {
-                    const h = hint()
-                    return (
-                      <p class="mt-1 flex flex-wrap items-center gap-x-1">
-                        Did you mean to search oracle text? Try{' '}
-                        <ChipButton
-                          state="neutral"
-                          layout="col"
-                          onClick={() => ctx.setQuery(h.query)}
-                        >
-                          <span class="flex items-center gap-1">
-                            <HighlightedLabel label={h.label} />
-                          </span>
-                          <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                            {formatDualCount(h.count, h.printingCount)}
-                          </span>
-                        </ChipButton>
-                        ?
-                      </p>
-                    )
-                  }}
-                </Show>
+                  formatDualCount={formatDualCount}
+                  navigateToDocs={ctx.navigateToDocs}
+                />
               </>
             }>
               <p class="font-medium text-gray-700 dark:text-gray-300">Your list is empty.</p>
@@ -709,54 +673,34 @@ export default function SearchResults() {
               </Show>
             </div>
           </Show>
-          <Show when={(() => {
-            if (ctx.uniqueMode() === 'prints') return false
-            const total = ctx.totalPrintingItems()
-            const displayed = ctx.totalDisplayItems()
-            return total > 0 && total > displayed
-          })()}>
+          <Show when={
+            ctx.suggestions()?.some((s) => s.id === 'unique-prints' || s.id === 'include-extras')
+          }>
             <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-              Additional printings not shown. Try again with{' '}
-              <ChipButton
-                state="neutral"
-                onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'unique:prints', ctx.parseBreakdown(ctx.query())))}
-              >
-                <HighlightedLabel label="unique:prints" />
-              </ChipButton>
-              ?
+              <SuggestionList
+                suggestions={ctx.suggestions() ?? []}
+                mode="rider"
+                onApplyQuery={(q) => ctx.setQuery(q)}
+                formatDualCount={formatDualCount}
+                navigateToDocs={ctx.navigateToDocs}
+                hiddenCardCount={
+                  (() => {
+                    const s = ctx.suggestions()?.find((x) => x.id === 'include-extras')
+                    if (!s?.count) return undefined
+                    return s.count - ctx.totalCards()
+                  })()
+                }
+                hiddenPrintingCount={
+                  (() => {
+                    const s = ctx.suggestions()?.find((x) => x.id === 'include-extras')
+                    if (!s?.printingCount) return undefined
+                    const showPrintings = ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions()
+                    if (!showPrintings) return undefined
+                    return s.printingCount - ctx.totalPrintingItems()
+                  })()
+                }
+              />
             </div>
-          </Show>
-          <Show when={(() => {
-            const extras = ctx.indicesIncludingExtras()
-            if (extras === undefined) return false
-            const hidden = extras - ctx.totalCards()
-            return hidden > 0
-          })()}>
-            {(() => {
-              const extras = ctx.indicesIncludingExtras()!
-              const hiddenCards = extras - ctx.totalCards()
-              const pExtras = ctx.printingIndicesIncludingExtras()
-              const showPrintings = () => pExtras !== undefined && (ctx.uniqueMode() !== 'cards' || ctx.hasPrintingConditions())
-              const hiddenPrintings = showPrintings() && pExtras !== undefined
-                ? pExtras - ctx.totalPrintingItems()
-                : 0
-              return (
-                <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-                  {hiddenCards} {hiddenCards === 1 ? 'card' : 'cards'}
-                  <Show when={showPrintings() && hiddenPrintings > 0}>
-                    {' '}({hiddenPrintings} {hiddenPrintings === 1 ? 'printing' : 'printings'})
-                  </Show>
-                  {' not shown. Try again with '}
-                  <ChipButton
-                    state="neutral"
-                    onClick={() => ctx.setQuery(ctx.appendTerm(ctx.query(), 'include:extras', ctx.parseBreakdown(ctx.query())))}
-                  >
-                    <HighlightedLabel label="include:extras" />
-                  </ChipButton>
-                  ?
-                </div>
-              )
-            })()}
           </Show>
         </Show>
       </div>

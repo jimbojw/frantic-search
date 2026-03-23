@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Used by:** SuggestionList (Spec 151) for suggestion chips
+
 **Depends on:** Spec 083 (MenuDrawer), Spec 044 (Terms Drawer Redesign), Spec 057 (include:extras), Spec 139 (unique:prints hint), Spec 131 (oracle did-you-mean)
 
 **Addresses:** [Issue #169](https://github.com/jimbojw/frantic-search/issues/169) — Chip buttons should be uniform height

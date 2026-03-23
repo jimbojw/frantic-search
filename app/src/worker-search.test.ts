@@ -175,10 +175,10 @@ describe('default playable filter (Spec 057)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(4)
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
-  it('populates indicesIncludingExtras when filter removes results', () => {
+  it('populates include-extras suggestion when filter removes results', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:instant' },
       cache: funnyCache,
@@ -186,10 +186,12 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    expect(result.indicesIncludingExtras).toBe(4)
+    const ext = result.suggestions.find((s) => s.id === 'include-extras')
+    expect(ext).toBeDefined()
+    expect(ext!.count).toBe(4)
   })
 
-  it('does not populate indicesIncludingExtras when filter removes nothing', () => {
+  it('does not populate include-extras suggestion when filter removes nothing', () => {
     // t:creature matches cards all legal somewhere
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:creature' },
@@ -198,7 +200,7 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('include:extras bypasses the playable filter', () => {
@@ -211,7 +213,7 @@ describe('default playable filter (Spec 057)', () => {
     })
     // Dismember included because include:extras skips filter
     expect(result.indices.length).toBe(4)
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('include:extras in pinned query bypasses the filter', () => {
@@ -223,7 +225,7 @@ describe('default playable filter (Spec 057)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(4)
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('excludes non-tournament printings by default with unique:prints', () => {
@@ -241,7 +243,7 @@ describe('default playable filter (Spec 057)', () => {
     expect(result.printingIndices!.length).toBe(7)
   })
 
-  it('populates printingIndicesIncludingExtras when filter removes printings', () => {
+  it('populates include-extras suggestion when filter removes printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
       cache: funnyCache,
@@ -249,7 +251,9 @@ describe('default playable filter (Spec 057)', () => {
       printingIndex: funnyPrintingIndex,
       sessionSalt,
     })
-    expect(result.printingIndicesIncludingExtras).toBe(8)
+    const ext = result.suggestions.find((s) => s.id === 'include-extras')
+    expect(ext).toBeDefined()
+    expect(ext!.printingCount).toBe(8)
   })
 
   it('include:extras shows non-tournament printings', () => {
@@ -262,7 +266,7 @@ describe('default playable filter (Spec 057)', () => {
     })
     // All 8 Bolt printings including #6 (GoldBorder)
     expect(result.printingIndices!.length).toBe(8)
-    expect(result.printingIndicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('filters printings of not-legal-anywhere cards too', () => {
@@ -276,7 +280,8 @@ describe('default playable filter (Spec 057)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(0)
-    expect(result.indicesIncludingExtras).toBe(1)
+    const ext = result.suggestions.find((s) => s.id === 'include-extras')
+    expect(ext?.count).toBe(1)
   })
 
   it('histograms reflect filtered results, not unfiltered', () => {
@@ -308,8 +313,9 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
       sessionSalt,
     })
     expect(result.indices.length).toBe(0)
-    expect(result.indicesIncludingExtras).toBe(1)
-    expect(result.printingIndicesIncludingExtras).toBe(1)
+    const ext = result.suggestions.find((s) => s.id === 'include-extras')
+    expect(ext?.count).toBe(1)
+    expect(ext?.printingCount).toBe(1)
   })
 
   it('set query with include:extras shows non-tournament printings', () => {
@@ -322,8 +328,7 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     })
     expect(result.indices.length).toBe(1)
     expect(result.printingIndices?.length).toBe(1)
-    expect(result.indicesIncludingExtras).toBeUndefined()
-    expect(result.printingIndicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('set query with tournament printings unchanged', () => {
@@ -335,7 +340,7 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
       sessionSalt,
     })
     expect(result.indices.length).toBe(1)
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
   it('set + face condition with all printings filtered returns 0 results', () => {
@@ -473,7 +478,7 @@ describe('dual counts (Spec 082)', () => {
 })
 
 describe('oracle hint (Spec 131)', () => {
-  it('zero results with trailing bare tokens yields oracleHint when oracle variant returns results', () => {
+  it('zero results with trailing bare tokens yields oracle suggestion when oracle variant returns results', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'lightning ci:r deal 3' },
       cache,
@@ -482,14 +487,14 @@ describe('oracle hint (Spec 131)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(0)
-    expect(result.oracleHint).toBeDefined()
-    expect(result.oracleHint!.query).toContain('o:')
-    expect(result.oracleHint!.label).toContain('o:')
-    expect(result.oracleHint!.count).toBeGreaterThan(0)
-    expect(result.oracleHint!.variant).toMatch(/^(phrase|per-word)$/)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    expect(oracle!.query).toContain('o:')
+    expect(oracle!.label).toContain('o:')
+    expect(oracle!.count).toBeGreaterThan(0)
   })
 
-  it('(xyc OR abc) with zero results does not trigger oracle hint', () => {
+  it('(xyc OR abc) with zero results does not trigger oracle suggestion', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: '(xyc OR abc)' },
       cache,
@@ -498,10 +503,10 @@ describe('oracle hint (Spec 131)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBe(0)
-    expect(result.oracleHint).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
   })
 
-  it('non-zero results does not populate oracleHint', () => {
+  it('non-zero results does not populate oracle suggestion', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:creature' },
       cache,
@@ -510,6 +515,6 @@ describe('oracle hint (Spec 131)', () => {
       sessionSalt,
     })
     expect(result.indices.length).toBeGreaterThan(0)
-    expect(result.oracleHint).toBeUndefined()
+    expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
   })
 })

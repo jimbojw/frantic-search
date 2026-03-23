@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData, Suggestion } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
-import { sealQuery } from './query-edit'
+import { sealQuery, hasMyInQuery, hasHashInQuery, parseBreakdown, appendTerm } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 
 function leafLabel(qnr: QueryNodeResult): string {
@@ -99,6 +99,8 @@ export type RunSearchParams = {
   sessionSalt: number
   /** Tag data for otag:/atag:/flavor:/artist: (Spec 092, 141, 149). */
   tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null; artist: ArtistIndexData | null }
+  /** Spec 151: For empty-list suggestion when query references my:list/# and default list is empty. */
+  getListMask?: (listId: string) => { printingIndices?: Uint32Array } | null
 }
 
 export type SearchResult = Extract<FromWorker, { type: 'result' }>
@@ -143,6 +145,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
       uniqueMode: pinnedEval.uniqueMode,
       includeExtras: pinnedEval.includeExtras,
+      suggestions: [],
       ...(pinnedEval.flavorUnavailable && { flavorUnavailable: true }),
       ...(pinnedEval.artistUnavailable && { artistUnavailable: true }),
     }
@@ -356,7 +359,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   }
 
   // Spec 131: Oracle "Did you mean?" hint when zero results and trailing bare tokens
-  let oracleHint: SearchResult['oracleHint'] = undefined
+  let oracleSuggestion: Suggestion | null = null
   if (deduped.length === 0 && hasLive) {
     if (!(hasPinned && pinnedIndicesCount === 0)) {
       const root = ast.type === 'AND' || ast.type === 'BARE'
@@ -365,7 +368,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
         if (trailing && trailing.length > 0) {
           const variants: Array<'phrase' | 'per-word'> =
             trailing.length === 1 && trailing[0].quoted ? ['phrase'] : ['phrase', 'per-word']
-          let best: { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | null = null
+          let best: { query: string; label: string; count: number; printingCount?: number } | null = null
           for (const variant of variants) {
             const altLiveQuery = spliceBareToOracle(msg.query, trailing, variant)
             const altCombinedQuery = hasPinned
@@ -437,31 +440,149 @@ export function runSearch(params: RunSearchParams): SearchResult {
                 label: getOracleLabel(trailing, variant),
                 count: cardCount,
                 printingCount,
-                variant,
               }
               if (variant === 'phrase') break
             }
           }
           if (best) {
-            oracleHint = best
+            oracleSuggestion = {
+              id: 'oracle',
+              query: best.query,
+              label: best.label,
+              count: best.count,
+              printingCount: best.printingCount,
+              docRef: 'reference/fields/face/oracle',
+              priority: 20,
+              variant: 'rewrite',
+            }
           }
         }
       }
     }
   }
 
+  // Spec 151: Build unified suggestions array
+  const totalCards = deduped.length
+  const effectiveQuery = hasPinned
+    ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(msg.query.trim())
+    : msg.query
+  const effectiveBd = parseBreakdown(effectiveQuery)
+  const liveBd = parseBreakdown(msg.query)
+
+  const getListMask = params.getListMask ?? (() => null)
+  const defaultList = getListMask('default')
+  const defaultListEmpty =
+    !defaultList ||
+    !defaultList.printingIndices ||
+    defaultList.printingIndices.length === 0
+
+  let totalPrintingItems = 0
+  if (printingIndex && uniqueMode !== 'prints' && deduped.length > 0) {
+    for (let i = 0; i < deduped.length; i++) {
+      totalPrintingItems += printingIndex.printingsOf(deduped[i]).length
+    }
+  }
+  const totalDisplayItems = uniqueMode === 'prints' && printingIndices
+    ? printingIndices.length
+    : totalCards
+
+  const suggestions: Suggestion[] = []
+
+  // Empty-list (Spec 126): query references my:list/#, default list empty, zero results
+  if (
+    totalCards === 0 &&
+    (hasMyInQuery(effectiveBd) || hasHashInQuery(effectiveBd)) &&
+    defaultListEmpty
+  ) {
+    suggestions.push({
+      id: 'empty-list',
+      label: 'Import a deck',
+      variant: 'cta',
+      ctaAction: 'navigateToLists',
+      priority: 0,
+    })
+  }
+
+  // include:extras - empty state
+  if (indicesIncludingExtras !== undefined && totalCards === 0) {
+    const query = appendTerm(msg.query, 'include:extras', liveBd)
+    const count = indicesIncludingExtras
+    const printingCount = printingIndicesIncludingExtras
+    suggestions.push({
+      id: 'include-extras',
+      query,
+      label: 'include:extras',
+      count,
+      printingCount,
+      docRef: 'reference/modifiers/include-extras',
+      priority: 10,
+      variant: 'rewrite',
+    })
+  }
+
+  // include:extras - rider (totalCards > 0 and hidden playable-filtered results)
+  const hiddenCards = indicesIncludingExtras !== undefined ? indicesIncludingExtras - totalCards : 0
+  const hiddenPrintings =
+    printingIndicesIncludingExtras !== undefined && printingIndices
+      ? printingIndicesIncludingExtras - printingIndices.length
+      : 0
+  if (totalCards > 0 && (hiddenCards > 0 || hiddenPrintings > 0)) {
+    const query = appendTerm(msg.query, 'include:extras', liveBd)
+    const count = indicesIncludingExtras ?? totalCards
+    const printingCount = printingIndicesIncludingExtras
+    suggestions.push({
+      id: 'include-extras',
+      query,
+      label: 'include:extras',
+      count,
+      printingCount,
+      docRef: 'reference/modifiers/include-extras',
+      priority: 10,
+      variant: 'rewrite',
+    })
+  }
+
+  // unique:prints - rider only
+  if (
+    uniqueMode !== 'prints' &&
+    totalPrintingItems > 0 &&
+    totalPrintingItems > totalDisplayItems
+  ) {
+    suggestions.push({
+      id: 'unique-prints',
+      query: appendTerm(msg.query, 'unique:prints', liveBd),
+      label: 'unique:prints',
+      docRef: 'reference/modifiers/unique',
+      priority: 30,
+      variant: 'rewrite',
+    })
+  }
+
+  // Oracle hint - empty state only
+  if (oracleSuggestion) {
+    suggestions.push(oracleSuggestion)
+  }
+
+  // Sort: empty-state by priority; rider uses fixed order in SearchResults
+  suggestions.sort((a, b) => a.priority - b.priority)
+
   const result: SearchResult = {
-    type: 'result', queryId: msg.queryId, indices, breakdown, histograms,
-    printingIndices, hasPrintingConditions, uniqueMode, includeExtras,
+    type: 'result',
+    queryId: msg.queryId,
+    indices,
+    breakdown,
+    histograms,
+    printingIndices,
+    hasPrintingConditions,
+    uniqueMode,
+    includeExtras,
     effectiveBreakdown,
+    suggestions,
     ...(flavorUnavailable && { flavorUnavailable: true }),
     ...(artistUnavailable && { artistUnavailable: true }),
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
-    ...(indicesIncludingExtras !== undefined && { indicesIncludingExtras }),
-    ...(printingIndicesIncludingExtras !== undefined && { printingIndicesIncludingExtras }),
-    ...(oracleHint && { oracleHint }),
   }
   return result
 }

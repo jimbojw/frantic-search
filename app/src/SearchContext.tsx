@@ -8,6 +8,7 @@ import type {
   Histograms,
   UniqueMode,
   BreakdownNode,
+  Suggestion,
 } from '@frantic-search/shared'
 import type { ViewMode } from './view-mode'
 import type { CardListStore } from './card-list-store'
@@ -22,10 +23,8 @@ export interface SearchContextValue {
   hasPrintingConditions: Accessor<boolean>
   printingDisplay: Accessor<PrintingDisplayColumns | null>
   uniqueMode: Accessor<UniqueMode>
-  indicesIncludingExtras: Accessor<number | undefined>
-  printingIndicesIncludingExtras: Accessor<number | undefined>
-  /** Spec 131: Oracle "did you mean?" hint when zero results and trailing bare tokens. */
-  oracleHint?: Accessor<{ query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined>
+  /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
+  suggestions: Accessor<Suggestion[]>
   viewMode: Accessor<ViewMode>
   changeViewMode: (mode: ViewMode) => void
   changeUniqueMode: (mode: UniqueMode) => void
@@ -56,8 +55,6 @@ export interface SearchContextValue {
   navigateToDocs?: (docParam?: string) => void
   /** Navigate to My List page (?list). Spec 126 empty-list CTA. When absent, empty-list CTA not shown. */
   navigateToLists?: () => void
-  /** True when default list has no instances (Spec 126). When absent, empty-list CTA not shown. */
-  defaultListEmpty?: Accessor<boolean>
   appendTerm: (q: string, term: string, bd: BreakdownNode | null) => string
   parseBreakdown: (q: string) => BreakdownNode | null
   /** List add/remove (Spec 124). When absent, list controls are not rendered. */

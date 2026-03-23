@@ -1,6 +1,6 @@
 # Spec 151: Unified Suggestion System for Alternative Queries and Syntax Education
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 057 (include:extras), Spec 126 (Empty List CTA), Spec 131 (Oracle Did You Mean), Spec 139 (unique:prints hint), Spec 150 (ChipButton)
 

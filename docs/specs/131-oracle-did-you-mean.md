@@ -4,6 +4,8 @@
 
 **Extended by:** Spec 150 (ChipButton)
 
+**Unified by:** Spec 151 (Suggestion System)
+
 **Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol)
 
 **Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143)

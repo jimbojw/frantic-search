@@ -36,6 +36,7 @@ export type {
 } from "./data";
 
 export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";
+export type { Suggestion } from "./suggestion-types";
 
 export type {
   InstanceState,

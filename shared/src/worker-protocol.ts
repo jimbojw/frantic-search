@@ -2,6 +2,7 @@
 import type { InstanceState } from './card-list'
 import type { DeckFormat } from './list-format'
 import type { LineValidationResult } from './list-lexer'
+import type { Suggestion } from './suggestion-types'
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 
@@ -107,6 +108,6 @@ export type FromWorker =
   | { type: 'status'; status: 'artist-ready'; tagLabels?: string[] }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
-  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; flavorUnavailable?: boolean; artistUnavailable?: boolean; indicesIncludingExtras?: number; printingIndicesIncludingExtras?: number; side?: DualWieldSide; oracleHint?: { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } }
+  | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; includeExtras?: boolean; flavorUnavailable?: boolean; artistUnavailable?: boolean; suggestions: Suggestion[]; side?: DualWieldSide }
   | { type: 'serialize-result'; requestId: number; text: string }
   | { type: 'validate-result'; requestId: number; result: LineValidationResult[]; indices: Int32Array }

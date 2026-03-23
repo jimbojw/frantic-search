@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createMemo, Show, onCleanup } from 'solid-js'
-import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode } from '@frantic-search/shared'
+import type { DisplayColumns, PrintingDisplayColumns, Histograms, UniqueMode, BreakdownNode, Suggestion } from '@frantic-search/shared'
 import { toScryfallQuery, parse, DEFAULT_LIST_ID, getUniqueTagsFromView } from '@frantic-search/shared'
 import { getMatchingCount } from '@frantic-search/shared'
 import { buildFacesOf, buildScryfallSearchUrl } from './app-utils'
@@ -54,9 +54,7 @@ export type PaneState = {
   printingIndices: () => Uint32Array | undefined
   hasPrintingConditions: () => boolean
   uniqueMode: () => UniqueMode
-  indicesIncludingExtras: () => number | undefined
-  printingIndicesIncludingExtras: () => number | undefined
-  oracleHint?: () => { query: string; label: string; count: number; printingCount?: number; variant: 'phrase' | 'per-word' } | undefined
+  suggestions: () => Suggestion[]
   display: () => DisplayColumns | null
   printingDisplay: () => PrintingDisplayColumns | null
   oracleTagLabels: () => string[]
@@ -227,9 +225,7 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     hasPrintingConditions: state.hasPrintingConditions,
     printingDisplay: state.printingDisplay,
     uniqueMode: state.uniqueMode,
-    indicesIncludingExtras: state.indicesIncludingExtras,
-    printingIndicesIncludingExtras: state.printingIndicesIncludingExtras,
-    oracleHint: state.oracleHint,
+    suggestions: state.suggestions,
     viewMode,
     changeViewMode: state.changeViewMode,
     changeUniqueMode: state.changeUniqueMode,
@@ -271,12 +267,6 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     appendTerm: state.appendTerm,
     parseBreakdown: state.parseBreakdown,
     ...(store && listVersion && {
-      defaultListEmpty: () => {
-        listVersion()
-        const view = store.getView()
-        const count = view.instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0
-        return count === 0
-      },
       cardListStore: store,
       listVersion,
       listCountForCard,

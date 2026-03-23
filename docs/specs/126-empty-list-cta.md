@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Unified by:** Spec 151 (Suggestion System)
+
 **Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 123 (# Metadata Tag Search), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
 
 ## Goal
