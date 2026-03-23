@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, expect, test } from 'vitest'
+import { isKnownColorValue, getColorAlternatives } from './wrong-field-utils'
+
+describe('isKnownColorValue', () => {
+  test('single color names', () => {
+    expect(isKnownColorValue('white')).toBe(true)
+    expect(isKnownColorValue('blue')).toBe(true)
+    expect(isKnownColorValue('black')).toBe(true)
+    expect(isKnownColorValue('red')).toBe(true)
+    expect(isKnownColorValue('green')).toBe(true)
+  })
+
+  test('guild names', () => {
+    expect(isKnownColorValue('azorius')).toBe(true)
+    expect(isKnownColorValue('dimir')).toBe(true)
+    expect(isKnownColorValue('rakdos')).toBe(true)
+  })
+
+  test('special predicates', () => {
+    expect(isKnownColorValue('colorless')).toBe(true)
+    expect(isKnownColorValue('c')).toBe(true)
+    expect(isKnownColorValue('multicolor')).toBe(true)
+    expect(isKnownColorValue('m')).toBe(true)
+  })
+
+  test('WUBRG letter sequences', () => {
+    expect(isKnownColorValue('w')).toBe(true)
+    expect(isKnownColorValue('wubrg')).toBe(true)
+    expect(isKnownColorValue('wu')).toBe(true)
+    expect(isKnownColorValue('WUBRG')).toBe(true)
+  })
+
+  test('rejects non-color values', () => {
+    expect(isKnownColorValue('xyz')).toBe(false)
+    expect(isKnownColorValue('is')).toBe(false)
+    expect(isKnownColorValue('foil')).toBe(false)
+    expect(isKnownColorValue('')).toBe(false)
+  })
+
+  test('rejects invalid letter sequences', () => {
+    expect(isKnownColorValue('wx')).toBe(false)
+    expect(isKnownColorValue('wubrgy')).toBe(false)
+  })
+})
+
+describe('getColorAlternatives', () => {
+  test('FIELD node is:white returns ci/c/produces alternatives', () => {
+    const node = { type: 'FIELD' as const, label: 'is:white', matchCount: 0 }
+    const alts = getColorAlternatives(node)
+    expect(alts).toHaveLength(3)
+    expect(alts[0]).toEqual({ field: 'ci', label: 'ci:w', value: 'w', explain: 'Use ci: for color identity.', docRef: 'reference/fields/face/identity' })
+    expect(alts[1]).toEqual({ field: 'c', label: 'c:w', value: 'w', explain: 'Use c: for card color.', docRef: 'reference/fields/face/color' })
+    expect(alts[2]).toEqual({ field: 'produces', label: 'produces:w', value: 'w', explain: 'Use produces: for mana the card can produce.', docRef: 'reference/fields/face/produces' })
+  })
+
+  test('NOT node -is:white returns positive-form alternatives', () => {
+    const node = { type: 'NOT' as const, label: '-is:white', matchCount: 0 }
+    const alts = getColorAlternatives(node)
+    expect(alts).toHaveLength(3)
+    expect(alts[0].label).toBe('ci:w')
+    expect(alts[1].label).toBe('c:w')
+    expect(alts[2].label).toBe('produces:w')
+  })
+
+  test('in:azorius keeps full name for multicolor', () => {
+    const node = { type: 'FIELD' as const, label: 'in:azorius', matchCount: 0 }
+    const alts = getColorAlternatives(node)
+    expect(alts[0].label).toBe('ci:azorius')
+    expect(alts[0].value).toBe('azorius')
+    expect(alts[1].label).toBe('c:azorius')
+    expect(alts[2].label).toBe('produces:azorius')
+  })
+
+  test('type:wubrg keeps letter sequence', () => {
+    const node = { type: 'FIELD' as const, label: 'type:wubrg', matchCount: 0 }
+    const alts = getColorAlternatives(node)
+    expect(alts[0].label).toBe('ci:wubrg')
+    expect(alts[0].value).toBe('wubrg')
+  })
+
+  test('is:c keeps colorless shorthand', () => {
+    const node = { type: 'FIELD' as const, label: 'is:c', matchCount: 0 }
+    const alts = getColorAlternatives(node)
+    expect(alts[0].label).toBe('ci:c')
+    expect(alts[0].value).toBe('c')
+  })
+})

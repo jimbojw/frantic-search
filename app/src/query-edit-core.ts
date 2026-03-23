@@ -209,15 +209,17 @@ export function collectFieldNodes(
   breakdown: BreakdownNode,
   field: string[],
   operator: string,
-  opts: { positive?: boolean; negated?: boolean } = { positive: true, negated: true },
+  opts: { positive?: boolean; negated?: boolean; valuePredicate?: (value: string) => boolean } = { positive: true, negated: true },
 ): BreakdownNode[] {
   const out: BreakdownNode[] = []
+  const positive = opts.positive !== false
+  const negated = opts.negated !== false
   function walk(node: BreakdownNode) {
-    if (opts.negated && node.type === 'NOT' && !node.children) {
-      if (matchesLabel(node.label.slice(1), field, operator)) out.push(node)
+    if (negated && node.type === 'NOT' && !node.children) {
+      if (matchesLabel(node.label.slice(1), field, operator, opts.valuePredicate)) out.push(node)
     }
-    if (opts.positive && node.type === 'FIELD') {
-      if (matchesLabel(node.label, field, operator)) out.push(node)
+    if (positive && node.type === 'FIELD') {
+      if (matchesLabel(node.label, field, operator, opts.valuePredicate)) out.push(node)
     }
     if (node.children) for (const c of node.children) walk(c)
   }

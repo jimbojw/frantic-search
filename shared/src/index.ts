@@ -77,6 +77,8 @@ export { getTrailingBareNodes } from "./search/oracle-hint";
 export { SORT_FIELDS } from "./search/sort-fields";
 export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
+export { isKnownColorValue, getColorAlternatives, isTriggerField } from "./wrong-field-utils";
+export type { ColorAlternative } from "./wrong-field-utils";
 export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
 export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
 export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";

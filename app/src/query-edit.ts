@@ -19,6 +19,7 @@ export {
   prependTerm,
   isFieldLabel,
   clearFieldTerms,
+  collectFieldNodes,
 } from './query-edit-core'
 
 export {

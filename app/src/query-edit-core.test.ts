@@ -11,7 +11,9 @@ import {
   appendTerm,
   prependTerm,
   clearFieldTermsRecursive,
+  collectFieldNodes,
 } from './query-edit-core'
+import { isKnownColorValue } from '@frantic-search/shared'
 import { reconstructQuery, reconstructWithout } from './InlineBreakdown'
 
 function buildBreakdown(query: string): BreakdownNode {
@@ -241,6 +243,20 @@ describe('removeNode', () => {
     const orChild = bd.children!.find(c => reconstructQuery(c) === 'b OR c')
     expect(orChild).toBeDefined()
     expect(removeNode(q, orChild!, bd)).toBe('a d')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// collectFieldNodes with valuePredicate (Spec 153)
+// ---------------------------------------------------------------------------
+
+describe('collectFieldNodes valuePredicate', () => {
+  it('finds is:white when value is known color', () => {
+    const bd = parseBreakdown('is:white')!
+    const nodes = collectFieldNodes(bd, ['is', 'in', 'type'], ':', { valuePredicate: isKnownColorValue })
+    expect(nodes.length).toBe(1)
+    expect(nodes[0].label).toBe('is:white')
+    expect(nodes[0].span).toBeDefined()
   })
 })
 

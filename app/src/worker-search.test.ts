@@ -518,3 +518,22 @@ describe('oracle hint (Spec 131)', () => {
     expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
   })
 })
+
+describe('wrong-field suggestions (Spec 153)', () => {
+  it('is:white with zero results yields ci:/c:/produces: suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:white' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wrongField = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wrongField.length).toBeGreaterThan(0)
+    const labels = wrongField.map((s) => s.label)
+    expect(labels).toContain('ci:w')
+    expect(labels).toContain('c:w')
+    expect(labels).toContain('produces:w')
+  })
+})

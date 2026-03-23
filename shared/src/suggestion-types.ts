@@ -8,6 +8,7 @@ export type Suggestion = {
     | 'include-extras'
     | 'unique-prints'
     | 'oracle'
+    | 'wrong-field'
     | 'card-type'
     | 'keyword'
     | 'artist-atag'

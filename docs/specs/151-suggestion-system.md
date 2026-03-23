@@ -169,6 +169,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 ## Implementation notes
 
 - **Worker suggestion building:** runSearch receives `getListMask` in params; imports `collectListOffendingTerms`, `hasListSyntaxInQuery` from query-edit. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
+- **Wrong-field (Spec 153):** Unified by Spec 153. When totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
 - **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']`. Priority governs empty-state order only.
 

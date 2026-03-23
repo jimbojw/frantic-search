@@ -9,6 +9,7 @@ const EMPTY_STATE_IDS = [
   'empty-list',
   'include-extras',
   'oracle',
+  'wrong-field',
   'card-type',
   'keyword',
   'artist-atag',

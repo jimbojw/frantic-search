@@ -1,6 +1,6 @@
 # Spec 153: Right-Value-Wrong-Field Suggestions
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 036 (Source Spans), Spec 002 (Query Engine)
 
