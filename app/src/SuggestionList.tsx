@@ -21,6 +21,13 @@ const EMPTY_STATE_IDS = [
 
 const RIDER_ORDER: Suggestion['id'][] = ['empty-list', 'unique-prints', 'include-extras']
 
+/** Outline on sky panel: neutral chips read as distinct controls. */
+const NEUTRAL_SUGGESTION_CHIP =
+  'border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+/** Empty-list amber chips: border matches warning palette. */
+const AMBER_SUGGESTION_CHIP =
+  'border border-amber-400/90 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-600'
+
 function getDescription(s: Suggestion, props: { hiddenCardCount?: number; hiddenPrintingCount?: number; navigateToDocs?: (doc?: string) => void; formatDualCount: (c: number, p?: number) => string }): { text: string; link?: { label: string; href?: () => void } } {
   if (s.id === 'empty-list') {
     const variant = s.emptyListVariant ?? 'my'
@@ -73,9 +80,15 @@ export function SuggestionList(props: {
 
   return (
     <Show when={filtered().length > 0}>
-      <div class="px-4 py-3 text-base text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800">
-        <p class="mb-2">Try a query refinement?</p>
-        <div class="flex flex-col gap-2">
+      <div
+        class="px-4 py-4 border-t border-sky-200 dark:border-sky-800 bg-sky-50/90 dark:bg-sky-950/25"
+        role="region"
+        aria-label="Query refinement suggestions"
+      >
+        <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Try a query refinement?
+        </h3>
+        <div class="flex flex-col gap-2 text-base text-gray-700 dark:text-gray-300">
           <For each={filtered()}>
           {(s) => {
             const desc = () => getDescription(s, props)
@@ -91,7 +104,11 @@ export function SuggestionList(props: {
                     <ChipButton
                       state="neutral"
                       layout="col"
-                      class={isEmptyList ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60' : undefined}
+                      class={
+                        isEmptyList
+                          ? `bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 ${AMBER_SUGGESTION_CHIP}`
+                          : NEUTRAL_SUGGESTION_CHIP
+                      }
                       onClick={() => {
                         captureSuggestionApplied({
                           suggestion_id: s.id,
@@ -116,6 +133,7 @@ export function SuggestionList(props: {
                     <ChipButton
                       state="neutral"
                       layout={s.count !== undefined || s.printingCount !== undefined ? 'col' : 'row'}
+                      class={NEUTRAL_SUGGESTION_CHIP}
                       onClick={() => {
                         if (s.query) {
                           captureSuggestionApplied({

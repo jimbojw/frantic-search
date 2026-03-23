@@ -128,7 +128,7 @@ Deprecate/remove `oracleHint`, `indicesIncludingExtras`, `printingIndicesIncludi
 
 ### UI component: SuggestionList
 
-Unified flex-row layout for all suggestions. Header: "Try a query refinement?" Each row: chip (left, shrink-0) | description (right, flex-1). Typography: `text-base` to match Results Summary Bar (Spec 152).
+Unified flex-row layout for all suggestions. Header: "Try a query refinement?" — `text-lg font-semibold` with high-contrast foreground; the section uses a light sky-tinted panel and sky top border so it reads clearly below the Results Summary Bar (Spec 152). Each row: chip (left, shrink-0) | description (right, flex-1). Row copy remains `text-base` with muted body color. Suggestion `ChipButton`s use a neutral gray border (and amber border for empty-list CTAs) so chips separate from the sky panel.
 
 | Suggestion type | Left (chip) | Right (description) |
 |-----------------|--------------|---------------------|
