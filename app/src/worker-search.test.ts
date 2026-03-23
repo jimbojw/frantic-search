@@ -602,3 +602,65 @@ describe('wrong-field suggestions (Spec 153)', () => {
     expect(labels).toContain('is:commander')
   })
 })
+
+describe('artist-atag suggestions (Spec 153)', () => {
+  const illustrationTags = new Map<string, Uint32Array>([
+    ['chair', new Uint32Array([0, 2, 5])],
+    ['foot', new Uint32Array([3, 4])],
+  ])
+  const artistIndex: Record<string, number[]> = {
+    'vincent proce': [0, 0, 0, 1, 0, 2],
+    'scott murphy': [0, 3, 0, 4],
+  }
+  const tagData = {
+    oracle: null,
+    illustration: illustrationTags,
+    flavor: null,
+    artist: artistIndex,
+  }
+  const cacheWithTags = new NodeCache(index, printingIndex, null, tagData)
+
+  it('a:chair with zero results yields atag:chair suggestion', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'a:chair' },
+      cache: cacheWithTags,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const artistAtag = result.suggestions.filter((s) => s.id === 'artist-atag')
+    expect(artistAtag.length).toBeGreaterThan(0)
+    const labels = artistAtag.map((s) => s.label)
+    expect(labels).toContain('atag:chair')
+  })
+
+  it('atag:proce with zero results yields a:proce suggestion', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'atag:proce' },
+      cache: cacheWithTags,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const artistAtag = result.suggestions.filter((s) => s.id === 'artist-atag')
+    expect(artistAtag.length).toBeGreaterThan(0)
+    const labels = artistAtag.map((s) => s.label)
+    expect(labels).toContain('a:proce')
+  })
+
+  it('artist-atag suggestion has correct priority and explain', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'a:chair' },
+      cache: cacheWithTags,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const artistAtag = result.suggestions.find((s) => s.id === 'artist-atag')
+    expect(artistAtag).toBeDefined()
+    expect(artistAtag!.priority).toBe(25)
+    expect(artistAtag!.explain).toBe('Use atag: for illustration tags.')
+  })
+})

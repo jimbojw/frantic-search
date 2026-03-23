@@ -18,6 +18,10 @@ export const COLOR_TRIGGER_FIELDS = fieldKeysForCanonicals(['is', 'in', 'type'])
 /** Format/is domain: type, in — any alias (e.g. t:) is matched. */
 export const FORMAT_IS_TRIGGER_FIELDS = fieldKeysForCanonicals(['type', 'in'])
 
+/** Artist/atag domain: a, artist and atag, art (Spec 153 reflexive). */
+export const ARTIST_TRIGGER_FIELDS = fieldKeysForCanonicals(['artist'])
+export const ATAG_TRIGGER_FIELDS = fieldKeysForCanonicals(['atag'])
+
 const TRIGGER_FIELDS = COLOR_TRIGGER_FIELDS
 
 const SINGLE_COLOR_TO_LETTER: Record<string, string> = {
@@ -147,4 +151,38 @@ export function getFormatOrIsAlternatives(node: BreakdownNode): FormatOrIsAltern
     })
   }
   return result
+}
+
+export type ArtistAtagAlternative = {
+  field: string
+  label: string
+  explain: string
+  docRef: string
+}
+
+/**
+ * Build the single replacement alternative for a FIELD or NOT node in the
+ * artist/atag reflexive domain. When fromField is 'artist', suggests atag:;
+ * when 'atag', suggests a:.
+ */
+export function getArtistAtagAlternative(
+  node: BreakdownNode,
+  fromField: 'artist' | 'atag',
+): ArtistAtagAlternative | null {
+  const value = extractValueFromLabel(node.label)
+  if (!value) return null
+  if (fromField === 'artist') {
+    return {
+      field: 'atag',
+      label: `atag:${value}`,
+      explain: 'Use atag: for illustration tags.',
+      docRef: 'reference/fields/face/atag',
+    }
+  }
+  return {
+    field: 'a',
+    label: `a:${value}`,
+    explain: 'Use a: for artist name.',
+    docRef: 'reference/fields/face/artist',
+  }
 }

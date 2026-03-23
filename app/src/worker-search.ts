@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData, Suggestion } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, hasListSyntaxInQuery, collectListOffendingTerms, parseBreakdown, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
@@ -511,7 +511,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       id: 'include-extras',
       query,
       label: 'include:extras',
-      explain: 'Playable filter is hiding results; add to include promos and non-tournament-legal printings.',
+      explain: 'Include promos and non-tournament-legal printings.',
       count,
       printingCount,
       docRef: 'reference/modifiers/include-extras',
@@ -534,7 +534,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       id: 'include-extras',
       query,
       label: 'include:extras',
-      explain: 'Playable filter is hiding results; add to include promos and non-tournament-legal printings.',
+      explain: 'Include promos and non-tournament-legal printings.',
       count,
       printingCount,
       docRef: 'reference/modifiers/include-extras',
@@ -730,6 +730,94 @@ export function runSearch(params: RunSearchParams): SearchResult {
             printingCount,
             docRef: alt.docRef,
             priority: 22,
+            variant: 'rewrite',
+          })
+        }
+      }
+    }
+
+    // Spec 153: Artist/atag reflexive — a:value ↔ atag:value
+    const artistNodes = collectFieldNodes(effectiveBd, ARTIST_TRIGGER_FIELDS, ':')
+    const atagNodes = collectFieldNodes(effectiveBd, ATAG_TRIGGER_FIELDS, ':')
+    const artistAtagPairs: Array<{ nodes: BreakdownNode[]; fromField: 'artist' | 'atag' }> = [
+      { nodes: artistNodes, fromField: 'artist' },
+      { nodes: atagNodes, fromField: 'atag' },
+    ]
+    for (const { nodes, fromField } of artistAtagPairs) {
+      for (const node of nodes) {
+        if (!node.span) continue
+        const alt = getArtistAtagAlternative(node, fromField)
+        if (!alt) continue
+        const isNegated = node.type === 'NOT'
+        const prefix = isNegated ? '-' : ''
+        const replacementTerm = prefix + alt.label
+        const altQuery = spliceQuery(effectiveQuery, node.span, replacementTerm)
+        const altEval = cache.evaluate(parse(altQuery))
+        let altDeduped = Array.from(altEval.indices)
+        let altPrintingIndices = altEval.printingIndices
+
+        if (!includeExtras) {
+          if (altEval.hasPrintingConditions && altPrintingIndices && printingIndex) {
+            const filtered: number[] = []
+            for (let i = 0; i < altPrintingIndices.length; i++) {
+              const p = altPrintingIndices[i]
+              if (
+                !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                  index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+              ) {
+                filtered.push(p)
+              }
+            }
+            const seen = new Set<number>()
+            altDeduped = []
+            for (let i = 0; i < filtered.length; i++) {
+              const cf = printingIndex.canonicalFaceRef[filtered[i]]
+              if (!seen.has(cf)) {
+                seen.add(cf)
+                altDeduped.push(cf)
+              }
+            }
+            altPrintingIndices = new Uint32Array(filtered)
+          } else {
+            altDeduped = altDeduped.filter(
+              (fi) => (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0,
+            )
+            if (altPrintingIndices && printingIndex) {
+              const filtered: number[] = []
+              for (let i = 0; i < altPrintingIndices.length; i++) {
+                const p = altPrintingIndices[i]
+                if (
+                  !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                  (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                    index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+                ) {
+                  filtered.push(p)
+                }
+              }
+              altPrintingIndices = new Uint32Array(filtered)
+            }
+          }
+        }
+
+        if (altDeduped.length > 0) {
+          let printingCount: number | undefined
+          if (altPrintingIndices && printingIndex && (msg.viewMode === 'images' || msg.viewMode === 'full')) {
+            printingCount = altPrintingIndices.length
+          } else if (printingIndex && altDeduped.length > 0) {
+            let total = 0
+            for (const fi of altDeduped) total += printingIndex.printingsOf(fi).length
+            printingCount = total
+          }
+          suggestions.push({
+            id: 'artist-atag',
+            query: altQuery,
+            label: alt.label,
+            explain: alt.explain,
+            count: altDeduped.length,
+            printingCount,
+            docRef: alt.docRef,
+            priority: 25,
             variant: 'rewrite',
           })
         }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, test } from 'vitest'
-import { isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives } from './wrong-field-utils'
+import { isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from './wrong-field-utils'
 
 describe('isKnownColorValue', () => {
   test('single color names', () => {
@@ -149,5 +149,51 @@ describe('getFormatOrIsAlternatives', () => {
     expect(alts).toHaveLength(2)
     expect(alts[0].label).toBe('f:commander')
     expect(alts[1].label).toBe('is:commander')
+  })
+})
+
+describe('getArtistAtagAlternative (Spec 153)', () => {
+  test('a:spear from artist suggests atag:spear', () => {
+    const node = { type: 'FIELD' as const, label: 'a:spear', matchCount: 0 }
+    const alt = getArtistAtagAlternative(node, 'artist')
+    expect(alt).not.toBeNull()
+    expect(alt!.field).toBe('atag')
+    expect(alt!.label).toBe('atag:spear')
+    expect(alt!.explain).toBe('Use atag: for illustration tags.')
+    expect(alt!.docRef).toBe('reference/fields/face/atag')
+  })
+
+  test('atag:frazier from atag suggests a:frazier', () => {
+    const node = { type: 'FIELD' as const, label: 'atag:frazier', matchCount: 0 }
+    const alt = getArtistAtagAlternative(node, 'atag')
+    expect(alt).not.toBeNull()
+    expect(alt!.field).toBe('a')
+    expect(alt!.label).toBe('a:frazier')
+    expect(alt!.explain).toBe('Use a: for artist name.')
+    expect(alt!.docRef).toBe('reference/fields/face/artist')
+  })
+
+  test('NOT node -atag:chair extracts value correctly', () => {
+    const node = { type: 'NOT' as const, label: '-atag:chair', matchCount: 0 }
+    const alt = getArtistAtagAlternative(node, 'atag')
+    expect(alt).not.toBeNull()
+    expect(alt!.label).toBe('a:chair')
+  })
+
+  test('empty value returns null', () => {
+    const node = { type: 'FIELD' as const, label: 'a:', matchCount: 0 }
+    expect(getArtistAtagAlternative(node, 'artist')).toBeNull()
+  })
+})
+
+describe('ARTIST_TRIGGER_FIELDS and ATAG_TRIGGER_FIELDS', () => {
+  test('artist trigger includes a and artist', () => {
+    expect(ARTIST_TRIGGER_FIELDS).toContain('a')
+    expect(ARTIST_TRIGGER_FIELDS).toContain('artist')
+  })
+
+  test('atag trigger includes atag and art', () => {
+    expect(ATAG_TRIGGER_FIELDS).toContain('atag')
+    expect(ATAG_TRIGGER_FIELDS).toContain('art')
   })
 })
