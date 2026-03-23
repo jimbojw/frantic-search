@@ -202,9 +202,9 @@ When the query has multiple bare tokens (e.g. `lightning landfall` or `landfall 
 
 ### Worker integration
 
-- In `runSearch`, run bare-term-upgrade **before** the oracle hint block. Order: empty-list, include-extras, unique-prints, **bare-term-upgrade**, wrong-field, oracle.
+- In `buildSuggestions` (app/src/worker-suggestions.ts), run bare-term-upgrade **before** the oracle hint block. Order: empty-list, include-extras, unique-prints, **bare-term-upgrade**, wrong-field, oracle.
 - Use the live AST: `ast = parse(msg.query)`; call `getBareNodes(ast)` to collect all positive BARE nodes (anywhere in the tree). If empty, skip. Bare nodes are always in the live portion when pinned+live.
-- For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; evaluate; if count > 0, push a `Suggestion` with `id: 'bare-term-upgrade'`.
+- For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; if count > 0, push a `Suggestion` with `id: 'bare-term-upgrade'`.
 - Track which bare terms (by value) received a bare-term-upgrade suggestion. When building the oracle hint (Spec 131), skip those terms — do not suggest both `kw:landfall` and `o:landfall` for the same term.
 
 ### Suggestion type extension
@@ -217,9 +217,9 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'bare-term-upgrade'` to Suggestion.id union |
 | `shared/src/search/oracle-hint.ts` | Add `getBareNodes(ast): BareWordNode[]` — collects all positive BARE nodes from the tree (not just trailing; excludes nodes under NOT) |
-| `shared/src/bare-term-upgrade-utils.ts` | **New** — `getBareTermAlternatives(value, context)` returns `{ label, explain, docRef }[]` for each matching domain; domain value checks (keywords, type-line, set, format, is, otag, atag, game, frame, rarity). Splice and evaluate remain in worker-search (like wrong-field-utils). |
+| `shared/src/bare-term-upgrade-utils.ts` | **New** — `getBareTermAlternatives(value, context)` returns `{ label, explain, docRef }[]` for each matching domain; domain value checks (keywords, type-line, set, format, is, otag, atag, game, frame, rarity). Splice and evaluate in worker-suggestions (like wrong-field; uses `evaluateAlternative`). |
 | `shared/src/search/card-index.ts` | Add `typeLineWords: Set<string>` — built at index creation by splitting each `type_lines` entry on `/\W+/`, lowercasing, and collecting unique words. Passed to bare-term-upgrade context. |
-| `app/src/worker-search.ts` | When totalCards === 0 and bare nodes exist: for each node, get matching domains, build alternatives, evaluate, push suggestions; integrate with oracle path to skip terms that got a bare-term-upgrade |
+| `app/src/worker-suggestions.ts` | In `buildSuggestions`, when totalCards === 0 and bare nodes exist: for each node, get matching domains, build alternatives, evaluate via `evaluateAlternative`, push suggestions; integrate with oracle path to skip terms that got a bare-term-upgrade |
 | `app/src/SuggestionList.tsx` | Add `'bare-term-upgrade'` to EMPTY_STATE_IDS |
 | `docs/specs/151-suggestion-system.md` | Add bare-term-upgrade to placement/priority table; add to empty-state eligible ids |
 | `docs/specs/131-oracle-did-you-mean.md` | Add note: "When a bare term receives a bare-term-upgrade suggestion (Spec 154), do not also suggest the oracle variant for that term." |

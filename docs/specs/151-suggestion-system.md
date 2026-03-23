@@ -172,9 +172,9 @@ Each future trigger gets its own spec. This document records the intended ids an
 
 ## Implementation notes
 
-- **Worker suggestion building:** runSearch receives `getListMask` in params; imports `collectListOffendingTerms`, `hasListSyntaxInQuery` from query-edit. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
-- **Wrong-field (Spec 153):** Unified by Spec 153. When totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0.
-- **Artist-atag (Spec 153):** When totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
+- **Worker suggestion building:** `runSearch` calls `buildSuggestions(params)` from `app/src/worker-suggestions.ts`. That module receives `getListMask` via params. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
+- **Wrong-field (Spec 153):** Unified by Spec 153. In `buildSuggestions`, when totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0. Uses `evaluateAlternative` from `worker-alternative-eval.ts`.
+- **Artist-atag (Spec 153):** In `buildSuggestions`, when totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
 - **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']`. Priority governs empty-state order only.
 
@@ -184,7 +184,8 @@ Each future trigger gets its own spec. This document records the intended ids an
 |------|--------|
 | `shared/src/worker-protocol.ts` | Add `suggestions: Suggestion[]` to result; remove `oracleHint`, `indicesIncludingExtras`, `printingIndicesIncludingExtras` |
 | `shared/src/suggestion-types.ts` | **New** — `Suggestion` type (worker-protocol carries it; shared is dependency-free) |
-| `app/src/worker-search.ts` | Build `suggestions` array in runSearch; add `getListMask` to RunSearchParams for empty-list check; populate all four triggers |
+| `app/src/worker-search.ts` | Add `getListMask` to RunSearchParams; call `buildSuggestions` and include result in search result |
+| `app/src/worker-suggestions.ts` | **New** — `buildSuggestions(params)` builds the full suggestions array (empty-list, include-extras, unique-prints, oracle, wrong-field, artist-atag) |
 | `app/src/worker.ts` | Pass `getListMask` to runSearch |
 | `app/src/SuggestionList.tsx` | **New** — Renders suggestion chips; empty-state vs rider layouts; fires `captureSuggestionApplied` on chip tap |
 | `app/src/SearchResults.tsx` | Refactor: replace four `Show` blocks with `SuggestionList`; consume `suggestions` from context |

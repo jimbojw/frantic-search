@@ -119,6 +119,8 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 | `app/src/SearchResults.tsx` | In empty-state fallback: when `oracleHint` present (and empty-list CTA / include:extras do not apply), render the "Did you mean?" hint with two-line button (label + `formatDualCount`). |
 | `app/src/DualWieldLayout.tsx` | Pass `oracleHint` through `buildPaneContext` for Dual Wield. |
 
+**Current location (post–Spec 151, worker refactor):** Oracle suggestion is built in `buildSuggestions` (app/src/worker-suggestions.ts), using `evaluateAlternative` from app/src/worker-alternative-eval.ts. Delivered via `suggestions` array (id: 'oracle').
+
 ## Acceptance Criteria
 
 - [ ] When `lightning ci:r deal 3` returns zero and the phrase variant returns results, the hint shows `lightning ci:r o:"deal 3"`.

@@ -159,8 +159,9 @@ Add `'wrong-field'` to the `Suggestion.id` union in `shared/src/suggestion-types
 | File | Change |
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'wrong-field'` to Suggestion.id union |
-| `app/src/worker-search.ts` | Add wrong-field detection and suggestion building when totalCards === 0; call spliceQuery for each alternative; add artist-atag domain loop |
-| `shared/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain); add `ARTIST_TRIGGER_FIELDS`, `ATAG_TRIGGER_FIELDS` for artist-atag |
+| `app/src/worker-suggestions.ts` | Add wrong-field detection and suggestion building in `buildSuggestions` when totalCards === 0; call spliceQuery for each alternative; add artist-atag domain loop; uses `evaluateAlternative` |
+| `app/src/worker-alternative-eval.ts` | `evaluateAlternative` — evaluate alt query, apply playable filter, return counts (shared by oracle and wrong-field) |
+| `shared/src/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain); add `ARTIST_TRIGGER_FIELDS`, `ATAG_TRIGGER_FIELDS` for artist-atag |
 | `app/src/SuggestionList.tsx` | Add `'wrong-field'` to EMPTY_STATE_IDS; artist-atag already in EMPTY_STATE_IDS; both use `suggestion.explain` |
 | `docs/specs/151-suggestion-system.md` | Add wrong-field to placement/priority table; add "Unified by Spec 153" note for this trigger |
 
