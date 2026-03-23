@@ -115,7 +115,7 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | unique-prints | 30 | Rider context; expand printings |
 | (future) card-type | 15 | Type token reformulation; between extras and oracle (e.g. "creatures" → t:creature) |
 | (future) keyword | 16 | Keyword token reformulation; after card-type (e.g. "landfall" → kw:landfall; "first strike" → kw:"first strike") |
-| (future) artist-atag | 25 | Cross-detect atag vs a; suggest the field that returns results |
+| artist-atag | 25 | Cross-detect atag vs a; suggest the field that returns results. Unified by Spec 153. |
 | (future) near-miss | 18 | Unquoted multi-word field value; suggest quoted form when it would match |
 | (future) relaxed | 35 | "Try broader" alternative |
 | example-query | 40 | Fallback — when no other empty-state suggestion applies; ensures we never fail silently |
@@ -136,6 +136,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
 | unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
 | wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
+| artist-atag (Spec 153) | New term (e.g. a:frazier or atag:spear), click → setQuery | From `explain`; [Learn more] if docRef |
 | oracle, etc. | Same | Same |
 
 - All chips use `ChipButton`; empty-list uses `state` that yields amber styling (Spec 088).
@@ -150,6 +151,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | unique:prints (Spec 139) | `Suggestion { id: 'unique-prints', query, label, docRef: 'reference/modifiers/unique' }`. Rider only. Trigger: uniqueMode !== 'prints' and `totalPrintingItems > totalDisplayItems`. |
 | Oracle hint (Spec 131) | `Suggestion { id: 'oracle', query, label, count, printingCount, docRef: 'reference/fields/face/oracle' }` from existing oracleHint logic. Empty state only. |
 | Wrong-field (Spec 153) | One `Suggestion` per (offending term, alternative field) pair: `{ id: 'wrong-field', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node has trigger field (is:, in:, type:) + color value; alternative (ci:, c:, produces:) returns > 0. Empty state only. |
+| Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
 
 **Invariant:** Same triggers and tap actions as before. Placement and layout may be improved—looking good takes precedence over perfect parity with the status quo. "Learn more" links (docRef) are encouraged as part of the unified UI pattern.
 
@@ -161,7 +163,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 |---------|-----|------|------|
 | Card type tokens | card-type | TBD | "creatures" → `t:creature`; "creatures scry" → `t:creature o:scry`; narrowest first |
 | Keyword tokens | keyword | TBD | "landfall" → `kw:landfall`; "first strike" → `kw:"first strike"`; known keywords get kw: before o: |
-| Artist / atag confusion | artist-atag | TBD | Cross-detect: `atag:Dan Frazier` + 0 but `a:"Dan Frazier"` returns results → suggest `a:`; or `a:X` + 0 but `atag:X` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
+| Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
 | Near-miss: unquoted multi-word | near-miss | TBD | Bare term(s) after a field term: `a:Dan Frazer` parsed as `a:Dan` + bare `Frazer`; when `a:"Dan Frazer"` would match → "Did you mean `a:"Dan Frazer"`?" Same for `atag:dan frazier` → `atag:"dan frazier"` |
 | Small result set | relaxed | TBD | 1–3 results; relaxed query returns more; offer as alternative |
 | Example query fallback | example-query | TBD | 0 results + no other suggestions → "Find Commander legal cards with `f:commander`?"; rotating lineup |
@@ -170,6 +172,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 
 - **Worker suggestion building:** runSearch receives `getListMask` in params; imports `collectListOffendingTerms`, `hasListSyntaxInQuery` from query-edit. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
 - **Wrong-field (Spec 153):** Unified by Spec 153. When totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0.
+- **Artist-atag (Spec 153):** When totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
 - **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']`. Priority governs empty-state order only.
 

@@ -91,6 +91,29 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 **Domain separation:** Color domain uses trigger fields `is:`, `in:`, `type:` + color values. Format/is domain uses `type:`, `in:` + format or is: values. A value cannot match both (e.g. `commander` is not a color; `white` is not a format). The worker runs both domains in sequence.
 
+### Domain: Artist / atag reflexive
+
+**Trigger fields:** `a:`, `artist:` and `atag:`, `art:` (all aliases via `FIELD_ALIASES`).
+
+**Rationale:** Users confuse artist names with illustration tags. A user searching for Sol Ring illustrated by Dan Frazier may try `atag:frazier` (illustration tags like "chair", "spear") when they meant `a:frazier` (artist name). Conversely, `a:spear` may match nothing if "spear" is an illustration tag rather than part of an artist name. Reflexive suggestions swap the field when the value would work for the other.
+
+**Value recognition:** None. Unlike color or format domains, we cannot statically recognize "artist-like" vs "tag-like" values. The evaluator is the source of truth: if the alternative query returns > 0 results, suggest it.
+
+**Alternatives:**
+
+| User field | Suggested field | Label form | Explain | docRef |
+|------------|-----------------|------------|---------|--------|
+| a:, artist: | atag | `atag:{value}` | "Use atag: for illustration tags." | reference/fields/face/atag |
+| atag:, art: | a | `a:{value}` | "Use a: for artist name." | reference/fields/face/artist |
+
+**Order:** One alternative per offending term. Evaluate the swapped query; suggest only if count > 0.
+
+**Artist substring match:** The artist index uses full normalized names with substring match (e.g. `"dan frazier"`). Both `a:dan` and `a:frazier` match "Dan Frazier" because the full name contains each substring. No ETL word-split change is required for this domain.
+
+**Dependencies:** Artist index must be loaded for `a:` suggestions; illustration tags must be loaded for `atag:` suggestions. If either is missing, skip that direction (e.g. no `a:` suggestion when `artistUnavailable`).
+
+**Suggestion id:** Uses `id: 'artist-atag'` (Spec 151), priority 25. Same splice/negation logic as wrong-field.
+
 ### Example mappings
 
 | User query | Offending term | Alternatives (if each returns > 0) |
@@ -108,6 +131,10 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 | in:commander | in:commander | f:commander, is:commander |
 | -type:commander | -type:commander | -f:commander, -is:commander |
 | t:commander | t:commander | f:commander, is:commander |
+| a:spear | a:spear | atag:spear (if spear is a tag) |
+| atag:frazier | atag:frazier | a:frazier (if frazier matches artist) |
+| sol ring atag:frazier | atag:frazier | a:frazier |
+| -atag:frazier | -atag:frazier | -a:frazier (if a:frazier returns > 0) |
 
 ### Multiple offending terms
 
@@ -117,7 +144,9 @@ When the query has multiple terms that match the pattern (e.g. `is:white type:az
 
 - In `runSearch`, after building empty-list, include-extras, unique-prints, oracle suggestions and before the final sort.
 - When `totalCards === 0`, walk `effectiveBd` (from `parseBreakdown(effectiveQuery)`) for offending terms: FIELD nodes and NOT nodes whose child is a FIELD.
-- For each node: parse `label` to get field and value; if field ∈ trigger set and value is a known color value, build alternatives.
+- **Color domain:** If field ∈ color trigger set and value is a known color value, build ci:/c:/produces: alternatives.
+- **Format/is domain:** If field ∈ format-is trigger set and value is format or is: keyword, build f:/is: alternatives.
+- **Artist/atag domain:** If field ∈ artist trigger set, try atag:{value}; if field ∈ atag trigger set, try a:{value}. No value predicate — evaluation decides.
 - For each alternative: evaluate the query with the term replaced; if count > 0, push a Suggestion.
 - Use `spliceQuery(effectiveQuery, node.span, newTerm)` — the node's span is in effective-query coordinates. The suggestion's `query` is the full effective query with that replacement.
 
@@ -130,9 +159,9 @@ Add `'wrong-field'` to the `Suggestion.id` union in `shared/src/suggestion-types
 | File | Change |
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'wrong-field'` to Suggestion.id union |
-| `app/src/worker-search.ts` | Add wrong-field detection and suggestion building when totalCards === 0; call spliceQuery for each alternative |
-| `shared/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain) |
-| `app/src/SuggestionList.tsx` | Add `'wrong-field'` to EMPTY_STATE_IDS; wrong-field uses `suggestion.explain` in getDescription (no special branch needed) |
+| `app/src/worker-search.ts` | Add wrong-field detection and suggestion building when totalCards === 0; call spliceQuery for each alternative; add artist-atag domain loop |
+| `shared/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain); add `ARTIST_TRIGGER_FIELDS`, `ATAG_TRIGGER_FIELDS` for artist-atag |
+| `app/src/SuggestionList.tsx` | Add `'wrong-field'` to EMPTY_STATE_IDS; artist-atag already in EMPTY_STATE_IDS; both use `suggestion.explain` |
 | `docs/specs/151-suggestion-system.md` | Add wrong-field to placement/priority table; add "Unified by Spec 153" note for this trigger |
 
 ## Implementation Notes
@@ -147,7 +176,7 @@ This spec establishes the pattern. Future domains may include:
 - **Set codes in wrong field:** e.g. `is:mh2` → suggest `set:mh2`, `in:mh2` (when `in:` would disambiguate)
 - **Rarity in wrong field:** e.g. `type:mythic` → suggest `rarity:mythic` when value matches RARITY_NAMES
 
-Each would be a new section in this spec (or a separate spec if complex).
+Each would be a new section in this spec (or a separate spec if complex). Artist/atag reflexive is implemented (see Domain: Artist / atag reflexive).
 
 ## Acceptance Criteria
 
@@ -163,3 +192,8 @@ Each would be a new section in this spec (or a separate spec if complex).
 10. `type:commander` with zero results shows f:commander and is:commander chips (only those that return results).
 11. `in:commander` with zero results shows f:commander and is:commander chips.
 12. `type:vanilla` with zero results shows is:vanilla only; `type:modern` shows f:modern only.
+13. `a:spear` with zero results shows atag:spear chip when atag:spear returns > 0 (value is illustration tag).
+14. `atag:frazier` with zero results shows a:frazier chip when a:frazier returns > 0 (value matches artist name).
+15. `sol ring atag:frazier` with zero results suggests a:frazier; tapping applies `sol ring a:frazier`.
+16. Negation preserved: `-atag:frazier` suggests `-a:frazier` when that returns > 0.
+17. Artist-atag suggestions use id `artist-atag`, priority 25, and docRef for Learn more link.
