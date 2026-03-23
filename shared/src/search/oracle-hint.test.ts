@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
 import { parse } from "./parser";
-import { getTrailingBareNodes } from "./oracle-hint";
+import { getTrailingBareNodes, getBareNodes } from "./oracle-hint";
 
 describe("getTrailingBareNodes", () => {
   test("lightning ci:r deal 3 — trailing bare tokens are deal, 3", () => {
@@ -71,5 +71,43 @@ describe("getTrailingBareNodes", () => {
       expect(n.span).toBeDefined();
       expect(n.span!.start).toBeLessThan(n.span!.end);
     }
+  });
+});
+
+describe("getBareNodes", () => {
+  test("lightning ci:r landfall — returns lightning and landfall (bare terms anywhere)", () => {
+    const ast = parse("lightning ci:r landfall");
+    const bare = getBareNodes(ast);
+    expect(bare.map((n) => n.value)).toEqual(["lightning", "landfall"]);
+  });
+
+  test("landfall f:commander — returns landfall only", () => {
+    const ast = parse("landfall f:commander");
+    const bare = getBareNodes(ast);
+    expect(bare.map((n) => n.value)).toEqual(["landfall"]);
+  });
+
+  test("single bare word — returns that node", () => {
+    const ast = parse("elf");
+    const bare = getBareNodes(ast);
+    expect(bare.map((n) => n.value)).toEqual(["elf"]);
+  });
+
+  test("(xyc OR abc) — root is OR, returns empty", () => {
+    const ast = parse("(xyc OR abc)");
+    const bare = getBareNodes(ast);
+    expect(bare).toEqual([]);
+  });
+
+  test("lightning -deal 3 — excludes negated deal, returns lightning and 3", () => {
+    const ast = parse("lightning -deal 3");
+    const bare = getBareNodes(ast);
+    expect(bare.map((n) => n.value)).toEqual(["lightning", "3"]);
+  });
+
+  test("ci:r t:creature — no bare tokens, returns empty", () => {
+    const ast = parse("ci:r t:creature");
+    const bare = getBareNodes(ast);
+    expect(bare).toEqual([]);
   });
 });

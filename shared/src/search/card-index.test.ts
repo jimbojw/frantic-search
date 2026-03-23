@@ -338,3 +338,32 @@ describe("CardIndex.producesData and producesMasks", () => {
     expect(index.producesData[0]).toBe(0);
   });
 });
+
+describe("CardIndex.typeLineWords", () => {
+  it("collects unique words from type lines, lowercased", () => {
+    const data = makeData({
+      names: ["Elf Noble", "Goblin"],
+      mana_costs: ["{G}", "{R}"],
+      oracle_texts: ["", ""],
+      colors: [0, 0],
+      color_identity: [0, 0],
+      type_lines: ["Legendary Creature — Elf Noble", "Creature — Goblin Warrior"],
+      powers: [0, 0],
+      toughnesses: [0, 0],
+      loyalties: [0, 0],
+      defenses: [0, 0],
+      legalities_legal: [0, 0],
+      legalities_banned: [0, 0],
+      legalities_restricted: [0, 0],
+      card_index: [0, 1],
+      canonical_face: [0, 1],
+    });
+    const index = new CardIndex(data);
+    expect(index.typeLineWords.has("elf")).toBe(true);
+    expect(index.typeLineWords.has("creature")).toBe(true);
+    expect(index.typeLineWords.has("noble")).toBe(true);
+    expect(index.typeLineWords.has("goblin")).toBe(true);
+    expect(index.typeLineWords.has("warrior")).toBe(true);
+    expect(index.typeLineWords.has("legendary")).toBe(true);
+  });
+});

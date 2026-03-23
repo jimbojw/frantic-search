@@ -24,7 +24,7 @@ All of the following must hold:
 2. **Root shape** — The root AST node is either (a) an AND node, or (b) a leaf BARE node. Skip when root is OR.
 3. **Bare tokens (anywhere)** — All positive BARE nodes (not under NOT) in the query are eligible. Unlike Spec 131, we do not restrict to trailing only; each bare term is evaluated independently against domain lookup lists.
 4. **Value matches a known field** — For each bare token, the value (case-insensitive) matches at least one domain's value set (keywords, set codes, formats, etc.).
-5. **An alternative returns results** — The query with the bare term replaced by `field:value` returns at least one card.
+5. **Results check is best-effort, not required** — When the replacement query returns > 0 results, the suggestion includes the count (displayed on the chip). When the replacement returns 0, the suggestion is still shown — the field prefix is *directionally correct* and teaches the user the right syntax regardless of what other terms are doing. Example: `landfall flying` → both `kw:landfall` and `kw:flying` are shown even though `kw:landfall flying` and `landfall kw:flying` each return 0. The upgrade is strictly better than the bare term for the intended field.
 6. **Empty state only** — Same placement rules as oracle and wrong-field.
 
 ## Design
@@ -33,8 +33,8 @@ All of the following must hold:
 
 1. **Detection:** Use `getBareNodes(ast)` (or equivalent) to collect all positive BARE nodes from the tree. For each bare token, check if `value.toLowerCase()` matches any domain's value set.
 2. **Alternatives:** For each matching bare term, build one replacement per matching domain. E.g. bare `landfall` → `kw:landfall`; bare `mh2` → `set:mh2`.
-3. **Filter:** Evaluate each alternative query; only suggest alternatives that return > 0 results.
-4. **Output:** One `Suggestion` per (bare term, suggested field) pair that returns results. Tapping replaces the bare term via `spliceQuery`.
+3. **Evaluate:** Evaluate each alternative query. Include the count on the chip when > 0. When 0, still suggest — the field prefix is directionally correct.
+4. **Output:** One `Suggestion` per (bare term, suggested field) pair that matches a domain. Tapping replaces the bare term via `spliceQuery`.
 
 ### Suggestion model
 
@@ -53,7 +53,7 @@ All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion 
 
 ### Domain order and precedence
 
-When a bare term matches **multiple** domains (e.g. `commander` matches format and is:), suggest each that returns results. Order: keyword → type-line → set → format → is: → otag → atag → game → frame → rarity. Only the first matching domain is required for MVP; others can be added incrementally.
+When a bare term matches **multiple** domains (e.g. `commander` matches format and is:), suggest each matching domain. Order: keyword → type-line → set → format → is: → otag → atag → game → frame → rarity. Only the first matching domain is required for MVP; others can be added incrementally.
 
 **Interaction with oracle (Spec 131):** When a bare term matches both a field domain (e.g. `kw:landfall`) and the oracle fallback (`o:landfall`), prefer the **field-specific** suggestion. The bare-term-upgrade suggestion (priority 16) will outrank oracle (priority 20). We show at most one suggestion per bare term — if `kw:landfall` returns results, we suggest that and do not also suggest `o:landfall` for that term. The oracle hint logic runs after bare-term-upgrade; if a bare term already produced a bare-term-upgrade suggestion, skip it for oracle. (Implementation: evaluate bare-term upgrades first; for terms that got a suggestion, do not feed them to the oracle path.)
 
@@ -181,8 +181,8 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 ### Example mappings
 
-| User query | Bare terms | Matches | Suggested (if returns > 0) |
-|------------|------------|---------|---------------------------|
+| User query | Bare terms | Matches | Suggested |
+|------------|------------|---------|-----------|
 | landfall | landfall | keyword | kw:landfall |
 | mh2 | mh2 | set | set:mh2 |
 | elf | elf | type-line | t:elf |
@@ -191,6 +191,7 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 | mythic | mythic | rarity | rarity:mythic |
 | ramp | ramp | otag | otag:ramp |
 | lightning landfall | lightning, landfall | —, keyword | kw:landfall (for landfall only) |
+| landfall flying | landfall, flying | keyword, keyword | kw:landfall, kw:flying (both shown; counts may be 0) |
 | elf ci:g | elf | type-line | t:elf ci:g (or ci:g t:elf) |
 | ci:r landfall | landfall | keyword | ci:r kw:landfall |
 | t:creature flying | flying | keyword | t:creature kw:flying |
@@ -198,13 +199,13 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 ### Multiple bare terms
 
-When the query has multiple bare tokens (e.g. `lightning landfall` or `landfall f:commander`), each is evaluated independently. If "landfall" matches keywords and the replacement returns results, suggest it — regardless of position. We do **not** combine multiple bare terms into one field (e.g. no `kw:lightning landfall`). Each suggestion replaces exactly one BARE node.
+When the query has multiple bare tokens (e.g. `landfall flying` or `landfall f:commander`), each is evaluated independently. If "landfall" matches keywords, suggest `kw:landfall` — regardless of whether the replacement returns results. Likewise for "flying" → `kw:flying`. When the replacement *does* return results, the count is shown on the chip. When it doesn't, the chip still appears (without a count) because the field prefix is directionally correct and teaches the right syntax. We do **not** combine multiple bare terms into one field (e.g. no `kw:landfall kw:flying` as a single suggestion). Each suggestion replaces exactly one BARE node.
 
 ### Worker integration
 
 - In `buildSuggestions` (app/src/worker-suggestions.ts), run bare-term-upgrade **before** the oracle hint block. Order: empty-list, include-extras, unique-prints, **bare-term-upgrade**, wrong-field, oracle.
 - Use the live AST: `ast = parse(msg.query)`; call `getBareNodes(ast)` to collect all positive BARE nodes (anywhere in the tree). If empty, skip. Bare nodes are always in the live portion when pinned+live.
-- For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; if count > 0, push a `Suggestion` with `id: 'bare-term-upgrade'`.
+- For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; push a `Suggestion` with `id: 'bare-term-upgrade'`. Include count/printingCount when > 0; omit when 0.
 - Track which bare terms (by value) received a bare-term-upgrade suggestion. When building the oracle hint (Spec 131), skip those terms — do not suggest both `kw:landfall` and `o:landfall` for the same term.
 
 ### Suggestion type extension
@@ -233,15 +234,17 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 
 ## Acceptance Criteria
 
-1. `landfall` with zero results and "landfall" in keyword index shows `kw:landfall` chip when `kw:landfall` returns > 0.
-2. `elf` with zero results and "elf" appearing as a word in some type line shows `t:elf` chip when `t:elf` returns > 0.
-3. `mh2` with zero results and MH2 in knownSetCodes shows `set:mh2` chip when that returns > 0.
-4. `commander` with zero results shows `f:commander` and/or `is:commander` chips (each that returns > 0).
+1. `landfall` with zero results and "landfall" in keyword index shows `kw:landfall` chip.
+2. `elf` with zero results and "elf" appearing as a word in some type line shows `t:elf` chip.
+3. `mh2` with zero results and MH2 in knownSetCodes shows `set:mh2` chip.
+4. `commander` with zero results shows `f:commander` and/or `is:commander` chips.
 5. `lightning ci:r landfall` with zero results shows `kw:landfall` chip (replacing only "landfall"); tapping produces `lightning ci:r kw:landfall`.
 6. `landfall f:commander` with zero results shows `kw:landfall` chip (non-trailing bare term); tapping produces `kw:landfall f:commander`.
-7. Bare-term-upgrade suggestions appear below the Results Summary Bar, before oracle suggestions when both could apply.
-8. When a bare term gets a bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term.
-9. Works in single-pane and Dual Wield layouts.
-10. Each chip shows explain text and "Learn more" link when docRef is set.
-11. Domains with unavailable data (e.g. no PrintingIndex for set) are skipped gracefully.
-12. Negated bare terms are not converted (same as Spec 131).
+7. `landfall flying` with zero results shows both `kw:landfall` and `kw:flying` chips (counts may be 0).
+8. Bare-term-upgrade suggestions appear below the Results Summary Bar, before oracle suggestions when both could apply.
+9. When a bare term gets a bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term.
+10. Works in single-pane and Dual Wield layouts.
+11. Each chip shows explain text and "Learn more" link when docRef is set.
+12. Domains with unavailable data (e.g. no PrintingIndex for set) are skipped gracefully.
+13. Negated bare terms are not converted (same as Spec 131).
+14. When a replacement query returns > 0, the count appears on the chip. When it returns 0, the chip still appears without a count.

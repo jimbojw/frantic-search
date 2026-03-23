@@ -9,6 +9,7 @@ import { HighlightedLabel } from './InlineBreakdown'
 const EMPTY_STATE_IDS = [
   'empty-list',
   'include-extras',
+  'bare-term-upgrade',
   'oracle',
   'wrong-field',
   'card-type',

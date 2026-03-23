@@ -152,6 +152,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | include:extras (Spec 057) | `Suggestion { id: 'include-extras', query, label, count, printingCount, docRef: 'reference/modifiers/include-extras' }`. Empty: totalCards === 0 and indicesIncludingExtras. Rider: totalCards > 0 and hidden playable-filtered results. |
 | unique:prints (Spec 139) | `Suggestion { id: 'unique-prints', query, label, docRef: 'reference/modifiers/unique' }`. Rider only. Trigger: uniqueMode !== 'prints' and `totalPrintingItems > totalDisplayItems`. |
 | Oracle hint (Spec 131) | `Suggestion { id: 'oracle', query, label, count, printingCount, docRef: 'reference/fields/face/oracle' }` from existing oracleHint logic. Empty state only. |
+| Bare-term-upgrade (Spec 154) | One `Suggestion` per (bare term, alternative field) pair: `{ id: 'bare-term-upgrade', query, label, explain, count, docRef }`. Trigger: totalCards === 0; BARE node value matches known domain (keyword, type-line, set, format, is, otag, atag, game, frame, rarity); alternative (kw:, t:, set:, etc.) returns > 0. Empty state only. Runs before oracle; terms that get bare-term-upgrade are skipped for oracle. |
 | Wrong-field (Spec 153) | One `Suggestion` per (offending term, alternative field) pair: `{ id: 'wrong-field', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node has trigger field (is:, in:, type:) + color value; alternative (ci:, c:, produces:) returns > 0. Empty state only. |
 | Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
 
@@ -164,7 +165,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 | Trigger | id | Spec | Notes |
 |---------|-----|------|------|
 | Card type tokens | card-type | TBD | "creatures" → `t:creature`; "creatures scry" → `t:creature o:scry`; narrowest first |
-| Bare term field upgrade | bare-term-upgrade | Spec 154 | Bare terms matching known values (keywords, set, format, otag, atag, game, frame, rarity) → suggest field prefix. "landfall" → `kw:landfall`; "mh2" → `set:mh2`. Draft. |
+| Bare term field upgrade | bare-term-upgrade | Spec 154 | Bare terms matching known values (keywords, set, format, otag, atag, game, frame, rarity) → suggest field prefix. "landfall" → `kw:landfall`; "mh2" → `set:mh2`. Implemented. |
 | Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
 | Near-miss: unquoted multi-word | near-miss | TBD | Bare term(s) after a field term: `a:Dan Frazer` parsed as `a:Dan` + bare `Frazer`; when `a:"Dan Frazer"` would match → "Did you mean `a:"Dan Frazer"`?" Same for `atag:dan frazier` → `atag:"dan frazier"` |
 | Small result set | relaxed | TBD | 1–3 results; relaxed query returns more; offer as alternative |
@@ -173,6 +174,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 ## Implementation notes
 
 - **Worker suggestion building:** `runSearch` calls `buildSuggestions(params)` from `app/src/worker-suggestions.ts`. That module receives `getListMask` via params. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
+- **Bare-term-upgrade (Spec 154):** In `buildSuggestions`, when totalCards === 0, call `getBareNodes(ast)` to collect positive BARE nodes; for each, `getBareTermAlternatives(value, context)` returns matching domains; splice and evaluate each alternative; suggest those with count > 0. Runs before oracle; terms that received a bare-term-upgrade are excluded when building the oracle hint.
 - **Wrong-field (Spec 153):** Unified by Spec 153. In `buildSuggestions`, when totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0. Uses `evaluateAlternative` from `worker-alternative-eval.ts`.
 - **Artist-atag (Spec 153):** In `buildSuggestions`, when totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.

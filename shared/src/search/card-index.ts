@@ -48,6 +48,16 @@ function buildSortedEdhrecIndices(
   return { indices, count };
 }
 
+/** Build Set of unique words from all type lines (Spec 154). Split on /\W+/; lowercase. */
+function buildTypeLineWords(typeLines: string[]): Set<string> {
+  const words = new Set<string>();
+  for (const line of typeLines) {
+    const tokens = line.toLowerCase().split(/\W+/).filter((w) => w.length > 0);
+    for (const w of tokens) words.add(w);
+  }
+  return words;
+}
+
 /** Build sorted face indices for salt percentile. Ascending (lowest salt first, highest last).
  * No inversion: high-index end = saltier. Nulls excluded. */
 function buildSortedSaltIndices(
@@ -118,6 +128,8 @@ export class CardIndex {
   readonly producesData: Uint8Array;
   /** Symbol → bit value for produces queries. Spec 146. */
   readonly producesMasks: Record<string, number>;
+  /** Unique words from all type lines (Spec 154 bare-term-upgrade). */
+  readonly typeLineWords: Set<string>;
 
   private readonly _facesOf: Map<number, number[]>;
 
@@ -173,6 +185,7 @@ export class CardIndex {
     this.colors = data.colors;
     this.colorIdentity = data.color_identity;
     this.typeLinesLower = data.type_lines.map((t) => t.toLowerCase());
+    this.typeLineWords = buildTypeLineWords(data.type_lines);
     this.powers = data.powers;
     this.toughnesses = data.toughnesses;
     this.loyalties = data.loyalties;

@@ -16,12 +16,14 @@ export type RunSearchParams = {
   tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null; artist: ArtistIndexData | null }
   /** Spec 151: For empty-list suggestion when query references my:list/# and default list is empty. */
   getListMask?: (listId: string) => { printingIndices?: Uint32Array } | null
+  /** Spec 154: domain labels for bare-term-upgrade. */
+  keywordLabels?: string[]
 }
 
 export type SearchResult = Extract<FromWorker, { type: 'result' }>
 
 export function runSearch(params: RunSearchParams): SearchResult {
-  const { msg, cache, index, printingIndex, sessionSalt, tagData: _tagData } = params
+  const { msg, cache, index, printingIndex, sessionSalt, tagData, keywordLabels } = params
   const hasPinned = !!msg.pinnedQuery?.trim()
   const hasLive = !!msg.query.trim()
 
@@ -319,6 +321,9 @@ export function runSearch(params: RunSearchParams): SearchResult {
     totalDisplayItems,
     defaultListEmpty,
     sealQuery,
+    keywordLabels,
+    oracleTagLabels: tagData?.oracle ? Object.keys(tagData.oracle) : [],
+    illustrationTagLabels: tagData?.illustration ? Array.from(tagData.illustration.keys()) : [],
   })
 
   const result: SearchResult = {

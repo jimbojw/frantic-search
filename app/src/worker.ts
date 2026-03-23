@@ -494,6 +494,7 @@ async function init(): Promise<void> {
       sessionSalt,
       tagData: tagDataRef,
       getListMask,
+      keywordLabels: Object.keys(keywordsIndex),
     })
 
     const resultWithSide = msg.side !== undefined ? { ...resultMsg, side: msg.side } : resultMsg

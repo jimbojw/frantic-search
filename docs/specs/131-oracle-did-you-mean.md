@@ -6,7 +6,7 @@
 
 **Unified by:** Spec 151 (Suggestion System)
 
-**Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol)
+**Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol), Spec 154 (Bare-Term Field Upgrade)
 
 **Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143)
 
@@ -131,6 +131,7 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 - [ ] Button displays only the oracle part (e.g. `o:deal o:3`); tapping applies the full query (e.g. `lightning ci:r o:deal o:3`).
 - [ ] Negated bare words are not converted; they remain in the alternative query as-is.
 - [ ] The empty-list CTA and `include:extras` hint take priority over the oracle hint when their conditions hold.
+- [ ] When a bare term receives a bare-term-upgrade suggestion (Spec 154, e.g. `kw:landfall` for "landfall"), the oracle hint does not also suggest `o:landfall` for that term.
 - [ ] Works in both single-pane and Dual Wield layouts.
 - [ ] Button uses two-line layout: oracle label on top, `N cards (M prints)` on bottom (via `formatDualCount`); both counts shown when printing data available.
 - [ ] When pinned query alone yields zero results, oracle hint is not shown (alternatives skipped); future UX for alerting user about empty pinned query is out of scope.

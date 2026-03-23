@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode, CardIndex, PrintingIndex, NodeCache, Suggestion } from '@frantic-search/shared'
-import { getTrailingBareNodes, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
+import { getBareNodes, getTrailingBareNodes, getBareTermAlternatives, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
@@ -28,6 +28,10 @@ export type BuildSuggestionsParams = {
   totalDisplayItems: number
   defaultListEmpty: boolean
   sealQuery: (q: string) => string
+  /** Spec 154: domain labels for bare-term-upgrade. */
+  keywordLabels?: string[]
+  oracleTagLabels?: string[]
+  illustrationTagLabels?: string[]
 }
 
 /**
@@ -57,6 +61,9 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     totalDisplayItems,
     defaultListEmpty,
     sealQuery,
+    keywordLabels,
+    oracleTagLabels,
+    illustrationTagLabels,
   } = params
 
   const suggestions: Suggestion[] = []
@@ -131,12 +138,62 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     })
   }
 
-  // Spec 131: Oracle "Did you mean?" hint - empty state only
+  // Spec 154: Bare-term field upgrade — before oracle
+  const bareTermUpgradedValues = new Set<string>()
+  if (
+    totalCards === 0 &&
+    hasLive &&
+    !(hasPinned && pinnedIndicesCount === 0) &&
+    (ast.type === 'AND' || ast.type === 'BARE')
+  ) {
+    const bareNodes = getBareNodes(ast)
+    const ctx = {
+      keywordLabels,
+      typeLineWords: index.typeLineWords,
+      knownSetCodes: printingIndex?.knownSetCodes,
+      oracleTagLabels,
+      illustrationTagLabels,
+    }
+    for (const node of bareNodes) {
+      if (!node.span) continue
+      const alts = getBareTermAlternatives(node.value, ctx)
+      for (const alt of alts) {
+        const modifiedLive = spliceQuery(msg.query, node.span, alt.label)
+        const altEffective = hasPinned
+          ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(modifiedLive)
+          : modifiedLive
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery: altEffective,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        suggestions.push({
+          id: 'bare-term-upgrade',
+          query: altEffective,
+          label: alt.label,
+          explain: alt.explain,
+          ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
+          docRef: alt.docRef,
+          priority: 16,
+          variant: 'rewrite',
+        })
+        bareTermUpgradedValues.add(node.value.toLowerCase())
+      }
+    }
+  }
+
+  // Spec 131: Oracle "Did you mean?" hint - empty state only (skip terms that got bare-term-upgrade)
   let oracleSuggestion: Suggestion | null = null
   if (totalCards === 0 && hasLive && !(hasPinned && pinnedIndicesCount === 0)) {
     const root = ast.type === 'AND' || ast.type === 'BARE'
     if (root) {
-      const trailing = getTrailingBareNodes(ast)
+      const rawTrailing = getTrailingBareNodes(ast)
+      const trailing = rawTrailing?.filter(
+        (n) => !bareTermUpgradedValues.has(n.value.toLowerCase()),
+      )
       if (trailing && trailing.length > 0) {
         const variants: Array<'phrase' | 'per-word'> =
           trailing.length === 1 && trailing[0].quoted ? ['phrase'] : ['phrase', 'per-word']
