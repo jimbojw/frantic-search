@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, test } from 'vitest'
-import { isKnownColorValue, getColorAlternatives } from './wrong-field-utils'
+import { isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives } from './wrong-field-utils'
 
 describe('isKnownColorValue', () => {
   test('single color names', () => {
@@ -84,5 +84,70 @@ describe('getColorAlternatives', () => {
     const alts = getColorAlternatives(node)
     expect(alts[0].label).toBe('ci:c')
     expect(alts[0].value).toBe('c')
+  })
+})
+
+describe('isFormatOrIsValue', () => {
+  test('format names', () => {
+    expect(isFormatOrIsValue('commander')).toBe(true)
+    expect(isFormatOrIsValue('modern')).toBe(true)
+    expect(isFormatOrIsValue('edh')).toBe(true)
+    expect(isFormatOrIsValue('standard')).toBe(true)
+  })
+
+  test('is: keywords', () => {
+    expect(isFormatOrIsValue('vanilla')).toBe(true)
+    expect(isFormatOrIsValue('foil')).toBe(true)
+    expect(isFormatOrIsValue('dfc')).toBe(true)
+  })
+
+  test('rejects non-format non-is values', () => {
+    expect(isFormatOrIsValue('xyz')).toBe(false)
+    expect(isFormatOrIsValue('white')).toBe(false)
+    expect(isFormatOrIsValue('')).toBe(false)
+  })
+})
+
+describe('getFormatOrIsAlternatives', () => {
+  test('type:commander returns both f: and is: (commander is format + is keyword)', () => {
+    const node = { type: 'FIELD' as const, label: 'type:commander', matchCount: 0 }
+    const alts = getFormatOrIsAlternatives(node)
+    expect(alts).toHaveLength(2)
+    expect(alts[0]).toEqual({
+      field: 'f',
+      label: 'f:commander',
+      value: 'commander',
+      explain: 'Use f: for format legality.',
+      docRef: 'reference/fields/face/legal',
+    })
+    expect(alts[1]).toEqual({
+      field: 'is',
+      label: 'is:commander',
+      value: 'commander',
+      explain: 'Use is: for card properties.',
+      docRef: 'reference/fields/face/is',
+    })
+  })
+
+  test('type:modern returns f: only', () => {
+    const node = { type: 'FIELD' as const, label: 'type:modern', matchCount: 0 }
+    const alts = getFormatOrIsAlternatives(node)
+    expect(alts).toHaveLength(1)
+    expect(alts[0].label).toBe('f:modern')
+  })
+
+  test('type:vanilla returns is: only', () => {
+    const node = { type: 'FIELD' as const, label: 'type:vanilla', matchCount: 0 }
+    const alts = getFormatOrIsAlternatives(node)
+    expect(alts).toHaveLength(1)
+    expect(alts[0].label).toBe('is:vanilla')
+  })
+
+  test('NOT node -type:commander returns positive-form alternatives', () => {
+    const node = { type: 'NOT' as const, label: '-type:commander', matchCount: 0 }
+    const alts = getFormatOrIsAlternatives(node)
+    expect(alts).toHaveLength(2)
+    expect(alts[0].label).toBe('f:commander')
+    expect(alts[1].label).toBe('is:commander')
   })
 })

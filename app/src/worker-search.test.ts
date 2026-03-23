@@ -536,4 +536,69 @@ describe('wrong-field suggestions (Spec 153)', () => {
     expect(labels).toContain('c:w')
     expect(labels).toContain('produces:w')
   })
+
+  it('t:white (alias) with zero results yields ci:/c:/produces: suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:white' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wrongField = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wrongField.length).toBeGreaterThan(0)
+    const labels = wrongField.map((s) => s.label)
+    expect(labels).toContain('ci:w')
+    expect(labels).toContain('c:w')
+    expect(labels).toContain('produces:w')
+  })
+
+  it('type:commander with zero results yields f:/is: suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'type:commander' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wrongField = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wrongField.length).toBeGreaterThan(0)
+    const labels = wrongField.map((s) => s.label)
+    expect(labels).toContain('f:commander')
+    expect(labels).toContain('is:commander')
+  })
+
+  it('t:commander (alias) with zero results yields f:/is: suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:commander' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wrongField = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wrongField.length).toBeGreaterThan(0)
+    const labels = wrongField.map((s) => s.label)
+    expect(labels).toContain('f:commander')
+    expect(labels).toContain('is:commander')
+  })
+
+  it('in:commander with zero results yields f:/is: suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'in:commander' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wrongField = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wrongField.length).toBeGreaterThan(0)
+    const labels = wrongField.map((s) => s.label)
+    expect(labels).toContain('f:commander')
+    expect(labels).toContain('is:commander')
+  })
 })

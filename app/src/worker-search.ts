@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData, Suggestion } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes, isKnownColorValue, getColorAlternatives } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, hasListSyntaxInQuery, collectListOffendingTerms, parseBreakdown, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
@@ -571,7 +571,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     effectiveBd &&
     !(hasPinned && pinnedIndicesCount === 0)
   ) {
-    const offendingNodes = collectFieldNodes(effectiveBd, ['is', 'in', 'type'], ':', {
+    const offendingNodes = collectFieldNodes(effectiveBd, COLOR_TRIGGER_FIELDS, ':', {
       valuePredicate: isKnownColorValue,
     })
     for (const node of offendingNodes) {
@@ -579,6 +579,89 @@ export function runSearch(params: RunSearchParams): SearchResult {
       const isNegated = node.type === 'NOT'
       const prefix = isNegated ? '-' : ''
       for (const alt of getColorAlternatives(node)) {
+        const replacementTerm = prefix + alt.label
+        const altQuery = spliceQuery(effectiveQuery, node.span, replacementTerm)
+        const altEval = cache.evaluate(parse(altQuery))
+        let altDeduped = Array.from(altEval.indices)
+        let altPrintingIndices = altEval.printingIndices
+
+        if (!includeExtras) {
+          if (altEval.hasPrintingConditions && altPrintingIndices && printingIndex) {
+            const filtered: number[] = []
+            for (let i = 0; i < altPrintingIndices.length; i++) {
+              const p = altPrintingIndices[i]
+              if (
+                !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                  index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+              ) {
+                filtered.push(p)
+              }
+            }
+            const seen = new Set<number>()
+            altDeduped = []
+            for (let i = 0; i < filtered.length; i++) {
+              const cf = printingIndex.canonicalFaceRef[filtered[i]]
+              if (!seen.has(cf)) {
+                seen.add(cf)
+                altDeduped.push(cf)
+              }
+            }
+            altPrintingIndices = new Uint32Array(filtered)
+          } else {
+            altDeduped = altDeduped.filter(
+              (fi) => (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0,
+            )
+            if (altPrintingIndices && printingIndex) {
+              const filtered: number[] = []
+              for (let i = 0; i < altPrintingIndices.length; i++) {
+                const p = altPrintingIndices[i]
+                if (
+                  !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
+                  (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
+                    index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
+                ) {
+                  filtered.push(p)
+                }
+              }
+              altPrintingIndices = new Uint32Array(filtered)
+            }
+          }
+        }
+
+        if (altDeduped.length > 0) {
+          let printingCount: number | undefined
+          if (altPrintingIndices && printingIndex && (msg.viewMode === 'images' || msg.viewMode === 'full')) {
+            printingCount = altPrintingIndices.length
+          } else if (printingIndex && altDeduped.length > 0) {
+            let total = 0
+            for (const fi of altDeduped) total += printingIndex.printingsOf(fi).length
+            printingCount = total
+          }
+          suggestions.push({
+            id: 'wrong-field',
+            query: altQuery,
+            label: alt.label,
+            explain: alt.explain,
+            count: altDeduped.length,
+            printingCount,
+            docRef: alt.docRef,
+            priority: 22,
+            variant: 'rewrite',
+          })
+        }
+      }
+    }
+
+    // Spec 153: Wrong-field suggestions — format/is value in type:/in: → suggest f:/is:
+    const formatIsNodes = collectFieldNodes(effectiveBd, FORMAT_IS_TRIGGER_FIELDS, ':', {
+      valuePredicate: isFormatOrIsValue,
+    })
+    for (const node of formatIsNodes) {
+      if (!node.span) continue
+      const isNegated = node.type === 'NOT'
+      const prefix = isNegated ? '-' : ''
+      for (const alt of getFormatOrIsAlternatives(node)) {
         const replacementTerm = prefix + alt.label
         const altQuery = spliceQuery(effectiveQuery, node.span, replacementTerm)
         const altEval = cache.evaluate(parse(altQuery))

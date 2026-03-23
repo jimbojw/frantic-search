@@ -46,9 +46,9 @@ All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a s
 
 ### Domain: Color values in non-color fields
 
-**Trigger fields:** `is:`, `in:`, `type:`
+**Trigger fields:** `is:`, `in:`, `type:` (and aliases via `FIELD_ALIASES`, e.g. `t:`)
 
-These fields do not accept color values. `is:` expects keywords (foil, dual, etc.). `in:` expects game/set/rarity. `type:` does substring match on type lines.
+These fields do not accept color values. All field aliases from `FIELD_ALIASES` that resolve to these canonicals are matched. `is:` expects keywords (foil, dual, etc.). `in:` expects game/set/rarity. `type:` does substring match on type lines.
 
 **Value recognition:** A value is a "known color value" if it matches:
 
@@ -67,6 +67,30 @@ These fields do not accept color values. `is:` expects keywords (foil, dual, etc
 
 **Order:** Suggest in the order ci, c, produces. Each alternative is evaluated; only those with `count > 0` are added to suggestions.
 
+### Domain: Format / is: values in type: or in:
+
+**Trigger fields:** `type:`, `in:` only (exclude `is:` — `is:commander` is correct). All field aliases from `FIELD_ALIASES` that resolve to these canonicals are matched (e.g. `t:`).
+
+**Rationale:** `type:` does substring match on type lines; format/is values rarely appear there. `in:` expects game/set/rarity; format names and is: keywords are neither.
+
+**Value recognition:** A value is a "format or is: value" if it matches (case-insensitive):
+
+- Any key of `FORMAT_NAMES` (bits.ts): `commander`, `modern`, `standard`, `edh`, `brawl`, `vintage`, etc.
+- Any entry in `IS_KEYWORDS` (eval-is.ts): `commander`, `brawler`, `vanilla`, `foil`, `dfc`, etc.
+
+**Suggested fields:** `f:`, `is:` (depending on which the value matches)
+
+| Suggested field | Label form | Explain | docRef |
+|-----------------|------------|---------|--------|
+| f: | `f:{value}` | "Use f: for format legality." | reference/fields/face/legal |
+| is: | `is:{value}` | "Use is: for card properties." | reference/fields/face/is |
+
+**Order:** When both apply (e.g. `commander`), suggest f: first, then is:.
+
+**Display:** Use value as typed (no normalization); both fields accept the same strings.
+
+**Domain separation:** Color domain uses trigger fields `is:`, `in:`, `type:` + color values. Format/is domain uses `type:`, `in:` + format or is: values. A value cannot match both (e.g. `commander` is not a color; `white` is not a format). The worker runs both domains in sequence.
+
 ### Example mappings
 
 | User query | Offending term | Alternatives (if each returns > 0) |
@@ -76,7 +100,14 @@ These fields do not accept color values. `is:` expects keywords (foil, dual, etc
 | type:wubrg | type:wubrg | ci:wubrg, c:wubrg, produces:wubrg |
 | is:c | is:c | ci:c, c:c, produces:c (colorless) |
 | t:creature is:white | is:white | ci:w, c:w, produces:w |
+| t:white | t:white | ci:w, c:w, produces:w |
 | -is:white | -is:white | -ci:w, -c:w, -produces:w |
+| type:commander | type:commander | f:commander, is:commander |
+| type:modern | type:modern | f:modern |
+| type:vanilla | type:vanilla | is:vanilla |
+| in:commander | in:commander | f:commander, is:commander |
+| -type:commander | -type:commander | -f:commander, -is:commander |
+| t:commander | t:commander | f:commander, is:commander |
 
 ### Multiple offending terms
 
@@ -100,7 +131,7 @@ Add `'wrong-field'` to the `Suggestion.id` union in `shared/src/suggestion-types
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'wrong-field'` to Suggestion.id union |
 | `app/src/worker-search.ts` | Add wrong-field detection and suggestion building when totalCards === 0; call spliceQuery for each alternative |
-| `shared/` or `app/` | Add `isKnownColorValue(value: string): boolean` (checks COLOR_NAMES + letter sequence); add `getColorAlternatives(node): { field, label, value }[]` |
+| `shared/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain) |
 | `app/src/SuggestionList.tsx` | Add `'wrong-field'` to EMPTY_STATE_IDS; wrong-field uses `suggestion.explain` in getDescription (no special branch needed) |
 | `docs/specs/151-suggestion-system.md` | Add wrong-field to placement/priority table; add "Unified by Spec 153" note for this trigger |
 
@@ -115,7 +146,6 @@ This spec establishes the pattern. Future domains may include:
 
 - **Set codes in wrong field:** e.g. `is:mh2` → suggest `set:mh2`, `in:mh2` (when `in:` would disambiguate)
 - **Rarity in wrong field:** e.g. `type:mythic` → suggest `rarity:mythic` when value matches RARITY_NAMES
-- **Format in wrong field:** similar pattern for FORMAT_NAMES
 
 Each would be a new section in this spec (or a separate spec if complex).
 
@@ -130,3 +160,6 @@ Each would be a new section in this spec (or a separate spec if complex).
 7. Wrong-field suggestions appear below the Results Summary Bar alongside oracle and include-extras.
 8. Each chip shows explain text and "Learn more" link when docRef is set.
 9. Works in single-pane and Dual Wield layouts.
+10. `type:commander` with zero results shows f:commander and is:commander chips (only those that return results).
+11. `in:commander` with zero results shows f:commander and is:commander chips.
+12. `type:vanilla` with zero results shows is:vanilla only; `type:modern` shows f:modern only.

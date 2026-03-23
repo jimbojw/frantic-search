@@ -1,8 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
-import { COLOR_NAMES, COLOR_FROM_LETTER } from './bits'
+import { COLOR_NAMES, COLOR_FROM_LETTER, FORMAT_NAMES } from './bits'
+import { FIELD_ALIASES } from './search/eval-leaves'
+import { IS_KEYWORDS } from './search/eval-is'
 import type { BreakdownNode } from './worker-protocol'
 
-const TRIGGER_FIELDS = ['is', 'in', 'type'] as const
+/** All field keys (incl. aliases) that resolve to the given canonicals. */
+function fieldKeysForCanonicals(canonicals: readonly string[]): string[] {
+  const set = new Set(canonicals)
+  return Object.entries(FIELD_ALIASES)
+    .filter(([, canonical]) => set.has(canonical))
+    .map(([key]) => key)
+}
+
+/** Color domain: is, in, type — any alias (e.g. t:) is matched. */
+export const COLOR_TRIGGER_FIELDS = fieldKeysForCanonicals(['is', 'in', 'type'])
+
+/** Format/is domain: type, in — any alias (e.g. t:) is matched. */
+export const FORMAT_IS_TRIGGER_FIELDS = fieldKeysForCanonicals(['type', 'in'])
+
+const TRIGGER_FIELDS = COLOR_TRIGGER_FIELDS
 
 const SINGLE_COLOR_TO_LETTER: Record<string, string> = {
   white: 'w',
@@ -80,4 +96,55 @@ export function isTriggerField(label: string): boolean {
   if (opIdx < 0) return false
   const field = raw.slice(0, opIdx).toLowerCase()
   return (TRIGGER_FIELDS as readonly string[]).includes(field)
+}
+
+/**
+ * Returns true if the value is a known format name (FORMAT_NAMES) or
+ * is: keyword (IS_KEYWORDS), case-insensitive.
+ */
+export function isFormatOrIsValue(value: string): boolean {
+  if (!value || value.length === 0) return false
+  const lower = value.toLowerCase()
+  if (lower in FORMAT_NAMES) return true
+  return IS_KEYWORDS.includes(lower)
+}
+
+export type FormatOrIsAlternative = {
+  field: string
+  label: string
+  value: string
+  explain: string
+  docRef: string
+}
+
+/**
+ * Build replacement alternatives for a FIELD or NOT node whose label matches
+ * type: or in: with a format or is: value. Returns f: and/or is: alternatives
+ * depending on what the value matches; f: first when both apply.
+ */
+export function getFormatOrIsAlternatives(node: BreakdownNode): FormatOrIsAlternative[] {
+  const rawValue = extractValueFromLabel(node.label)
+  const lower = rawValue.toLowerCase()
+  const isFormat = lower in FORMAT_NAMES
+  const isIsKeyword = IS_KEYWORDS.includes(lower)
+  const result: FormatOrIsAlternative[] = []
+  if (isFormat) {
+    result.push({
+      field: 'f',
+      label: `f:${rawValue}`,
+      value: rawValue,
+      explain: 'Use f: for format legality.',
+      docRef: 'reference/fields/face/legal',
+    })
+  }
+  if (isIsKeyword) {
+    result.push({
+      field: 'is',
+      label: `is:${rawValue}`,
+      value: rawValue,
+      explain: 'Use is: for card properties.',
+      docRef: 'reference/fields/face/is',
+    })
+  }
+  return result
 }
