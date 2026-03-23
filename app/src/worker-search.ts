@@ -324,6 +324,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     keywordLabels,
     oracleTagLabels: tagData?.oracle ? Object.keys(tagData.oracle) : [],
     illustrationTagLabels: tagData?.illustration ? Array.from(tagData.illustration.keys()) : [],
+    artistLabels: tagData?.artist ? Object.keys(tagData.artist) : [],
   })
 
   const result: SearchResult = {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode, CardIndex, PrintingIndex, NodeCache, Suggestion } from '@frantic-search/shared'
-import { getBareNodes, getTrailingBareNodes, getBareTermAlternatives, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
+import { getBareNodes, getTrailingBareNodes, getBareTermAlternatives, getMultiWordAlternatives, getAdjacentBareWindows, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
@@ -32,6 +32,7 @@ export type BuildSuggestionsParams = {
   keywordLabels?: string[]
   oracleTagLabels?: string[]
   illustrationTagLabels?: string[]
+  artistLabels?: string[]
 }
 
 /**
@@ -64,6 +65,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     keywordLabels,
     oracleTagLabels,
     illustrationTagLabels,
+    artistLabels,
   } = params
 
   const suggestions: Suggestion[] = []
@@ -153,8 +155,55 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       knownSetCodes: printingIndex?.knownSetCodes,
       oracleTagLabels,
       illustrationTagLabels,
+      artistLabels,
     }
-    for (const node of bareNodes) {
+
+    // Multi-word sliding window: check pairs then triples of adjacent bare
+    // nodes for multi-word keywords and artist names. Consumed nodes are
+    // excluded from the subsequent single-node pass.
+    const consumedIndices = new Set<number>()
+    const windows = getAdjacentBareWindows(bareNodes, msg.query, 3)
+    for (const winIndices of windows) {
+      if (winIndices.some((i) => consumedIndices.has(i))) continue
+      const phrase = winIndices.map((i) => bareNodes[i].value).join(' ')
+      const alts = getMultiWordAlternatives(phrase, ctx)
+      if (alts.length === 0) continue
+      const first = bareNodes[winIndices[0]]
+      const last = bareNodes[winIndices[winIndices.length - 1]]
+      if (!first.span || !last.span) continue
+      const combinedSpan = { start: first.span.start, end: last.span.end }
+      for (const alt of alts) {
+        const modifiedLive = spliceQuery(msg.query, combinedSpan, alt.label)
+        const altEffective = hasPinned
+          ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(modifiedLive)
+          : modifiedLive
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery: altEffective,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        suggestions.push({
+          id: 'bare-term-upgrade',
+          query: altEffective,
+          label: alt.label,
+          explain: alt.explain,
+          ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
+          docRef: alt.docRef,
+          priority: 16,
+          variant: 'rewrite',
+        })
+      }
+      for (const i of winIndices) consumedIndices.add(i)
+      for (const i of winIndices) bareTermUpgradedValues.add(bareNodes[i].value.toLowerCase())
+    }
+
+    // Single-node pass: skip nodes consumed by multi-word matches above.
+    for (let ni = 0; ni < bareNodes.length; ni++) {
+      if (consumedIndices.has(ni)) continue
+      const node = bareNodes[ni]
       if (!node.span) continue
       const alts = getBareTermAlternatives(node.value, ctx)
       for (const alt of alts) {

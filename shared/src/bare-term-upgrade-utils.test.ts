@@ -2,8 +2,11 @@
 import { describe, test, expect } from 'vitest'
 import {
   getBareTermAlternatives,
+  getMultiWordAlternatives,
+  getAdjacentBareWindows,
   type BareTermUpgradeContext,
 } from './bare-term-upgrade-utils'
+import type { BareWordNode } from './search/ast'
 
 describe('getBareTermAlternatives', () => {
   test('keyword domain matches', () => {
@@ -124,5 +127,138 @@ describe('getBareTermAlternatives', () => {
       explain: 'Use atag: for illustration tags.',
       docRef: 'reference/fields/face/atag',
     })
+  })
+})
+
+describe('getMultiWordAlternatives', () => {
+  test('matches multi-word keyword', () => {
+    const ctx: BareTermUpgradeContext = {
+      keywordLabels: ['first strike', 'flying', 'double strike'],
+    }
+    const alts = getMultiWordAlternatives('first strike', ctx)
+    expect(alts).toContainEqual({
+      label: 'kw:"first strike"',
+      explain: 'Use kw: for keyword abilities.',
+      docRef: 'reference/fields/face/kw',
+    })
+  })
+
+  test('matches artist name', () => {
+    const ctx: BareTermUpgradeContext = {
+      artistLabels: ['dan frazier', 'rebecca guay', 'mark poole'],
+    }
+    const alts = getMultiWordAlternatives('Dan Frazier', ctx)
+    expect(alts).toContainEqual({
+      label: 'a:"Dan Frazier"',
+      explain: 'Use a: for artist name.',
+      docRef: 'reference/fields/printing/artist',
+    })
+  })
+
+  test('case-insensitive matching for keyword', () => {
+    const ctx: BareTermUpgradeContext = {
+      keywordLabels: ['double strike'],
+    }
+    const alts = getMultiWordAlternatives('Double Strike', ctx)
+    expect(alts[0].label).toBe('kw:"Double Strike"')
+  })
+
+  test('case-insensitive matching for artist', () => {
+    const ctx: BareTermUpgradeContext = {
+      artistLabels: ['dan frazier'],
+    }
+    const alts = getMultiWordAlternatives('dan frazier', ctx)
+    expect(alts[0].label).toBe('a:"dan frazier"')
+  })
+
+  test('no match when phrase not in any domain', () => {
+    const ctx: BareTermUpgradeContext = {
+      keywordLabels: ['flying', 'landfall'],
+      artistLabels: ['dan frazier'],
+    }
+    const alts = getMultiWordAlternatives('foo bar', ctx)
+    expect(alts).toEqual([])
+  })
+
+  test('skips keyword when keywordLabels absent', () => {
+    const alts = getMultiWordAlternatives('first strike', {})
+    expect(alts.find((a) => a.label.startsWith('kw:'))).toBeUndefined()
+  })
+
+  test('skips artist when artistLabels absent', () => {
+    const alts = getMultiWordAlternatives('Dan Frazier', {})
+    expect(alts.find((a) => a.label.startsWith('a:'))).toBeUndefined()
+  })
+
+  test('phrase matching both keyword and artist returns both', () => {
+    const ctx: BareTermUpgradeContext = {
+      keywordLabels: ['dan frazier'],
+      artistLabels: ['dan frazier'],
+    }
+    const alts = getMultiWordAlternatives('Dan Frazier', ctx)
+    expect(alts).toHaveLength(2)
+    expect(alts.map((a) => a.label)).toContain('kw:"Dan Frazier"')
+    expect(alts.map((a) => a.label)).toContain('a:"Dan Frazier"')
+  })
+})
+
+describe('getAdjacentBareWindows', () => {
+  function makeBare(value: string, start: number, end: number): BareWordNode {
+    return { type: 'BARE', value, quoted: false, span: { start, end } }
+  }
+
+  test('two adjacent bare nodes in "first strike"', () => {
+    const query = 'first strike'
+    const nodes = [makeBare('first', 0, 5), makeBare('strike', 6, 12)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    expect(windows).toEqual([[0, 1]])
+  })
+
+  test('three adjacent bare nodes produce pairs and a triple', () => {
+    const query = 'a b c'
+    const nodes = [makeBare('a', 0, 1), makeBare('b', 2, 3), makeBare('c', 4, 5)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    expect(windows).toContainEqual([0, 1, 2])
+    expect(windows).toContainEqual([0, 1])
+    expect(windows).toContainEqual([1, 2])
+  })
+
+  test('non-adjacent bare nodes (field between them)', () => {
+    const query = 'first ci:r strike'
+    const nodes = [makeBare('first', 0, 5), makeBare('strike', 11, 17)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    expect(windows).toEqual([])
+  })
+
+  test('single bare node produces no windows', () => {
+    const query = 'landfall'
+    const nodes = [makeBare('landfall', 0, 8)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    expect(windows).toEqual([])
+  })
+
+  test('two bare nodes separated by multiple spaces are adjacent', () => {
+    const query = 'first   strike'
+    const nodes = [makeBare('first', 0, 5), makeBare('strike', 8, 14)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    expect(windows).toEqual([[0, 1]])
+  })
+
+  test('maxSize 2 limits to pairs only', () => {
+    const query = 'a b c'
+    const nodes = [makeBare('a', 0, 1), makeBare('b', 2, 3), makeBare('c', 4, 5)]
+    const windows = getAdjacentBareWindows(nodes, query, 2)
+    expect(windows).toContainEqual([0, 1])
+    expect(windows).toContainEqual([1, 2])
+    expect(windows.every((w) => w.length <= 2)).toBe(true)
+  })
+
+  test('returns larger windows before smaller ones', () => {
+    const query = 'a b c'
+    const nodes = [makeBare('a', 0, 1), makeBare('b', 2, 3), makeBare('c', 4, 5)]
+    const windows = getAdjacentBareWindows(nodes, query, 3)
+    const tripleIdx = windows.findIndex((w) => w.length === 3)
+    const firstPairIdx = windows.findIndex((w) => w.length === 2)
+    expect(tripleIdx).toBeLessThan(firstPairIdx)
   })
 })

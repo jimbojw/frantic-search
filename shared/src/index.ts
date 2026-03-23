@@ -79,7 +79,7 @@ export type { SortFieldEntry } from "./search/sort-fields";
 export { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
 export { isKnownColorValue, getColorAlternatives, isTriggerField, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from "./wrong-field-utils";
 export type { ColorAlternative, FormatOrIsAlternative, ArtistAtagAlternative } from "./wrong-field-utils";
-export { getBareTermAlternatives } from "./bare-term-upgrade-utils";
+export { getBareTermAlternatives, getMultiWordAlternatives, getAdjacentBareWindows } from "./bare-term-upgrade-utils";
 export type { BareTermUpgradeContext, BareTermAlternative } from "./bare-term-upgrade-utils";
 export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
 export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";

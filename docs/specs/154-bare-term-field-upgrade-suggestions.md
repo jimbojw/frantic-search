@@ -1,6 +1,6 @@
 # Spec 154: Bare-Term Field Upgrade Suggestions
 
-**Status:** Draft
+**Status:** Implemented 
 
 **Depends on:** Spec 151 (Suggestion System), Spec 131 (Oracle Did You Mean), Spec 036 (Source Spans), Spec 002 (Query Engine), Spec 105 (Keyword Search)
 
@@ -196,10 +196,60 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 | ci:r landfall | landfall | keyword | ci:r kw:landfall |
 | t:creature flying | flying | keyword | t:creature kw:flying |
 | landfall f:commander | landfall | keyword | kw:landfall f:commander |
+| first strike | (first, strike) multi-word | keyword | kw:"first strike" |
+| Dan Frazier | (Dan, Frazier) multi-word | artist | a:"Dan Frazier" |
 
 ### Multiple bare terms
 
 When the query has multiple bare tokens (e.g. `landfall flying` or `landfall f:commander`), each is evaluated independently. If "landfall" matches keywords, suggest `kw:landfall` — regardless of whether the replacement returns results. Likewise for "flying" → `kw:flying`. When the replacement *does* return results, the count is shown on the chip. When it doesn't, the chip still appears (without a count) because the field prefix is directionally correct and teaches the right syntax. We do **not** combine multiple bare terms into one field (e.g. no `kw:landfall kw:flying` as a single suggestion). Each suggestion replaces exactly one BARE node.
+
+### Multi-word bare terms
+
+Some domain values are multi-word phrases: keyword abilities like "first strike", "double strike", "split second", "cumulative upkeep", "living weapon", "totem armor"; and artist names like "Dan Frazier", "Rebecca Guay", "Mark Poole".
+
+When two or more **adjacent, unquoted** BARE nodes form a phrase that matches a domain, suggest the field-prefixed **quoted** form. For example, bare `first strike` (two BARE nodes) → `kw:"first strike"`.
+
+**Adjacency:** Two bare nodes are adjacent when they are consecutive children of the same AND (sorted by `span.start`) with only whitespace between them in the source query. A FIELD node between them breaks adjacency (e.g. `first ci:r strike` — not adjacent).
+
+**Window sizes:** Check pairs first, then triples. This covers all two-word keywords and artist names, plus three-word artist names.
+
+**Label form:** The suggestion label uses the quoted form: `kw:"first strike"`, `a:"Dan Frazier"`. The splice span covers from the first node's `span.start` to the last node's `span.end` — replacing all words and inter-word whitespace with the single quoted field term.
+
+**Consumed nodes:** When a multi-word match is found, the individual bare nodes that participated are marked as "consumed" and excluded from single-word matching. This prevents suggesting `t:first` for the `first` in `first strike`. Multi-word matching runs before single-word matching to establish precedence.
+
+**Overlapping windows:** Process windows left-to-right. Skip any window containing a node already consumed by a prior match. Example: `first strike double strike` — `(first, strike)` matches `kw:"first strike"`, consuming indices 0 and 1; `(double, strike)` at indices 2 and 3 matches `kw:"double strike"`.
+
+**Quoted bare terms:** When a user quotes a multi-word phrase (`"first strike"`), it is already a single BARE node with `quoted: true` and the value `first strike`. The existing single-word path handles it — the value matches the keyword index directly. No change needed.
+
+#### Domain: Artist (`a:`)
+
+Artist matching is **multi-word only** — single bare words like `Dan` or `Frazier` are too ambiguous to suggest `a:Dan`. Only phrases of 2+ adjacent bare nodes that match a known (normalized) artist name trigger a suggestion.
+
+| Suggested field | Label form | Explain | docRef |
+|-----------------|------------|---------|--------|
+| a: | `a:"{phrase}"` | "Use a: for artist name." | reference/fields/printing/artist |
+
+**Context:** `artistLabels?: string[]` on `BareTermUpgradeContext`, sourced from `Object.keys(tagDataRef.artist)` (the normalized artist index keys). Matching is case-insensitive.
+
+#### Multi-word domains checked
+
+For the multi-word pass, only domains that can have multi-word values are checked:
+
+1. **keyword** (`kw:`) — phrase in keyword index
+2. **artist** (`a:`) — phrase in artist index (multi-word only)
+
+Other domains (type-line, set, format, is, otag, atag, game, frame, rarity) use single-word values and are not checked in the multi-word pass.
+
+#### Multi-word example mappings
+
+| User query | Adjacent bare window | Matches | Suggested |
+|------------|---------------------|---------|-----------|
+| first strike | (first, strike) | keyword | kw:"first strike" |
+| double strike | (double, strike) | keyword | kw:"double strike" |
+| Dan Frazier | (Dan, Frazier) | artist | a:"Dan Frazier" |
+| t:creature first strike | (first, strike) | keyword | t:creature kw:"first strike" |
+| first ci:r strike | none (not adjacent) | — | (no multi-word match; single-word fallback) |
+| first strike double strike | (first, strike), (double, strike) | keyword, keyword | kw:"first strike", kw:"double strike" |
 
 ### Worker integration
 
@@ -218,9 +268,10 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'bare-term-upgrade'` to Suggestion.id union |
 | `shared/src/search/oracle-hint.ts` | Add `getBareNodes(ast): BareWordNode[]` — collects all positive BARE nodes from the tree (not just trailing; excludes nodes under NOT) |
-| `shared/src/bare-term-upgrade-utils.ts` | **New** — `getBareTermAlternatives(value, context)` returns `{ label, explain, docRef }[]` for each matching domain; domain value checks (keywords, type-line, set, format, is, otag, atag, game, frame, rarity). Splice and evaluate in worker-suggestions (like wrong-field; uses `evaluateAlternative`). |
+| `shared/src/bare-term-upgrade-utils.ts` | `getBareTermAlternatives(value, context)` for single-word domains; `getMultiWordAlternatives(phrase, context)` for multi-word domains (keyword, artist); `getAdjacentBareWindows(bareNodes, query, maxSize)` for sliding-window adjacency. `artistLabels` on context. |
 | `shared/src/search/card-index.ts` | Add `typeLineWords: Set<string>` — built at index creation by splitting each `type_lines` entry on `/\W+/`, lowercasing, and collecting unique words. Passed to bare-term-upgrade context. |
-| `app/src/worker-suggestions.ts` | In `buildSuggestions`, when totalCards === 0 and bare nodes exist: for each node, get matching domains, build alternatives, evaluate via `evaluateAlternative`, push suggestions; integrate with oracle path to skip terms that got a bare-term-upgrade |
+| `app/src/worker-suggestions.ts` | In `buildSuggestions`, add multi-word sliding-window pass before single-node loop; track consumed nodes; plumb `artistLabels` |
+| `app/src/worker-search.ts` | Pass `artistLabels` from `tagData.artist` to `buildSuggestions` |
 | `app/src/SuggestionList.tsx` | Add `'bare-term-upgrade'` to EMPTY_STATE_IDS |
 | `docs/specs/151-suggestion-system.md` | Add bare-term-upgrade to placement/priority table; add to empty-state eligible ids |
 | `docs/specs/131-oracle-did-you-mean.md` | Add note: "When a bare term receives a bare-term-upgrade suggestion (Spec 154), do not also suggest the oracle variant for that term." |
@@ -248,3 +299,7 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 12. Domains with unavailable data (e.g. no PrintingIndex for set) are skipped gracefully.
 13. Negated bare terms are not converted (same as Spec 131).
 14. When a replacement query returns > 0, the count appears on the chip. When it returns 0, the chip still appears without a count.
+15. `first strike` (unquoted, two bare words) with zero results shows `kw:"first strike"` chip; tapping replaces both words with `kw:"first strike"`.
+16. `Dan Frazier` (unquoted, two bare words) with zero results and "dan frazier" in normalized artist index shows `a:"Dan Frazier"` chip.
+17. `first ci:r strike` — bare nodes not adjacent (FIELD node between them); no multi-word match for "first strike".
+18. Individual bare nodes consumed by a multi-word match do not also produce single-word suggestions (e.g. no `t:first` from the `first` in `first strike`).

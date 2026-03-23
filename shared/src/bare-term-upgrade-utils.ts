@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { FORMAT_NAMES, GAME_NAMES, FRAME_NAMES, RARITY_NAMES } from './bits'
 import { IS_KEYWORDS } from './search/eval-is'
+import type { BareWordNode } from './search/ast'
 
 export type BareTermUpgradeContext = {
   keywordLabels?: string[]
@@ -8,6 +9,7 @@ export type BareTermUpgradeContext = {
   knownSetCodes?: Set<string>
   oracleTagLabels?: string[]
   illustrationTagLabels?: string[]
+  artistLabels?: string[]
 }
 
 export type BareTermAlternative = {
@@ -111,4 +113,91 @@ export function getBareTermAlternatives(
     }
   }
   return result
+}
+
+const MULTI_WORD_DOMAINS: Array<{
+  field: string
+  explain: string
+  docRef: string
+  check: (phrase: string, ctx: BareTermUpgradeContext) => boolean
+}> = [
+  {
+    field: 'kw',
+    explain: 'Use kw: for keyword abilities.',
+    docRef: 'reference/fields/face/kw',
+    check: (p, ctx) =>
+      !!ctx.keywordLabels?.length &&
+      new Set(ctx.keywordLabels.map((l) => l.toLowerCase())).has(p),
+  },
+  {
+    field: 'a',
+    explain: 'Use a: for artist name.',
+    docRef: 'reference/fields/printing/artist',
+    check: (p, ctx) =>
+      !!ctx.artistLabels?.length &&
+      new Set(ctx.artistLabels.map((l) => l.toLowerCase())).has(p),
+  },
+]
+
+/**
+ * For a multi-word phrase (joined from adjacent bare nodes), returns
+ * alternatives for domains that support multi-word values: keyword and artist.
+ */
+export function getMultiWordAlternatives(
+  phrase: string,
+  context: BareTermUpgradeContext,
+): BareTermAlternative[] {
+  const lower = phrase.toLowerCase()
+  const result: BareTermAlternative[] = []
+  for (const d of MULTI_WORD_DOMAINS) {
+    if (d.check(lower, context)) {
+      result.push({
+        label: `${d.field}:"${phrase}"`,
+        explain: d.explain,
+        docRef: d.docRef,
+      })
+    }
+  }
+  return result
+}
+
+/**
+ * Find windows of 2..maxSize adjacent bare nodes. "Adjacent" means only
+ * whitespace exists between consecutive nodes in the source query.
+ * Returns arrays of node indices, largest windows first (so callers can
+ * give precedence to longer matches).
+ */
+export function getAdjacentBareWindows(
+  bareNodes: BareWordNode[],
+  query: string,
+  maxSize: number,
+): number[][] {
+  if (bareNodes.length < 2) return []
+
+  const isAdjacentPair = (i: number, j: number): boolean => {
+    const prev = bareNodes[i]
+    const curr = bareNodes[j]
+    if (!prev.span || !curr.span) return false
+    const gap = query.slice(prev.span.end, curr.span.start)
+    return gap.length > 0 && /^\s+$/.test(gap)
+  }
+
+  const windows: number[][] = []
+  for (let size = Math.min(maxSize, bareNodes.length); size >= 2; size--) {
+    for (let start = 0; start <= bareNodes.length - size; start++) {
+      let allAdjacent = true
+      for (let k = start; k < start + size - 1; k++) {
+        if (!isAdjacentPair(k, k + 1)) {
+          allAdjacent = false
+          break
+        }
+      }
+      if (allAdjacent) {
+        const indices: number[] = []
+        for (let k = start; k < start + size; k++) indices.push(k)
+        windows.push(indices)
+      }
+    }
+  }
+  return windows
 }
