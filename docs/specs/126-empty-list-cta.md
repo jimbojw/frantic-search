@@ -4,13 +4,13 @@
 
 **Unified by:** Spec 151 (Suggestion System)
 
-**Layout (Spec 152):** Empty-list CTA now appears below the Results Summary Bar. The bar shows the effective query uniformly ("Your query `…` matched zero cards.") with Try on Scryfall, Syntax help, and Report a problem. SuggestionList (including the empty-list chip) renders below the bar.
+**Layout (Spec 151, Spec 152):** Empty-list suggestions appear in the unified SuggestionList below the Results Summary Bar. One row per offending term; chip shows the term in amber with "0 cards (0 prints)", description varies by term type (my vs tag). Same placement as other refinement suggestions.
 
 **Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 123 (# Metadata Tag Search), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
 
 ## Goal
 
-When a user has `my:list` (or `my:default`) or a `#` metadata term in the query, zero results, and an empty default list, show a contextual empty state with an informative message and a call-to-action (CTA) to visit the My List page to import a deck.
+When a user has `my:list` (or `my:default`), `-my:list`, or a `#` metadata term (e.g. `#ramp`, `-#combo`) in the query and the default list is empty, show one or more refinement suggestions—each targeting an offending term—with a call-to-action (CTA) to visit the My List page to import a deck. The suggestion appears regardless of result count (zero or non-zero).
 
 ## Background
 
@@ -18,13 +18,14 @@ Spec 125 adds a MY LIST section at the top of the MenuDrawer with an always-pres
 
 ## Trigger Conditions
 
-All of the following must hold for the empty-list CTA to appear:
+All of the following must hold for the empty-list suggestion(s) to appear:
 
-1. **List-context in query** — The query contains a positive `my:list`/`my:default` term **or** a positive `#` metadata term (e.g. `#`, `#ramp`, `#combo`). Both require a non-empty list to return results; when the list is empty, both yield zero.
-2. **`totalCards() === 0`** — The search returned zero results.
-3. **Default list is empty** — `cardListStore.getView().instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0 === 0`.
-4. **`cardListStore` present** — List feature is enabled.
-5. **`navigateToLists` present** — Navigation to the Lists page is available.
+1. **List-context in query** — The query contains any `my:` term (e.g. `my:list`, `my:default`, `-my:list`) **or** any `#` metadata term (e.g. `#`, `#ramp`, `#combo`, `-#combo`). Positive and negated terms both trigger.
+2. **Default list is empty** — `cardListStore.getView().instancesByList.get(DEFAULT_LIST_ID)?.size ?? 0 === 0`.
+3. **`cardListStore` present** — List feature is enabled.
+4. **`navigateToLists` present** — Navigation to the Lists page is available.
+
+The `totalCards() === 0` constraint is removed. The suggestion appears even when results exist (e.g. `-my:list` with empty list returns all cards).
 
 ## Scope
 
@@ -33,11 +34,17 @@ All of the following must hold for the empty-list CTA to appear:
 
 ## Design
 
-### Empty-list CTA content
+### Empty-list suggestion content (unified SuggestionList layout, Spec 151)
 
-- **Message:** "Your list is empty. Import a deck to search for cards in your list."
-- **Primary CTA:** Button or link labeled "Import a deck" or "Go to My List" that calls `navigateToLists()`.
-- **Secondary links:** Retain "Try on Scryfall ↗" and "Report a problem" below the primary CTA (same as current empty state).
+One row per offending term. Each row uses the same flex-row pattern as other suggestions (chip left, description right):
+
+| Left (chip) | Right (description) |
+|-------------|---------------------|
+| Offending term (e.g. `my:list`, `#combo`) in amber styling; second line "0 cards (0 prints)"; click navigates to list view | **my:** "This term requires an imported deck list. [Import one now?](navigateToLists)" |
+| | **#tag:** "This term requires a list with tags. [Import one now?](navigateToLists)" |
+
+- Chip uses amber styling (Spec 088 error/zero-results) and shows the literal term from the query.
+- Tapping the chip calls `navigateToLists()` — same broad semantics as other chips ("click to fix").
 
 ### Priority with other hints
 
@@ -64,10 +71,10 @@ Empty-state priority order: empty-list CTA (Spec 126) > `include:extras` hint (S
 
 ## Acceptance Criteria
 
-- [x] When `my:list` or `my:default` is in the query, zero results, and the default list is empty, the empty state shows the contextual message and primary CTA.
-- [x] Tapping the primary CTA navigates to the My List page (`?list`).
-- [x] "Try on Scryfall" and "Report a problem" remain present as secondary links.
-- [x] When the list is non-empty but the query returns zero (e.g., `my:list t:planeswalker` with no planeswalkers), the generic "No cards found" is shown (no empty-list CTA).
-- [x] When both `include:extras` hint and empty-list CTA could apply, the empty-list CTA is shown.
+- [x] When `my:list` or `my:default` is in the query and the default list is empty, a refinement suggestion row appears (chip = term in amber, description = "requires an imported deck list").
+- [x] When `-my:list` is in the query and the default list is empty, a refinement suggestion row appears (same chip + description).
+- [x] When `#` or `#ramp` (or any `#` term) is in the query and the default list is empty, a refinement suggestion row appears with tag-specific copy ("requires a list with tags").
+- [x] Multiple offending terms (e.g. `my:list #combo`) yield multiple rows.
+- [x] Tapping the chip navigates to the My List page (`?list`).
+- [x] Empty-list suggestions appear in both empty state (zero results) and rider context (non-zero results).
 - [x] Works in both single-pane and Dual Wield layouts.
-- [x] When `#` or `#ramp` (or any positive `#` term) is in the query, zero results, and the default list is empty, the empty state shows the same CTA as for `my:list`.

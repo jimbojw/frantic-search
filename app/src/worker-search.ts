@@ -2,7 +2,7 @@
 import type { ToWorker, FromWorker, BreakdownNode, QueryNodeResult, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData, Suggestion } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, Color, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, getTrailingBareNodes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
-import { sealQuery, hasMyInQuery, hasHashInQuery, parseBreakdown, appendTerm } from './query-edit'
+import { sealQuery, hasListSyntaxInQuery, collectListOffendingTerms, parseBreakdown, appendTerm } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 
 function leafLabel(qnr: QueryNodeResult): string {
@@ -488,19 +488,18 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   const suggestions: Suggestion[] = []
 
-  // Empty-list (Spec 126): query references my:list/#, default list empty, zero results
-  if (
-    totalCards === 0 &&
-    (hasMyInQuery(effectiveBd) || hasHashInQuery(effectiveBd)) &&
-    defaultListEmpty
-  ) {
-    suggestions.push({
-      id: 'empty-list',
-      label: 'Import a deck',
-      variant: 'cta',
-      ctaAction: 'navigateToLists',
-      priority: 0,
-    })
+  // Empty-list (Spec 126): one suggestion per offending term when list is empty
+  if (defaultListEmpty && effectiveBd && hasListSyntaxInQuery(effectiveBd)) {
+    for (const { label, variant } of collectListOffendingTerms(effectiveBd)) {
+      suggestions.push({
+        id: 'empty-list',
+        label,
+        variant: 'cta',
+        ctaAction: 'navigateToLists',
+        emptyListVariant: variant,
+        priority: 0,
+      })
+    }
   }
 
   // include:extras - empty state
@@ -512,6 +511,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       id: 'include-extras',
       query,
       label: 'include:extras',
+      explain: 'Playable filter is hiding results; add to include promos and non-tournament-legal printings.',
       count,
       printingCount,
       docRef: 'reference/modifiers/include-extras',
@@ -534,6 +534,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       id: 'include-extras',
       query,
       label: 'include:extras',
+      explain: 'Playable filter is hiding results; add to include promos and non-tournament-legal printings.',
       count,
       printingCount,
       docRef: 'reference/modifiers/include-extras',
@@ -552,6 +553,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       id: 'unique-prints',
       query: appendTerm(msg.query, 'unique:prints', liveBd),
       label: 'unique:prints',
+      explain: 'Shows one card per name; add to see all printings.',
       docRef: 'reference/modifiers/unique',
       priority: 30,
       variant: 'rewrite',

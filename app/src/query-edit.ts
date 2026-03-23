@@ -55,6 +55,8 @@ export {
   hasUniquePrints,
   hasMyInQuery,
   hasHashInQuery,
+  hasListSyntaxInQuery,
+  collectListOffendingTerms,
   getMyListIdFromBreakdown,
   clearUniqueTerms,
   setUniqueTerm,

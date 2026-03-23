@@ -32,4 +32,6 @@ export type Suggestion = {
   variant: 'rewrite' | 'cta'
   /** For CTA variant: function key to invoke (e.g. 'navigateToLists'). */
   ctaAction?: 'navigateToLists' | 'pasteList'
+  /** For empty-list: distinguishes my: vs # for right-column copy. */
+  emptyListVariant?: 'my' | 'tag'
 }

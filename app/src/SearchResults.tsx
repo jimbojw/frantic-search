@@ -117,25 +117,23 @@ export default function SearchResults() {
           </p>
         </Show>
         <Show when={ctx.totalCards() > 0} fallback={
-          <div class="text-sm border-t border-gray-200 dark:border-gray-800">
+          <div class="border-t border-gray-200 dark:border-gray-800">
             <ResultsSummaryBar
               effectiveQuery={ctx.effectiveQuery()}
               effectiveBreakdown={ctx.effectiveBreakdown()}
               cardCount={0}
               zeroResult
             />
-            <div class="px-3 pb-3">
-              <SuggestionList
-                suggestions={ctx.suggestions() ?? []}
-                mode="empty"
-                onApplyQuery={(q) => ctx.setQuery(q)}
-                onCta={(action) => {
-                  if (action === 'navigateToLists') ctx.navigateToLists?.()
-                }}
-                formatDualCount={formatDualCount}
-                navigateToDocs={ctx.navigateToDocs}
-              />
-            </div>
+            <SuggestionList
+              suggestions={() => ctx.suggestions() ?? []}
+              mode="empty"
+              onApplyQuery={(q) => ctx.setQuery(q)}
+              onCta={(action) => {
+                if (action === 'navigateToLists') ctx.navigateToLists?.()
+              }}
+              formatDualCount={formatDualCount}
+              navigateToDocs={ctx.navigateToDocs}
+            />
           </div>
         }>
           <Show when={ctx.viewMode() === 'images'} fallback={
@@ -644,16 +642,20 @@ export default function SearchResults() {
             }
           />
           <Show when={
-            ctx.suggestions()?.some((s) => s.id === 'unique-prints' || s.id === 'include-extras')
+            ctx.suggestions()?.some((s) =>
+              s.id === 'unique-prints' || s.id === 'include-extras' || s.id === 'empty-list'
+            )
           }>
-            <div class="px-4 py-2 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-              <SuggestionList
-                suggestions={ctx.suggestions() ?? []}
-                mode="rider"
-                onApplyQuery={(q) => ctx.setQuery(q)}
-                formatDualCount={formatDualCount}
-                navigateToDocs={ctx.navigateToDocs}
-                hiddenCardCount={
+            <SuggestionList
+              suggestions={() => ctx.suggestions() ?? []}
+              mode="rider"
+              onApplyQuery={(q) => ctx.setQuery(q)}
+              onCta={(action) => {
+                if (action === 'navigateToLists') ctx.navigateToLists?.()
+              }}
+              formatDualCount={formatDualCount}
+              navigateToDocs={ctx.navigateToDocs}
+              hiddenCardCount={
                   (() => {
                     const s = ctx.suggestions()?.find((x) => x.id === 'include-extras')
                     if (!s?.count) return undefined
@@ -670,7 +672,6 @@ export default function SearchResults() {
                   })()
                 }
               />
-            </div>
           </Show>
         </Show>
       </div>

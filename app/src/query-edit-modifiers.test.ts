@@ -6,6 +6,8 @@ import {
   toggleUniquePrints,
   hasUniquePrints,
   hasMyInQuery,
+  hasListSyntaxInQuery,
+  collectListOffendingTerms,
   getMyListIdFromBreakdown,
   toggleIncludeExtras,
   hasIncludeExtras,
@@ -111,6 +113,69 @@ describe('hasMyInQuery', () => {
   })
   it('returns false when my: is negated', () => {
     expect(hasMyInQuery(buildBreakdown('-my:list'))).toBe(false)
+  })
+})
+
+describe('getMyListIdFromBreakdown', () => {
+  it('returns default for my:list', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:list'))).toBe('default')
+  })
+  it('returns default for my:default', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:default'))).toBe('default')
+  })
+  it('returns trash for my:trash', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('my:trash'))).toBe('trash')
+  })
+  it('returns null when my: is absent', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('t:creature'))).toBe(null)
+  })
+  it('returns null when my: is negated', () => {
+    expect(getMyListIdFromBreakdown(buildBreakdown('-my:list'))).toBe(null)
+  })
+})
+
+describe('hasListSyntaxInQuery', () => {
+  it('returns false for null breakdown', () => {
+    expect(hasListSyntaxInQuery(null)).toBe(false)
+  })
+  it('returns true when my:list is present', () => {
+    expect(hasListSyntaxInQuery(buildBreakdown('my:list'))).toBe(true)
+  })
+  it('returns true when -my:list is present', () => {
+    expect(hasListSyntaxInQuery(buildBreakdown('-my:list'))).toBe(true)
+  })
+  it('returns true when #tag is present', () => {
+    expect(hasListSyntaxInQuery(buildBreakdown('#combo'))).toBe(true)
+  })
+  it('returns true when -#tag is present', () => {
+    expect(hasListSyntaxInQuery(buildBreakdown('-#combo'))).toBe(true)
+  })
+  it('returns false when neither my: nor # is present', () => {
+    expect(hasListSyntaxInQuery(buildBreakdown('t:creature'))).toBe(false)
+  })
+})
+
+describe('collectListOffendingTerms', () => {
+  it('returns one entry for my:list', () => {
+    const terms = collectListOffendingTerms(buildBreakdown('my:list'))
+    expect(terms).toEqual([{ label: 'my:list', variant: 'my' }])
+  })
+  it('returns one entry for -my:list', () => {
+    const terms = collectListOffendingTerms(buildBreakdown('-my:list'))
+    expect(terms).toEqual([{ label: '-my:list', variant: 'my' }])
+  })
+  it('returns one entry for #combo', () => {
+    const terms = collectListOffendingTerms(buildBreakdown('#combo'))
+    expect(terms).toEqual([{ label: '#combo', variant: 'tag' }])
+  })
+  it('returns multiple entries for my:list and #combo', () => {
+    const terms = collectListOffendingTerms(buildBreakdown('my:list #combo'))
+    expect(terms).toHaveLength(2)
+    expect(terms).toContainEqual({ label: 'my:list', variant: 'my' })
+    expect(terms).toContainEqual({ label: '#combo', variant: 'tag' })
+  })
+  it('returns empty for query without list terms', () => {
+    expect(collectListOffendingTerms(buildBreakdown('t:creature'))).toEqual([])
   })
 })
 

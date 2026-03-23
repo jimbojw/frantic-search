@@ -201,6 +201,54 @@ export function findBareNode(
   return null
 }
 
+/**
+ * Collect all FIELD nodes matching the given field/operator (positive and/or negated).
+ * Returns nodes in DFS order.
+ */
+export function collectFieldNodes(
+  breakdown: BreakdownNode,
+  field: string[],
+  operator: string,
+  opts: { positive?: boolean; negated?: boolean } = { positive: true, negated: true },
+): BreakdownNode[] {
+  const out: BreakdownNode[] = []
+  function walk(node: BreakdownNode) {
+    if (opts.negated && node.type === 'NOT' && !node.children) {
+      if (matchesLabel(node.label.slice(1), field, operator)) out.push(node)
+    }
+    if (opts.positive && node.type === 'FIELD') {
+      if (matchesLabel(node.label, field, operator)) out.push(node)
+    }
+    if (node.children) for (const c of node.children) walk(c)
+  }
+  walk(breakdown)
+  return out
+}
+
+/**
+ * Collect all BARE nodes matching the value predicate (positive and/or negated).
+ * For negated, collects the NOT node whose child matches.
+ */
+export function collectBareNodes(
+  breakdown: BreakdownNode,
+  valuePredicate: (value: string) => boolean,
+  opts: { positive?: boolean; negated?: boolean } = { positive: true, negated: true },
+): BreakdownNode[] {
+  const out: BreakdownNode[] = []
+  function walk(node: BreakdownNode) {
+    if (opts.negated && node.type === 'NOT' && !node.children) {
+      const inner = node.label.startsWith('-') ? node.label.slice(1) : node.label
+      if (valuePredicate(inner)) out.push(node)
+    }
+    if (opts.positive && node.type === 'BARE') {
+      if (valuePredicate(node.label)) out.push(node)
+    }
+    if (node.children) for (const c of node.children) walk(c)
+  }
+  walk(breakdown)
+  return out
+}
+
 function matchesLabel(
   label: string,
   field: string[],

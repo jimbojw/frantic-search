@@ -45,7 +45,7 @@ The right column uses `ResultsActionsColumn` (shared with UnifiedBreakdown). Syn
 
 ### Placement
 
-- **When totalCards > 0:** The bar appears as the footer of the results box, directly beneath the results list/grid. Rider suggestions (unique:prints, include:extras) render below the bar. Users see results first, then the bar, then refinement suggestions.
+- **When totalCards > 0:** The bar appears as the footer of the results box, directly beneath the results list/grid. Rider suggestions (unique:prints, include:extras, empty-list) render below the bar. Users see results first, then the bar, then refinement suggestions.
 - **When totalCards === 0:** The bar replaces "No cards found" and the separate links paragraph. It appears in the same structural position—the top of the empty-state block. SuggestionList (or the empty-list Import deck CTA) renders below the bar.
 - **Empty-list case:** Same as all zero-result cases. The bar shows the three-line format with "matched zero cards." The `my:list` term will appear in amber (error styling) when the list is empty. SuggestionList includes the empty-list CTA chip. Uniform treatment—no special-case layout for empty-list.
 
@@ -128,7 +128,11 @@ Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-s
 5. Message copy: "matched N cards (M prints)" or "matched zero cards" as specified (via `formatDualCount` when printing count present).
 6. Empty-list case uses the same bar; Import deck CTA and SuggestionList render below.
 7. Single-pane and Dual Wield layouts both work.
-8. Rider suggestions (unique:prints, include-extras) remain below the bar when present.
+8. Rider suggestions (unique:prints, include-extras, empty-list) remain below the bar when present.
+
+### Refinements area typography
+
+The SuggestionList (refinement suggestions) below the bar uses `text-base` to match the bar's message copy, keeping the footer area visually cohesive.
 
 ## Out of scope
 

@@ -69,6 +69,8 @@ export type Suggestion = {
   variant: 'rewrite' | 'cta'
   /** For CTA variant: function key to invoke (e.g. 'navigateToLists'). */
   ctaAction?: 'navigateToLists' | 'pasteList'
+  /** For empty-list: distinguishes my: vs # for right-column copy. */
+  emptyListVariant?: 'my' | 'tag'
 }
 ```
 
@@ -83,16 +85,16 @@ export type Suggestion = {
 2. **Main thread** receives `suggestions` from the worker result and passes through to SearchResults. No merge, no main-thread context, no translation.
 
 3. **SearchResults** consumes `suggestions: Suggestion[]` and renders a single `SuggestionList` component that:
-   - When `totalCards === 0`: Results Summary Bar (Spec 152) at top, then SuggestionList for empty-state suggestions (including empty-list chip when applicable).
-   - When `totalCards > 0`: Results Summary Bar below the results list, then rider suggestions.
-   - All chips use `ChipButton` (Spec 150).
+   - When `totalCards === 0`: Results Summary Bar (Spec 152) at top, then SuggestionList for empty-state suggestions (including empty-list when applicable).
+   - When `totalCards > 0`: Results Summary Bar below the results list, then SuggestionList for rider suggestions (including empty-list when applicable).
+   - Single SuggestionList for both contexts; empty-list can appear in either. All chips use `ChipButton` (Spec 150).
 
 ### Placement rules
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
 | Empty state | empty-list, include-extras, oracle, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
-| Non-empty riders | unique-prints, include-extras | Both when both apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** unique-prints first, then include-extras (not priority order) |
+| Non-empty riders | empty-list, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list first, then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
 
@@ -100,7 +102,7 @@ Results area footer unified by Spec 152 (Results Summary Bar).
 
 When the empty state has *no* context-specific suggestions (no include-extras, oracle hint, etc.), show an example query CTA so the user always has something to try. Example: "Find Commander legal cards with `f:commander`?" Tapping applies the query. We may end up with a rotating lineup — e.g. `f:commander`, `t:creature`, `ci:g` — to surface different syntax over time. One example per empty state; selection could be random, session-based, or curated.
 
-**Empty-list CTA (Spec 152):** When the worker includes `empty-list` in suggestions, it appears as a chip in SuggestionList below the Results Summary Bar. Uniform treatment—no separate "Your list is empty" block; the bar shows effective query + actions, SuggestionList shows all applicable chips (empty-list, include-extras, oracle, etc.).
+**Empty-list (Spec 126):** When the worker includes `empty-list` suggestions (one per offending term), each appears as a row in SuggestionList. Chip shows the literal term in amber with "0 cards (0 prints)"; description varies by `emptyListVariant` ('my' vs 'tag'). Tap navigates to list view. Can appear in both empty state and rider context.
 
 ### Priority values (convention)
 
@@ -125,28 +127,23 @@ Deprecate/remove `oracleHint`, `indicesIncludingExtras`, `printingIndicesIncludi
 
 ### UI component: SuggestionList
 
-A single component replaces the scattered `Show` blocks:
+Unified flex-row layout for all suggestions. Header: "Try a query refinement?" Each row: chip (left, shrink-0) | description (right, flex-1). Typography: `text-base` to match Results Summary Bar (Spec 152).
 
-```tsx
-// Conceptual; actual API TBD during implementation
-<SuggestionList
-  suggestions={emptyStateSuggestions()}
-  onApplyQuery={(q) => ctx.setQuery(q)}
-  onCta={(action) => { if (action === 'navigateToLists') ctx.navigateToLists() }}
-  formatDualCount={formatDualCount}
-/>
-```
+| Suggestion type | Left (chip) | Right (description) |
+|-----------------|--------------|---------------------|
+| empty-list (my) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires an imported deck list. [Import one now?](...)" |
+| empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
+| unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
+| oracle, etc. | Same | Same |
 
-- Empty state: renders contextual wrappers ("Did you mean to search oracle text? Try ", "Try again with ", etc.) with chips. SuggestionList derives wrapper text from `id` (per-id lookup).
-- Rider: renders "N not shown. Try [chip]?" / "Additional printings… Try [chip]?" patterns.
-- All chips use `ChipButton` with `state="neutral"`; two-line layout when `count`/`printingCount` present.
-- When `docRef` is set, show a "Learn more" link that navigates to `?doc={docRef}` (e.g. `reference/fields/face/oracle` for oracle hints).
+- All chips use `ChipButton`; empty-list uses `state` that yields amber styling (Spec 088).
+- When `docRef` is set, show "Learn more" link navigating to `?doc={docRef}`.
 
 ### Migration of existing behavior
 
 | Existing | Worker produces |
 |----------|-----------------|
-| Empty-list CTA (Spec 126) | `Suggestion { id: 'empty-list', variant: 'cta', ctaAction: 'navigateToLists' }` when query references my:list/my:default/# and `getListMask("default")` is empty and results are zero. |
+| Empty-list (Spec 126) | One `Suggestion` per offending term: `{ id: 'empty-list', label: <term>, variant: 'cta', ctaAction: 'navigateToLists', emptyListVariant: 'my'\|'tag' }`. Trigger: `hasListSyntaxInQuery(bd)` (my: or #, positive or negated) and `getListMask("default")` empty. No totalCards constraint. |
 | include:extras (Spec 057) | `Suggestion { id: 'include-extras', query, label, count, printingCount, docRef: 'reference/modifiers/include-extras' }`. Empty: totalCards === 0 and indicesIncludingExtras. Rider: totalCards > 0 and hidden playable-filtered results. |
 | unique:prints (Spec 139) | `Suggestion { id: 'unique-prints', query, label, docRef: 'reference/modifiers/unique' }`. Rider only. Trigger: uniqueMode !== 'prints' and `totalPrintingItems > totalDisplayItems`. |
 | Oracle hint (Spec 131) | `Suggestion { id: 'oracle', query, label, count, printingCount, docRef: 'reference/fields/face/oracle' }` from existing oracleHint logic. Empty state only. |
@@ -168,9 +165,9 @@ Each future trigger gets its own spec. This document records the intended ids an
 
 ## Implementation notes
 
-- **Worker suggestion building:** runSearch receives `getListMask` in params (same callback used by NodeCache); has `msg` (query, pinnedQuery), eval results (indices, printingIndices, uniqueMode, totalDisplayItems, totalPrintingItems, etc.); imports `appendTerm`, `parseBreakdown`, `hasMyInQuery`, `hasHashInQuery` from query-edit. For empty-list: parse the effective query, check `hasMyInQuery(bd) || hasHashInQuery(bd)`, and `getListMask("default")?.printingIndices?.length === 0` (or empty/undefined), plus zero results.
+- **Worker suggestion building:** runSearch receives `getListMask` in params; imports `collectListOffendingTerms`, `hasListSyntaxInQuery` from query-edit. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
-- **Rider order:** Fixed sequence `['unique-prints', 'include-extras']`. Priority governs empty-state order only.
+- **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']`. Priority governs empty-state order only.
 
 ## Scope of Changes
 

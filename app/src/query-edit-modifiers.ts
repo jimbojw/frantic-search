@@ -4,6 +4,8 @@ import { getUniqueModeFromQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic
 import {
   findFieldNode,
   findBareNode,
+  collectFieldNodes,
+  collectBareNodes,
   extractValue,
   spliceQuery,
   removeNode,
@@ -47,6 +49,27 @@ export function hasMyInQuery(breakdown: BreakdownNode | null): boolean {
 export function hasHashInQuery(breakdown: BreakdownNode | null): boolean {
   if (!breakdown) return false
   return findBareNode(breakdown, v => v.startsWith('#'), false) !== null
+}
+
+/** True when query contains any my: or # term (positive or negated). Used for empty-list suggestion (Spec 126). */
+export function hasListSyntaxInQuery(breakdown: BreakdownNode | null): boolean {
+  if (!breakdown) return false
+  return collectListOffendingTerms(breakdown).length > 0
+}
+
+/**
+ * Collect all my: and # terms (positive and negated) for empty-list suggestions.
+ * Returns one entry per term with label (for chip display) and variant (my vs tag).
+ */
+export function collectListOffendingTerms(
+  breakdown: BreakdownNode,
+): Array<{ label: string; variant: 'my' | 'tag' }> {
+  const myNodes = collectFieldNodes(breakdown, ['my'], ':')
+  const hashNodes = collectBareNodes(breakdown, v => v.startsWith('#'))
+  return [
+    ...myNodes.map(n => ({ label: n.label, variant: 'my' as const })),
+    ...hashNodes.map(n => ({ label: n.label, variant: 'tag' as const })),
+  ]
 }
 
 /**
