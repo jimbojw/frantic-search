@@ -88,10 +88,13 @@ When expanded, the panel uses a two-column layout:
 3. **Live chips** (when live query is non-empty and `breakdown` is present) — same rendering as today: `BreakdownChip` / `ChipTreeNode` with `pinned={false}`, pin-on-click, × to remove.
 
 **Right column (action links):**
+
+Implemented via `ResultsActionsColumn` (Spec 152), shared with the Results Summary Bar:
 - **Try on Scryfall ↗** — Outlink to Scryfall search with the effective query. Styling: `text-blue-500 hover:text-blue-600`.
+- **Syntax help** — Shown when `navigateToDocs` present; navigates to `?doc=reference/syntax`.
 - **Report a problem** — Button with bug icon that navigates to the bug report page. Styling: muted (`text-gray-400`).
 
-The two links always stack vertically. The links use `useSearchContext()` for `scryfallUrl()` and `navigateToReport()`.
+The links stack vertically. `ResultsActionsColumn` uses `useSearchContext()` for `scryfallUrl()`, `navigateToDocs`, and `navigateToReport()`.
 
 Padding and spacing match the current per-drawer styling (`px-3 pt-1.5 pb-1` or equivalent).
 

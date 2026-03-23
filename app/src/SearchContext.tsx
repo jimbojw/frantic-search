@@ -39,6 +39,10 @@ export interface SearchContextValue {
   aggregationCountForPrinting: (pi: number) => number | undefined
   totalCards: () => number
   totalPrintingItems: () => number
+  /** Spec 152: Full effective query (pinned + live) evaluated by worker. */
+  effectiveQuery: () => string
+  /** Spec 152: Breakdown for effective query; used for syntax highlighting error regions. */
+  effectiveBreakdown: () => BreakdownNode | null
   totalDisplayItems: () => number
   hasMore: () => boolean
   batchSize: () => number

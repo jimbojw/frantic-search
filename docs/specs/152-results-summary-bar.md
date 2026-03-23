@@ -1,6 +1,6 @@
 # Spec 152: Results Summary Bar
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 079 (Consolidated Query Accordion), Spec 052 (Scryfall Outlink Canonicalization), Spec 088 (Syntax Highlight Eval Feedback), Spec 126 (Empty List CTA)
 
@@ -38,23 +38,28 @@ A two-cell flex row, matching the expanded query breakdown (UnifiedBreakdown) ac
 
 | Cell | Content | Behavior |
 |------|---------|----------|
-| Left (stretch) | "Your query `{syntax-highlighted effective query}` matched N cards (M prints)." or "... matched zero cards." | `flex-1 min-w-0`; text truncates if needed |
+| Left (stretch) | **Three stacked lines:** (1) "Your query," (2) syntax-highlighted query in chip-like box, (3) "matched N cards (M prints)." or "matched zero cards." | `flex flex-col gap-1.5`; query box (`rounded px-2 py-1.5 bg-gray-100 dark:bg-gray-800 text-sm font-mono min-w-0`); QueryHighlight uses `whitespace-pre-wrap break-words` to wrap long queries |
 | Right (shrink) | Try on Scryfall ↗, Syntax help, Report a problem | `flex-col gap-1 shrink-0 items-end`; stacked vertically as in UnifiedBreakdown |
 
-The right column uses the same link styling and structure as [UnifiedBreakdown](app/src/UnifiedBreakdown.tsx) (lines 136–159). Syntax help is conditional on `navigateToDocs` being present.
+The right column uses `ResultsActionsColumn` (shared with UnifiedBreakdown). Syntax help is conditional on `navigateToDocs` being present.
 
 ### Placement
 
 - **When totalCards > 0:** The bar appears as the footer of the results box, beneath the results list/grid and any rider suggestions (unique:prints, include:extras). Users see results first, then the bar after scrolling.
 - **When totalCards === 0:** The bar replaces "No cards found" and the separate links paragraph. It appears in the same structural position—the top of the empty-state block. SuggestionList (or the empty-list Import deck CTA) renders below the bar.
-- **Empty-list case:** Same as all zero-result cases. The bar shows "Your query `my:list ...` matched zero cards." The `my:list` term will appear in amber (error styling) when the list is empty. SuggestionList includes the empty-list CTA chip. Uniform treatment—no special-case layout for empty-list.
+- **Empty-list case:** Same as all zero-result cases. The bar shows the three-line format with "matched zero cards." The `my:list` term will appear in amber (error styling) when the list is empty. SuggestionList includes the empty-list CTA chip. Uniform treatment—no special-case layout for empty-list.
 
 ### Message copy
 
-| Scenario | Message |
-|----------|---------|
-| Matches | "Your query `{query}` matched N cards (M prints)." |
-| Zero matches | "Your query `{query}` matched zero cards." |
+Three-line stacked format (works well on desktop and mobile):
+
+| Line | Content |
+|------|---------|
+| 1 | "Your query," |
+| 2 | `{syntax-highlighted effective query}` in chip-like box |
+| 3 | "matched N cards (M prints)." or "matched zero cards." |
+
+Long queries wrap inside the chip box via `whitespace-pre-wrap break-words`.
 
 **Printing count:** Omit when zero. When `totalPrintingItems > 0` and the display is printing-aware (e.g. `uniqueMode === 'prints'` or `hasPrintingConditions`), include it. Use `formatDualCount(cardCount, printingCount)` from InlineBreakdown for the count portion—it returns e.g. `"30.6k cards (151k prints)"`, matching Spec 082 / UnifiedBreakdown.
 
@@ -67,7 +72,7 @@ The right column uses the same link styling and structure as [UnifiedBreakdown](
 
 ### Syntax highlighting
 
-Use `QueryHighlight` (or `buildSpans` from QueryHighlight.tsx) with `query={effectiveQuery}` and `breakdown={effectiveBreakdown}`. This ensures field names, operators, and values use the same semantic colors as the search input, and error regions (e.g. unknown field `foo:bar`, empty `my:list`) use warning styling.
+Use `QueryHighlight` with `query={effectiveQuery}` and `breakdown={effectiveBreakdown}`. Pass `class="inline whitespace-pre-wrap break-words"` so long queries wrap instead of overflowing. Field names, operators, and values use semantic colors; error and zero-match regions (e.g. unknown field `foo:bar`, empty `my:list`) use warning styling (red/amber) via Spec 088. The query sits in a chip-like box (`rounded px-2 py-1.5 bg-gray-100 dark:bg-gray-800 text-sm font-mono min-w-0`).
 
 ## UI component: ResultsSummaryBar
 
@@ -78,10 +83,11 @@ Use `QueryHighlight` (or `buildSpans` from QueryHighlight.tsx) with `query={effe
   effectiveBreakdown={ctx.effectiveBreakdown()}
   cardCount={ctx.totalCards()}
   printingCount={ctx.totalPrintingItems() > 0 ? ctx.totalPrintingItems() : undefined}
+  zeroResult={cardCount === 0}
 />
 ```
 
-The component consumes `scryfallUrl`, `navigateToDocs`, `navigateToReport` from SearchContext (no props). Container: `border-t border-gray-200 dark:border-gray-800`, `px-3 py-2` (or `py-3` for zero-result case to match current empty-state padding).
+The component consumes `scryfallUrl`, `navigateToDocs`, `navigateToReport` from SearchContext via ResultsActionsColumn (no props). Left cell: three stacked lines (`flex flex-col gap-1.5`)—"Your query," then query in chip box, then "matched …". Message `text-base text-gray-600`; query box `rounded px-2 py-1.5 bg-gray-100 dark:bg-gray-800 text-sm font-mono min-w-0`; QueryHighlight with `whitespace-pre-wrap break-words`. Container: `border-t border-gray-200 dark:border-gray-800`, `px-3 py-2` (or `py-3` for zero-result case).
 
 ## Shared component: ResultsActionsColumn
 
@@ -91,7 +97,7 @@ Extract the three-link column from UnifiedBreakdown into a shared component to a
 - **Syntax help** — Button when `navigateToDocs` present; navigates to `?doc=reference/syntax`
 - **Report a problem** — Button with IconBug
 
-Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-xs`, `flex flex-col gap-1 shrink-0 items-end`, link classes matching UnifiedBreakdown.
+Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-sm`, `flex flex-col gap-1 shrink-0 items-end`, link classes matching UnifiedBreakdown.
 
 ## Scope of Changes
 
@@ -101,7 +107,7 @@ Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-x
 | `app/src/DualWieldLayout.tsx` | Expose `effectiveQuery`, `effectiveBreakdown` in `buildPaneContext` |
 | `app/src/App.tsx` | Expose both in single-pane context; ensure `effectiveBreakdown` flows from worker result |
 | `app/src/ResultsActionsColumn.tsx` | **New** — Extracted three-link column; used by UnifiedBreakdown and ResultsSummaryBar |
-| `app/src/ResultsSummaryBar.tsx` | **New** — Two-cell bar: left = message + QueryHighlight; right = ResultsActionsColumn |
+| `app/src/ResultsSummaryBar.tsx` | **New** — Two-cell bar: left = three-line stacked layout ("Your query," + chip box + "matched …"); right = ResultsActionsColumn |
 | `app/src/UnifiedBreakdown.tsx` | Replace inline links with `ResultsActionsColumn` |
 | `app/src/SearchResults.tsx` | Integrate ResultsSummaryBar: add below results when totalCards > 0; replace "No cards found" + links with ResultsSummaryBar when totalCards === 0; SuggestionList / empty-list CTA below bar |
 

@@ -250,6 +250,8 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     },
     totalCards,
     totalPrintingItems,
+    effectiveQuery,
+    effectiveBreakdown: state.effectiveBreakdown,
     totalDisplayItems,
     hasMore,
     batchSize,

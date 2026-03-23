@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { For, Show } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
-import { IconBug, IconChevronRight, IconPin } from './Icons'
-import { useSearchContext } from './SearchContext'
-import { Outlink } from './Outlink'
+import { IconChevronRight, IconPin } from './Icons'
+import ResultsActionsColumn from './ResultsActionsColumn'
 import {
   getBreakdownCase,
   countErrors,
@@ -88,7 +87,6 @@ export default function UnifiedBreakdown(props: {
   onPinnedRemove: (query: string) => void
   onLiveRemove: (query: string) => void
 }) {
-  const ctx = useSearchContext()
   const hasPinned = () => props.pinnedBreakdown !== null
   const hasLive = () => props.liveBreakdown !== null
   const pinnedErrorCount = () =>
@@ -133,31 +131,7 @@ export default function UnifiedBreakdown(props: {
               )}
             </Show>
           </div>
-          <div class="flex flex-col gap-1 shrink-0 items-end">
-            <Outlink
-              href={ctx.scryfallUrl()}
-              class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-xs"
-            >
-              Try on Scryfall ↗
-            </Outlink>
-            <Show when={ctx.navigateToDocs}>
-              <button
-                type="button"
-                onClick={() => ctx.navigateToDocs!('reference/syntax')}
-                class="flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              >
-                Syntax help
-              </button>
-            </Show>
-            <button
-              type="button"
-              onClick={() => ctx.navigateToReport()}
-              class="flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <IconBug class="size-3 shrink-0" />
-              Report a problem
-            </button>
-          </div>
+          <ResultsActionsColumn />
         </div>
       </Show>
       {/* Summary footer — chevron vertically centered relative to content */}

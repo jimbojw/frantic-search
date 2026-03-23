@@ -1267,6 +1267,8 @@ function App() {
     },
     totalCards,
     totalPrintingItems,
+    effectiveQuery,
+    effectiveBreakdown,
     totalDisplayItems,
     hasMore,
     batchSize,

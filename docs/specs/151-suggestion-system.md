@@ -83,23 +83,24 @@ export type Suggestion = {
 2. **Main thread** receives `suggestions` from the worker result and passes through to SearchResults. No merge, no main-thread context, no translation.
 
 3. **SearchResults** consumes `suggestions: Suggestion[]` and renders a single `SuggestionList` component that:
-   - When `totalCards === 0` and suggestions includes `empty-list`: renders the Spec 126 block (replaces empty state); no chip.
-   - When `totalCards === 0` and no empty-list: renders "No cards found" + SuggestionList for empty-state suggestions.
-   - When `totalCards > 0`: renders rider suggestions below the results list.
+   - When `totalCards === 0`: Results Summary Bar (Spec 152) at top, then SuggestionList for empty-state suggestions (including empty-list chip when applicable).
+   - When `totalCards > 0`: rider suggestions below the results list, then Results Summary Bar.
    - All chips use `ChipButton` (Spec 150).
 
 ### Placement rules
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, oracle, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below "No cards found", before Scryfall/Report links |
+| Empty state | empty-list, include-extras, oracle, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
 | Non-empty riders | unique-prints, include-extras | Both when both apply | Below results list; **fixed order:** unique-prints first, then include-extras (not priority order) |
+
+Results area footer unified by Spec 152 (Results Summary Bar).
 
 ### Example query fallback (example-query)
 
 When the empty state has *no* context-specific suggestions (no include-extras, oracle hint, etc.), show an example query CTA so the user always has something to try. Example: "Find Commander legal cards with `f:commander`?" Tapping applies the query. We may end up with a rotating lineup — e.g. `f:commander`, `t:creature`, `ci:g` — to surface different syntax over time. One example per empty state; selection could be random, session-based, or curated.
 
-**Empty-list CTA special case:** When the worker includes `empty-list` in suggestions, SearchResults renders the Spec 126 block ("Your list is empty" + "Import a deck") and skips inline chip suggestions. Other suggestions (include-extras, oracle, etc.) are chip-based.
+**Empty-list CTA (Spec 152):** When the worker includes `empty-list` in suggestions, it appears as a chip in SuggestionList below the Results Summary Bar. Uniform treatment—no separate "Your list is empty" block; the bar shows effective query + actions, SuggestionList shows all applicable chips (empty-list, include-extras, oracle, etc.).
 
 ### Priority values (convention)
 

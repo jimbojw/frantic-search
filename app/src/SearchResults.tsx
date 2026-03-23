@@ -10,10 +10,11 @@ import CardImage from './CardImage'
 import CardFaceRow from './CardFaceRow'
 import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice, fullCardName } from './app-utils'
 import { useSearchContext } from './SearchContext'
-import { IconArrowRightOnRectangle, IconBug, IconChevronRight, IconXMark } from './Icons'
+import { IconBug, IconChevronRight, IconXMark } from './Icons'
 import ListControlsPopover from './ListControlsPopover'
 import { formatDualCount } from './InlineBreakdown'
 import { Outlink } from './Outlink'
+import ResultsSummaryBar from './ResultsSummaryBar'
 import { SuggestionList } from './SuggestionList'
 
 declare const __REPO_URL__: string
@@ -116,67 +117,25 @@ export default function SearchResults() {
           </p>
         </Show>
         <Show when={ctx.totalCards() > 0} fallback={
-          <div class="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800">
-            <Show when={
-              ctx.cardListStore &&
-              ctx.navigateToLists &&
-              ctx.suggestions()?.some((s) => s.id === 'empty-list')
-            } fallback={
-              <>
-                <p class="text-gray-700 dark:text-gray-300">No cards found</p>
-                <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
-                  <Outlink
-                    href={ctx.scryfallUrl()}
-                    class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-                  >
-                    Try on Scryfall ↗
-                  </Outlink>
-                  <button
-                    type="button"
-                    onClick={() => ctx.navigateToReport()}
-                    class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-                  >
-                    Report a problem
-                  </button>
-                </p>
-                <SuggestionList
-                  suggestions={ctx.suggestions() ?? []}
-                  mode="empty"
-                  onApplyQuery={(q) => ctx.setQuery(q)}
-                  onCta={(action) => {
-                    if (action === 'navigateToLists') ctx.navigateToLists?.()
-                  }}
-                  formatDualCount={formatDualCount}
-                  navigateToDocs={ctx.navigateToDocs}
-                />
-              </>
-            }>
-              <p class="font-medium text-gray-700 dark:text-gray-300">Your list is empty.</p>
-              <p class="mt-1 text-gray-600 dark:text-gray-400">Import a deck to search for cards in your list.</p>
-              <button
-                type="button"
-                onClick={() => ctx.navigateToLists!()}
-                class="mt-3 inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-lg text-sm font-medium bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition-colors"
-              >
-                <IconArrowRightOnRectangle class="size-5" />
-                Import a deck
-              </button>
-              <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-600">
-                <Outlink
-                  href={ctx.scryfallUrl()}
-                  class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-                >
-                  Try on Scryfall ↗
-                </Outlink>
-                <button
-                  type="button"
-                  onClick={() => ctx.navigateToReport()}
-                  class="hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
-                >
-                  Report a problem
-                </button>
-              </p>
-            </Show>
+          <div class="text-sm border-t border-gray-200 dark:border-gray-800">
+            <ResultsSummaryBar
+              effectiveQuery={ctx.effectiveQuery()}
+              effectiveBreakdown={ctx.effectiveBreakdown()}
+              cardCount={0}
+              zeroResult
+            />
+            <div class="px-3 pb-3">
+              <SuggestionList
+                suggestions={ctx.suggestions() ?? []}
+                mode="empty"
+                onApplyQuery={(q) => ctx.setQuery(q)}
+                onCta={(action) => {
+                  if (action === 'navigateToLists') ctx.navigateToLists?.()
+                }}
+                formatDualCount={formatDualCount}
+                navigateToDocs={ctx.navigateToDocs}
+              />
+            </div>
           </div>
         }>
           <Show when={ctx.viewMode() === 'images'} fallback={
@@ -702,6 +661,17 @@ export default function SearchResults() {
               />
             </div>
           </Show>
+          <ResultsSummaryBar
+            effectiveQuery={ctx.effectiveQuery()}
+            effectiveBreakdown={ctx.effectiveBreakdown()}
+            cardCount={ctx.totalCards()}
+            printingCount={
+              ctx.totalPrintingItems() > 0 &&
+              (ctx.uniqueMode() === 'prints' || ctx.hasPrintingConditions())
+                ? ctx.totalPrintingItems()
+                : undefined
+            }
+          />
         </Show>
       </div>
     </Show>

@@ -4,6 +4,8 @@
 
 **Unified by:** Spec 151 (Suggestion System)
 
+**Layout (Spec 152):** Empty-list CTA now appears below the Results Summary Bar. The bar shows the effective query uniformly ("Your query `…` matched zero cards.") with Try on Scryfall, Syntax help, and Report a problem. SuggestionList (including the empty-list chip) renders below the bar.
+
 **Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 123 (# Metadata Tag Search), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
 
 ## Goal
