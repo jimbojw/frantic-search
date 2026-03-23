@@ -84,7 +84,7 @@ export type Suggestion = {
 
 3. **SearchResults** consumes `suggestions: Suggestion[]` and renders a single `SuggestionList` component that:
    - When `totalCards === 0`: Results Summary Bar (Spec 152) at top, then SuggestionList for empty-state suggestions (including empty-list chip when applicable).
-   - When `totalCards > 0`: rider suggestions below the results list, then Results Summary Bar.
+   - When `totalCards > 0`: Results Summary Bar below the results list, then rider suggestions.
    - All chips use `ChipButton` (Spec 150).
 
 ### Placement rules
@@ -92,7 +92,7 @@ export type Suggestion = {
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
 | Empty state | empty-list, include-extras, oracle, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
-| Non-empty riders | unique-prints, include-extras | Both when both apply | Below results list; **fixed order:** unique-prints first, then include-extras (not priority order) |
+| Non-empty riders | unique-prints, include-extras | Both when both apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** unique-prints first, then include-extras (not priority order) |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
 

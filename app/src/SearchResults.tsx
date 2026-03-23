@@ -632,6 +632,17 @@ export default function SearchResults() {
               </Show>
             </div>
           </Show>
+          <ResultsSummaryBar
+            effectiveQuery={ctx.effectiveQuery()}
+            effectiveBreakdown={ctx.effectiveBreakdown()}
+            cardCount={ctx.totalCards()}
+            printingCount={
+              ctx.totalPrintingItems() > 0 &&
+              (ctx.uniqueMode() === 'prints' || ctx.hasPrintingConditions())
+                ? ctx.totalPrintingItems()
+                : undefined
+            }
+          />
           <Show when={
             ctx.suggestions()?.some((s) => s.id === 'unique-prints' || s.id === 'include-extras')
           }>
@@ -661,17 +672,6 @@ export default function SearchResults() {
               />
             </div>
           </Show>
-          <ResultsSummaryBar
-            effectiveQuery={ctx.effectiveQuery()}
-            effectiveBreakdown={ctx.effectiveBreakdown()}
-            cardCount={ctx.totalCards()}
-            printingCount={
-              ctx.totalPrintingItems() > 0 &&
-              (ctx.uniqueMode() === 'prints' || ctx.hasPrintingConditions())
-                ? ctx.totalPrintingItems()
-                : undefined
-            }
-          />
         </Show>
       </div>
     </Show>
