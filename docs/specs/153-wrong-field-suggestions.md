@@ -112,7 +112,7 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 **Dependencies:** Artist index must be loaded for `a:` suggestions; illustration tags must be loaded for `atag:` suggestions. If either is missing, skip that direction (e.g. no `a:` suggestion when `artistUnavailable`).
 
-**Suggestion id:** Uses `id: 'artist-atag'` (Spec 151), priority 25. Same splice/negation logic as wrong-field.
+**Suggestion id:** Uses `id: 'artist-atag'` (Spec 151), priority 25. Same splice/negation logic as wrong-field. Tapping wrong-field or artist-atag chips fires `suggestion_applied` (Spec 085, Spec 151).
 
 ### Example mappings
 

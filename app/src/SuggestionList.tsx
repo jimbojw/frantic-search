@@ -2,6 +2,7 @@
 import type { Accessor } from 'solid-js'
 import { For, Show, createMemo } from 'solid-js'
 import type { Suggestion } from '@frantic-search/shared'
+import { captureSuggestionApplied } from './analytics'
 import { ChipButton } from './ChipButton'
 import { HighlightedLabel } from './InlineBreakdown'
 
@@ -90,7 +91,16 @@ export function SuggestionList(props: {
                       state="neutral"
                       layout="col"
                       class={isEmptyList ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60' : undefined}
-                      onClick={() => props.onCta?.(s.ctaAction!)}
+                      onClick={() => {
+                        captureSuggestionApplied({
+                          suggestion_id: s.id,
+                          suggestion_label: s.label,
+                          variant: 'cta',
+                          cta_action: s.ctaAction,
+                          mode: props.mode,
+                        })
+                        props.onCta?.(s.ctaAction!)
+                      }}
                     >
                       <span class={isEmptyList ? 'text-amber-700 dark:text-amber-300 font-mono' : ''}>
                         {s.label}
@@ -105,7 +115,18 @@ export function SuggestionList(props: {
                     <ChipButton
                       state="neutral"
                       layout={s.count !== undefined || s.printingCount !== undefined ? 'col' : 'row'}
-                      onClick={() => s.query && props.onApplyQuery(s.query)}
+                      onClick={() => {
+                        if (s.query) {
+                          captureSuggestionApplied({
+                            suggestion_id: s.id,
+                            suggestion_label: s.label,
+                            variant: 'rewrite',
+                            applied_query: s.query,
+                            mode: props.mode,
+                          })
+                          props.onApplyQuery(s.query)
+                        }
+                      }}
                     >
                       <span class="flex items-center gap-1">
                         <HighlightedLabel label={s.label} />

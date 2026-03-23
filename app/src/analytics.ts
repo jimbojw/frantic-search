@@ -54,3 +54,14 @@ export function captureSearchResolvedFromUrl(params: {
 }): void {
   posthog.capture('search_resolved_from_url', params)
 }
+
+export function captureSuggestionApplied(params: {
+  suggestion_id: string
+  suggestion_label: string
+  variant: 'rewrite' | 'cta'
+  applied_query?: string
+  cta_action?: string
+  mode?: 'empty' | 'rider'
+}): void {
+  posthog.capture('suggestion_applied', params)
+}

@@ -75,6 +75,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 | `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user" }` (Spec 144) |
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
+| `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
 
 ### 5. `used_extension` Definition
 
@@ -112,6 +113,8 @@ Add `captureUiInteracted({ element_name, action, state? })` at these locations:
 | `menu_drawer` | clicked  | MenuDrawer open/close                       |
 | `syntax_help` | clicked  | SyntaxHelp opened                           |
 | `bug_report`  | clicked  | BugReport opened                            |
+
+Suggestion chips (Spec 151, Spec 153) use a dedicated `suggestion_applied` event via `captureSuggestionApplied()`, fired in SuggestionList when the user taps a chip. Properties include `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider) for funnel analysis.
 
 ### 9. Offline Resilience (Background Sync)
 

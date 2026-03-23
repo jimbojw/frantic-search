@@ -141,6 +141,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 
 - All chips use `ChipButton`; empty-list uses `state` that yields amber styling (Spec 088).
 - When `docRef` is set, show "Learn more" link navigating to `?doc={docRef}`.
+- **PostHog (Spec 085):** When the user taps a suggestion chip, fire `suggestion_applied` with `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider). Capture point: SuggestionList onClick handlers before invoking onApplyQuery/onCta.
 
 ### Migration of existing behavior
 
@@ -184,7 +185,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 | `shared/src/suggestion-types.ts` | **New** — `Suggestion` type (worker-protocol carries it; shared is dependency-free) |
 | `app/src/worker-search.ts` | Build `suggestions` array in runSearch; add `getListMask` to RunSearchParams for empty-list check; populate all four triggers |
 | `app/src/worker.ts` | Pass `getListMask` to runSearch |
-| `app/src/SuggestionList.tsx` | **New** — Renders suggestion chips; empty-state vs rider layouts |
+| `app/src/SuggestionList.tsx` | **New** — Renders suggestion chips; empty-state vs rider layouts; fires `captureSuggestionApplied` on chip tap |
 | `app/src/SearchResults.tsx` | Refactor: replace four `Show` blocks with `SuggestionList`; consume `suggestions` from context |
 | `app/src/App.tsx` | Pass `suggestions` from worker result to pane state; remove `defaultListEmpty`, `oracleHint`, `indicesIncludingExtras` wiring |
 | `app/src/pane-state-factory.ts` | Add `suggestions` to PaneState; remove `defaultListEmpty` |
