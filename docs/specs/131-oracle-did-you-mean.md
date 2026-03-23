@@ -27,6 +27,7 @@ All of the following must hold for the oracle hint to appear:
 3. **Trailing bare tokens** — When root is AND, only the *trailing* bare tokens are considered: those that appear after the last non-bare token in source order. When root is a single BARE, that token is the trailing set. There must be at least one trailing bare token.
 4. **An alternative returns results** — The phrase variant (or per-word variant when applicable) returns at least one card.
 5. **Lower priority than other empty-state CTAs** — Do not show when the empty-list CTA (Spec 126) or `include:extras` hint (Spec 057) applies. The oracle hint appears only when those conditions do not hold.
+6. **Bare-term-upgrade takes precedence** — When a bare term receives a bare-term-upgrade suggestion (Spec 154, e.g. `kw:landfall` for "landfall"), do not also suggest the oracle variant (`o:landfall`) for that term. The worker skips such terms when building the oracle hint.
 
 ### Examples
 

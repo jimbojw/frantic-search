@@ -178,6 +178,8 @@ This spec establishes the pattern. Future domains may include:
 
 Each would be a new section in this spec (or a separate spec if complex). Artist/atag reflexive is implemented (see Domain: Artist / atag reflexive).
 
+**Related:** Spec 154 (Bare-Term Field Upgrade) handles the inverse case: bare terms (no field) that match known values — e.g. `landfall` → `kw:landfall`, `mh2` → `set:mh2`. That spec operates on BARE nodes; this spec operates on FIELD nodes.
+
 ## Acceptance Criteria
 
 1. `is:white` with zero results shows up to three chips: ci:w, c:w, produces:w — only those that return results.

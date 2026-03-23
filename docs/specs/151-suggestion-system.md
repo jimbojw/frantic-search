@@ -50,7 +50,7 @@ A suggestion is a single actionable item the user can tap.
 /** Single suggestion shown to the user. */
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
-  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'card-type' | 'keyword' | 'artist-atag' | 'near-miss' | 'relaxed' | 'example-query'
+  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'card-type' | 'artist-atag' | 'near-miss' | 'relaxed' | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
@@ -93,7 +93,7 @@ export type Suggestion = {
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, oracle, wrong-field, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
+| Empty state | empty-list, include-extras, bare-term-upgrade, oracle, wrong-field, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
 | Non-empty riders | empty-list, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list first, then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
@@ -113,8 +113,8 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | oracle | 20 | Reformulates bare tokens to oracle search |
 | wrong-field | 22 | Right value in wrong field; suggest correct field (Spec 153) |
 | unique-prints | 30 | Rider context; expand printings |
+| bare-term-upgrade | 16 | Bare term matches known field value; suggest field prefix (e.g. "landfall" → kw:landfall). Spec 154. |
 | (future) card-type | 15 | Type token reformulation; between extras and oracle (e.g. "creatures" → t:creature) |
-| (future) keyword | 16 | Keyword token reformulation; after card-type (e.g. "landfall" → kw:landfall; "first strike" → kw:"first strike") |
 | artist-atag | 25 | Cross-detect atag vs a; suggest the field that returns results. Unified by Spec 153. |
 | (future) near-miss | 18 | Unquoted multi-word field value; suggest quoted form when it would match |
 | (future) relaxed | 35 | "Try broader" alternative |
@@ -136,6 +136,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
 | unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
 | wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
+| bare-term-upgrade (Spec 154) | New term (e.g. kw:landfall), click → setQuery | From `explain`; [Learn more] if docRef |
 | artist-atag (Spec 153) | New term (e.g. a:frazier or atag:spear), click → setQuery | From `explain`; [Learn more] if docRef |
 | oracle, etc. | Same | Same |
 
@@ -163,7 +164,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 | Trigger | id | Spec | Notes |
 |---------|-----|------|------|
 | Card type tokens | card-type | TBD | "creatures" → `t:creature`; "creatures scry" → `t:creature o:scry`; narrowest first |
-| Keyword tokens | keyword | TBD | "landfall" → `kw:landfall`; "first strike" → `kw:"first strike"`; known keywords get kw: before o: |
+| Bare term field upgrade | bare-term-upgrade | Spec 154 | Bare terms matching known values (keywords, set, format, otag, atag, game, frame, rarity) → suggest field prefix. "landfall" → `kw:landfall`; "mh2" → `set:mh2`. Draft. |
 | Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
 | Near-miss: unquoted multi-word | near-miss | TBD | Bare term(s) after a field term: `a:Dan Frazer` parsed as `a:Dan` + bare `Frazer`; when `a:"Dan Frazer"` would match → "Did you mean `a:"Dan Frazer"`?" Same for `atag:dan frazier` → `atag:"dan frazier"` |
 | Small result set | relaxed | TBD | 1–3 results; relaxed query returns more; offer as alternative |
