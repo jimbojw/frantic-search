@@ -50,7 +50,7 @@ A suggestion is a single actionable item the user can tap.
 /** Single suggestion shown to the user. */
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
-  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'card-type' | 'keyword' | 'artist-atag' | 'near-miss' | 'relaxed' | 'example-query'
+  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'card-type' | 'keyword' | 'artist-atag' | 'near-miss' | 'relaxed' | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
@@ -93,7 +93,7 @@ export type Suggestion = {
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, oracle, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
+| Empty state | empty-list, include-extras, oracle, wrong-field, card-type, keyword, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
 | Non-empty riders | empty-list, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list first, then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
@@ -111,6 +111,7 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | empty-list | 0 | Highest — user cannot get results without a list |
 | include-extras | 10 | Unblocks hidden playable-filtered results |
 | oracle | 20 | Reformulates bare tokens to oracle search |
+| wrong-field | 22 | Right value in wrong field; suggest correct field (Spec 153) |
 | unique-prints | 30 | Rider context; expand printings |
 | (future) card-type | 15 | Type token reformulation; between extras and oracle (e.g. "creatures" → t:creature) |
 | (future) keyword | 16 | Keyword token reformulation; after card-type (e.g. "landfall" → kw:landfall; "first strike" → kw:"first strike") |
@@ -134,6 +135,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | empty-list (my) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires an imported deck list. [Import one now?](...)" |
 | empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
 | unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
+| wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
 | oracle, etc. | Same | Same |
 
 - All chips use `ChipButton`; empty-list uses `state` that yields amber styling (Spec 088).
@@ -147,6 +149,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" E
 | include:extras (Spec 057) | `Suggestion { id: 'include-extras', query, label, count, printingCount, docRef: 'reference/modifiers/include-extras' }`. Empty: totalCards === 0 and indicesIncludingExtras. Rider: totalCards > 0 and hidden playable-filtered results. |
 | unique:prints (Spec 139) | `Suggestion { id: 'unique-prints', query, label, docRef: 'reference/modifiers/unique' }`. Rider only. Trigger: uniqueMode !== 'prints' and `totalPrintingItems > totalDisplayItems`. |
 | Oracle hint (Spec 131) | `Suggestion { id: 'oracle', query, label, count, printingCount, docRef: 'reference/fields/face/oracle' }` from existing oracleHint logic. Empty state only. |
+| Wrong-field (Spec 153) | One `Suggestion` per (offending term, alternative field) pair: `{ id: 'wrong-field', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node has trigger field (is:, in:, type:) + color value; alternative (ci:, c:, produces:) returns > 0. Empty state only. |
 
 **Invariant:** Same triggers and tap actions as before. Placement and layout may be improved—looking good takes precedence over perfect parity with the status quo. "Learn more" links (docRef) are encouraged as part of the unified UI pattern.
 
