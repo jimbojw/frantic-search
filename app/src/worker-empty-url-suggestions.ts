@@ -56,9 +56,9 @@ export function emptyUrlLiveQuerySuggestionPool(): Suggestion[] {
     },
     {
       id: 'example-query',
-      label: 'edhrec>99%',
-      query: 'edhrec>99%',
-      explain: 'Top 1% most used cards by EDHREC rank.',
+      label: 'edhrec>90% otag:mana-rock',
+      query: 'edhrec>90% otag:mana-rock',
+      explain: 'The most popular mana rocks by EDHREC rank.',
       priority: 2,
       variant: 'rewrite',
     },
