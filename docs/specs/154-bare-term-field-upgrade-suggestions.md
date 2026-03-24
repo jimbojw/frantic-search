@@ -233,12 +233,13 @@ Artist matching is **multi-word only** — single bare words like `Dan` or `Fraz
 
 #### Multi-word domains checked
 
-For the multi-word pass, only domains that can have multi-word values are checked:
+For the multi-word pass, the following are checked:
 
-1. **keyword** (`kw:`) — phrase in keyword index
-2. **artist** (`a:`) — phrase in artist index (multi-word only)
+1. **keyword** (`kw:`) — space-joined phrase in keyword index (quoted suggestion)
+2. **artist** (`a:`) — space-joined phrase in artist index (multi-word only; quoted suggestion)
+3. **otag** / **atag** — **Hyphen-joined slug** from the same adjacent bare window, matched against oracle tag and illustration tag label keys; **unquoted** `otag:` / `atag:` suggestions. See **Spec 159** for normative rules, examples, and acceptance criteria.
 
-Other domains (type-line, set, format, is, otag, atag, game, frame, rarity) use single-word values and are not checked in the multi-word pass.
+**Single-word-only domains** (type-line, set, format, is, game, frame, rarity) are still not checked in the multi-word pass. For **otag** and **atag**, the single-word path (exact label match) remains as before; Spec 159 adds only the **multi-word hyphen** path.
 
 #### Multi-word example mappings
 
@@ -250,6 +251,7 @@ Other domains (type-line, set, format, is, otag, atag, game, frame, rarity) use 
 | t:creature first strike | (first, strike) | keyword | t:creature kw:"first strike" |
 | first ci:r strike | none (not adjacent) | — | (no multi-word match; single-word fallback) |
 | first strike double strike | (first, strike), (double, strike) | keyword, keyword | kw:"first strike", kw:"double strike" |
+| mana rock | (mana, rock) | otag (hyphen slug `mana-rock`) | otag:mana-rock (Spec 159) |
 
 ### Worker integration
 
