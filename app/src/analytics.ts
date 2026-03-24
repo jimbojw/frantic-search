@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import posthog from 'posthog-js'
+import { isPwaSession } from './is-pwa-session'
+
+declare const __APP_VERSION__: string
+declare const __BUILD_TIME__: string
 
 /** Earliest moment in app bundle load (Spec 140). Used for search_resolved_from_url duration_ms. */
 export const pageLoadStartTime = performance.now()
@@ -15,6 +19,11 @@ if (!import.meta.env.DEV) {
       capture_performance: true,
       transport: 'fetch',
     } as Parameters<typeof posthog.init>[1])
+    posthog.register({
+      is_pwa: isPwaSession(),
+      app_version: __APP_VERSION__,
+      build_time: __BUILD_TIME__,
+    })
   }
 }
 

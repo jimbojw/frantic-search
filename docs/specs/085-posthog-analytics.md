@@ -66,6 +66,14 @@ if (!import.meta.env.DEV) {
 
 Do not use the `defaults` option; it enables behavior we explicitly disable.
 
+**Super properties (session):** Immediately after `posthog.init`, call `posthog.register({ ... })` with:
+
+- `is_pwa` (boolean) — `true` when the client runs as an installed PWA (`window.matchMedia('(display-mode: standalone)').matches`) or iOS Safari home-screen mode (`navigator.standalone === true`) ([GitHub #183](https://github.com/jimbojw/frantic-search/issues/183)).
+- `app_version` (string) — Vite-injected git short hash (`__APP_VERSION__`), same value shown in the app footer and bug reports.
+- `build_time` (string) — Vite-injected ISO 8601 timestamp (`__BUILD_TIME__`) for the build.
+
+These are small static strings; registering them (rather than only adding them to the first `$pageview`) repeats them on every captured event so funnels and breakdowns can filter by deploy without joining on the pageview. Cost per event is negligible.
+
 ### 4. Event Schemas
 
 Standardize event properties for easy grouping in the PostHog dashboard:
