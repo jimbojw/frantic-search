@@ -34,7 +34,7 @@ Rationale: a negated exact term is already a **broad** predicate. Replacing it w
 
 ### Commas: education out of scope, canonicalization in scope
 
-**Spec 157** defines stray-comma rewrite suggestions and teaching copy. This spec does **not** require general comma detection beyond **replacement canonicalization** on the relaxed fragment.
+**Spec 157** defines stray-comma rewrite suggestions and teaching copy (see [`157-stray-comma-suggestions.md`](157-stray-comma-suggestions.md), `buildStrayCommaCleanedQuery`). This spec does **not** require general comma detection beyond **replacement canonicalization** on the relaxed fragment.
 
 **Replacement canonicalization (in scope):** When building the relaxed query, the rewritten clause must be **clean** — no spurious trailing comma left stuck to that clause. Example: if the user typed `ci=u,` (comma intended as a separator before the next pseudo-filter), the suggested full query must use **`ci:u`**, not **`ci:u,`**. Implementation may widen the splice span to consume a single trailing comma after the field term, post-process the segment, or equivalent; the observable rule is the suggested `query` string after tap.
 

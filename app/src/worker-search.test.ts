@@ -691,6 +691,41 @@ describe('operator relaxation suggestions (Spec 156)', () => {
   })
 })
 
+describe('stray comma suggestions (Spec 157)', () => {
+  it('CSV-style value commas yield stray-comma when cleaned query matches', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't=creature, c=g' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const stray = result.suggestions.filter((s) => s.id === 'stray-comma')
+    expect(stray).toHaveLength(1)
+    expect(stray[0].priority).toBe(23)
+    expect(stray[0].query).toBe('t=creature c=g')
+    expect(stray[0].label).toBe('t=creature')
+    expect(stray[0].count).toBeGreaterThan(0)
+  })
+
+  it('emits stray-comma at priority 23 and keeps suggestions priority-sorted', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't=creature, c=g' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const stray = result.suggestions.filter((s) => s.id === 'stray-comma')
+    expect(stray).toHaveLength(1)
+    expect(stray[0].priority).toBe(23)
+    const pri = result.suggestions.map((s) => s.priority)
+    expect([...pri].sort((a, b) => a - b)).toEqual(pri)
+  })
+})
+
 describe('artist-atag suggestions (Spec 153)', () => {
   const illustrationTags = new Map<string, Uint32Array>([
     ['chair', new Uint32Array([0, 2, 5])],

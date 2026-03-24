@@ -1,6 +1,6 @@
 # Spec 157: Stray Comma Suggestions (Separator Mistakes)
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 036 (Source Spans), Spec 002 (Query Engine)
 
@@ -66,7 +66,7 @@ The MVP **must** support removing **one trailing comma per affected field value*
 - **Placement:** Empty state only (same as wrong-field, relaxed, oracle).
 - **Priority:** **23** — after **wrong-field** (22), before **relaxed** (24). Rationale: fix mistaken punctuation before suggesting different operators.
 - **Variant:** `rewrite`.
-- **Label:** Short action, e.g. `Remove stray commas` or the **minimal diff** preview (product choice); label must fit `ChipButton` patterns (Spec 150).
+- **Label:** **Minimal diff** preview: fixed clause text as the user typed it (e.g. `o=surveil` when only that operand had a trailing comma; join with spaces if several). Fallback `Remove stray commas` only if no label parts are produced. Must fit `ChipButton` patterns (Spec 150).
 - **Explain:** Teach that **fields are separated by spaces**, not commas; optionally note that **commas inside oracle text** are allowed when they are part of the search phrase (deep-link helps).
 - **`query`:** Full effective query with eligible commas removed (and whitespace normalized).
 - **`count` / `printingCount`:** Set when `evaluateAlternative` returns `cardCount > 0`, consistent with wrong-field / relaxed chips.
@@ -125,4 +125,5 @@ The MVP **must** support removing **one trailing comma per affected field value*
 
 ## Implementation notes
 
-*(Append dated bullets here when implementing, per ADR-008.)*
+- **2026-03-24:** `buildStrayCommaCleanedQuery` in [`shared/src/stray-comma-cleanup.ts`](../../shared/src/stray-comma-cleanup.ts) (top-level `AND` operands only; quoted `FIELD` and `REGEX_FIELD` skipped). Worker emits the suggestion in [`app/src/worker-suggestions.ts`](../../app/src/worker-suggestions.ts) after wrong-field and before relaxed; [`app/src/SuggestionList.tsx`](../../app/src/SuggestionList.tsx) lists `stray-comma` in `EMPTY_STATE_IDS`. Tests: [`shared/src/stray-comma-cleanup.test.ts`](../../shared/src/stray-comma-cleanup.test.ts), [`app/src/worker-search.test.ts`](../../app/src/worker-search.test.ts) (Spec 157 describe block).
+- **2026-03-24:** Chip label uses `buildStrayCommaCleanup().label` (corrected clause snippets in query order); full rewrite remains `cleanedQuery`.

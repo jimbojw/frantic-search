@@ -95,6 +95,8 @@ export {
 export type { ColorAlternative, FormatOrIsAlternative, ArtistAtagAlternative, OperatorRelaxAlternative } from "./wrong-field-utils";
 export { getBareTermAlternatives, getMultiWordAlternatives, getAdjacentBareWindows } from "./bare-term-upgrade-utils";
 export type { BareTermUpgradeContext, BareTermAlternative } from "./bare-term-upgrade-utils";
+export { buildStrayCommaCleanedQuery, buildStrayCommaCleanup } from "./stray-comma-cleanup";
+export type { StrayCommaCleanupResult } from "./stray-comma-cleanup";
 export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
 export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
 export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";

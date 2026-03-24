@@ -18,6 +18,7 @@ import {
   COLOR_EQUALS_RELAX_FIELDS,
   IDENTITY_EQUALS_RELAX_FIELDS,
   getOperatorRelaxAlternatives,
+  buildStrayCommaCleanup,
 } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
@@ -380,6 +381,38 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
             printingCount,
             docRef: alt.docRef,
             priority: 22,
+            variant: 'rewrite',
+          })
+        }
+      }
+    }
+
+    // Spec 157: Remove value-terminal commas (CSV-style separators) when cleaned query matches
+    const strayCleanup = buildStrayCommaCleanup(effectiveQuery)
+    if (strayCleanup) {
+      const cleanedStray = strayCleanup.cleanedQuery
+      const dupRewrite = suggestions.some(
+        (s) => s.variant === 'rewrite' && s.query === cleanedStray,
+      )
+      if (!dupRewrite) {
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery: cleanedStray,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        if (cardCount > 0) {
+          suggestions.push({
+            id: 'stray-comma',
+            query: cleanedStray,
+            label: strayCleanup.label,
+            explain: 'Separate terms with spaces, not commas. Commas inside quoted oracle text stay as you typed.',
+            docRef: 'reference/syntax',
+            count: cardCount,
+            printingCount,
+            priority: 23,
             variant: 'rewrite',
           })
         }

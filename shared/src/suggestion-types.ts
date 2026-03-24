@@ -15,6 +15,7 @@ export type Suggestion = {
     | 'artist-atag'
     | 'near-miss'
     | 'relaxed'
+    | 'stray-comma'
     | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string

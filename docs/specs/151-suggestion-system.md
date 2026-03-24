@@ -50,7 +50,7 @@ A suggestion is a single actionable item the user can tap.
 /** Single suggestion shown to the user. */
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
-  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'card-type' | 'artist-atag' | 'near-miss' | 'relaxed' | 'example-query'
+  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'card-type' | 'artist-atag' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
@@ -93,7 +93,7 @@ export type Suggestion = {
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, bare-term-upgrade, oracle, wrong-field, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
+| Empty state | empty-list, include-extras, bare-term-upgrade, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
 | Non-empty riders | empty-list, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list first, then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
@@ -111,6 +111,7 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | empty-list | 0 | Highest — user cannot get results without a list |
 | oracle | 20 | Reformulates bare tokens to oracle search |
 | wrong-field | 22 | Right value in wrong field; suggest correct field (Spec 153) |
+| stray-comma | 23 | Remove value-terminal commas mistaken for clause separators; Spec 157 |
 | relaxed | 24 | Color / identity `=` → `:` / `>=` when exact match is too strict; Spec 156 |
 | unique-prints | 30 | Rider context; expand printings |
 | bare-term-upgrade | 16 | Bare term matches known field value; suggest field prefix (e.g. "landfall" → kw:landfall). Spec 154. |
@@ -136,6 +137,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
 | unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
 | wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
+| stray-comma (Spec 157) | Fixed clause(s) as typed (e.g. `o=surveil`), space-separated if several; click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
 | relaxed (Spec 156) | New term (e.g. ci:u, c:u), click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
 | bare-term-upgrade (Spec 154) | New term (e.g. kw:landfall), click → setQuery | From `explain`; [Learn more] if docRef |
 | artist-atag (Spec 153) | New term (e.g. a:frazier or atag:spear), click → setQuery | From `explain`; [Learn more] if docRef |
@@ -155,6 +157,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | Oracle hint (Spec 131) | `Suggestion { id: 'oracle', query, label, count, printingCount, docRef: 'reference/fields/face/oracle' }` from existing oracleHint logic. Empty state only. |
 | Bare-term-upgrade (Spec 154) | One `Suggestion` per (bare term, alternative field) pair: `{ id: 'bare-term-upgrade', query, label, explain, count, docRef }`. Trigger: totalCards === 0; BARE node value matches known domain (keyword, type-line, set, format, is, otag, atag, game, frame, rarity); alternative (kw:, t:, set:, etc.) returns > 0. Empty state only. Runs before oracle; terms that get bare-term-upgrade are skipped for oracle. |
 | Wrong-field (Spec 153) | One `Suggestion` per (offending term, alternative field) pair: `{ id: 'wrong-field', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node has trigger field (is:, in:, type:) + color value; alternative (ci:, c:, produces:) returns > 0. Empty state only. |
+| Stray comma (Spec 157) | At most one `Suggestion`: `{ id: 'stray-comma', query, label, explain, count, printingCount, docRef, priority: 23 }`. Trigger: totalCards === 0; effective query has unquoted FIELD values ending with `,`; cleaned query differs and returns > 0; omit if same `query` as another rewrite in the pass. Empty state only. |
 | Relaxed operator (Spec 156) | One `Suggestion` per (matching term, alternative operator) pair: `{ id: 'relaxed', query, label, explain, count, printingCount, docRef, priority: 24 }`. Trigger: totalCards === 0; positive FIELD on color/identity with `=` and non-count color value; alternative `:` / `>=` returns > 0. Empty state only. |
 | Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
 

@@ -12,6 +12,7 @@ const EMPTY_STATE_IDS = [
   'bare-term-upgrade',
   'oracle',
   'wrong-field',
+  'stray-comma',
   'relaxed',
   'card-type',
   'keyword',
