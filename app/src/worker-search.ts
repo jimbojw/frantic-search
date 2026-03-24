@@ -3,6 +3,7 @@ import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, Or
 import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
+import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
 import { buildSuggestions } from './worker-suggestions'
 import { toBreakdown, computeHistograms } from './worker-breakdown'
 
@@ -26,8 +27,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
   const { msg, cache, index, printingIndex, sessionSalt, tagData, keywordLabels } = params
   const hasPinned = !!msg.pinnedQuery?.trim()
   const hasLive = !!msg.query.trim()
+  const allowEmptyUrlLive =
+    !!msg.emptyUrlLiveQuery && !msg.query.trim() && !msg.pinnedQuery?.trim()
 
-  if (!hasLive && !hasPinned) {
+  if (!hasLive && !hasPinned && !allowEmptyUrlLive) {
     throw new Error('runSearch requires at least one of query or pinnedQuery')
   }
 
@@ -35,6 +38,24 @@ export function runSearch(params: RunSearchParams): SearchResult {
     colorIdentity: [0, 0, 0, 0, 0, 0, 0],
     manaValue: [0, 0, 0, 0, 0, 0, 0, 0],
     cardType: [0, 0, 0, 0, 0, 0, 0, 0],
+  }
+
+  const nopBreakdown: BreakdownNode = { type: 'NOP', label: '', matchCount: 0 }
+
+  // Spec 155: URL has `q=` but no live or pinned text — starter suggestions only.
+  if (allowEmptyUrlLive) {
+    const indices = new Uint32Array(0)
+    return {
+      type: 'result',
+      queryId: msg.queryId,
+      indices,
+      breakdown: nopBreakdown,
+      effectiveBreakdown: nopBreakdown,
+      histograms: emptyHistograms,
+      hasPrintingConditions: false,
+      uniqueMode: 'cards',
+      suggestions: buildEmptyUrlLiveQuerySuggestions(sessionSalt),
+    }
   }
 
   // Pinned-only: evaluate for breakdown counts, no results

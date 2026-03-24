@@ -9,7 +9,16 @@ export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 export type DualWieldSide = 'left' | 'right'
 
 export type ToWorker =
-  | { type: 'search'; queryId: number; query: string; pinnedQuery?: string; viewMode?: ViewMode; side?: DualWieldSide }
+  | {
+      type: 'search'
+      queryId: number
+      query: string
+      pinnedQuery?: string
+      viewMode?: ViewMode
+      side?: DualWieldSide
+      /** Spec 155: URL has `q` but live query is empty; worker returns starter suggestions. */
+      emptyUrlLiveQuery?: boolean
+    }
   | {
       type: "list-update";
       listId: string;

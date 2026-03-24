@@ -759,16 +759,20 @@ function App() {
         }
       }
     } else {
-      if (workerStatus() === 'ready' && (q || pq)) {
+      const emptyUrlLiveQuery = urlHasQueryParam() && !q && !pq
+      if (workerStatus() === 'ready' && (q || pq || emptyUrlLiveQuery)) {
         latestQueryId++
         setSuggestions([])
         worker.postMessage({
-          type: 'search', queryId: latestQueryId, query: query(),
+          type: 'search',
+          queryId: latestQueryId,
+          query: query(),
           pinnedQuery: pq || undefined,
           viewMode: viewMode(),
+          ...(emptyUrlLiveQuery ? { emptyUrlLiveQuery: true } : {}),
         })
       }
-      if (!q && !pq) {
+      if (!q && !pq && !emptyUrlLiveQuery) {
         setIndices(new Uint32Array(0))
         setBreakdown(null)
         setPinnedBreakdown(null)
@@ -780,7 +784,7 @@ function App() {
         setHasPrintingConditions(false)
         setUniqueMode('cards')
         setSuggestions([])
-      } else if (!q) {
+      } else if (!q && pq) {
         setIndices(new Uint32Array(0))
         setBreakdown(null)
         setHistograms(null)
@@ -1312,6 +1316,7 @@ function App() {
       }
       return getMatchingCount(cardListStore.getView(), DEFAULT_LIST_ID, oid)
     },
+    urlHasEmptyLiveInUrl: () => !showDualWield() && urlHasQueryParam(),
   }
 
   return (

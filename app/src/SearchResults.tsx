@@ -24,9 +24,11 @@ declare const __BUILD_TIME__: string
 export default function SearchResults() {
   const ctx = useSearchContext()
   const d = () => ctx.display()
+  const showResultsShell = () =>
+    !!ctx.query().trim() || !!(ctx.urlHasEmptyLiveInUrl?.() ?? false)
 
   return (
-    <Show when={ctx.query().trim()} fallback={
+    <Show when={showResultsShell()} fallback={
       <div class="pt-4 text-center">
         <p class="text-sm text-gray-400 dark:text-gray-600">
           Type a query to search
@@ -56,60 +58,62 @@ export default function SearchResults() {
       </div>
     }>
       <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-        <Show when={ctx.histograms()}>
-          {(h) => (<>
-            <div
-              onClick={() => ctx.toggleHistograms()}
-              class="flex items-center gap-3 px-3 py-1 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-            >
-              <Show when={ctx.histogramsExpanded()} fallback={
-                <>
-                  <IconChevronRight class="size-2.5 shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150" />
-                  <div class="grid grid-cols-3 gap-4 flex-1 min-w-0 pr-3">
-                    <div class="flex items-center gap-1 min-w-0">
-                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
-                      <SparkBars counts={h().manaValue} colors={MV_BAR_COLOR} />
+        <Show when={ctx.effectiveQuery().trim() !== ''}>
+          <Show when={ctx.histograms()}>
+            {(h) => (<>
+              <div
+                onClick={() => ctx.toggleHistograms()}
+                class="flex items-center gap-3 px-3 py-1 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <Show when={ctx.histogramsExpanded()} fallback={
+                  <>
+                    <IconChevronRight class="size-2.5 shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150" />
+                    <div class="grid grid-cols-3 gap-4 flex-1 min-w-0 pr-3">
+                      <div class="flex items-center gap-1 min-w-0">
+                        <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">mv:</span>
+                        <SparkBars counts={h().manaValue} colors={MV_BAR_COLOR} />
+                      </div>
+                      <div class="flex items-center gap-1 min-w-0">
+                        <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">ci:</span>
+                        <SparkBars counts={h().colorIdentity} colors={[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]} />
+                      </div>
+                      <div class="flex items-center gap-1 min-w-0">
+                        <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">t:</span>
+                        <SparkBars counts={h().cardType} colors={TYPE_BAR_COLOR} />
+                      </div>
                     </div>
-                    <div class="flex items-center gap-1 min-w-0">
-                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">ci:</span>
-                      <SparkBars counts={h().colorIdentity} colors={[CI_COLORLESS, CI_W, CI_U, CI_B, CI_R, CI_G, CI_BACKGROUNDS[31]]} />
-                    </div>
-                    <div class="flex items-center gap-1 min-w-0">
-                      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500 shrink-0 w-[3em] text-right">t:</span>
-                      <SparkBars counts={h().cardType} colors={TYPE_BAR_COLOR} />
-                    </div>
+                  </>
+                }>
+                  <div class="hidden md:grid grid-cols-3 gap-4 flex-1">
+                    <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Mana Value</p>
+                    <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Color Identity</p>
+                    <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Card Type</p>
                   </div>
-                </>
-              }>
-                <div class="hidden md:grid grid-cols-3 gap-4 flex-1">
-                  <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Mana Value</p>
-                  <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Color Identity</p>
-                  <p class="font-mono text-[10px] text-gray-400 dark:text-gray-500 pl-[1.5em]">Card Type</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); ctx.toggleHistograms() }}
-                  class="hidden md:flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
-                  aria-label="Collapse histograms"
-                >
-                  <IconXMark class="size-5" />
-                </button>
-              </Show>
-            </div>
-            <div
-              class="grid transition-[grid-template-rows] duration-150 ease-out"
-              style={{ 'grid-template-rows': ctx.histogramsExpanded() ? '1fr' : '0fr' }}
-            >
-              <div class="overflow-hidden">
-                <ResultsBreakdown
-                  histograms={h()}
-                  query={ctx.query()}
-                  onSetQuery={(q) => { ctx.flushPendingCommit(); ctx.setQuery(q) }}
-                  onClose={() => ctx.toggleHistograms()}
-                />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); ctx.toggleHistograms() }}
+                    class="hidden md:flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                    aria-label="Collapse histograms"
+                  >
+                    <IconXMark class="size-5" />
+                  </button>
+                </Show>
               </div>
-            </div>
-          </>)}
+              <div
+                class="grid transition-[grid-template-rows] duration-150 ease-out"
+                style={{ 'grid-template-rows': ctx.histogramsExpanded() ? '1fr' : '0fr' }}
+              >
+                <div class="overflow-hidden">
+                  <ResultsBreakdown
+                    histograms={h()}
+                    query={ctx.query()}
+                    onSetQuery={(q) => { ctx.flushPendingCommit(); ctx.setQuery(q) }}
+                    onClose={() => ctx.toggleHistograms()}
+                  />
+                </div>
+              </div>
+            </>)}
+          </Show>
         </Show>
         <Show when={ctx.hasPrintingConditions() && !ctx.printingDisplay()}>
           <p class="px-3 py-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-t border-amber-200 dark:border-amber-800/50">
@@ -117,13 +121,21 @@ export default function SearchResults() {
           </p>
         </Show>
         <Show when={ctx.totalCards() > 0} fallback={
-          <div class="border-t border-gray-200 dark:border-gray-800">
-            <ResultsSummaryBar
-              effectiveQuery={ctx.effectiveQuery()}
-              effectiveBreakdown={ctx.effectiveBreakdown()}
-              cardCount={0}
-              zeroResult
-            />
+          <div
+            classList={{
+              'border-t border-gray-200 dark:border-gray-800':
+                (ctx.effectiveQuery().trim() !== '' && !!ctx.histograms()) ||
+                !!(ctx.hasPrintingConditions() && !ctx.printingDisplay()),
+            }}
+          >
+            <Show when={ctx.effectiveQuery().trim() !== ''}>
+              <ResultsSummaryBar
+                effectiveQuery={ctx.effectiveQuery()}
+                effectiveBreakdown={ctx.effectiveBreakdown()}
+                cardCount={0}
+                zeroResult
+              />
+            </Show>
             <SuggestionList
               suggestions={() => ctx.suggestions() ?? []}
               mode="empty"
@@ -133,6 +145,8 @@ export default function SearchResults() {
               }}
               formatDualCount={formatDualCount}
               navigateToDocs={ctx.navigateToDocs}
+              suppressTopBorder={ctx.effectiveQuery().trim() === ''}
+              exampleSearchPanel={ctx.effectiveQuery().trim() === ''}
             />
           </div>
         }>

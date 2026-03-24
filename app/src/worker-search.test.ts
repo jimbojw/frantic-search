@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { NodeCache, index, printingIndex, TEST_DATA, TEST_PRINTING_DATA, CardFlag, Format } from '@frantic-search/shared'
 import { CardIndex } from '@frantic-search/shared'
 import { PrintingIndex } from '@frantic-search/shared'
+import { emptyUrlLiveQuerySuggestionPool } from './worker-empty-url-suggestions'
 import { runSearch } from './worker-search'
 
 const cache = new NodeCache(index, printingIndex)
@@ -666,5 +667,42 @@ describe('artist-atag suggestions (Spec 153)', () => {
     expect(artistAtag).toBeDefined()
     expect(artistAtag!.priority).toBe(25)
     expect(artistAtag!.explain).toBe('Use atag: for illustration tags.')
+  })
+})
+
+describe('Spec 155: empty URL live query suggestions', () => {
+  it('returns sampled starter suggestions when emptyUrlLiveQuery is set', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '', emptyUrlLiveQuery: true },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.suggestions).toHaveLength(3)
+    expect(result.suggestions[0]).toMatchObject({
+      id: 'example-query',
+      variant: 'rewrite',
+    })
+    const allowed = new Set(emptyUrlLiveQuerySuggestionPool().map((s) => s.query))
+    for (const s of result.suggestions) {
+      expect(allowed.has(s.query)).toBe(true)
+    }
+    const lens = result.suggestions.map((s) => (s.query ?? '').length)
+    expect(lens[1]!).toBeGreaterThanOrEqual(lens[0]!)
+    expect(lens[2]!).toBeGreaterThanOrEqual(lens[1]!)
+  })
+
+  it('rejects empty live query without emptyUrlLiveQuery', () => {
+    expect(() =>
+      runSearch({
+        msg: { type: 'search', queryId: 1, query: '' },
+        cache,
+        index,
+        printingIndex,
+        sessionSalt,
+      }),
+    ).toThrow()
   })
 })

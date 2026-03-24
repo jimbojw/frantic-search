@@ -483,8 +483,10 @@ async function init(): Promise<void> {
 
     const hasPinned = !!msg.pinnedQuery?.trim()
     const hasLive = !!msg.query.trim()
+    const allowEmptyUrlLive =
+      !!msg.emptyUrlLiveQuery && !msg.query.trim() && !msg.pinnedQuery?.trim()
 
-    if (!hasLive && !hasPinned) return
+    if (!hasLive && !hasPinned && !allowEmptyUrlLive) return
 
     const resultMsg = runSearch({
       msg,

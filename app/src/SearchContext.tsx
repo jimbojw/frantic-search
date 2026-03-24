@@ -25,6 +25,11 @@ export interface SearchContextValue {
   uniqueMode: Accessor<UniqueMode>
   /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
   suggestions: Accessor<Suggestion[]>
+  /**
+   * Spec 155: Single-pane URL has `q` (value may be empty). True when not in Dual Wield layout
+   * so SearchResults can show the results shell + starter suggestions without typed text.
+   */
+  urlHasEmptyLiveInUrl?: Accessor<boolean>
   viewMode: Accessor<ViewMode>
   changeViewMode: (mode: ViewMode) => void
   changeUniqueMode: (mode: UniqueMode) => void

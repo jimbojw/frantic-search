@@ -67,6 +67,10 @@ export function SuggestionList(props: {
   hiddenCardCount?: number
   /** For rider include-extras: hidden printing count when applicable */
   hiddenPrintingCount?: number
+  /** When true, omit sky top border (nothing above this panel in the results card). Spec 155 empty `q`. */
+  suppressTopBorder?: boolean
+  /** Spec 155: empty effective query — starter chips, not refinements of a failed search. */
+  exampleSearchPanel?: boolean
 }) {
   const filtered = createMemo(() => {
     const list = props.suggestions() ?? []
@@ -81,12 +85,17 @@ export function SuggestionList(props: {
   return (
     <Show when={filtered().length > 0}>
       <div
-        class="px-4 py-4 border-t border-sky-200 dark:border-sky-800 bg-sky-50/90 dark:bg-sky-950/25"
+        class="px-4 py-4 bg-sky-50/90 dark:bg-sky-950/25"
+        classList={{
+          'border-t border-sky-200 dark:border-sky-800': !props.suppressTopBorder,
+        }}
         role="region"
-        aria-label="Query refinement suggestions"
+        aria-label={
+          props.exampleSearchPanel ? 'Example search suggestions' : 'Query refinement suggestions'
+        }
       >
         <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Try a query refinement?
+          {props.exampleSearchPanel ? 'Try an example search?' : 'Try a query refinement?'}
         </h3>
         <div class="flex flex-col gap-2 text-base text-gray-700 dark:text-gray-300">
           <For each={filtered()}>
