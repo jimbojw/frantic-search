@@ -181,6 +181,8 @@ Each would be a new section in this spec (or a separate spec if complex). Artist
 
 **Related:** Spec 154 (Bare-Term Field Upgrade) handles the inverse case: bare terms (no field) that match known values — e.g. `landfall` → `kw:landfall`, `mh2` → `set:mh2`. That spec operates on BARE nodes; this spec operates on FIELD nodes.
 
+**Related:** Spec 158 (Nonexistent Field) handles **field names that are not supported at all** (not in `FIELD_ALIASES`), mapped by an explicit registry to a supported field — e.g. `supertype:` / `subtype:` → `t:`. Unlike this spec, Spec 158 does **not** require zero results or positive alternative counts, and it appears as a **rider** when other clauses still match cards.
+
 ## Acceptance Criteria
 
 1. `is:white` with zero results shows up to three chips: ci:w, c:w, produces:w — only those that return results.

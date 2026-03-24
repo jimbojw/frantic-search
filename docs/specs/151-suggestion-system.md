@@ -50,7 +50,7 @@ A suggestion is a single actionable item the user can tap.
 /** Single suggestion shown to the user. */
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
-  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'card-type' | 'artist-atag' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
+  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'nonexistent-field' | 'card-type' | 'artist-atag' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
@@ -93,8 +93,8 @@ export type Suggestion = {
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, bare-term-upgrade, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
-| Non-empty riders | empty-list, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list first, then unique-prints, then include-extras |
+| Empty state | empty-list, include-extras, bare-term-upgrade, nonexistent-field, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
+| Non-empty riders | empty-list, nonexistent-field, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list, then nonexistent-field (Spec 158), then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
 
@@ -109,6 +109,7 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 | id | priority | Rationale |
 |----|----------|-----------|
 | empty-list | 0 | Highest — user cannot get results without a list |
+| nonexistent-field | 14 | Mistaken field name not in Scryfall; registry maps to a real field (Spec 158). Before bare-term-upgrade — invalid field clause is a hard engine error |
 | oracle | 20 | Reformulates bare tokens to oracle search |
 | wrong-field | 22 | Right value in wrong field; suggest correct field (Spec 153) |
 | stray-comma | 23 | Remove value-terminal commas mistaken for clause separators; Spec 157 |
@@ -137,6 +138,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | empty-list (tag) | Term in amber, "0 cards (0 prints)", click → navigateToLists | "This term requires a list with tags. [Import one now?](...)" |
 | unique-prints, include-extras | Label + optional count, click → setQuery | From `explain` or derived; [Learn more] if docRef |
 | wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
+| nonexistent-field (Spec 158) | New term (e.g. t:elf), click → setQuery | From `explain`; no counts in MVP; [Learn more] if docRef |
 | stray-comma (Spec 157) | Fixed clause(s) as typed (e.g. `o=surveil`), space-separated if several; click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
 | relaxed (Spec 156) | New term (e.g. ci:u, c:u), click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
 | bare-term-upgrade (Spec 154) | New term (e.g. kw:landfall), click → setQuery | From `explain`; [Learn more] if docRef |
@@ -160,6 +162,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | Stray comma (Spec 157) | At most one `Suggestion`: `{ id: 'stray-comma', query, label, explain, count, printingCount, docRef, priority: 23 }`. Trigger: totalCards === 0; effective query has unquoted FIELD values ending with `,`; cleaned query differs and returns > 0; omit if same `query` as another rewrite in the pass. Empty state only. |
 | Relaxed operator (Spec 156) | One `Suggestion` per (matching term, alternative operator) pair: `{ id: 'relaxed', query, label, explain, count, printingCount, docRef, priority: 24 }`. Trigger: totalCards === 0; positive FIELD on color/identity with `=` and non-count color value; alternative `:` / `>=` returns > 0. Empty state only. |
 | Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
+| Nonexistent field (Spec 158) | One `Suggestion` per offending span (deduped by `query`): `{ id: 'nonexistent-field', query, label, explain, docRef, priority: 14 }`. Trigger: effective query contains a registry-matched mistaken field (e.g. supertype:, subtype:); **no** totalCards gate; **no** alternative evaluation required for MVP (omit counts). Empty state and rider. |
 
 **Invariant:** Same triggers and tap actions as before. Placement and layout may be improved—looking good takes precedence over perfect parity with the status quo. "Learn more" links (docRef) are encouraged as part of the unified UI pattern.
 
@@ -169,6 +172,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 
 | Trigger | id | Spec | Notes |
 |---------|-----|------|------|
+| Nonexistent / mistaken field names | nonexistent-field | Spec 158 | Registry maps bogus fields (e.g. `supertype:`, `subtype:`) to a real field (`t:`). Empty + rider; no result-count gate. Draft. |
 | Card type tokens | card-type | TBD | "creatures" → `t:creature`; "creatures scry" → `t:creature o:scry`; narrowest first |
 | Bare term field upgrade | bare-term-upgrade | Spec 154 | Bare terms matching known values (keywords, set, format, otag, atag, game, frame, rarity) → suggest field prefix. "landfall" → `kw:landfall`; "mh2" → `set:mh2`. Implemented. |
 | Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
@@ -183,7 +187,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 - **Wrong-field (Spec 153):** Unified by Spec 153. In `buildSuggestions`, when totalCards === 0, walk effectiveBd for FIELD/NOT nodes with trigger fields (is:, in:, type:) and known color values; suggest ci:/c:/produces: alternatives that return > 0. Uses `evaluateAlternative` from `worker-alternative-eval.ts`.
 - **Artist-atag (Spec 153):** In `buildSuggestions`, when totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
-- **Rider order:** Fixed sequence `['empty-list', 'unique-prints', 'include-extras']` in `SuggestionList` (`RIDER_ORDER`). That order is unchanged by `include-extras` priority — priority governs **empty-state** sort only (`mode="empty"`).
+- **Rider order:** Fixed sequence `['empty-list', 'nonexistent-field', 'unique-prints', 'include-extras']` in `SuggestionList` (`RIDER_ORDER`; Spec 158). That order is unchanged by per-suggestion `priority` values — priority governs **empty-state** sort only (`mode="empty"`).
 
 ## Scope of Changes
 
@@ -215,6 +219,6 @@ Each future trigger gets its own spec. This document records the intended ids an
 1. After migration, empty-list CTA, include:extras, unique:prints, and oracle hint fire on the same triggers and perform the same actions. Layout may be improved; parity with pre-migration is not strict.
 2. All suggestion chips use `ChipButton` with consistent styling.
 3. Worker produces priority-ordered suggestions; when empty-list applies, SearchResults renders the Spec 126 block and skips inline chips.
-4. Rider suggestions (unique:prints, include:extras) appear in fixed order when both apply (unique-prints first).
+4. Rider suggestions appear in fixed `RIDER_ORDER` when multiple apply (see placement table: `empty-list`, then `nonexistent-field` when Spec 158 applies, then `unique-prints`, then `include-extras`).
 5. Works in single-pane and Dual Wield layouts.
 6. `Suggestion` type and worker-owned logic support future triggers without main-thread changes.
