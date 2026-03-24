@@ -608,6 +608,89 @@ describe('wrong-field suggestions (Spec 153)', () => {
   })
 })
 
+describe('operator relaxation suggestions (Spec 156)', () => {
+  it('c=r with creature constraint yields relaxed c:r when that query matches', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'c=r t:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const relaxed = result.suggestions.filter((s) => s.id === 'relaxed')
+    expect(relaxed.some((s) => s.label === 'c:r')).toBe(true)
+    for (const s of relaxed) {
+      expect(s.priority).toBe(24)
+    }
+  })
+
+  it('ci=w with instant constraint yields relaxed ci>=w when that query matches', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ci=w t:instant' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const relaxed = result.suggestions.filter((s) => s.id === 'relaxed')
+    expect(relaxed.some((s) => s.label === 'ci>=w')).toBe(true)
+  })
+
+  it('ci=wu with creature constraint yields relaxed ci:wu', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ci=wu t:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const relaxed = result.suggestions.filter((s) => s.id === 'relaxed')
+    expect(relaxed.some((s) => s.label === 'ci:wu')).toBe(true)
+  })
+
+  it('numeric ci= does not emit relaxed suggestions', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ci=2' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.suggestions.filter((s) => s.id === 'relaxed')).toHaveLength(0)
+  })
+
+  it('negated -c=r does not emit relaxed suggestions for that term', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '-c=r name:zzznopeaaa' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.suggestions.filter((s) => s.id === 'relaxed')).toHaveLength(0)
+  })
+
+  it('trailing comma after term is dropped in suggested query', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'c=r, t:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const relaxed = result.suggestions.filter((s) => s.id === 'relaxed')
+    expect(relaxed.length).toBeGreaterThan(0)
+    for (const s of relaxed) {
+      expect(s.query).not.toContain('c:r,')
+    }
+  })
+})
+
 describe('artist-atag suggestions (Spec 153)', () => {
   const illustrationTags = new Map<string, Uint32Array>([
     ['chair', new Uint32Array([0, 2, 5])],

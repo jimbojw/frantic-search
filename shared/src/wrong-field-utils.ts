@@ -22,6 +22,12 @@ export const FORMAT_IS_TRIGGER_FIELDS = fieldKeysForCanonicals(['type', 'in'])
 export const ARTIST_TRIGGER_FIELDS = fieldKeysForCanonicals(['artist'])
 export const ATAG_TRIGGER_FIELDS = fieldKeysForCanonicals(['atag'])
 
+/** Face color field aliases (Spec 156 `=` → `:` relaxation). */
+export const COLOR_EQUALS_RELAX_FIELDS = fieldKeysForCanonicals(['color'])
+
+/** Color identity field aliases (Spec 156 `=` → `:` / `>=`). */
+export const IDENTITY_EQUALS_RELAX_FIELDS = fieldKeysForCanonicals(['identity'])
+
 const TRIGGER_FIELDS = COLOR_TRIGGER_FIELDS
 
 const SINGLE_COLOR_TO_LETTER: Record<string, string> = {
@@ -82,6 +88,54 @@ export type ColorAlternative = {
  * Build replacement alternatives for a FIELD or NOT node whose label matches
  * a trigger field (is:, in:, type:) with a known color value.
  */
+export type OperatorRelaxAlternative = {
+  label: string
+  explain: string
+  docRef: string
+}
+
+const EXPLAIN_RELAX_ID_SUBSET =
+  'Identity fits within these colors (subset)—typical for deck legality. = matches identity exactly.'
+const EXPLAIN_RELAX_ID_SUPER = 'Identity includes at least these colors (superset).'
+const EXPLAIN_RELAX_COLOR =
+  'Face includes at least these colors. = is an exact color match; : treats the value as a superset.'
+
+/**
+ * Spec 156: replacement clauses when relaxing `=` on color / identity for known non-count values.
+ * Returns [] for digit-only or unknown color values.
+ */
+export function getOperatorRelaxAlternatives(
+  canonical: 'color' | 'identity',
+  userFieldToken: string,
+  rawValue: string,
+): OperatorRelaxAlternative[] {
+  if (!rawValue || /^\d+$/.test(rawValue) || !isKnownColorValue(rawValue)) return []
+  const normalized = normalizeForDisplay(rawValue)
+  const docRef =
+    canonical === 'identity' ? 'reference/fields/face/identity' : 'reference/fields/face/color'
+  if (canonical === 'color') {
+    return [
+      {
+        label: `${userFieldToken}:${normalized}`,
+        explain: EXPLAIN_RELAX_COLOR,
+        docRef,
+      },
+    ]
+  }
+  return [
+    {
+      label: `${userFieldToken}:${normalized}`,
+      explain: EXPLAIN_RELAX_ID_SUBSET,
+      docRef,
+    },
+    {
+      label: `${userFieldToken}>=${normalized}`,
+      explain: EXPLAIN_RELAX_ID_SUPER,
+      docRef,
+    },
+  ]
+}
+
 export function getColorAlternatives(node: BreakdownNode): ColorAlternative[] {
   const rawValue = extractValueFromLabel(node.label)
   const normalized = normalizeForDisplay(rawValue)

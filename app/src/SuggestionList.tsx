@@ -12,6 +12,7 @@ const EMPTY_STATE_IDS = [
   'bare-term-upgrade',
   'oracle',
   'wrong-field',
+  'relaxed',
   'card-type',
   'keyword',
   'artist-atag',

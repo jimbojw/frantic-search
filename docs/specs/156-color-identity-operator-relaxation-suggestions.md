@@ -1,6 +1,6 @@
 # Spec 156: Color / Color Identity Operator Relaxation Suggestions
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 036 (Source Spans), Spec 002 (Query Engine), Spec 055 (Color / Color Identity Number Queries)
 
@@ -132,6 +132,13 @@ If several positive color or identity `=` terms appear (any alias, e.g. `c=`, `c
 6. Suggestions appear only when `totalCards === 0` (empty state), with priority consistent with Spec 151.
 7. No duplicate chips for semantically identical `c:` vs `c>=` rewrites.
 8. If the relaxed field term in the source is immediately followed by a comma used as a mistaken separator (e.g. `ci=u,`), the suggested full query uses the relaxed operator **without** that trailing comma on the clause (e.g. `ci:u`, not `ci:u,`).
+
+## Implementation notes
+
+- **Shared:** `COLOR_EQUALS_RELAX_FIELDS`, `IDENTITY_EQUALS_RELAX_FIELDS`, and `getOperatorRelaxAlternatives` live in [shared/src/wrong-field-utils.ts](../../shared/src/wrong-field-utils.ts); unit tests in [shared/src/wrong-field-utils.test.ts](../../shared/src/wrong-field-utils.test.ts).
+- **Worker:** [app/src/worker-suggestions.ts](../../app/src/worker-suggestions.ts) emits `id: 'relaxed'` suggestions at priority **24** in the same empty-state gate as wrong-field; uses `collectFieldNodes` with operator `=`, positive `FIELD` nodes only, and `evaluateAlternative` / `spliceQuery` on the effective query. Integration tests: [app/src/worker-search.test.ts](../../app/src/worker-search.test.ts) (`operator relaxation suggestions (Spec 156)`).
+- **Trailing comma:** The lexer attaches a comma to the field value word (e.g. `c=r,` → value token `r,`). The worker’s value predicate accepts that form when the prefix before the comma is a known non-count color; it strips the comma for building replacement labels. The breakdown span covers the full `field=value` token including the comma, so replacing with `c:r` removes the stray comma from the suggested full query.
+- **UI:** [app/src/SuggestionList.tsx](../../app/src/SuggestionList.tsx) includes `relaxed` in `EMPTY_STATE_IDS`.
 
 ## Scope of changes (anticipated)
 

@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, test } from 'vitest'
-import { isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from './wrong-field-utils'
+import {
+  isKnownColorValue,
+  getColorAlternatives,
+  isFormatOrIsValue,
+  getFormatOrIsAlternatives,
+  getArtistAtagAlternative,
+  ARTIST_TRIGGER_FIELDS,
+  ATAG_TRIGGER_FIELDS,
+  COLOR_EQUALS_RELAX_FIELDS,
+  IDENTITY_EQUALS_RELAX_FIELDS,
+  getOperatorRelaxAlternatives,
+} from './wrong-field-utils'
 
 describe('isKnownColorValue', () => {
   test('single color names', () => {
@@ -183,6 +194,54 @@ describe('getArtistAtagAlternative (Spec 153)', () => {
   test('empty value returns null', () => {
     const node = { type: 'FIELD' as const, label: 'a:', matchCount: 0 }
     expect(getArtistAtagAlternative(node, 'artist')).toBeNull()
+  })
+})
+
+describe('getOperatorRelaxAlternatives (Spec 156)', () => {
+  test('returns [] for digit-only value', () => {
+    expect(getOperatorRelaxAlternatives('identity', 'ci', '2')).toEqual([])
+    expect(getOperatorRelaxAlternatives('color', 'c', '01')).toEqual([])
+  })
+
+  test('returns [] when value is not a known color', () => {
+    expect(getOperatorRelaxAlternatives('identity', 'ci', 'xyz')).toEqual([])
+    expect(getOperatorRelaxAlternatives('color', 'c', 'foil')).toEqual([])
+  })
+
+  test('identity returns : then >= with preserved field token', () => {
+    const alts = getOperatorRelaxAlternatives('identity', 'commander', 'u')
+    expect(alts).toHaveLength(2)
+    expect(alts[0].label).toBe('commander:u')
+    expect(alts[1].label).toBe('commander>=u')
+    expect(alts[0].explain).toContain('subset')
+    expect(alts[1].explain).toContain('superset')
+    expect(alts[0].docRef).toBe('reference/fields/face/identity')
+    expect(alts[1].docRef).toBe('reference/fields/face/identity')
+  })
+
+  test('color returns only colon alternative', () => {
+    const alts = getOperatorRelaxAlternatives('color', 'c', 'r')
+    expect(alts).toHaveLength(1)
+    expect(alts[0].label).toBe('c:r')
+    expect(alts[0].docRef).toBe('reference/fields/face/color')
+  })
+
+  test('normalizes single color names like wrong-field', () => {
+    expect(getOperatorRelaxAlternatives('identity', 'id', 'blue')[0].label).toBe('id:u')
+  })
+})
+
+describe('COLOR_EQUALS_RELAX_FIELDS and IDENTITY_EQUALS_RELAX_FIELDS', () => {
+  test('color keys include c and color', () => {
+    expect(COLOR_EQUALS_RELAX_FIELDS).toContain('c')
+    expect(COLOR_EQUALS_RELAX_FIELDS).toContain('color')
+  })
+
+  test('identity keys include ci, id, commander, cmd', () => {
+    expect(IDENTITY_EQUALS_RELAX_FIELDS).toContain('ci')
+    expect(IDENTITY_EQUALS_RELAX_FIELDS).toContain('id')
+    expect(IDENTITY_EQUALS_RELAX_FIELDS).toContain('commander')
+    expect(IDENTITY_EQUALS_RELAX_FIELDS).toContain('cmd')
   })
 })
 

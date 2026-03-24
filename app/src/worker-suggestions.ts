@@ -1,6 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode, CardIndex, PrintingIndex, NodeCache, Suggestion } from '@frantic-search/shared'
-import { getBareNodes, getTrailingBareNodes, getBareTermAlternatives, getMultiWordAlternatives, getAdjacentBareWindows, isKnownColorValue, getColorAlternatives, isFormatOrIsValue, getFormatOrIsAlternatives, getArtistAtagAlternative, COLOR_TRIGGER_FIELDS, FORMAT_IS_TRIGGER_FIELDS, ARTIST_TRIGGER_FIELDS, ATAG_TRIGGER_FIELDS } from '@frantic-search/shared'
+import {
+  getBareNodes,
+  getTrailingBareNodes,
+  getBareTermAlternatives,
+  getMultiWordAlternatives,
+  getAdjacentBareWindows,
+  isKnownColorValue,
+  getColorAlternatives,
+  isFormatOrIsValue,
+  getFormatOrIsAlternatives,
+  getArtistAtagAlternative,
+  COLOR_TRIGGER_FIELDS,
+  FORMAT_IS_TRIGGER_FIELDS,
+  ARTIST_TRIGGER_FIELDS,
+  ATAG_TRIGGER_FIELDS,
+  COLOR_EQUALS_RELAX_FIELDS,
+  IDENTITY_EQUALS_RELAX_FIELDS,
+  getOperatorRelaxAlternatives,
+} from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
@@ -362,6 +380,61 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
             printingCount,
             docRef: alt.docRef,
             priority: 22,
+            variant: 'rewrite',
+          })
+        }
+      }
+    }
+
+    // Spec 156: Relax color / identity `=` to `:` / `>=` when exact match yields zero results
+    const relaxValuePredicate = (value: string) => {
+      const v = value.endsWith(',') ? value.slice(0, -1) : value
+      return isKnownColorValue(v) && !/^\d+$/.test(v)
+    }
+    const relaxFieldOpts = { positive: true, negated: false, valuePredicate: relaxValuePredicate } as const
+    const colorEqNodes = collectFieldNodes(effectiveBd, COLOR_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
+    const identityEqNodes = collectFieldNodes(effectiveBd, IDENTITY_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
+    const relaxedEmitted = new Set<string>()
+    for (const node of [...colorEqNodes, ...identityEqNodes]) {
+      if (!node.span || node.type !== 'FIELD') continue
+      const eqIdx = node.label.indexOf('=')
+      if (eqIdx < 0) continue
+      const fieldToken = node.label.slice(0, eqIdx)
+      let rawValue = node.label.slice(eqIdx + 1)
+      if (rawValue.endsWith(',')) rawValue = rawValue.slice(0, -1)
+      const fieldLower = fieldToken.toLowerCase()
+      const canonical = (COLOR_EQUALS_RELAX_FIELDS as readonly string[]).some((f) => f.toLowerCase() === fieldLower)
+        ? ('color' as const)
+        : (IDENTITY_EQUALS_RELAX_FIELDS as readonly string[]).some((f) => f.toLowerCase() === fieldLower)
+          ? ('identity' as const)
+          : null
+      if (!canonical) continue
+      let span = node.span
+      if (span.end < effectiveQuery.length && effectiveQuery[span.end] === ',') {
+        span = { start: span.start, end: span.end + 1 }
+      }
+      for (const alt of getOperatorRelaxAlternatives(canonical, fieldToken, rawValue)) {
+        const altQuery = spliceQuery(effectiveQuery, span, alt.label)
+        if (relaxedEmitted.has(altQuery)) continue
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        if (cardCount > 0) {
+          relaxedEmitted.add(altQuery)
+          suggestions.push({
+            id: 'relaxed',
+            query: altQuery,
+            label: alt.label,
+            explain: alt.explain,
+            count: cardCount,
+            printingCount,
+            docRef: alt.docRef,
+            priority: 24,
             variant: 'rewrite',
           })
         }
