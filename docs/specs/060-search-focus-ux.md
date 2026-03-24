@@ -22,9 +22,11 @@ Make the search bar the primary entry point with platform-aware behavior: pressi
 | State | Meaning | When it changes |
 |-------|---------|-----------------|
 | **Idle** | User has not interacted with search | Initial load, or after `navigateHome` reset |
-| **Engaged** | User has interacted with search | First user-initiated focus (click/tap) or first keystroke, or pressing `/` |
+| **Engaged** | User has interacted with search | First user-initiated focus (click/tap) or **pointer down on the search input**, first keystroke, or pressing `/` |
 
 Programmatic focus (e.g. initial load on desktop) does **not** set engaged.
+
+**Desktop edge case:** On fine-pointer devices the textarea is auto-focused on load without setting engaged. If the user clicks the textarea while it is *already* focused, the browser does not fire a second `focus` event, so `onFocus` alone would never set engaged. Treat **`pointerdown` on the search textarea** as engagement (same outcome as clicking in after a blur). This keeps URL sync (e.g. empty `?q=`) and other engaged-only behavior consistent with user intent.
 
 ### Header Collapse
 
@@ -55,8 +57,8 @@ Previously, `inputFocused` alone triggered collapse. That caused the header to c
          │                                         │
          └────────────────────┬────────────────────┘
                               │
-                              │ User taps/clicks input
-                              │ OR types (e.g. via /)
+                              │ User taps/clicks input (incl. click while already focused)
+                              │ OR pointerdown on textarea OR types (e.g. via /)
                               ▼
                        userEngaged = true
                               │
@@ -99,6 +101,10 @@ Use at focus time; no need to react to changes (e.g. plugging in a mouse on a ta
 
 In `onFocus`: if `programmaticFocusInProgress`, clear it and do not set `userEngaged`. Otherwise, set `userEngaged(true)`.
 
+### User engagement from pointer on the textarea
+
+On the search textarea, `onPointerDown` (or equivalent) calls `setUserEngaged(true)` (idempotent). This covers the desktop case where the field already has focus from initial auto-focus and a click does not retrigger `onFocus`. Programmatic focus does not synthesize a pointer event, so engagement is still unset until the user acts.
+
 ### User engagement from typing
 
 In `onInput`, set `userEngaged(true)` on first keystroke (idempotent).
@@ -132,12 +138,18 @@ Unchanged from before: global listener, skip when focus is in input/textarea/sel
 | Input disabled (worker error) | Skip focus; `/` still navigates |
 | Search bar | Focus `textareaRef` (always a textarea) |
 | Desktop with touchscreen | `(pointer: fine)` typically true; auto-focus |
+| Desktop: click textarea after auto-focus (no blur) | `pointerdown` sets engaged even though `focus` does not refire |
 
 ## Acceptance Criteria
 
-- [ ] On desktop load with search view, search bar receives focus; header stays expanded.
-- [ ] On mobile load, no auto-focus; header stays expanded until user taps.
-- [ ] After user taps/clicks input or types, header collapses when input is focused.
-- [ ] Pressing `/` focuses search bar; `/` not typed; header collapses.
-- [ ] Pressing `/` on card/help/report navigates to search and focuses.
-- [ ] `navigateHome` resets `userEngaged`; header can expand again.
+- [x] On desktop load with search view, search bar receives focus; header stays expanded.
+- [x] On mobile load, no auto-focus; header stays expanded until user taps.
+- [x] After user taps/clicks input or types, header collapses when input is focused.
+- [x] On desktop, after auto-focus without `q` in the URL, a click on the textarea (still focused) sets engaged the same as refocusing after blur (e.g. empty `?q=` appears per URL-sync rules).
+- [x] Pressing `/` focuses search bar; `/` not typed; header collapses.
+- [x] Pressing `/` on card/help/report navigates to search and focuses.
+- [x] `navigateHome` resets `userEngaged`; header can expand again.
+
+## Implementation Notes
+
+- 2026-03-23: Added `pointerdown` on the single-pane search textarea so engagement (and thus empty `q=` URL projection) updates when the user clicks the field that already has focus from desktop auto-focus (`onFocus` does not run again).

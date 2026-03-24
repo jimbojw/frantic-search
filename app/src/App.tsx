@@ -1612,6 +1612,7 @@ function App() {
                   updateSelection(e.currentTarget)
                 }}
                 onScroll={(e) => { if (textareaHlRef) { textareaHlRef.scrollTop = e.currentTarget.scrollTop; textareaHlRef.scrollLeft = e.currentTarget.scrollLeft } }}
+                onPointerDown={() => { setUserEngaged(true) }}
                 onFocus={(e) => { updateSelection(e.currentTarget); setIsSearchFocused(true); if (!programmaticFocusInProgress) setUserEngaged(true); else programmaticFocusInProgress = false; e.preventDefault() }}
                 onBlur={() => { setIsSearchFocused(false); flushSearchCapture() }}
                 disabled={workerStatus() === 'error'}
