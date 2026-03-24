@@ -18,7 +18,7 @@ When a user arrives from an ad campaign with a pre-populated query in the URL (e
 
 ### 1. Schema Extension
 
-Add `triggered_by: "url" | "user"` to the `search_executed` event properties (Spec 085 §4).
+Add `triggered_by: "url" | "user"` to the `search_executed` event properties (Spec 085 §4). Other properties on the same event (e.g. `url_snapshot`, coherence rules) are defined in Spec 085 §7 ([GitHub #184](https://github.com/jimbojw/frantic-search/issues/184)).
 
 ### 2. Value Semantics
 
@@ -68,3 +68,4 @@ Only the left/single pane emits `search_executed`; no change for right pane.
 - **Empty query:** `search_executed` is not fired (unchanged behavior).
 - **User edits before first result:** `triggered_by: "user"` (query no longer matches initial).
 - **Dual Wield with only right-pane query on init:** Left pane is empty; no `search_executed` for left pane. Right pane does not emit `search_executed` (unchanged).
+- **Debounced send vs current query:** If Spec 085’s coherence check drops a pending event because the user changed the effective query, `triggered_by` is irrelevant for that discarded payload; the next qualifying result schedules a new pending capture.

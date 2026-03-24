@@ -72,7 +72,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 
 | Event                     | Properties                                                              |
 |---------------------------|-------------------------------------------------------------------------|
-| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user" }` (Spec 144) |
+| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user", url_snapshot: string }` (Spec 144; `url_snapshot` + coherence rules — [GitHub #184](https://github.com/jimbojw/frantic-search/issues/184)) |
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
@@ -99,9 +99,13 @@ Search runs on every keystroke (ADR-003). Emitting every search would flood Post
 
 **Throttling:** Debounce or throttle: only capture after the user stops typing for 500–1000 ms, or on blur of the search input.
 
-**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `effectiveQuery()`, result count (from `msg.indices.length` or `totalDisplayItems()`), `msg.uniqueMode`, `msg.includeExtras`.
+**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.uniqueMode`, `msg.includeExtras`, and `location.pathname` + `location.search` read synchronously in that handler.
 
-**Event:** `captureSearchExecuted({ query, used_extension, results_count })`.
+**Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot })`.
+
+**Coherence (Issue #184):** The debounced send must not fire if the trimmed effective query has changed since that result was scheduled; discard the pending payload. PostHog’s automatic `$current_url` reflects the moment `capture` runs, which can lag the stored `query` by the debounce window—use `url_snapshot` (pathname + search at result-handling time) for analysis that must align query, result count, and URL.
+
+**Pinned-only (live query empty):** `results_count` uses the same cardinality as normal searches: `pinnedPrintingCount` when view mode is `images` or `full`, otherwise `pinnedIndicesCount`. The card list is empty by design, but the count must reflect pinned matches, not `indices.length` (always zero).
 
 ### 8. UI Capture Points
 
@@ -174,5 +178,6 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 
 - **Pinned + live query:** `used_extension` should reflect the effective combined query. The worker computes effective breakdown; ensure `includeExtras` and `uniqueMode` from the effective evaluation are used when both pinned and live are present.
 - **Empty query:** Do not capture `search_executed` when the user clears the search.
+- **Stale debounced capture:** If the user keeps typing after a result, drop the pending `search_executed` when the timer fires unless `effectiveQuery().trim()` still equals the pending `query`.
 - **Try on Scryfall with empty effective query:** If the control is still activated (e.g. rare edge), emit `scryfall_outlink_clicked` with `query: ''`. In normal UX the results summary bar is omitted when the effective query is empty (Spec 155), so this is uncommon.
 - **PostHog sendBeacon:** If the SDK falls back to `sendBeacon`, those requests bypass the service worker. Prefer `fetch` transport if configurable.

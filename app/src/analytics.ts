@@ -23,6 +23,8 @@ export function captureSearchExecuted(params: {
   used_extension: boolean
   results_count: number
   triggered_by: 'url' | 'user'
+  /** Pathname + search when the result was applied; aligns query/results with URL for analysis (GitHub #184). */
+  url_snapshot: string
 }): void {
   posthog.capture('search_executed', params)
 }

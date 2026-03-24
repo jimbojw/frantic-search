@@ -434,7 +434,7 @@ function App() {
   const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
   let validateRequestId = 0
   const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
-  const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture()
+  const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture(() => effectiveQuery().trim())
   let searchResolvedFromUrlFired = false
 
   function serializeDeckList(instances: InstanceState[], format: DeckFormat, listName?: string): Promise<string> {
@@ -667,16 +667,25 @@ function App() {
           const eq = effectiveQuery().trim()
           if (eq) {
             const usedExtension = (msg.includeExtras ?? false) || msg.uniqueMode !== 'cards'
-            const resultsCount = msg.printingIndices && msg.printingIndices.length > 0 && (viewMode() === 'images' || viewMode() === 'full')
-              ? msg.printingIndices.length
-              : msg.indices.length
+            const liveQ = query().trim()
+            const pinQ = pinnedQuery().trim()
+            const vm = viewMode()
+            const resultsCount =
+              !liveQ && pinQ
+                ? vm === 'images' || vm === 'full'
+                  ? msg.pinnedPrintingCount ?? msg.pinnedIndicesCount ?? 0
+                  : msg.pinnedIndicesCount ?? 0
+                : msg.printingIndices && msg.printingIndices.length > 0 && (vm === 'images' || vm === 'full')
+                  ? msg.printingIndices.length
+                  : msg.indices.length
             const triggeredBy =
               hadQueryInUrlOnInit &&
               !searchResolvedFromUrlFired &&
               query().trim() === initialQueries.left.trim()
                 ? 'url'
                 : 'user'
-            scheduleSearchCapture(eq, usedExtension, resultsCount, triggeredBy)
+            const urlSnapshot = `${location.pathname}${location.search}`
+            scheduleSearchCapture(eq, usedExtension, resultsCount, triggeredBy, urlSnapshot)
             if (hadQueryInUrlOnInit && !searchResolvedFromUrlFired && query().trim() === initialQueries.left.trim()) {
               searchResolvedFromUrlFired = true
               captureSearchResolvedFromUrl({
