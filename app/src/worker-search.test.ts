@@ -608,6 +608,91 @@ describe('wrong-field suggestions (Spec 153)', () => {
   })
 })
 
+describe('nonexistent-field suggestions (Spec 158)', () => {
+  it('subtype:elf alone yields t:elf rewrite without counts', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'subtype:elf' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const nf = result.suggestions.filter((s) => s.id === 'nonexistent-field')
+    expect(nf).toHaveLength(1)
+    expect(nf[0].label).toBe('t:elf')
+    expect(nf[0].query).toBe('t:elf')
+    expect(nf[0].priority).toBe(14)
+    expect(nf[0].variant).toBe('rewrite')
+    expect(nf[0].count).toBeUndefined()
+    expect(nf[0].printingCount).toBeUndefined()
+    expect(nf[0].docRef).toBe('reference/fields/face/type')
+  })
+
+  it('compound query with matches still suggests nonexistent-field (rider context)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ci:g subtype:elf' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBeGreaterThan(0)
+    const nf = result.suggestions.filter((s) => s.id === 'nonexistent-field')
+    expect(nf).toHaveLength(1)
+    expect(nf[0].label).toBe('t:elf')
+    expect(nf[0].query).toBe('ci:g t:elf')
+  })
+
+  it('-subtype:elf suggests -t:elf', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '-subtype:elf' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const nf = result.suggestions.filter((s) => s.id === 'nonexistent-field')
+    expect(nf).toHaveLength(1)
+    expect(nf[0].label).toBe('-t:elf')
+    expect(nf[0].query).toBe('-t:elf')
+  })
+
+  it('subtype:/elf/ suggests t:/elf/', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'subtype:/elf/' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const nf = result.suggestions.filter((s) => s.id === 'nonexistent-field')
+    expect(nf).toHaveLength(1)
+    expect(nf[0].label).toBe('t:/elf/')
+  })
+
+  it('subtype: with empty value does not emit nonexistent-field', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'subtype:' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.suggestions.filter((s) => s.id === 'nonexistent-field')).toHaveLength(0)
+  })
+
+  it('t:elf does not emit nonexistent-field', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:elf' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.suggestions.filter((s) => s.id === 'nonexistent-field')).toHaveLength(0)
+  })
+})
+
 describe('operator relaxation suggestions (Spec 156)', () => {
   it('c=r with creature constraint yields relaxed c:r when that query matches', () => {
     const result = runSearch({

@@ -97,6 +97,8 @@ export { getBareTermAlternatives, getMultiWordAlternatives, getAdjacentBareWindo
 export type { BareTermUpgradeContext, BareTermAlternative } from "./bare-term-upgrade-utils";
 export { buildStrayCommaCleanedQuery, buildStrayCommaCleanup } from "./stray-comma-cleanup";
 export type { StrayCommaCleanupResult } from "./stray-comma-cleanup";
+export { getNonexistentFieldRewrite, collectNonexistentFieldRewrites } from "./nonexistent-field-registry";
+export type { NonexistentFieldRegistryEntry, NonexistentFieldRewrite } from "./nonexistent-field-registry";
 export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";
 export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineValidation, LineValidationResult, ListValidationResult, ParsedEntry, ValidationResult } from "./list-lexer";
 export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";

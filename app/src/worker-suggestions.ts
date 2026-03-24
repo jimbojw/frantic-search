@@ -19,6 +19,7 @@ import {
   IDENTITY_EQUALS_RELAX_FIELDS,
   getOperatorRelaxAlternatives,
   buildStrayCommaCleanup,
+  collectNonexistentFieldRewrites,
 } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
@@ -118,6 +119,25 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       priority: 90,
       variant: 'rewrite',
     })
+  }
+
+  // Spec 158: Nonexistent field names (e.g. subtype:, supertype:) → t: — no totalCards gate
+  const trimmedEffective = effectiveQuery.trim()
+  if (trimmedEffective) {
+    for (const r of collectNonexistentFieldRewrites(trimmedEffective)) {
+      const query = spliceQuery(trimmedEffective, r.span, r.label)
+      const dupRewrite = suggestions.some((s) => s.variant === 'rewrite' && s.query === query)
+      if (dupRewrite) continue
+      suggestions.push({
+        id: 'nonexistent-field',
+        query,
+        label: r.label,
+        explain: r.explain,
+        docRef: r.docRef,
+        priority: 14,
+        variant: 'rewrite',
+      })
+    }
   }
 
   // include:extras - rider (totalCards > 0 and hidden playable-filtered results)

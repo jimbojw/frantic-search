@@ -9,6 +9,7 @@ export type Suggestion = {
     | 'unique-prints'
     | 'oracle'
     | 'wrong-field'
+    | 'nonexistent-field'
     | 'bare-term-upgrade'
     | 'card-type'
     | 'keyword'

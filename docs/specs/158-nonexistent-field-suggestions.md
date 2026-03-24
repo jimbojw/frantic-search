@@ -1,6 +1,6 @@
 # Spec 158: Nonexistent Field Name Suggestions (Pedagogical Field Mapping)
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 036 (Source Spans), Spec 002 (Query Engine)
 
