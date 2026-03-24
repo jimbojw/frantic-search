@@ -4,7 +4,7 @@
 
 **Depends on:** Spec 151 (Suggestion System), Spec 036 (Source Spans), Spec 002 (Query Engine), Spec 055 (Color / Color Identity Number Queries)
 
-**Addresses:** [GitHub issue #179](https://github.com/jimbojw/frantic-search/issues/179) (color / `ci` operator relaxation; dedicated “comma as separator” education is a separate follow-up, but see **Replacement canonicalization** below)
+**Addresses:** [GitHub issue #179](https://github.com/jimbojw/frantic-search/issues/179) (color / `ci` operator relaxation; **comma-as-separator** chips: **Spec 157**; see **Replacement canonicalization** below)
 
 ## Goal
 
@@ -34,7 +34,7 @@ Rationale: a negated exact term is already a **broad** predicate. Replacing it w
 
 ### Commas: education out of scope, canonicalization in scope
 
-A **separate** spec or follow-up may teach users that commas are not field separators and suggest stripping stray commas more broadly. This spec does **not** require general comma detection or copy about separator mistakes.
+**Spec 157** defines stray-comma rewrite suggestions and teaching copy. This spec does **not** require general comma detection beyond **replacement canonicalization** on the relaxed fragment.
 
 **Replacement canonicalization (in scope):** When building the relaxed query, the rewritten clause must be **clean** — no spurious trailing comma left stuck to that clause. Example: if the user typed `ci=u,` (comma intended as a separator before the next pseudo-filter), the suggested full query must use **`ci:u`**, not **`ci:u,`**. Implementation may widen the splice span to consume a single trailing comma after the field term, post-process the segment, or equivalent; the observable rule is the suggested `query` string after tap.
 
@@ -107,7 +107,7 @@ If several positive color or identity `=` terms appear (any alias, e.g. `c=`, `c
 ## Out of scope
 
 - **Negated** color / identity terms (`-c=…`, `-ci=…`).
-- Standalone **comma-as-separator** suggestions or teaching copy (broader than canonicalizing the relaxed clause).
+- Standalone **comma-as-separator** suggestions (broader than canonicalizing the relaxed clause) — **Spec 157**.
 - **`produces:`** and other non-`c` / non-`ci` color-adjacent fields (may be a later spec if the same confusion appears).
 - Changing parser or evaluator semantics — suggestions only.
 
