@@ -91,6 +91,8 @@ The component consumes `scryfallUrl`, `navigateToDocs`, `navigateToReport` from 
 
 ## Shared component: ResultsActionsColumn
 
+PostHog: **Try on Scryfall** fires `scryfall_outlink_clicked` (Spec 085).
+
 Extract the three-link column from UnifiedBreakdown into a shared component to avoid duplication:
 
 - **Try on Scryfall ↗** — Outlink; `text-blue-500` styling

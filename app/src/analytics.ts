@@ -66,6 +66,15 @@ export function captureSuggestionApplied(params: {
   posthog.capture('suggestion_applied', params)
 }
 
+export function captureScryfallOutlinkClicked(params: {
+  query: string
+  used_extension: boolean
+  results_count: number
+  pane_id?: string
+}): void {
+  posthog.capture('scryfall_outlink_clicked', params)
+}
+
 export function captureMenuChipUsed(params: {
   section: string
   chip_label: string

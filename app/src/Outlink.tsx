@@ -14,6 +14,7 @@ export type OutlinkProps = {
   class?: string
   children: JSX.Element
   'aria-label'?: string
+  onClick?: (e: MouseEvent) => void
 }
 
 /**
@@ -28,6 +29,7 @@ export function Outlink(props: OutlinkProps) {
       aria-label={props['aria-label']}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={props.onClick}
     >
       {props.children}
     </a>

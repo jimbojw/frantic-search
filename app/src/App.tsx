@@ -144,6 +144,7 @@ function App() {
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
+  const [includeExtras, setIncludeExtras] = createSignal(false)
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
   const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
@@ -156,6 +157,7 @@ function App() {
   const [printingIndices2, setPrintingIndices2] = createSignal<Uint32Array | undefined>(undefined)
   const [hasPrintingConditions2, setHasPrintingConditions2] = createSignal(false)
   const [uniqueMode2, setUniqueMode2] = createSignal<UniqueMode>('cards')
+  const [includeExtras2, setIncludeExtras2] = createSignal(false)
   const [pinnedBreakdown2, setPinnedBreakdown2] = createSignal<BreakdownNode | null>(null)
   const [effectiveBreakdown2, setEffectiveBreakdown2] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount2, setPinnedIndicesCount2] = createSignal<number | undefined>(undefined)
@@ -647,6 +649,7 @@ function App() {
           setPrintingIndices2(msg.printingIndices)
           setHasPrintingConditions2(msg.hasPrintingConditions)
           setUniqueMode2(msg.uniqueMode)
+          setIncludeExtras2(msg.includeExtras ?? false)
           setSuggestions2(msg.suggestions)
         } else if (matchesLeft || matchesLeftDual) {
           setIndices(msg.indices)
@@ -659,6 +662,7 @@ function App() {
           setPrintingIndices(msg.printingIndices)
           setHasPrintingConditions(msg.hasPrintingConditions)
           setUniqueMode(msg.uniqueMode)
+          setIncludeExtras(msg.includeExtras ?? false)
           setSuggestions(msg.suggestions)
           const eq = effectiveQuery().trim()
           if (eq) {
@@ -1177,6 +1181,7 @@ function App() {
     printingIndices,
     hasPrintingConditions,
     uniqueMode,
+    includeExtras,
     suggestions,
     display,
     printingDisplay,
@@ -1214,6 +1219,7 @@ function App() {
     printingIndices: printingIndices2,
     hasPrintingConditions: hasPrintingConditions2,
     uniqueMode: uniqueMode2,
+    includeExtras: includeExtras2,
     suggestions: suggestions2,
     display,
     printingDisplay,
@@ -1246,6 +1252,7 @@ function App() {
     hasPrintingConditions,
     printingDisplay,
     uniqueMode,
+    includeExtras,
     suggestions,
     viewMode,
     changeViewMode: leftPaneState.changeViewMode,

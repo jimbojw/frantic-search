@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Show } from 'solid-js'
+import { captureScryfallOutlinkClicked } from './analytics'
 import { useSearchContext } from './SearchContext'
+import type { SearchContextValue } from './SearchContext'
 import { IconBug } from './Icons'
 import { Outlink } from './Outlink'
+
+/** Same cardinality as `search_executed.results_count` (Spec 085, App.tsx worker handler). */
+function resultsCountForSearchAnalytics(ctx: SearchContextValue): number {
+  const printingLen = ctx.totalPrintingItems()
+  const vm = ctx.viewMode()
+  if (printingLen > 0 && (vm === 'images' || vm === 'full')) {
+    return printingLen
+  }
+  return ctx.totalCards()
+}
 
 /** Spec 152: Shared three-link column (Try on Scryfall, Syntax help, Report a problem). */
 export default function ResultsActionsColumn() {
@@ -12,6 +24,14 @@ export default function ResultsActionsColumn() {
       <Outlink
         href={ctx.scryfallUrl()}
         class="whitespace-nowrap text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-sm"
+        onClick={() => {
+          captureScryfallOutlinkClicked({
+            query: ctx.effectiveQuery().trim(),
+            used_extension: ctx.includeExtras() || ctx.uniqueMode() !== 'cards',
+            results_count: resultsCountForSearchAnalytics(ctx),
+            ...(ctx.paneId != null ? { pane_id: ctx.paneId } : {}),
+          })
+        }}
       >
         Try on Scryfall ↗
       </Outlink>

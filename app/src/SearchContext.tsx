@@ -25,6 +25,8 @@ export interface SearchContextValue {
   uniqueMode: Accessor<UniqueMode>
   /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
   suggestions: Accessor<Suggestion[]>
+  /** From worker eval; used for analytics (e.g. Scryfall outlink `used_extension`). Spec 085. */
+  includeExtras: Accessor<boolean>
   /**
    * Spec 155: Single-pane URL has `q` (value may be empty). True when not in Dual Wield layout
    * so SearchResults can show the results shell + starter suggestions without typed text.

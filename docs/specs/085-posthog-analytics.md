@@ -77,6 +77,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` |
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
 | `menu_chip_used`           | `{ section: string, chip_label: string }` (Spec 083) |
+| `scryfall_outlink_clicked` | `{ query: string, used_extension: boolean, results_count: number, pane_id?: string }` — fired when the user activates **Try on Scryfall** (Spec 152). `query` is the trimmed effective query (same string family as `search_executed`). `used_extension` matches §5 at click time. `results_count` uses the same cardinality as `search_executed.results_count`: when the pane has non-empty printing indices and view mode is `images` or `full`, use raw printing row count; otherwise use card index count. `pane_id` is `left` or `right` in dual-wield; omitted in single-pane (or set to `main` if the implementation standardizes on a string). |
 
 ### 5. `used_extension` Definition
 
@@ -90,7 +91,7 @@ The evaluator's `EvalOutput` exposes `includeExtras` and `uniqueMode`. The worke
 
 - Add `includeExtras?: boolean` to the `result` variant of `FromWorker` in `shared/src/worker-protocol.ts`.
 - In `app/src/worker-search.ts`, include `includeExtras` in the `SearchResult` (from `liveEval.includeExtras`).
-- In `app/src/App.tsx`, store `includeExtras` when handling results and pass it to the analytics module.
+- In `app/src/App.tsx`, store `includeExtras` when handling results, pass it to the analytics module, and expose it on `SearchContext` so UI such as the Scryfall outlink can compute `used_extension` at click time.
 
 ### 7. Search Capture Point
 
@@ -114,6 +115,7 @@ Add `captureUiInteracted({ element_name, action, state? })` at these locations:
 | `menu_drawer` | clicked  | MenuDrawer open/close                       |
 | `syntax_help` | clicked  | SyntaxHelp opened                           |
 | `bug_report`  | clicked  | BugReport opened                            |
+| `scryfall_outlink` | clicked (event: `scryfall_outlink_clicked`) | User activates **Try on Scryfall** in `ResultsActionsColumn` (Outlink); `captureScryfallOutlinkClicked()` |
 
 Suggestion chips (Spec 151, Spec 153) use a dedicated `suggestion_applied` event via `captureSuggestionApplied()`, fired in SuggestionList when the user taps a chip. Properties include `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider) for funnel analysis.
 
@@ -172,4 +174,5 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 
 - **Pinned + live query:** `used_extension` should reflect the effective combined query. The worker computes effective breakdown; ensure `includeExtras` and `uniqueMode` from the effective evaluation are used when both pinned and live are present.
 - **Empty query:** Do not capture `search_executed` when the user clears the search.
+- **Try on Scryfall with empty effective query:** If the control is still activated (e.g. rare edge), emit `scryfall_outlink_clicked` with `query: ''`. In normal UX the results summary bar is omitted when the effective query is empty (Spec 155), so this is uncommon.
 - **PostHog sendBeacon:** If the SDK falls back to `sendBeacon`, those requests bypass the service worker. Prefer `fetch` transport if configurable.
