@@ -4,6 +4,7 @@ import {
   getBareNodes,
   getTrailingBareNodes,
   getBareTermAlternatives,
+  getBareTagPrefixAlternatives,
   getMultiWordAlternatives,
   getAdjacentBareWindows,
   isKnownColorValue,
@@ -205,7 +206,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     for (const winIndices of windows) {
       if (winIndices.some((i) => consumedIndices.has(i))) continue
       const phrase = winIndices.map((i) => bareNodes[i].value).join(' ')
-      const alts = getMultiWordAlternatives(phrase, ctx)
+      const segments = winIndices.map((i) => bareNodes[i].value)
+      const alts = getMultiWordAlternatives(phrase, ctx, segments)
       if (alts.length === 0) continue
       const first = bareNodes[winIndices[0]]
       const last = bareNodes[winIndices[winIndices.length - 1]]
@@ -245,7 +247,15 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       const node = bareNodes[ni]
       if (!node.span) continue
       const alts = getBareTermAlternatives(node.value, ctx)
-      for (const alt of alts) {
+      const exactTagLabels = new Set(
+        alts
+          .filter((a) => a.label.startsWith('otag:') || a.label.startsWith('atag:'))
+          .map((a) => a.label.toLowerCase()),
+      )
+      const prefixAlts = getBareTagPrefixAlternatives(node.value, ctx).filter(
+        (a) => !exactTagLabels.has(a.label.toLowerCase()),
+      )
+      for (const alt of [...alts, ...prefixAlts]) {
         const modifiedLive = spliceQuery(msg.query, node.span, alt.label)
         const altEffective = hasPinned
           ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(modifiedLive)

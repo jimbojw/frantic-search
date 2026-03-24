@@ -2,6 +2,7 @@
 import { describe, test, expect } from 'vitest'
 import {
   getBareTermAlternatives,
+  getBareTagPrefixAlternatives,
   getMultiWordAlternatives,
   getAdjacentBareWindows,
   type BareTermUpgradeContext,
@@ -199,6 +200,166 @@ describe('getMultiWordAlternatives', () => {
     expect(alts).toHaveLength(2)
     expect(alts.map((a) => a.label)).toContain('kw:"Dan Frazier"')
     expect(alts.map((a) => a.label)).toContain('a:"Dan Frazier"')
+  })
+})
+
+describe('Spec 159: hyphen-slug otag/atag multi-word', () => {
+  const otagExplain = 'Use otag: for oracle tags.'
+  const otagDoc = 'reference/fields/face/otag'
+  const atagExplain = 'Use atag: for illustration tags.'
+  const atagDoc = 'reference/fields/face/atag'
+
+  test('mana + rock suggests otag:mana-rock with canonical casing', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-rock'],
+    }
+    const alts = getMultiWordAlternatives('mana rock', ctx, ['mana', 'rock'])
+    expect(alts).toContainEqual({
+      label: 'otag:mana-rock',
+      explain: otagExplain,
+      docRef: otagDoc,
+    })
+  })
+
+  test('mana + ro prefix-matches mana-rock', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-rock'],
+    }
+    const alts = getMultiWordAlternatives('mana ro', ctx, ['mana', 'ro'])
+    expect(alts).toContainEqual({
+      label: 'otag:mana-rock',
+      explain: otagExplain,
+      docRef: otagDoc,
+    })
+  })
+
+  test('ordering: exact before longer prefix; non-exact shorter key then lex', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['foo-baz', 'foo-bar', 'foo-ba'],
+    }
+    const alts = getMultiWordAlternatives('foo ba', ctx, ['foo', 'ba'])
+    const otags = alts.filter((a) => a.label.startsWith('otag:'))
+    expect(otags.map((a) => a.label)).toEqual([
+      'otag:foo-ba',
+      'otag:foo-bar',
+      'otag:foo-baz',
+    ])
+  })
+
+  test('cap at three otag suggestions when four or more keys match prefix', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-ruby', 'mana-rock', 'mana-ramp', 'mana-rate'],
+    }
+    const alts = getMultiWordAlternatives('mana r', ctx, ['mana', 'r'])
+    const otags = alts.filter((a) => a.label.startsWith('otag:'))
+    expect(otags).toHaveLength(3)
+  })
+
+  test('dedupes case-only duplicate labels toward cap', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['Mana-Rock', 'mana-rock', 'mana-rate'],
+    }
+    const alts = getMultiWordAlternatives('mana r', ctx, ['mana', 'r'])
+    const otags = alts.filter((a) => a.label.startsWith('otag:'))
+    expect(otags).toHaveLength(2)
+    expect(otags.map((a) => a.label)).toContain('otag:Mana-Rock')
+    expect(otags.map((a) => a.label)).toContain('otag:mana-rate')
+  })
+
+  test('no otag when slug matches no keys', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-rock'],
+    }
+    const alts = getMultiWordAlternatives('x y', ctx, ['x', 'y'])
+    expect(alts.filter((a) => a.label.startsWith('otag:'))).toEqual([])
+  })
+
+  test('atag prefix mirror', () => {
+    const ctx: BareTermUpgradeContext = {
+      illustrationTagLabels: ['chair-leg'],
+    }
+    const alts = getMultiWordAlternatives('chair le', ctx, ['chair', 'le'])
+    expect(alts).toContainEqual({
+      label: 'atag:chair-leg',
+      explain: atagExplain,
+      docRef: atagDoc,
+    })
+  })
+
+  test('trims segments before building slug', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-rock'],
+    }
+    const alts = getMultiWordAlternatives('Mana   rock', ctx, ['Mana ', ' rock '])
+    expect(alts).toContainEqual({
+      label: 'otag:mana-rock',
+      explain: otagExplain,
+      docRef: otagDoc,
+    })
+  })
+
+  test('empty segment after trim yields no tag alternatives', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['mana-rock'],
+    }
+    const alts = getMultiWordAlternatives('mana    ', ctx, ['mana', '   '])
+    expect(alts.filter((a) => a.label.startsWith('otag:'))).toEqual([])
+  })
+
+  test('return order: kw, a, then otag', () => {
+    const ctx: BareTermUpgradeContext = {
+      keywordLabels: ['alpha beta'],
+      artistLabels: ['alpha beta'],
+      oracleTagLabels: ['alpha-beta'],
+    }
+    const alts = getMultiWordAlternatives('alpha beta', ctx, ['alpha', 'beta'])
+    expect(alts.map((a) => a.label)).toEqual([
+      'kw:"alpha beta"',
+      'a:"alpha beta"',
+      'otag:alpha-beta',
+    ])
+  })
+})
+
+describe('Spec 159: single-token getBareTagPrefixAlternatives', () => {
+  const otagExplain = 'Use otag: for oracle tags.'
+  const otagDoc = 'reference/fields/face/otag'
+
+  test('partial token prefixes hyphenated oracle tag', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['triggered-ability', 'trigger-happy'],
+    }
+    const alts = getBareTagPrefixAlternatives('triggere', ctx)
+    expect(alts).toContainEqual({
+      label: 'otag:triggered-ability',
+      explain: otagExplain,
+      docRef: otagDoc,
+    })
+  })
+
+  test('whitespace-only value yields no alternatives', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['ramp'],
+    }
+    expect(getBareTagPrefixAlternatives('   ', ctx)).toEqual([])
+  })
+
+  test('merging with exact otag: dedupe removes duplicate label (worker pattern)', () => {
+    const ctx: BareTermUpgradeContext = {
+      oracleTagLabels: ['ramp', 'ramp-artifact'],
+    }
+    const exact = getBareTermAlternatives('ramp', ctx)
+    const exactTagLabels = new Set(
+      exact
+        .filter((a) => a.label.startsWith('otag:') || a.label.startsWith('atag:'))
+        .map((a) => a.label.toLowerCase()),
+    )
+    const prefixAlts = getBareTagPrefixAlternatives('ramp', ctx).filter(
+      (a) => !exactTagLabels.has(a.label.toLowerCase()),
+    )
+    expect(exact.map((a) => a.label)).toContain('otag:ramp')
+    expect(prefixAlts.map((a) => a.label)).not.toContain('otag:ramp')
+    expect(prefixAlts.map((a) => a.label)).toContain('otag:ramp-artifact')
   })
 })
 

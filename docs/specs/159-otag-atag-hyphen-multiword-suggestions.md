@@ -1,6 +1,6 @@
 # Spec 159: Hyphen-joined multi-word bare terms for otag / atag suggestions
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 151 (Suggestion System), Spec 154 (Bare-term field upgrade), Spec 036 (Source Spans), Spec 092 (Tag data model), Spec 093 (Tag query evaluation)
 
@@ -10,13 +10,16 @@
 
 ## Goal
 
-When a user types **two or more adjacent bare words** that correspond to a **single hyphenated** oracle or illustration tag (e.g. `mana rock` → tag `mana-rock`), the search often returns **zero results** because each word is interpreted as a separate name clause under AND. Offer **`bare-term-upgrade` rewrites** to `otag:{label}` or `atag:{label}` when the user’s **hyphen slug** matches tags in the loaded index by **prefix** (case-insensitive), so users discover the correct field without finishing every segment or learning tag spelling first. Example: `mana ro` forms slug `mana-ro`, which prefixes `mana-rock`.
+When a user types bare text that should be an oracle or illustration tag but does not match as a **name** search, offer **`bare-term-upgrade` rewrites** to `otag:{label}` or `atag:{label}` when the user’s input matches tag keys in the loaded index by **prefix** (case-insensitive), capped at three per field.
+
+- **Multi-word:** Two or more adjacent bare words that correspond to one hyphenated tag (e.g. `mana rock` → `mana-rock`); the **hyphen slug** `mana-ro` prefixes `mana-rock`.
+- **Single-token:** One bare word that prefixes a tag key (e.g. `triggere` → `otag:triggered-ability`) without requiring a second token.
 
 ## Background
 
-Oracle tags in the data pipeline use **hyphenated** identifiers (e.g. `mana-rock`). Spec 154’s multi-word pass only matches **space-separated** phrases against the **keyword** and **artist** indexes (`kw:"…"`, `a:"…"`). Tags are excluded from that pass and the **single-word** path requires an **exact** label match, so neither `mana` nor `rock` alone suggests `otag:mana-rock`, and the pair `mana rock` never forms a hyphen slug in today’s logic.
+Oracle tags in the data pipeline use **hyphenated** identifiers (e.g. `mana-rock`). Spec 154’s multi-word pass matches **space-separated** phrases against **keyword** and **artist** indexes (`kw:"…"`, `a:"…"`). Spec 154’s single-word path uses **exact** label match for `otag:` / `atag:`, so a partial token like `triggere` does not suggest `otag:triggered-ability` without this spec.
 
-This spec adds a **third multi-word shape**: join adjacent bare **words** with `-` (each segment lowercased for lookup), find tag keys whose lowercase form **starts with** that slug string, and emit **unquoted** `otag:` / `atag:` suggestions using the **canonical key** from the index. A **hard cap of three** matching tags applies **per field** (`otag` vs `atag`) per window so prefix search does not flood the empty state.
+This spec adds **prefix** matching on tag keys: build a **slug** from one or more trimmed bare segments (multi-word: join with `-` after lowercasing each segment; single-word: one lowercased segment), then `key.toLowerCase().startsWith(slug)`. Emit **unquoted** `otag:` / `atag:` suggestions using the **canonical key** from the index. A **hard cap of three** matching tags applies **per field** (`otag` vs `atag`) per invocation (each multi-word window or each single bare node) so prefix search does not flood the empty state.
 
 ## Different from Spec 154 (multi-word summary)
 
@@ -26,9 +29,8 @@ This spec adds a **third multi-word shape**: join adjacent bare **words** with `
 | Match semantics | Exact phrase in vocabulary | **Prefix** on slug: `key.toLowerCase().startsWith(slug)` |
 | Suggested syntax | Quoted: `kw:"first strike"`, `a:"Dan Frazier"` | Unquoted: `otag:mana-rock`, `atag:…` |
 | Volume | At most one chip per domain per window | **≤3** chips per field per window (oracle vs illustration separately) |
-| Same adjacency / windows | Yes — reuse `getAdjacentBareWindows` and splice span rules | Yes |
-
-Single-token **partial** tag match (e.g. bare `mana` alone → top-N `otag:` candidates) is **out of scope**; see issue #180 discussion (Path B). Prefix matching applies only to the **multi-word hyphen slug**, not to a single bare token against the whole tag list.
+| Same adjacency / windows | Yes — reuse `getAdjacentBareWindows` and splice span rules | Yes (multi-word); single-token uses one node span |
+| Single bare token | N/A (exact otag/atag only in Spec 154) | **Prefix** on slug = that token (Spec 159 extension) |
 
 ## Design
 
@@ -39,16 +41,22 @@ All of the following must hold (aligned with Spec 154 bare-term-upgrade):
 1. **Zero results** — `totalCards === 0` for the effective (pinned + live) query.
 2. **Root shape** — AST root is `AND` or `BARE` (not `OR`).
 3. **Live query gate** — Same as Spec 154: `hasLive` and not “pinned matches zero” empty-state skip.
-4. **Multi-word window** — Two or more **adjacent, positive, unquoted** bare nodes (whitespace-only gaps), same rules as Spec 154 § Multi-word bare terms.
-5. **Tag data** — For `otag:`, `oracleTagLabels` (or equivalent) is non-empty; for `atag:`, illustration tag labels are non-empty. If a vocabulary is unavailable, skip only that field’s suggestions.
+4. **Tag data** — For `otag:`, `oracleTagLabels` (or equivalent) is non-empty; for `atag:`, illustration tag labels are non-empty. If a vocabulary is unavailable, skip only that field’s suggestions.
 
-### Hyphen slug algorithm
+**Where prefix runs:**
 
-Given the ordered bare values in the window `w1, w2, …, wk` (as parsed, before field resolution):
+- **Multi-word window** — Two or more **adjacent, positive, unquoted** bare nodes (whitespace-only gaps), same rules as Spec 154 § Multi-word bare terms. Handled in the sliding-window pass via `getMultiWordAlternatives`.
+- **Single-segment (one bare token)** — A **positive, unquoted** bare node that was **not** consumed by a multi-word window. Handled in the single-node pass: after `getBareTermAlternatives` (exact domains), also run **`getBareTagPrefixAlternatives(value, context)`** (or equivalent) for tag prefix completions on that token’s trimmed value.
+
+**Prefix length:** No minimum slug length; the **cap of three** per field bounds noise (e.g. a single-letter token yields at most three chips per field).
+
+### Slug algorithm (segments from bare nodes)
+
+Given ordered bare values `w1, w2, …, wk` with **k ≥ 1** (one segment for single-token; two or more for a multi-word window):
 
 1. Use **one segment per bare node** (normal bare tokens are single words; do not rely on re-splitting a space-joined phrase unless it is equivalent to the node values in order).
 2. **Trim** each segment (Unicode trim / `String#trim` semantics). Reject the window if **any** trimmed segment is empty. For slug construction, use the **trimmed** string: normalize each non-empty segment with `toLowerCase()` for lookup and joining only (labels in suggestions still use the vocabulary’s canonical key, not the user’s casing).
-3. **Slug** = `segment1 + '-' + segment2 + …` (no leading/trailing hyphens; no empty segments).
+3. **Slug** = for **k === 1**, the single segment lowercased; for **k ≥ 2**, `segment1 + '-' + segment2 + …` (no leading/trailing hyphens; no empty segments).
 
 **Examples:**
 
@@ -58,10 +66,11 @@ Given the ordered bare values in the window `w1, w2, …, wk` (as parsed, before
 | `Mana`, `ROCK` | `mana-rock` |
 | `Mana `, ` rock ` (trim) | `mana-rock` |
 | `mana`, `ro` | `mana-ro` |
+| `triggere` (single segment) | `triggere` |
 
 ### Prefix match and cap
 
-Let `slug` be the lowercase hyphen string above. Because this pass requires **two or more** bare nodes, `slug` always contains at least one hyphen (e.g. `mana-ro`, `mana-rock`).
+Let `slug` be the lowercase string built above (`segment1 + '-' + …` for multiple segments, or one segment alone). Multi-word slugs contain at least one hyphen; a single-segment slug has no hyphens (e.g. `triggere` prefix-matching `triggered-ability`).
 
 For each vocabulary (oracle tags → `otag:`, illustration tags → `atag:`):
 
@@ -91,6 +100,14 @@ Both `otag:` and `atag:` run independently; each may contribute **up to three** 
 
 **API note:** Slug segments should come from **the same bare node values** the worker used to build the window (e.g. pass `segments: string[]` into `getMultiWordAlternatives` or split the phrase only when it equals those tokens joined with spaces). Prefer an explicit segment list so behavior stays aligned with the AST.
 
+### Single-segment coexistence with exact `otag:` / `atag:`
+
+The single-node pass runs **`getBareTermAlternatives`** first (exact match for `otag:` / `atag:` and other domains). Then run tag **prefix** alternatives for the same token.
+
+**Dedup:** If an exact alternative already emitted `otag:{key}` or `atag:{key}` for that node, **do not** emit a second chip for the same tag from the prefix pass. Compare normalized labels (e.g. lowercase full `otag:…` / `atag:…`). Prefix may still emit **other** keys (e.g. exact `otag:ramp` and prefix `otag:ramp-artifact`).
+
+**Order:** Evaluate and surface **exact** domain alternatives first, then **prefix** `otag:` / `atag:` alternatives (otag block then atag block, each up to three), consistent with multi-word return order for tag fields.
+
 ### Suggestion model
 
 - **`id`:** `bare-term-upgrade` (no new id).
@@ -102,17 +119,17 @@ Both `otag:` and `atag:` run independently; each may contribute **up to three** 
 
 ### Out of scope
 
-- **Path B:** Single bare token → ranked list of partial otag matches over the whole vocabulary.
+- **Non-prefix** matching (fuzzy spell correction, substring not at start, edit distance).
 - **OR** at query root (Spec 154 already skips bare-term-upgrade for OR).
 - Changing parser or evaluator behavior.
 - Hyphen slugs with **more than** the maximum multi-word window size already used for kw/artist (today **3** words in `worker-suggestions.ts`); if the window size changes globally, tag slug length follows the same cap unless a future spec says otherwise.
 
 ## Worker integration
 
-- Implement slug building, prefix collection (`startsWith(slug)` on lowercase key), ordering, cap, and alternatives inside **`getMultiWordAlternatives`** in [`shared/src/bare-term-upgrade-utils.ts`](../../shared/src/bare-term-upgrade-utils.ts) (or helpers called from it). If the function currently accepts only a space-joined `phrase`, extend it to accept **segment strings** (or `phrase` plus `segments`) so prefix logic uses the same tokens as the window.
-- [`app/src/worker-suggestions.ts`](../../app/src/worker-suggestions.ts): pass bare node values for the window into `getMultiWordAlternatives` (minimal change to the sliding-window loop).
+- Shared: **`tagPrefixAlternativesFromSegments`** (slug from one or more segments) used by **`getMultiWordAlternatives`** and **`getBareTagPrefixAlternatives`** in [`shared/src/bare-term-upgrade-utils.ts`](../../shared/src/bare-term-upgrade-utils.ts).
+- [`app/src/worker-suggestions.ts`](../../app/src/worker-suggestions.ts): pass bare node values for each window into `getMultiWordAlternatives` (sliding-window loop). In the **single-node** loop, after `getBareTermAlternatives`, merge in `getBareTagPrefixAlternatives(node.value, context)` filtered against exact `otag:` / `atag:` labels already returned for that node.
 - **Pinned + live:** Spans remain live-query coordinates; effective query assembly matches Spec 154 / Spec 131.
-- **Performance:** A linear scan over each tag list per multi-word window is acceptable: vocabularies are small, windows are bounded (max three bare nodes today), and output is capped at three keys per field.
+- **Performance:** A linear scan over each tag list per window or per bare node is acceptable: vocabularies are small, and output is capped at three keys per field.
 
 ## Tests
 
@@ -123,6 +140,8 @@ Both `otag:` and `atag:` run independently; each may contribute **up to three** 
 - **Negative:** Slug with no matching keys → no otag alts. Atag mirror where illustration labels present.
 - **Trim:** Leading/trailing space on a bare token is trimmed before slug build; trimmed-empty segment rejects the window (no alternatives from slug pass for that window).
 - **Regression:** Existing multi-word keyword and artist cases unchanged.
+- **Single-token prefix:** With `oracleTagLabels` containing `triggered-ability`, bare value `triggere` yields `otag:triggered-ability` via `getBareTagPrefixAlternatives` (or end-to-end empty-state suggestion).
+- **Single-node dedup:** When `getBareTermAlternatives` already returns exact `otag:foo` for a token, the prefix pass must not duplicate `otag:foo` (case-insensitive label match).
 
 ## Acceptance criteria
 
@@ -132,6 +151,8 @@ Both `otag:` and `atag:` run independently; each may contribute **up to three** 
 4. When oracle tag data is missing, no `otag:` suggestion is produced for hyphen windows; illustration tag data gated similarly for `atag:`.
 5. At most three `otag:` suggestions and at most three `atag:` suggestions per multi-word window from tag prefix logic.
 6. Spec 154 is updated to reference this spec for otag/atag multi-word behavior; Spec 151 needs **no** new `id` or priority row (optional short cross-link under bare-term-upgrade notes).
+7. Bare query `triggere` (zero results, tag data loaded, `triggered-ability` in oracle labels) yields a **`bare-term-upgrade`** suggestion **`otag:triggered-ability`** (single-token prefix).
+8. When exact `otag:` / `atag:` already matches for a single bare token, no duplicate chip for the same tag from the prefix pass.
 
 ## Scope of changes (anticipated)
 
@@ -147,4 +168,7 @@ Optional: one line in [`docs/specs/151-suggestion-system.md`](151-suggestion-sys
 
 ## Implementation notes
 
-*(None yet — append when implementing.)*
+- **`tagPrefixAlternativesFromSegments`** in [`shared/src/bare-term-upgrade-utils.ts`](../../shared/src/bare-term-upgrade-utils.ts) builds the slug from **one or more** trimmed segments (join with `-` when multiple), dedupes labels by `toLowerCase()`, filters with `startsWith(slug)`, sorts (exact first, then shorter key, then lexicographic), caps at three per field.
+- **`getMultiWordAlternatives(phrase, context, segments?)`** runs keyword and artist checks on `phrase` as before, then appends otag/atag tag-prefix alternatives.
+- **`getBareTagPrefixAlternatives(value, context)`** runs tag-prefix for a **single** trimmed segment (otag then atag); the worker merges results after exact alternatives, deduping exact `otag:`/`atag:` labels.
+- **Tests:** [`shared/src/bare-term-upgrade-utils.test.ts`](../../shared/src/bare-term-upgrade-utils.test.ts) — multi-word `describe('Spec 159: …')` plus single-token prefix cases.

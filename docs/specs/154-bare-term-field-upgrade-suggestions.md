@@ -131,6 +131,8 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 **Dependency:** Oracle tags must be loaded. If `otagsUnavailable`, skip this domain.
 
+**Prefix completion (Spec 159):** When the bare token is **not** an exact tag label but **prefix-matches** one or more oracle tag keys (e.g. `triggere` → `otag:triggered-ability`), the single-node pass adds up to three `otag:` suggestions per token after exact-domain alternatives; same idea for illustration tags and `atag:`. Multi-word adjacent bare windows use hyphen slugs per Spec 159.
+
 #### Domain: Illustration tags (atag)
 
 **Value recognition:** `value.toLowerCase()` is a key in the illustration tag index (same source as `atag:` evaluator). The worker has illustration tag labels when atag data is loaded.
@@ -258,6 +260,7 @@ For the multi-word pass, the following are checked:
 - In `buildSuggestions` (app/src/worker-suggestions.ts), run bare-term-upgrade **before** the oracle hint block. Order: empty-list, include-extras, unique-prints, **bare-term-upgrade**, wrong-field, oracle.
 - Use the live AST: `ast = parse(msg.query)`; call `getBareNodes(ast)` to collect all positive BARE nodes (anywhere in the tree). If empty, skip. Bare nodes are always in the live portion when pinned+live.
 - For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; push a `Suggestion` with `id: 'bare-term-upgrade'`. Include count/printingCount when > 0; omit when 0.
+- **Multi-word window pass:** For each adjacent bare window from `getAdjacentBareWindows`, call `getMultiWordAlternatives(phrase, context, segments)` where `phrase` is space-joined bare values and `segments` is the same values as an array (Spec 159 hyphen-slug path uses per-node trimming).
 - Track which bare terms (by value) received a bare-term-upgrade suggestion. When building the oracle hint (Spec 131), skip those terms — do not suggest both `kw:landfall` and `o:landfall` for the same term.
 
 ### Suggestion type extension
@@ -270,9 +273,9 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 |------|--------|
 | `shared/src/suggestion-types.ts` | Add `'bare-term-upgrade'` to Suggestion.id union |
 | `shared/src/search/oracle-hint.ts` | Add `getBareNodes(ast): BareWordNode[]` — collects all positive BARE nodes from the tree (not just trailing; excludes nodes under NOT) |
-| `shared/src/bare-term-upgrade-utils.ts` | `getBareTermAlternatives(value, context)` for single-word domains; `getMultiWordAlternatives(phrase, context)` for multi-word domains (keyword, artist); `getAdjacentBareWindows(bareNodes, query, maxSize)` for sliding-window adjacency. `artistLabels` on context. |
+| `shared/src/bare-term-upgrade-utils.ts` | `getBareTermAlternatives(value, context)` for single-word domains; `getMultiWordAlternatives(phrase, context, segments?)` for multi-word (keyword, artist, and Spec 159 hyphen-slug prefix on `oracleTagLabels` / `illustrationTagLabels`); `getAdjacentBareWindows(bareNodes, query, maxSize)` for sliding-window adjacency. `artistLabels` on context. |
 | `shared/src/search/card-index.ts` | Add `typeLineWords: Set<string>` — built at index creation by splitting each `type_lines` entry on `/\W+/`, lowercasing, and collecting unique words. Passed to bare-term-upgrade context. |
-| `app/src/worker-suggestions.ts` | In `buildSuggestions`, add multi-word sliding-window pass before single-node loop; track consumed nodes; plumb `artistLabels` |
+| `app/src/worker-suggestions.ts` | In `buildSuggestions`, add multi-word sliding-window pass before single-node loop; track consumed nodes; plumb `artistLabels`; pass bare window values as `segments` to `getMultiWordAlternatives` (Spec 159) |
 | `app/src/worker-search.ts` | Pass `artistLabels` from `tagData.artist` to `buildSuggestions` |
 | `app/src/SuggestionList.tsx` | Add `'bare-term-upgrade'` to EMPTY_STATE_IDS |
 | `docs/specs/151-suggestion-system.md` | Add bare-term-upgrade to placement/priority table; add to empty-state eligible ids |
