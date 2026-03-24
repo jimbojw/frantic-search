@@ -67,6 +67,16 @@ These are the most important ADRs. Read them in full before making changes in th
 - SPDX license headers (`// SPDX-License-Identifier: Apache-2.0`) on source files.
 - Query pipeline code uses pre-allocated `Uint8Array`/`Uint32Array` buffers — no `Set`, no `push()`. See `shared/AGENTS.md` § "Key Design Constraints" for details.
 
+## Git and version control (coding agents)
+
+The user owns the repository history and remotes. Coding agents must not run **destructive** git commands unless the user explicitly requests that exact operation.
+
+**Destructive (forbidden without explicit user request):** force-push (`git push --force`, `git push --force-with-lease`, or any push that overwrites remote history), `git reset --hard`, `git checkout`/`git restore` that discards tracked work the user did not ask to discard, `git clean -fd` / `-fx`, hard branch or tag deletion (`git branch -D`, `git push origin :ref`), and history-rewriting tools or flows that drop commits (e.g. `git filter-repo`, destructive `git rebase`).
+
+**Commits and remotes:** Do not run `git commit` or `git push` unless the user explicitly asks. Provide a summary of changes and a suggested Conventional Commit message (ADR-021) instead.
+
+**Generally fine:** read-only inspection (`git status`, `git diff`, `git log`, `git show`).
+
 ## Data Directory
 
 The `data/` directory lives at the project root (not inside any workspace). It is git-ignored.
