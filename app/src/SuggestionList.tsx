@@ -159,7 +159,7 @@ export function SuggestionList(props: {
                         }
                       }}
                     >
-                      <span class="flex items-center gap-1">
+                      <span class="min-w-0 text-left">
                         <HighlightedLabel label={s.label} />
                       </span>
                       {(s.count !== undefined || s.printingCount !== undefined) && (

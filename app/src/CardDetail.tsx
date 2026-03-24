@@ -195,17 +195,19 @@ function TagChip(props: {
         <Show
           when={props.onNavigate}
           fallback={
-            <For each={buildSpans(query())}>
-              {(span) =>
-                span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
-              }
-            </For>
+            <span class="flex-1 min-w-0 truncate">
+              <For each={buildSpans(query())}>
+                {(span) =>
+                  span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+                }
+              </For>
+            </span>
           }
         >
           <button
             type="button"
             onClick={() => props.onNavigate!(query())}
-            class="flex items-center gap-0.5 text-left cursor-pointer flex-1 min-w-0 truncate"
+            class="flex items-center gap-0 text-left cursor-pointer flex-1 min-w-0 truncate"
           >
             <For each={buildSpans(query())}>
               {(span) =>
