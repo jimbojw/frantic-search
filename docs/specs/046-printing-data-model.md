@@ -99,14 +99,14 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 
 - `frame: number[]` — uint8 bitmask. `1993=1, 1997=2, 2003=4, 2015=8, future=16`. One bit set per row.
 
-- `promo_types_flags_0: number[]` — uint32 bitmask. Bits 0–31 encode the first 32 promo types (alphabetically). Each printing row has a bit set for each value present in Scryfall's `promo_types` array. Optional; legacy data omits this column.
+- `promo_types_flags_0: number[]` — uint32 bitmask. Bits 0–31 encode the first 32 promo types (alphabetically). Each printing row has a bit set for each value present in Scryfall's `promo_types` array. **Exception (bit 0, `alchemy`):** the bit is also set when the printing's Scryfall **`set_type` is `alchemy`** (case-insensitive), even if `promo_types` omits `alchemy` — this matches Scryfall search parity for `is:alchemy` (issue #191). Optional; legacy data omits this column.
 - `promo_types_flags_1: number[]` — uint32 bitmask. Bits 0–19 encode the remaining 20 promo types. Optional; legacy data omits this column.
 
 Bit assignment (alphabetical by `promo_types` string, except late additions appended at the end). The mapping is defined in `shared/src/bits.ts` as `PROMO_TYPE_FLAGS`:
 
 | Column | Bit | `promo_types` value |
 |---|---|---|
-| 0 | 0 | `alchemy` |
+| 0 | 0 | `alchemy` (also from `set_type: "alchemy"`; see column description above) |
 | 0 | 1 | `beginnerbox` |
 | 0 | 2 | `boosterfun` |
 | 0 | 3 | `brawldeck` |
@@ -265,7 +265,7 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 6. Printings for all layouts are present when the corresponding oracle card is in `columns.json`.
 7. `set_lookup` contains an entry for every set referenced by `set_indices`.
 8. The `--verbose` flag prints processing statistics (total printings, total rows after finish explosion, dropped printings, set count).
-9. `promo_types_flags_0` and `promo_types_flags_1` are populated from each printing's `promo_types` array via `PROMO_TYPE_FLAGS` bit mapping. Legacy `printings.json` without these columns is supported (PrintingIndex defaults to empty arrays).
+9. `promo_types_flags_0` and `promo_types_flags_1` are populated from each printing's `promo_types` array via `PROMO_TYPE_FLAGS` bit mapping; the `alchemy` bit (column 0, bit 0) is additionally set when `set_type === "alchemy"`. Legacy `printings.json` without these columns is supported (PrintingIndex defaults to empty arrays).
 
 ## Implementation Notes
 
@@ -277,3 +277,4 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
 - 2026-03-06: For `reversible_card` layout, Scryfall puts `oracle_id` on `card_faces[0]` only.
   Added fallback `card.oracle_id ?? card.card_faces?.[0]?.oracle_id` so 81 reversible printings
   (e.g. Krark's Thumb SLD) are no longer dropped (Issue #98).
+- 2026-03-25: `promo_types_flags_0` bit 0 (`alchemy`) is OR'd when `set_type` is `alchemy` on the default-cards printing, not only when `promo_types` contains `alchemy`, matching Scryfall `is:alchemy` for Alchemy-set printings (issue #191).

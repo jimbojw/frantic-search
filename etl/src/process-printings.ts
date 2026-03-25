@@ -11,13 +11,13 @@ import {
   ensureDistDir,
 } from "./paths";
 import { log } from "./log";
+import { encodePromoTypesFlags } from "./encode-promo-types-flags";
 import {
   RARITY_FROM_STRING,
   FINISH_FROM_STRING,
   FRAME_FROM_STRING,
   GAME_NAMES,
   PrintingFlag,
-  PROMO_TYPE_FLAGS,
   type PrintingColumnarData,
   type SetLookupEntry,
   type ColumnarData,
@@ -68,6 +68,8 @@ interface DefaultCard {
   finishes?: string[];
   games?: string[];
   promo_types?: string[];
+  /** Scryfall set type; when `alchemy`, ETL sets the `alchemy` promo bit for `is:alchemy` parity (Spec 046). */
+  set_type?: string;
   prices?: Record<string, string | null>;
   tcgplayer_id?: number;
   tcgplayer_etched_id?: number;
@@ -133,21 +135,6 @@ function encodeGames(games: string[] | undefined): number {
     bits |= GAME_NAMES[g.toLowerCase()] ?? 0;
   }
   return bits;
-}
-
-function encodePromoTypesFlags(card: DefaultCard): { flags0: number; flags1: number } {
-  let flags0 = 0;
-  let flags1 = 0;
-  const types = card.promo_types ?? [];
-  for (const t of types) {
-    const entry = PROMO_TYPE_FLAGS[t.toLowerCase()];
-    if (entry) {
-      const bit = 1 << entry.bit;
-      if (entry.column === 0) flags0 |= bit;
-      else flags1 |= bit;
-    }
-  }
-  return { flags0, flags1 };
 }
 
 /** Encode an ISO date string (YYYY-MM-DD) as a uint32 YYYYMMDD integer. */

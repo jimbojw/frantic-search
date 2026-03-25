@@ -123,6 +123,7 @@ Behavioral divergences where Frantic Search intentionally differs from Scryfall.
 | `usd=null` | Not supported | Matches printings with no price data |
 | `$` alias | Uses `usd` | `$` is alias for `usd` |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
+| `is:alchemy` | Default scryfall.com search omits a few Mystery Booster 2 playtest printings that still carry the alchemy promo tag in Scryfall bulk data | Frantic Search honors bulk `promo_types` and `set_type: alchemy`. Users can list the divergent printings with `is:alchemy set:mb2` (in-app link: `?q=is%3Aalchemy%20set%3Amb2`). Documented in [is](?doc=reference/fields/face/is); see [issue #191](https://github.com/jimbojw/frantic-search/issues/191). |
 
 ## Intro Copy
 

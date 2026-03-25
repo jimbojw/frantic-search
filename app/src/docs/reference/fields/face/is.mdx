@@ -38,8 +38,15 @@ Keywords for mechanics, layouts, roles, and finish. Examples:
 | Finish | `q=is:foil`, `q=is:etched`, `q=is:nonfoil` |
 | Frame | `q=is:default`, `q=is:atypical` |
 | Land cycles | `q=is:fetchland`, `q=is:shockland`, `q=is:pathway` |
+| Promo / printing (when printings load) | `q=is:alchemy`, `q=is:rebalanced`, `q=is:rainbowfoil`, … | See below |
 
 Matching is case-insensitive. See the [Syntax cheat sheet](?doc=reference/syntax) for the full list.
+
+## `is:alchemy` (printing-level)
+
+`is:alchemy` matches printings where Scryfall bulk data marks the card as Alchemy: either **`promo_types` includes `alchemy`** or the printing’s **`set_type` is `alchemy`** (e.g. Alchemy: Outlaws of Thunder Junction). Frantic Search follows that data rather than hiding printings that scryfall.com search omits.
+
+For a small edge case, **seven** [Mystery Booster 2](?q=set%3Amb2+unique%3Aprints+include%3Aextras) playtest printings carry the alchemy promo tag in bulk but do not appear in Scryfall’s default search for `is:alchemy`. Frantic includes them. To see exactly those printings, run **[is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2)**.
 
 ## Notes
 

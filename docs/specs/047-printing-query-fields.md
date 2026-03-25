@@ -82,6 +82,8 @@ These move from `UNSUPPORTED_IS_KEYWORDS` in the evaluator to active printing-do
 
 All unique `promo_types` values discovered in Scryfall bulk data are queryable as printing-level `is:` keywords. Examples: `is:rainbowfoil`, `is:poster`, `is:boosterfun`, `is:surgefoil`, `is:setpromo`, `is:alchemy`, `is:rebalanced`, `is:stamped`, `is:prerelease`, `is:playtest`, `is:glossy`, etc. (52 total; see Spec 046 for the full list and bit layout).
 
+**`is:alchemy`** — Semantics match Scryfall: a printing counts as alchemy if it would match Scryfall's `is:alchemy` (Alchemy-set printings, not only those with `promo_types: ["alchemy"]`). Implementation: the same `PROMO_TYPE_FLAGS.alchemy` bit as other promo types; ETL sets that bit from `promo_types` **or** from `set_type: "alchemy"` on the printing (Spec 046).
+
 Implementation: Each keyword maps to `{ column: 0 | 1, bit: number }` in `PROMO_TYPE_FLAGS`. For column 0, test `promo_types_flags_0[i] & (1 << bit)`; for column 1, test `promo_types_flags_1[i] & (1 << bit)`. Keywords not in the mapping return `"unknown"`.
 
 When promoted to face domain (e.g. `t:creature is:poster`), semantics are "card has at least one printing with this promo type." Negation (`-is:poster`) works as expected.
@@ -447,3 +449,4 @@ Add printing-field entries once the full dataset is available.
 
 - 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (52 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced`, `glossy` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.
 - 2026-03-22: Added `is:default` and `is:atypical` for Issue #173. Derived from existing PrintingFlags; no ETL changes.
+- 2026-03-25: Documented principled divergence for `is:alchemy` vs Scryfall default search (seven MB2 printings) in Syntax Reference `app/src/docs/reference/fields/face/is.mdx`, cheat sheet, Scryfall Differences, Spec 098, and `docs/guides/scryfall-comparison.md`. Example in-app query link: `?q=is%3Aalchemy%20set%3Amb2` (issue #191).

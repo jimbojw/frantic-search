@@ -20,6 +20,7 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 | [produces](?doc=reference/fields/face/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
 | [produces](?doc=reference/fields/face/produces):cw (C+colored) | May error | Valid: cards can produce both (e.g. many nonbasic lands) |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
+| [`is:alchemy`](?doc=reference/fields/face/is) | Default search omits a few MB2 playtest printings that still have the alchemy promo tag in bulk | We honor bulk `promo_types` and `set_type: alchemy`. Example: [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2) |
 
 ## Known missing
 

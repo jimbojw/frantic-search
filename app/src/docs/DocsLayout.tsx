@@ -357,7 +357,20 @@ export default function DocsLayout(props: {
                       : {}
                     return (
                       <MDXProvider components={{ QueryExample, code: DocCode }}>
-                        <div class="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
+                        <div
+                          class="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none"
+                          onClick={(e) => {
+                            const el = (e.target as HTMLElement).closest('a[href^="?q="]')
+                            if (!(el instanceof HTMLAnchorElement)) return
+                            const href = el.getAttribute('href')
+                            if (!href?.startsWith('?')) return
+                            const params = new URLSearchParams(href.slice(1))
+                            const q = params.get('q')
+                            if (q === null) return
+                            e.preventDefault()
+                            props.onSelectExample?.(q)
+                          }}
+                        >
                           <Content {...(syntaxProps as object)} />
                         </div>
                       </MDXProvider>
