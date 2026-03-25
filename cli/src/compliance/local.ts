@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { parse } from "@frantic-search/shared/src/search/parser";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
+import type { TagDataRef, KeywordDataRef } from "@frantic-search/shared";
 import type { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import type { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
 import type { TestCase, Assertions } from "./loader";
@@ -96,8 +97,16 @@ export function runLocalTest(
   tc: TestCase,
   index: CardIndex,
   printingIndex?: PrintingIndex | null,
+  tagDataRef?: TagDataRef | null,
+  keywordDataRef?: KeywordDataRef | null,
 ): TestResult {
-  const cache = new NodeCache(index, printingIndex);
+  const cache = new NodeCache(
+    index,
+    printingIndex,
+    null,
+    tagDataRef ?? null,
+    keywordDataRef ?? null,
+  );
   const ast = parse(tc.query);
   const { indices } = cache.evaluate(ast);
 

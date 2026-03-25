@@ -25,6 +25,9 @@ import {
   validateLines,
   extractDisplayColumns,
   extractPrintingDisplayColumns,
+  normalizeFlavorIndexForSearch,
+  normalizeArtistIndexForSearch,
+  resolveIllustrationTagsToPrintingRows,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -125,96 +128,6 @@ async function fetchArtistIndex(): Promise<ArtistIndexData | null> {
   }
 }
 
-function normalizeFlavorKey(s: string): string {
-  return s
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
-/** Build normalized search index from raw flavor keys. Merges keys that normalize to same string. */
-function buildNormalizedFlavorIndex(raw: FlavorTagData): FlavorTagData {
-  const byNormalized = new Map<string, Array<[number, number]>>()
-  for (const [key, arr] of Object.entries(raw)) {
-    const norm = normalizeFlavorKey(key)
-    if (!norm) continue
-    const pairs: Array<[number, number]> = []
-    for (let i = 0; i < arr.length; i += 2) {
-      pairs.push([arr[i], arr[i + 1]])
-    }
-    const existing = byNormalized.get(norm)
-    if (existing) {
-      existing.push(...pairs)
-    } else {
-      byNormalized.set(norm, pairs)
-    }
-  }
-  const result: FlavorTagData = {}
-  for (const [norm, pairs] of byNormalized) {
-    const seen = new Set<string>()
-    const unique: Array<[number, number]> = []
-    for (const [f, p] of pairs) {
-      const k = `${f},${p}`
-      if (!seen.has(k)) {
-        seen.add(k)
-        unique.push([f, p])
-      }
-    }
-    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]))
-    const strided: number[] = []
-    for (const [f, p] of unique) {
-      strided.push(f, p)
-    }
-    result[norm] = strided
-  }
-  return result
-}
-
-function normalizeArtistKey(s: string): string {
-  return s
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
-/** Build normalized search index from raw artist keys. Merges keys that normalize to same string. */
-function buildNormalizedArtistIndex(raw: ArtistIndexData): ArtistIndexData {
-  const byNormalized = new Map<string, Array<[number, number]>>()
-  for (const [key, arr] of Object.entries(raw)) {
-    const norm = normalizeArtistKey(key)
-    if (!norm) continue
-    const pairs: Array<[number, number]> = []
-    for (let i = 0; i < arr.length; i += 2) {
-      pairs.push([arr[i], arr[i + 1]])
-    }
-    const existing = byNormalized.get(norm)
-    if (existing) {
-      existing.push(...pairs)
-    } else {
-      byNormalized.set(norm, pairs)
-    }
-  }
-  const result: ArtistIndexData = {}
-  for (const [norm, pairs] of byNormalized) {
-    const seen = new Set<string>()
-    const unique: Array<[number, number]> = []
-    for (const [f, p] of pairs) {
-      const k = `${f},${p}`
-      if (!seen.has(k)) {
-        seen.add(k)
-        unique.push([f, p])
-      }
-    }
-    unique.sort((a, b) => (a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]))
-    const strided: number[] = []
-    for (const [f, p] of unique) {
-      strided.push(f, p)
-    }
-    result[norm] = strided
-  }
-  return result
-}
-
 /** Build reverse index: face index → otag labels. */
 function buildFaceToOtags(otags: OracleTagData): Map<number, string[]> {
   const map = new Map<number, string[]>()
@@ -246,44 +159,6 @@ function buildPrintingToAtags(illustration: Map<string, Uint32Array>): Map<numbe
     }
   }
   return map
-}
-
-/** Resolve strided (face, illust_idx) pairs to printing row indices using PrintingIndex data. */
-function resolveAtagsToPrintingRows(
-  atags: IllustrationTagData,
-  printingData: PrintingColumnarData,
-): Map<string, Uint32Array> {
-  const faceRef = printingData.canonical_face_ref
-  const illustIdx = printingData.illustration_id_index ?? []
-  const pairToRows = new Map<string, number[]>()
-  for (let i = 0; i < faceRef.length; i++) {
-    const face = faceRef[i]
-    const idx = illustIdx[i] ?? 0
-    const key = `${face},${idx}`
-    let arr = pairToRows.get(key)
-    if (!arr) {
-      arr = []
-      pairToRows.set(key, arr)
-    }
-    arr.push(i)
-  }
-
-  const result = new Map<string, Uint32Array>()
-  for (const [label, arr] of Object.entries(atags)) {
-    const rows: number[] = []
-    for (let i = 0; i < arr.length; i += 2) {
-      const face = arr[i]
-      const illust = arr[i + 1]
-      const key = `${face},${illust}`
-      const rowList = pairToRows.get(key)
-      if (rowList) rows.push(...rowList)
-    }
-    if (rows.length > 0) {
-      rows.sort((a, b) => a - b)
-      result.set(label, new Uint32Array(rows))
-    }
-  }
-  return result
 }
 
 type FetchResult =
@@ -424,18 +299,18 @@ async function init(): Promise<void> {
     if (!printingDataForAtags) return
     const atags = await fetchAtags()
     if (atags) {
-      const resolved = resolveAtagsToPrintingRows(atags, printingDataForAtags)
+      const resolved = resolveIllustrationTagsToPrintingRows(atags, printingDataForAtags)
       tagDataRef.illustration = resolved
       printingToAtags = buildPrintingToAtags(resolved)
       post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
     }
     const [flavorRaw, artistRaw] = await Promise.all([fetchFlavorIndex(), fetchArtistIndex()])
     if (flavorRaw) {
-      tagDataRef.flavor = buildNormalizedFlavorIndex(flavorRaw)
+      tagDataRef.flavor = normalizeFlavorIndexForSearch(flavorRaw)
       post({ type: 'status', status: 'flavor-ready' })
     }
     if (artistRaw) {
-      tagDataRef.artist = buildNormalizedArtistIndex(artistRaw)
+      tagDataRef.artist = normalizeArtistIndexForSearch(artistRaw)
       post({ type: 'status', status: 'artist-ready', tagLabels: Object.keys(tagDataRef.artist) })
     }
   })

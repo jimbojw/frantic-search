@@ -137,7 +137,9 @@ Extend `TagDataRef` to include `flavor: FlavorTagData | null`. The worker popula
 | `shared/src/search/eval-leaves.ts` | Add `flavor`, `ft` to `FIELD_ALIASES` |
 | `shared/src/search/eval-printing.ts` | Add `flavor` to `PRINTING_FIELDS`; add `flavor` case to `evalPrintingField` (receives flavor index from caller); add `evalFlavorRegex` |
 | `shared/src/search/evaluator.ts` | Extend `TagDataRef` with `flavor`; REGEX_FIELD branch: dispatch flavor to printing-domain eval + promote; pass `tagDataRef.flavor` to flavor eval; add `flavorUnavailable` to result when flavor term present but index null |
-| `app/src/worker.ts` | Fetch flavor-index.json after printings; store in tagDataRef.flavor; post `flavor-ready` |
+| `app/src/worker.ts` | Fetch flavor-index.json after printings; normalize via `normalizeFlavorIndexForSearch`; store in tagDataRef.flavor; post `flavor-ready` |
+| `cli/src/cli-eval-refs.ts` | Load `flavor-index.json` from the same directory as `columns.json`; normalize with shared helper |
+| `shared/src/supplemental-index-build.ts` | `normalizeFlavorIndexForSearch` (shared with worker) |
 | `shared/src/search/eval-printing.test.ts` | Tests for flavor literal and regex |
 | `shared/src/search/evaluator-printing.test.ts` | Integration tests for flavor in cross-domain queries |
 | `docs/specs/002-query-engine.md` | Add flavor, ft to Supported Fields |

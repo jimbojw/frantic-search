@@ -46,7 +46,7 @@ user query (e.g. a:proce)
 |--------------------------------------------------------|---------------------------------------------------|
 | ETL: artist→(face, printing) pairs (materialized)      | Evaluator: `a:` / `artist:` field handling        |
 | Storage: `artist-index.json` (single mapping)          | Parser: `a:` / `artist:` field alias              |
-| Worker: load, build normalized index, store            | Reference docs, syntax help, compliance tests    |
+| Worker: load, build normalized index, store; CLI loads the same `artist-index.json` next to `columns.json` (Spec 069) | Reference docs, syntax help, compliance tests    |
 | Key normalization for substring search                  | Watermark (`wm:`), flavor text (`ft:`), `new:art` |
 
 ## Data Source

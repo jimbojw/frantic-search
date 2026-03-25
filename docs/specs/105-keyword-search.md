@@ -23,6 +23,10 @@ Scryfall's [keyword catalog](https://api.scryfall.com/catalog/keyword-abilities)
 - **Face-domain:** Keywords are at the card level in Scryfall. For multi-face cards, the same `keywords` array is used for all faces. The inverted index stores **canonical face indices** — one entry per card per keyword.
 - **Empty value:** `kw:` or `keyword:` with no value matches all cards (neutral filter), per Spec 002 § "Error Recovery" — same as other trailing-operator fields.
 
+## CLI
+
+The query CLI embeds `keywords_index` from the loaded `columns.json` into `KeywordDataRef` for every `NodeCache` (see Spec 069 supplemental data). No separate keyword file is required beyond ETL-produced columns.
+
 ## Spec Updates
 
 This epic requires updates to the following specs:

@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
+import path from "node:path";
 import { parse, toScryfallQuery, NON_TOURNAMENT_MASK } from "@frantic-search/shared";
 import type { UniqueMode } from "@frantic-search/shared";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
 import { PrintingIndex } from "@frantic-search/shared/src/search/printing-index";
 import type { ColumnarData, PrintingColumnarData } from "@frantic-search/shared/src/data";
+import { buildCliEvalRefs } from "../cli-eval-refs";
+import type { SupplementalDistPaths } from "../cli-eval-refs";
 
 const SCRYFALL_SEARCH_URL = "https://api.scryfall.com/cards/search";
 const MIN_DELAY_MS = 100;
@@ -409,13 +412,15 @@ export interface DiffOptions {
   printingsPath: string;
   rawPath?: string;
   verbose: boolean;
+  noSupplemental?: boolean;
+  supplementalPaths?: Partial<SupplementalDistPaths>;
 }
 
 export async function runDiff(
   query: string,
   options: DiffOptions,
 ): Promise<void> {
-  const { dataPath, printingsPath, rawPath, verbose } = options;
+  const { dataPath, printingsPath, rawPath, verbose, noSupplemental, supplementalPaths } = options;
 
   if (!fs.existsSync(dataPath)) {
     process.stderr.write(
@@ -439,7 +444,12 @@ export async function runDiff(
     rawOracleCards = JSON.parse(fs.readFileSync(rawPath, "utf-8")) as RawOracleCard[];
   }
 
-  const cache = new NodeCache(index, printingIndex);
+  const distDir = path.dirname(dataPath);
+  const { tagDataRef, keywordDataRef } = buildCliEvalRefs(data, printingData, distDir, {
+    noSupplemental: !!noSupplemental,
+    supplementalPaths,
+  });
+  const cache = new NodeCache(index, printingIndex, null, tagDataRef, keywordDataRef);
   const ast = parse(query);
   const evalOut = cache.evaluate(ast);
   const normalized = normalizeLocalParity(data, printingData, printingIndex, {

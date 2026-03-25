@@ -37,7 +37,7 @@ The CLI `search` command currently has no `getListMask`; `my:list` produces an e
 
 - Parse deck list from path or stdin.
 - Build masks from parsed entries (see § Mask Building below).
-- Construct `NodeCache` with `getListMask` returning those masks.
+- Construct `NodeCache` with `getListMask` returning those masks, plus the same `TagDataRef` / `KeywordDataRef` as `search` and `diff` (Spec 069 supplemental data: `otags.json`, `atags.json`, `flavor-index.json`, `artist-index.json` next to `columns.json`, and `keywords_index` in columns).
 - Run the query and output results as today.
 
 This enables `npm run cli -- search "my:list" --list -` for ad-hoc debugging and is the foundation for `list-diff`.

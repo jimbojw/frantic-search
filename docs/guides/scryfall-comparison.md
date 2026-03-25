@@ -28,6 +28,8 @@ npm run cli -- diff "YOUR QUERY"
 
 This fetches Scryfall results, compares by Scryfall ID (handling `unique:prints` and printing-level queries), and reports In Both / Only in Frantic Search / Only in Scryfall with card names, sets, and collector numbers. Use `--quiet` for IDs only.
 
+**Prerequisites for tag, illustration, flavor, and artist queries:** Local evaluation loads `otags.json`, `atags.json`, `flavor-index.json`, and `artist-index.json` from the same directory as `columns.json` (plus `keywords_index` inside columns). Produce them with `npm run etl -- download-tags` (or full setup) and `npm run etl -- process`. If those files are missing, local results for `otag:`, `atag:`, `flavor:`, or `a:` will not match the app or Scryfall. Use `--no-supplemental` only when intentionally testing without them.
+
 **Manual workflow** (for scripting or custom comparison):
 
 ```bash

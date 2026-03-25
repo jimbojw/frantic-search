@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 import {
   parse,
@@ -41,6 +42,8 @@ import {
   type DiffComparison,
   type RawOracleCard,
 } from "../diff/run";
+import { buildCliEvalRefs } from "../cli-eval-refs";
+import type { SupplementalDistPaths } from "../cli-eval-refs";
 
 function hasMyListInQuery(ast: ReturnType<typeof parse>): boolean {
   if (!ast) return false;
@@ -255,13 +258,16 @@ export interface ListDiffOptions {
   listPath: string;
   rawPath?: string;
   verbose: boolean;
+  noSupplemental?: boolean;
+  supplementalPaths?: Partial<SupplementalDistPaths>;
 }
 
 export function runListDiff(
   query: string,
   options: ListDiffOptions,
 ): void {
-  const { dataPath, printingsPath, listPath, rawPath, verbose } = options;
+  const { dataPath, printingsPath, listPath, rawPath, verbose, noSupplemental, supplementalPaths } =
+    options;
 
   const ast = parse(query);
   if (!hasListContextInQuery(ast)) {
@@ -338,12 +344,17 @@ export function runListDiff(
   }
 
   const getListMask = createGetListMask(printingIndices);
+  const distDir = path.dirname(dataPath);
+  const { tagDataRef, keywordDataRef } = buildCliEvalRefs(data, printingData, distDir, {
+    noSupplemental: !!noSupplemental,
+    supplementalPaths,
+  });
   const cache = new NodeCache(
     index,
     printingIndex,
     getListMask,
-    null,
-    null,
+    tagDataRef,
+    keywordDataRef,
     getMetadataIndex ?? undefined,
   );
   const evalOut = cache.evaluate(ast);

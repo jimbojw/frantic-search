@@ -83,6 +83,10 @@ Per Issue #99:
 - Pass `tagDataRef` into `NodeCache` constructor in `app/src/worker.ts`.
 - `runSearch` already receives `tagData`; it is passed to the cache via the constructor. No change to `runSearch` signature beyond ensuring the worker passes the ref when constructing the cache.
 
+## CLI parity
+
+Non-browser consumers (`cli/` `search`, `diff`, `list-diff`, `compliance` local mode) must pass the same `tagDataRef` shape into `NodeCache` or `otag:` / `atag:` evaluation will behave as “tags not loaded.” Implementation: `cli/src/cli-eval-refs.ts` loads disk files next to `columns.json` and uses `shared/src/supplemental-index-build.ts` for atag resolution and flavor/artist key normalization (same as the worker).
+
 ## Syntax Highlighting
 
 No changes. `otag`, `atag`, and `art` will be in `FIELD_ALIASES`, so they receive field styling. `value-error` vs `value-zero` comes from the breakdown (`error` vs `matchCount === 0`), which the evaluator will set correctly.
@@ -100,6 +104,8 @@ Implemented in Spec 094. Tag labels are sent with `otags-ready` and `atags-ready
 | `shared/src/search/eval-tags.ts` | New: `evalOracleTag`, `evalIllustrationTag` |
 | `shared/src/search/evaluator.ts` | Accept `tagDataRef`, add tag evaluation in `computeTree`, update `_hasPrintingLeaves` and `_intersectPrintingLeaves` |
 | `app/src/worker.ts` | Pass `tagDataRef` to `NodeCache` constructor |
+| `cli/src/cli-eval-refs.ts` | Build `tagDataRef` from dist JSON for CLI commands |
+| `shared/src/supplemental-index-build.ts` | Shared atag resolution + flavor/artist index normalization (worker + CLI) |
 
 ## Types
 

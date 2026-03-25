@@ -28,6 +28,7 @@ Add a `diff` subcommand to the CLI that compares local Frantic Search results ag
   - `unique:prints` → compare by printing Scryfall ID.
   - `unique:cards` → compare by oracle ID (avoids false diffs from representative-printing choice).
   - `unique:art` → compare by per-oracle art-variant counts (avoids false diffs from differing representative printings for the same artwork).
+- **Supplemental evaluation data (parity with the app):** Local evaluation uses the same `TagDataRef` and `KeywordDataRef` as `app/src/worker.ts`. From the directory containing `columns.json` (the `--data` path’s parent), the CLI loads when present: `otags.json`, `atags.json` (requires `printings.json`), `flavor-index.json`, and `artist-index.json`. `keywords_index` is read from `columns.json`. Use `--no-supplemental` to skip the four JSON files on disk; `--otags`, `--atags`, `--flavor-index`, and `--artist-index` override individual paths. Queries like `otag:`, `atag:`, `flavor:`, `a:`, and `kw:` need this data for meaningful local results and diffs.
 
 ## Acceptance Criteria
 
@@ -36,3 +37,4 @@ Add a `diff` subcommand to the CLI that compares local Frantic Search results ag
 - [x] Discrepancy section lists cards with name, set, collector number by default.
 - [x] `--quiet` shows only comparison keys for discrepancies.
 - [x] `--data` and `--printings` override data paths.
+- [x] Supplemental tag/flavor/artist files and `keywords_index` wired for local evaluation; `--no-supplemental` and per-file path overrides supported.

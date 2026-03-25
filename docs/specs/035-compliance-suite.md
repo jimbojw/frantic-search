@@ -118,7 +118,7 @@ Test authors should prefer front face names for clarity and only use the combine
 npm run cli -- compliance
 ```
 
-1. Load `data/dist/columns.json` into a `CardIndex`.
+1. Load `data/dist/columns.json` into a `CardIndex`; load `printings.json` from the same directory when present; build `TagDataRef` and `KeywordDataRef` like the app worker (Spec 069 — `otags.json`, `atags.json`, `flavor-index.json`, `artist-index.json`, plus `keywords_index` from columns). Use `compliance --no-supplemental` to skip the four supplemental JSON files.
 2. For each test case in each suite file:
    - Parse and evaluate the query.
    - Check all assertions against the result set.
@@ -146,7 +146,7 @@ The Scryfall client must wait at least 100ms between any two HTTP requests to th
 
 ## Data Prerequisites
 
-Local mode requires `data/dist/columns.json`, which is git-ignored and produced by the ETL pipeline (`npm run etl -- download && npm run etl -- process`). The runner must check for this file on startup and exit with a clear error message if it is missing, directing the user to run the ETL commands.
+Local mode requires `data/dist/columns.json`, which is git-ignored and produced by the ETL pipeline (`npm run etl -- download && npm run etl -- process`). The runner must check for this file on startup and exit with a clear error message if it is missing, directing the user to run the ETL commands. For queries involving `otag:`, `atag:`, `flavor:`, `a:`, or similar, run `download-tags` and full processing so supplemental files exist beside `columns.json` (see `docs/guides/scryfall-comparison.md`).
 
 For CI, there are two options:
 

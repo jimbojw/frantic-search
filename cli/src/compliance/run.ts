@@ -6,6 +6,8 @@ import { PrintingIndex } from "@frantic-search/shared/src/search/printing-index"
 import type { ColumnarData, PrintingColumnarData } from "@frantic-search/shared/src/data";
 import { loadAllSuites } from "./loader";
 import { runLocalTest } from "./local";
+import { buildCliEvalRefs } from "../cli-eval-refs";
+import type { SupplementalDistPaths } from "../cli-eval-refs";
 import { runScryfallTest } from "./scryfall";
 import {
   reportLocalResults,
@@ -16,17 +18,24 @@ import {
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
 const COLUMNS_PATH = path.join(PROJECT_ROOT, "data", "dist", "columns.json");
-const PRINTINGS_PATH = path.join(PROJECT_ROOT, "data", "dist", "printings.json");
 const SUITES_DIR = path.join(PROJECT_ROOT, "cli", "suites");
 
-export async function runCompliance(options: { verify: boolean; data?: string }): Promise<void> {
+export async function runCompliance(options: {
+  verify: boolean;
+  data?: string;
+  noSupplemental?: boolean;
+  supplementalPaths?: Partial<SupplementalDistPaths>;
+}): Promise<void> {
   const suitesDir = SUITES_DIR;
   const suites = loadAllSuites(suitesDir);
 
   if (options.verify) {
     await runVerifyMode(suites.flatMap(s => s.cases.map(c => ({ suite: s.file, case: c }))));
   } else {
-    runLocalMode(suites, options.data ?? COLUMNS_PATH);
+    runLocalMode(suites, options.data ?? COLUMNS_PATH, {
+      noSupplemental: options.noSupplemental,
+      supplementalPaths: options.supplementalPaths,
+    });
   }
 }
 
@@ -35,7 +44,11 @@ interface TaggedCase {
   case: import("./loader").TestCase;
 }
 
-function runLocalMode(suites: ReturnType<typeof loadAllSuites>, dataPath: string): void {
+function runLocalMode(
+  suites: ReturnType<typeof loadAllSuites>,
+  dataPath: string,
+  evalOpts?: { noSupplemental?: boolean; supplementalPaths?: Partial<SupplementalDistPaths> },
+): void {
   if (!fs.existsSync(dataPath)) {
     process.stderr.write(
       `Error: ${dataPath} not found.\nRun 'npm run etl -- download' and 'npm run etl -- process' first.\n`,
@@ -47,17 +60,27 @@ function runLocalMode(suites: ReturnType<typeof loadAllSuites>, dataPath: string
   const data: ColumnarData = JSON.parse(raw);
   const index = new CardIndex(data);
 
+  const printingsPath = path.join(path.dirname(dataPath), "printings.json");
   let printingIndex: PrintingIndex | null = null;
-  if (fs.existsSync(PRINTINGS_PATH)) {
-    const printingData: PrintingColumnarData = JSON.parse(fs.readFileSync(PRINTINGS_PATH, "utf-8"));
+  let printingData: PrintingColumnarData | null = null;
+  if (fs.existsSync(printingsPath)) {
+    printingData = JSON.parse(fs.readFileSync(printingsPath, "utf-8")) as PrintingColumnarData;
     printingIndex = new PrintingIndex(printingData, data.scryfall_ids);
   } else {
-    process.stderr.write(`Warning: ${PRINTINGS_PATH} not found. Printing-domain queries will not work.\n`);
+    process.stderr.write(`Warning: ${printingsPath} not found. Printing-domain queries will not work.\n`);
   }
+
+  const distDir = path.dirname(dataPath);
+  const { tagDataRef, keywordDataRef } = buildCliEvalRefs(data, printingData, distDir, {
+    noSupplemental: !!evalOpts?.noSupplemental,
+    supplementalPaths: evalOpts?.supplementalPaths,
+  });
 
   const summaries: SuiteSummary[] = [];
   for (const suite of suites) {
-    const results = suite.cases.map(tc => runLocalTest(tc, index, printingIndex));
+    const results = suite.cases.map((tc) =>
+      runLocalTest(tc, index, printingIndex, tagDataRef, keywordDataRef),
+    );
     summaries.push({ file: suite.file, results });
   }
 
