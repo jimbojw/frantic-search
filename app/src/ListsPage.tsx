@@ -5,9 +5,11 @@ import type { DisplayColumns, InstanceState, LineValidationResult, PrintingDispl
 import type { DeckFormat } from '@frantic-search/shared'
 import { DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
+import { captureMyListInteracted, toMyListListId } from './analytics'
 import { IconChevronLeft } from './Icons'
 import type { DeckReportContext } from './deck-editor/DeckEditorContext'
 import { DeckEditor } from './deck-editor'
+import type { EditorMode } from './deck-editor/types'
 
 export default function ListsPage(props: {
   listTab: 'default' | 'trash'
@@ -24,6 +26,7 @@ export default function ListsPage(props: {
   onViewInSearch?: (listId: string) => void
 }) {
   const [_isDraftActive, setIsDraftActive] = createSignal(false)
+  const [editorMode, setEditorMode] = createSignal<EditorMode>('init')
 
   const listId = () => (props.listTab === 'trash' ? TRASH_LIST_ID : DEFAULT_LIST_ID)
 
@@ -51,7 +54,14 @@ export default function ListsPage(props: {
       <div class="flex items-center gap-4 mb-6">
         <button
           type="button"
-          onClick={() => props.onBack()}
+          onClick={() => {
+            captureMyListInteracted({
+              control: 'back',
+              list_id: toMyListListId(listId()),
+              editor_mode: editorMode(),
+            })
+            props.onBack()
+          }}
           class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
           aria-label="Back"
         >
@@ -76,6 +86,7 @@ export default function ListsPage(props: {
         onDraftActiveChange={setIsDraftActive}
         onDeckReportClick={props.onDeckReportClick}
         onViewInSearch={props.onViewInSearch}
+        onEditorModeChange={setEditorMode}
       />
     </div>
   )

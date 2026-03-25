@@ -44,6 +44,12 @@ import {
   type CachedError,
   type ResolvedCacheEntry,
 } from './validation-cache'
+import {
+  captureMyListInteracted,
+  toMyListListId,
+  type MyListEditorMode,
+  type MyListExportOutlinkId,
+} from '../analytics'
 import { DeckEditorContext, type DeckEditorContextValue, type DeckReportContext } from './DeckEditorContext'
 import DeckEditorToolbar from './DeckEditorToolbar'
 import DeckEditorStatus from './DeckEditorStatus'
@@ -55,6 +61,8 @@ import type { EditorMode } from './types'
 export type { EditorMode } from './types'
 
 const VALIDATION_DEBOUNCE_MS = 150
+
+const ERRORS_EXPANDED_KEY = 'frantic-deck-editor-errors-expanded'
 
 export default function DeckEditor(props: {
   listId: string
@@ -70,6 +78,7 @@ export default function DeckEditor(props: {
   onDraftActiveChange?: (active: boolean) => void
   onDeckReportClick?: (context: DeckReportContext) => void
   onViewInSearch?: (listId: string) => void
+  onEditorModeChange?: (mode: EditorMode) => void
 }) {
   const [draftText, setDraftText] = createSignal<string | null>(null)
   const [baselineText, setBaselineText] = createSignal<string | null>(null)
@@ -86,6 +95,9 @@ export default function DeckEditor(props: {
   const [preserveTags, setPreserveTags] = createSignal(readPreserveTags())
   const [preserveCollectionStatus, setPreserveCollectionStatus] = createSignal(readPreserveCollectionStatus())
   const [preserveVariants, setPreserveVariants] = createSignal(readPreserveVariants())
+  const [validationErrorsExpanded, setValidationErrorsExpanded] = createSignal(
+    typeof localStorage !== 'undefined' && localStorage.getItem(ERRORS_EXPANDED_KEY) === 'true',
+  )
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -158,19 +170,6 @@ export default function DeckEditor(props: {
     return { tagsCount, collectionCount, variantsCount }
   })
 
-  function setPreserveTagsWithStorage(v: boolean) {
-    setPreserveTags(v)
-    writePreserveTags(v)
-  }
-  function setPreserveCollectionStatusWithStorage(v: boolean) {
-    setPreserveCollectionStatus(v)
-    writePreserveCollectionStatus(v)
-  }
-  function setPreserveVariantsWithStorage(v: boolean) {
-    setPreserveVariants(v)
-    writePreserveVariants(v)
-  }
-
   const mode = createMemo<EditorMode>(() => {
     if (reviewModeActive()) return 'review'
     if (draftText() !== null) return 'edit'
@@ -178,8 +177,19 @@ export default function DeckEditor(props: {
     return 'init'
   })
 
+  function myListAnalyticsBase(): { list_id: ReturnType<typeof toMyListListId>; editor_mode: MyListEditorMode } {
+    return {
+      list_id: toMyListListId(props.listId),
+      editor_mode: mode() as MyListEditorMode,
+    }
+  }
+
   createEffect(() => {
     props.onDraftActiveChange?.(draftText() !== null)
+  })
+
+  createEffect(() => {
+    props.onEditorModeChange?.(mode())
   })
 
   // Populate baseline when in Edit mode with cached draft (restore-from-cache case)
@@ -469,7 +479,125 @@ export default function DeckEditor(props: {
     }, VALIDATION_DEBOUNCE_MS)
   }
 
+  function handleDeckPaste() {
+    captureMyListInteracted({
+      control: 'deck_paste',
+      from_mode: mode() === 'init' ? 'init' : 'edit',
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function togglePreserveTags() {
+    const c = preserveCounts()
+    if (c.tagsCount === 0) return
+    const next = !preserveTags()
+    setPreserveTags(next)
+    writePreserveTags(next)
+    captureMyListInteracted({
+      control: 'preserve_toggle',
+      preserve_kind: 'tags',
+      enabled: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function togglePreserveCollectionStatus() {
+    const c = preserveCounts()
+    if (c.collectionCount === 0) return
+    const next = !preserveCollectionStatus()
+    setPreserveCollectionStatus(next)
+    writePreserveCollectionStatus(next)
+    captureMyListInteracted({
+      control: 'preserve_toggle',
+      preserve_kind: 'collection',
+      enabled: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function togglePreserveVariants() {
+    const c = preserveCounts()
+    if (c.variantsCount === 0) return
+    const next = !preserveVariants()
+    setPreserveVariants(next)
+    writePreserveVariants(next)
+    captureMyListInteracted({
+      control: 'preserve_toggle',
+      preserve_kind: 'variants',
+      enabled: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function toggleReviewFilterAdded() {
+    const diff = enrichedReviewDiff()
+    const n = diff?.additions.length ?? 0
+    if (n === 0) return
+    const next = !reviewFilterAdded()
+    setReviewFilterAdded(next)
+    captureMyListInteracted({
+      control: 'review_filter_toggle',
+      filter: 'added',
+      visible: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function toggleReviewFilterRemoved() {
+    const diff = enrichedReviewDiff()
+    const m = diff?.removals.length ?? 0
+    if (m === 0) return
+    const next = !reviewFilterRemoved()
+    setReviewFilterRemoved(next)
+    captureMyListInteracted({
+      control: 'review_filter_toggle',
+      filter: 'removed',
+      visible: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function toggleReviewFilterUnchanged() {
+    const matched = reviewMatchedInstances()
+    const k = matched.length
+    if (k === 0) return
+    const next = !reviewFilterUnchanged()
+    setReviewFilterUnchanged(next)
+    captureMyListInteracted({
+      control: 'review_filter_toggle',
+      filter: 'unchanged',
+      visible: next,
+      ...myListAnalyticsBase(),
+    })
+  }
+
+  function toggleValidationErrorsExpanded() {
+    setValidationErrorsExpanded((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(ERRORS_EXPANDED_KEY, String(next))
+      } catch {
+        // ignore
+      }
+      captureMyListInteracted({
+        control: 'validation_panel_toggle',
+        expanded: next,
+        ...myListAnalyticsBase(),
+      })
+      return next
+    })
+  }
+
+  function handleExportOutlinkClick(payload: { outlink_id: MyListExportOutlinkId; deck_format: DeckFormat }) {
+    captureMyListInteracted({
+      control: 'export_outlink',
+      ...myListAnalyticsBase(),
+      ...payload,
+    })
+  }
+
   function handleEdit() {
+    captureMyListInteracted({ control: 'edit_open', ...myListAnalyticsBase() })
     clearLineCache()
     const text = serializedText()
     setBaselineText(text)
@@ -487,6 +615,9 @@ export default function DeckEditor(props: {
   }
 
   function handleCancel() {
+    if (mode() === 'edit' && !hasChanges()) {
+      captureMyListInteracted({ control: 'cancel_edit', ...myListAnalyticsBase() })
+    }
     clearLineCache()
     setDraftText(null)
     setDebouncedDraft('')
@@ -502,6 +633,7 @@ export default function DeckEditor(props: {
   function handleRevert() {
     const base = baselineText()
     if (base === null) return
+    captureMyListInteracted({ control: 'revert', ...myListAnalyticsBase() })
     setDraftText(base)
     setDebouncedDraft(base)
     writeDraftToStorage(props.listId, base)
@@ -526,7 +658,15 @@ export default function DeckEditor(props: {
         clearTimeout(debounceTimer)
         debounceTimer = undefined
       }
-      setTimeout(() => setQuickFixApplying(null), 100)
+      setTimeout(() => {
+        captureMyListInteracted({
+          control: 'quick_fix_apply',
+          line_index: err.lineIndex,
+          fix_index: fixIndex,
+          ...myListAnalyticsBase(),
+        })
+        setQuickFixApplying(null)
+      }, 100)
     }, 50)
   }
 
@@ -535,6 +675,11 @@ export default function DeckEditor(props: {
       (e) => e.quickFixes && e.quickFixes.length > 0
     )
     if (errors.length === 0) return
+    captureMyListInteracted({
+      control: 'quick_fix_apply_all',
+      fix_count: errors.length,
+      ...myListAnalyticsBase(),
+    })
     const sorted = [...errors].sort((a, b) => b.lineStart - a.lineStart)
     let text = draftText()
     if (text == null) return
@@ -554,10 +699,20 @@ export default function DeckEditor(props: {
   }
 
   function handleReview() {
+    const s = editDiffSummary()
+    if (s) {
+      captureMyListInteracted({
+        control: 'review_open',
+        additions_count: s.additions,
+        removals_count: s.removals,
+        ...myListAnalyticsBase(),
+      })
+    }
     setReviewModeActive(true)
   }
 
   function handleBackToEdit() {
+    captureMyListInteracted({ control: 'review_back', ...myListAnalyticsBase() })
     setReviewModeActive(false)
   }
 
@@ -610,7 +765,8 @@ export default function DeckEditor(props: {
 
       await props.cardListStore.applyDiff(props.listId, enriched.removals, enriched.additions)
 
-      if (result.deckName || Object.keys(result.tagColors).length > 0) {
+      const metadataUpdated = !!(result.deckName || Object.keys(result.tagColors).length > 0)
+      if (metadataUpdated) {
         const meta = props.metadata
         await props.cardListStore.updateListMetadata(props.listId, {
           name: result.deckName ?? meta?.name ?? 'My List',
@@ -621,10 +777,22 @@ export default function DeckEditor(props: {
       }
 
       const detected = detectedFormat()
+      const formatPersisted = detected !== null
       if (detected) {
         setSelectedFormat(detected)
         writeFormatToStorage(detected)
       }
+
+      captureMyListInteracted({
+        control: 'save_committed',
+        list_id: toMyListListId(props.listId),
+        editor_mode: 'review',
+        additions_count: enriched.additions.length,
+        removals_count: enriched.removals.length,
+        metadata_updated: metadataUpdated,
+        format_persisted: formatPersisted,
+      })
+
       handleCancel()
       props.onApplySuccess?.()
     } finally {
@@ -660,8 +828,16 @@ export default function DeckEditor(props: {
     } else {
       text = serializedText()
     }
+    const base = myListAnalyticsBase()
+    const m = mode()
+    const copySource = m === 'review' ? 'review' : m === 'edit' ? 'edit' : 'display'
     try {
       await navigator.clipboard.writeText(text)
+      captureMyListInteracted({
+        control: 'copy',
+        copy_source: copySource,
+        ...base,
+      })
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -671,15 +847,25 @@ export default function DeckEditor(props: {
 
   function handleFormatSelect(format: DeckFormat) {
     if (mode() !== 'display' && mode() !== 'review') return
+    const prev = selectedFormat()
+    if (prev === format) return
+    captureMyListInteracted({
+      control: 'format_select',
+      deck_format: format,
+      previous_format: prev,
+      ...myListAnalyticsBase(),
+    })
     setSelectedFormat(format)
     writeFormatToStorage(format)
   }
 
   function handleViewInSearch() {
+    captureMyListInteracted({ control: 'view_in_search', ...myListAnalyticsBase() })
     props.onViewInSearch?.(props.listId)
   }
 
   function handleDeckReport() {
+    captureMyListInteracted({ control: 'bug_report_open', ...myListAnalyticsBase() })
     let listContent: string
     let reportMode: 'display' | 'edit' | 'review'
     if (mode() === 'display') {
@@ -720,9 +906,9 @@ export default function DeckEditor(props: {
     preserveCollectionStatus,
     preserveVariants,
     preserveCounts,
-    setPreserveTags: setPreserveTagsWithStorage,
-    setPreserveCollectionStatus: setPreserveCollectionStatusWithStorage,
-    setPreserveVariants: setPreserveVariantsWithStorage,
+    togglePreserveTags,
+    togglePreserveCollectionStatus,
+    togglePreserveVariants,
     textareaValue,
     highlightText,
     highlightValidation,
@@ -736,9 +922,11 @@ export default function DeckEditor(props: {
     reviewFilterAdded,
     reviewFilterRemoved,
     reviewFilterUnchanged,
-    setReviewFilterAdded,
-    setReviewFilterRemoved,
-    setReviewFilterUnchanged,
+    toggleReviewFilterAdded,
+    toggleReviewFilterRemoved,
+    toggleReviewFilterUnchanged,
+    validationErrorsExpanded,
+    toggleValidationErrorsExpanded,
     handleEdit,
     handleCancel,
     handleRevert,
@@ -748,11 +936,13 @@ export default function DeckEditor(props: {
     handleCopy,
     handleFormatSelect,
     handleInput,
+    handleDeckPaste,
     applyQuickFix,
     applyAllQuickFixes,
     registerTextareaRef: setTextareaEl,
     handleDeckReport,
     handleViewInSearch,
+    onExportOutlinkClick: handleExportOutlinkClick,
   }
 
   return (

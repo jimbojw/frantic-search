@@ -18,6 +18,7 @@ export default function DeckEditorTextarea() {
         ref={(el) => ctx.registerTextareaRef(el)}
         value={ctx.textareaValue()}
         onInput={ctx.handleInput}
+        onPaste={ctx.mode() === 'display' ? undefined : ctx.handleDeckPaste}
         readOnly={ctx.mode() === 'display'}
         placeholder={ctx.mode() === 'init' ? 'Paste or type a deck list…\n\n1 Lightning Bolt\n4x Birds of Paradise\n1 Shock (M21) 159' : undefined}
         autocapitalize="none"

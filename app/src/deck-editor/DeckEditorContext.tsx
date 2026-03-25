@@ -9,6 +9,7 @@ import type {
   QuickFix,
 } from '@frantic-search/shared'
 import type { DiffResult } from '@frantic-search/shared'
+import type { MyListExportOutlinkId } from '../analytics'
 import type { EditorMode } from './types'
 
 /** Spec 118: context captured when user taps Bug in deck editor toolbar */
@@ -39,9 +40,9 @@ export interface DeckEditorContextValue {
   preserveCollectionStatus: Accessor<boolean>
   preserveVariants: Accessor<boolean>
   preserveCounts: Accessor<{ tagsCount: number; collectionCount: number; variantsCount: number }>
-  setPreserveTags: (v: boolean) => void
-  setPreserveCollectionStatus: (v: boolean) => void
-  setPreserveVariants: (v: boolean) => void
+  togglePreserveTags: () => void
+  togglePreserveCollectionStatus: () => void
+  togglePreserveVariants: () => void
   textareaValue: Accessor<string>
   highlightText: Accessor<string>
   highlightValidation: Accessor<ListValidationResult | null>
@@ -53,9 +54,11 @@ export interface DeckEditorContextValue {
   reviewFilterAdded: Accessor<boolean>
   reviewFilterRemoved: Accessor<boolean>
   reviewFilterUnchanged: Accessor<boolean>
-  setReviewFilterAdded: (v: boolean) => void
-  setReviewFilterRemoved: (v: boolean) => void
-  setReviewFilterUnchanged: (v: boolean) => void
+  toggleReviewFilterAdded: () => void
+  toggleReviewFilterRemoved: () => void
+  toggleReviewFilterUnchanged: () => void
+  validationErrorsExpanded: Accessor<boolean>
+  toggleValidationErrorsExpanded: () => void
   copied: Accessor<boolean>
   quickFixApplying: Accessor<{ lineIndex: number; fixIndex: number } | null>
   handleEdit: () => void
@@ -67,11 +70,13 @@ export interface DeckEditorContextValue {
   handleCopy: () => void
   handleFormatSelect: (format: DeckFormat) => void
   handleInput: (e: Event) => void
+  handleDeckPaste: () => void
   applyQuickFix: (err: LineValidation, fix: QuickFix, fixIndex: number) => void
   applyAllQuickFixes: () => void
   registerTextareaRef: (el: HTMLTextAreaElement | null) => void
   handleDeckReport: () => void
   handleViewInSearch: () => void
+  onExportOutlinkClick: (payload: { outlink_id: MyListExportOutlinkId; deck_format: DeckFormat }) => void
 }
 
 export const DeckEditorContext = createContext<DeckEditorContextValue | undefined>(undefined)

@@ -41,6 +41,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'archidekt_sandbox', deck_format: 'archidekt' })
+                }
               >
                 Archidekt Sandbox
               </a>
@@ -53,6 +56,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'arena_import_guide', deck_format: 'arena' })
+                }
               >
                 Import Guide
               </a>
@@ -65,6 +71,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'manapool_mass_entry', deck_format: 'manapool' })
+                }
               >
                 Mass Entry form
               </a>
@@ -76,6 +85,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'melee_decklist_docs', deck_format: 'melee' })
+                }
               >
                 decklist builder
               </a>
@@ -88,6 +100,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'moxfield_personal_decks', deck_format: 'moxfield' })
+                }
               >
                 Moxfield personal decks
               </a>
@@ -100,6 +115,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'mtggoldfish_new_deck', deck_format: 'mtggoldfish' })
+                }
               >
                 MTGGoldfish's deck builder
               </a>
@@ -114,6 +132,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'tappedout_paste', deck_format: 'tappedout' })
+                }
               >
                 Paste page
               </a>
@@ -126,6 +147,9 @@ export default function DeckEditorFormatChips() {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
+                onClick={() =>
+                  ctx.onExportOutlinkClick({ outlink_id: 'tcgplayer_mass_entry', deck_format: 'tcgplayer' })
+                }
               >
                 Mass Entry
               </a>

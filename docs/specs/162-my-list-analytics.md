@@ -1,6 +1,6 @@
 # Spec 162: My List (Deck Editor) PostHog Events
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 085 (PostHog Analytics), Spec 090 (Lists Page), Spec 110 (Hybrid Deck Editor), Spec 119 (Deck Editor Review Step), Spec 118 (Deck Editor Bug Report), Spec 121 (My List Printing Domain)
 
@@ -101,6 +101,7 @@ Stable enum for dashboard breakdowns; **do not** send full URLs.
 - **`format_select`:** compare new `DeckFormat` to `selectedFormat()` before writing storage; skip capture if unchanged.
 - **Spec 085:** When implementation lands, add `my_list_interacted` to the Spec 085 event schema table in the same style as `card_detail_interacted` / `search_results_interacted` (control-based payload summary + pointer to this spec).
 - **Tests:** Optional Vitest coverage for `captureMyListInteracted` and discriminated payload shapes, consistent with other `capture*` helpers.
+- **2026-03-25:** Initial implementation.
 
 ## Acceptance criteria
 

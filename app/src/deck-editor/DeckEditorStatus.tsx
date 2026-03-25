@@ -1,32 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createSignal, Show, For } from 'solid-js'
+import { Show, For } from 'solid-js'
 import { IconChevronRight } from '../Icons'
 import ListHighlight from '../ListHighlight'
 import { StyledValidationText } from './StyledValidationText'
 import { useDeckEditorContext } from './DeckEditorContext'
 
-const ERRORS_EXPANDED_KEY = 'frantic-deck-editor-errors-expanded'
-
 export default function DeckEditorStatus() {
   const ctx = useDeckEditorContext()
-  const [expanded, setExpanded] = createSignal(
-    typeof localStorage !== 'undefined' && localStorage.getItem(ERRORS_EXPANDED_KEY) === 'true'
-  )
 
   const errorsWithFixes = () =>
     ctx.validationErrors().filter((e) => e.quickFixes && e.quickFixes.length > 0)
-
-  function toggleExpanded() {
-    setExpanded((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(ERRORS_EXPANDED_KEY, String(next))
-      } catch {
-        // ignore
-      }
-      return next
-    })
-  }
 
   return (
     <div
@@ -85,7 +68,7 @@ export default function DeckEditorStatus() {
                   ctx.preserveTags(),
                   counts.tagsCount === 0,
                   'No tags in this list to preserve',
-                  () => ctx.setPreserveTags(!ctx.preserveTags())
+                  () => ctx.togglePreserveTags()
                 )}
                 {preserveChip(
                   'Collection',
@@ -93,7 +76,7 @@ export default function DeckEditorStatus() {
                   ctx.preserveCollectionStatus(),
                   counts.collectionCount === 0,
                   'No collection status in this list to preserve',
-                  () => ctx.setPreserveCollectionStatus(!ctx.preserveCollectionStatus())
+                  () => ctx.togglePreserveCollectionStatus()
                 )}
                 {preserveChip(
                   'Variants',
@@ -101,7 +84,7 @@ export default function DeckEditorStatus() {
                   ctx.preserveVariants(),
                   counts.variantsCount === 0,
                   'No variants in this list to preserve',
-                  () => ctx.setPreserveVariants(!ctx.preserveVariants())
+                  () => ctx.togglePreserveVariants()
                 )}
               </>
             )
@@ -161,9 +144,9 @@ export default function DeckEditorStatus() {
             )
             return (
               <>
-                {chip('Added', n, ctx.reviewFilterAdded(), n === 0, () => ctx.setReviewFilterAdded(!ctx.reviewFilterAdded()))}
-                {chip('Removed', m, ctx.reviewFilterRemoved(), m === 0, () => ctx.setReviewFilterRemoved(!ctx.reviewFilterRemoved()))}
-                {chip('Unchanged', k, ctx.reviewFilterUnchanged(), k === 0, () => ctx.setReviewFilterUnchanged(!ctx.reviewFilterUnchanged()))}
+                {chip('Added', n, ctx.reviewFilterAdded(), n === 0, () => ctx.toggleReviewFilterAdded())}
+                {chip('Removed', m, ctx.reviewFilterRemoved(), m === 0, () => ctx.toggleReviewFilterRemoved())}
+                {chip('Unchanged', k, ctx.reviewFilterUnchanged(), k === 0, () => ctx.toggleReviewFilterUnchanged())}
               </>
             )
           })()}
@@ -242,14 +225,14 @@ export default function DeckEditorStatus() {
             <div class="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={toggleExpanded}
+                onClick={() => ctx.toggleValidationErrorsExpanded()}
                 class="flex items-center justify-between gap-2 w-full text-left min-h-[2rem] -mx-1 px-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                aria-expanded={expanded()}
-                aria-label={expanded() ? 'Collapse errors' : 'Expand errors'}
+                aria-expanded={ctx.validationErrorsExpanded()}
+                aria-label={ctx.validationErrorsExpanded() ? 'Collapse errors' : 'Expand errors'}
               >
                 <span class="flex items-center gap-1.5 shrink-0">
                   <IconChevronRight
-                    class={`size-2.5 transition-transform text-red-800 dark:text-red-200 ${expanded() ? 'rotate-90' : ''}`}
+                    class={`size-2.5 transition-transform text-red-800 dark:text-red-200 ${ctx.validationErrorsExpanded() ? 'rotate-90' : ''}`}
                   />
                   <span class="text-red-800 dark:text-red-200">
                     Editing: {ctx.validationErrors().length} error{ctx.validationErrors().length !== 1 ? 's' : ''}{(ctx.editFormatLabel() ?? '').trim() ? ` (${ctx.editFormatLabel()})` : ''}
@@ -281,7 +264,7 @@ export default function DeckEditorStatus() {
                   </Show>
                 </span>
               </button>
-              <Show when={expanded()} fallback={null}>
+              <Show when={ctx.validationErrorsExpanded()} fallback={null}>
                 <ul class="list-none space-y-2">
                   <For each={ctx.validationErrors()}>
                     {(err) => {
