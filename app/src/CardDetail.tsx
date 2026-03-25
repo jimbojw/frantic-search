@@ -16,6 +16,7 @@ import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
 import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice } from './app-utils'
 import { Outlink } from './Outlink'
+import { captureCardDetailInteracted, type CardDetailListFinish } from './analytics'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },
@@ -66,7 +67,12 @@ const STATUS_LABELS: Record<LegalityStatus, string> = {
 
 const DOUBLE_SIDED_LAYOUTS = new Set(['transform', 'modal_dfc'])
 
-function CardImage(props: { scryfallId: string; colorIdentity: number; layout: string }) {
+function CardImage(props: {
+  scryfallId: string
+  colorIdentity: number
+  layout: string
+  onFaceToggle?: (face: 'front' | 'back') => void
+}) {
   const hasBackFace = () => DOUBLE_SIDED_LAYOUTS.has(props.layout)
   const [artLoaded, setArtLoaded] = createSignal(false)
   const [normalLoaded, setNormalLoaded] = createSignal(false)
@@ -109,14 +115,24 @@ function CardImage(props: { scryfallId: string; colorIdentity: number; layout: s
         <div class="flex justify-center gap-2 mt-3">
           <button
             type="button"
-            onClick={() => { setActiveFace('front'); setNormalLoaded(false); setNormalFailed(false) }}
+            onClick={() => {
+              setActiveFace('front')
+              setNormalLoaded(false)
+              setNormalFailed(false)
+              props.onFaceToggle?.('front')
+            }}
             class={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${activeFace() === 'front' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
           >
             Front
           </button>
           <button
             type="button"
-            onClick={() => { setActiveFace('back'); setNormalLoaded(false); setNormalFailed(false) }}
+            onClick={() => {
+              setActiveFace('back')
+              setNormalLoaded(false)
+              setNormalFailed(false)
+              props.onFaceToggle?.('back')
+            }}
             class={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${activeFace() === 'back' ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
           >
             Back
@@ -182,6 +198,11 @@ function TagChip(props: {
   const [copied, setCopied] = createSignal(false)
   const copyQuery = () => {
     navigator.clipboard.writeText(query()).then(() => {
+      captureCardDetailInteracted(
+        props.prefix === 'otag'
+          ? { control: 'otag_copy', tag_label: props.label }
+          : { control: 'atag_copy', tag_label: props.label },
+      )
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
@@ -206,7 +227,14 @@ function TagChip(props: {
         >
           <button
             type="button"
-            onClick={() => props.onNavigate!(query())}
+            onClick={() => {
+              captureCardDetailInteracted(
+                props.prefix === 'otag'
+                  ? { control: 'otag_nav', tag_label: props.label }
+                  : { control: 'atag_nav', tag_label: props.label },
+              )
+              props.onNavigate!(query())
+            }}
             class="flex items-center gap-0 text-left cursor-pointer flex-1 min-w-0 truncate"
           >
             <For each={buildSpans(query())}>
@@ -300,7 +328,10 @@ export default function CardDetail(props: {
       <div class="flex items-center justify-between mb-2">
         <button
           type="button"
-          onClick={() => history.back()}
+          onClick={() => {
+            captureCardDetailInteracted({ control: 'back' })
+            history.back()
+          }}
           class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
           aria-label="Back to search results"
         >
@@ -312,6 +343,7 @@ export default function CardDetail(props: {
             href={scryfallUrl()}
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
             aria-label="View on Scryfall"
+            onClick={() => captureCardDetailInteracted({ control: 'scryfall_external' })}
           >
             <IconArrowTopRightOnSquare class="size-5" />
           </Outlink>
@@ -321,7 +353,10 @@ export default function CardDetail(props: {
         <div class="flex justify-center mb-6">
           <button
             type="button"
-            onClick={() => props.onNavigateToQuery!(allPrintsQuery())}
+            onClick={() => {
+              captureCardDetailInteracted({ control: 'all_prints' })
+              props.onNavigateToQuery!(allPrintsQuery())
+            }}
             class="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
           >
             All prints &rarr;
@@ -348,6 +383,7 @@ export default function CardDetail(props: {
                   scryfallId={imageScryfallId()}
                   colorIdentity={cols().color_identity[idx]}
                   layout={cols().layouts[idx]}
+                  onFaceToggle={(face) => captureCardDetailInteracted({ control: 'face_toggle', face })}
                 />
               </div>
 
@@ -364,6 +400,7 @@ export default function CardDetail(props: {
                   const [copied, setCopied] = createSignal(false)
                   const copySlackName = () => {
                     navigator.clipboard.writeText(slackBotName()).then(() => {
+                      captureCardDetailInteracted({ control: 'slack_copy' })
                       setCopied(true)
                       setTimeout(() => setCopied(false), 1500)
                     })
@@ -386,8 +423,26 @@ export default function CardDetail(props: {
                           <Show when={props.cardListStore && oracleId()}>
                             <ListControls
                               count={nameCount()}
-                              onAdd={() => props.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {})}
-                              onRemove={() => props.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {})}
+                              onAdd={() => {
+                                const oid = oracleId()!
+                                captureCardDetailInteracted({
+                                  control: 'list_add',
+                                  list_scope: 'oracle',
+                                  oracle_id: oid,
+                                  finish: 'nonfoil',
+                                })
+                                props.cardListStore!.addInstance(oid, DEFAULT_LIST_ID).catch(() => {})
+                              }}
+                              onRemove={() => {
+                                const oid = oracleId()!
+                                captureCardDetailInteracted({
+                                  control: 'list_remove',
+                                  list_scope: 'oracle',
+                                  oracle_id: oid,
+                                  finish: 'nonfoil',
+                                })
+                                props.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid).catch(() => {})
+                              }}
                               addLabel="Add card to list"
                               removeLabel="Remove from list"
                             />
@@ -400,7 +455,11 @@ export default function CardDetail(props: {
                           }>
                             <button
                               type="button"
-                              onClick={() => props.onNavigateToQuery!(`s:${pcols().set_codes[pidx]} unique:prints`)}
+                              onClick={() => {
+                                const code = pcols().set_codes[pidx]
+                                captureCardDetailInteracted({ control: 'set_unique_prints', set_code: code })
+                                props.onNavigateToQuery!(`s:${code} unique:prints`)
+                              }}
                               class="hover:text-blue-500 dark:hover:text-blue-400 transition-colors text-left"
                             >
                               {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span>
@@ -464,14 +523,32 @@ export default function CardDetail(props: {
                                           const store = props.cardListStore!
                                           const oid = oracleId()
                                           const scryfallId = pcols().scryfall_ids[pi]
-                                          const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                          const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                          if (oid) {
+                                            captureCardDetailInteracted({
+                                              control: 'list_add',
+                                              list_scope: 'printing',
+                                              oracle_id: oid,
+                                              finish,
+                                              scryfall_id: scryfallId,
+                                            })
+                                          }
                                           if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                         }}
                                         onRemove={() => {
                                           const store = props.cardListStore!
                                           const oid = oracleId()
                                           const scryfallId = pcols().scryfall_ids[pi]
-                                          const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
+                                          const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                          if (oid) {
+                                            captureCardDetailInteracted({
+                                              control: 'list_remove',
+                                              list_scope: 'printing',
+                                              oracle_id: oid,
+                                              finish,
+                                              scryfall_id: scryfallId,
+                                            })
+                                          }
                                           if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
                                         }}
                                         addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
@@ -508,14 +585,32 @@ export default function CardDetail(props: {
                                       const store = props.cardListStore!
                                       const oid = oracleId()
                                       const scryfallId = pcols().scryfall_ids[pidx]
-                                      const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                                      const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
+                                      if (oid) {
+                                        captureCardDetailInteracted({
+                                          control: 'list_add',
+                                          list_scope: 'printing',
+                                          oracle_id: oid,
+                                          finish,
+                                          scryfall_id: scryfallId,
+                                        })
+                                      }
                                       if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
                                     }}
                                     onRemove={() => {
                                       const store = props.cardListStore!
                                       const oid = oracleId()
                                       const scryfallId = pcols().scryfall_ids[pidx]
-                                      const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                                      const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
+                                      if (oid) {
+                                        captureCardDetailInteracted({
+                                          control: 'list_remove',
+                                          list_scope: 'printing',
+                                          oracle_id: oid,
+                                          finish,
+                                          scryfall_id: scryfallId,
+                                        })
+                                      }
                                       if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
                                     }}
                                     addLabel="Add this printing to list"

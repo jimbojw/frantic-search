@@ -86,6 +86,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
 | `menu_chip_used`           | `{ section: string, chip_label: string }` (Spec 083) |
 | `scryfall_outlink_clicked` | `{ query: string, used_extension: boolean, results_count: number, pane_id?: string }` — fired when the user activates **Try on Scryfall** (Spec 152). `query` is the trimmed effective query (same string family as `search_executed`). `used_extension` matches §5 at click time. `results_count` uses the same cardinality as `search_executed.results_count`: when the pane has non-empty printing indices and view mode is `images` or `full`, use raw printing row count; otherwise use card index count. `pane_id` is `left` or `right` in dual-wield; omitted in single-pane (or set to `main` if the implementation standardizes on a string). |
+| `card_detail_interacted` | Discriminated by `control` plus optional fields (`set_code`, `face`, `tag_label`, `list_scope`, `oracle_id`, `finish`, `scryfall_id`) — Spec 160. Card detail page only; do not use `ui_interacted` for these controls. |
 
 ### 5. `used_extension` Definition
 
@@ -132,6 +133,8 @@ Add `captureUiInteracted({ element_name, action, state? })` at these locations:
 Suggestion chips (Spec 151, Spec 153) use a dedicated `suggestion_applied` event via `captureSuggestionApplied()`, fired in SuggestionList when the user taps a chip. Properties include `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider) for funnel analysis.
 
 MenuDrawer filter chips (Spec 083) use `menu_chip_used` via `captureMenuChipUsed()`, fired in each chip's onClick when the user taps. Properties: `section` (mylist, views, formats, color, layouts, etc.) and `chip_label` (e.g. `f:commander`, `view:images`, `ci:w`).
+
+**Card detail (Spec 160):** The card detail page uses `card_detail_interacted` via `captureCardDetailInteracted()`, not `ui_interacted`, so dashboards stay on one structured event for back, Scryfall external link, all-prints navigation, set navigation, DFC face toggle, Slack copy, tag navigate/copy, and list add/remove.
 
 ### 9. Offline Resilience (Background Sync)
 

@@ -68,6 +68,8 @@ The card detail page is a single-column scrollable view within the same `max-w-2
 - Card name as the title.
 - Scryfall external link (↗) on the right, for users who want the full Scryfall page. Uses `https://scryfall.com/card/{id}` format.
 
+**PostHog:** Header back, Scryfall external link, all-prints link, printing metadata actions (set navigation, DFC face toggle, Slack copy, list controls), and tag chips are captured as `card_detail_interacted` (Spec 160)—distinct from **Try on Scryfall** in search results (`scryfall_outlink_clicked`, Spec 152).
+
 ### Card Image Section
 
 This section implements progressive loading with graceful degradation:

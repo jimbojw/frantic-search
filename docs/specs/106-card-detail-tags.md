@@ -53,6 +53,8 @@ The worker handles `get-tags-for-card` by looking up `faceToOtags.get(canonicalI
 - Add two sections after Format Legality: "Function Tags" (otags) and "Illustration Tags" (atags). Each section has its own heading and flex-wrap container of tag chips. Sections are shown only when they have tags.
 - **TagChip component:** Displays `otag:label` or `atag:label` (full query syntax) with syntax highlighting via `buildSpans` and `ROLE_CLASSES` (same as MenuDrawer chips). Two-line layout: top line shows the query label; bottom line shows match count — "N cards" for otags, "M prints" for atags (same format as unified breakdown chips). Chip height and styling matches MenuDrawer (`min-h-11`, `rounded`, `text-xs font-mono`). Includes a copy button. Use the same copy feedback pattern as the Slack bot reference (brief "copied" state, 1.5s timeout).
 
+**PostHog:** Tag navigate and copy fire `card_detail_interacted` with controls `otag_nav`, `atag_nav`, `otag_copy`, `atag_copy` and `tag_label` (Spec 160).
+
 ### Placement
 
 The Function Tags and Illustration Tags sections appear after the Format Legality section, before the end of the card detail content. Same visual style as Format Legality (section heading, content below).

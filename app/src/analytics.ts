@@ -92,3 +92,39 @@ export function captureMenuChipUsed(params: {
 }): void {
   posthog.capture('menu_chip_used', params)
 }
+
+/** Same strings as `FINISH_TO_STRING` in app-utils (Spec 160). */
+export type CardDetailListFinish = 'nonfoil' | 'foil' | 'etched'
+
+/** Card detail surface only (Spec 160). */
+export type CardDetailInteractedPayload =
+  | { control: 'back' }
+  | { control: 'scryfall_external' }
+  | { control: 'all_prints' }
+  | { control: 'set_unique_prints'; set_code: string }
+  | { control: 'face_toggle'; face: 'front' | 'back' }
+  | { control: 'slack_copy' }
+  | { control: 'otag_nav'; tag_label: string }
+  | { control: 'atag_nav'; tag_label: string }
+  | { control: 'otag_copy'; tag_label: string }
+  | { control: 'atag_copy'; tag_label: string }
+  | { control: 'list_add'; list_scope: 'oracle'; oracle_id: string; finish: CardDetailListFinish }
+  | {
+      control: 'list_add'
+      list_scope: 'printing'
+      oracle_id: string
+      finish: CardDetailListFinish
+      scryfall_id: string
+    }
+  | { control: 'list_remove'; list_scope: 'oracle'; oracle_id: string; finish: CardDetailListFinish }
+  | {
+      control: 'list_remove'
+      list_scope: 'printing'
+      oracle_id: string
+      finish: CardDetailListFinish
+      scryfall_id: string
+    }
+
+export function captureCardDetailInteracted(params: CardDetailInteractedPayload): void {
+  posthog.capture('card_detail_interacted', params)
+}
