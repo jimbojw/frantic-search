@@ -3,6 +3,7 @@ import posthog from 'posthog-js'
 import { TRASH_LIST_ID, type DeckFormat } from '@frantic-search/shared'
 import { isPwaSession } from './is-pwa-session'
 import type { ViewMode } from './view-mode'
+import { utmSuperPropertiesFromSearch } from './utm-super-properties'
 
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
@@ -28,6 +29,7 @@ if (!import.meta.env.DEV) {
       is_pwa: isPwaSession(),
       app_version: __APP_VERSION__,
       build_time: __BUILD_TIME__,
+      ...utmSuperPropertiesFromSearch(window.location.search),
     })
   }
 }

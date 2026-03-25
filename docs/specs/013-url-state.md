@@ -147,10 +147,14 @@ function navigateToQuery(q: string) {
 
 ### Platform tracking params (utm_*, rdt_*, etc.)
 
-Ad campaigns and social platforms append tracking params to landing URLs. Examples: `utm_source`, `utm_medium`, `utm_campaign` (UTM); `rdt_cid` (Reddit); `fbclid` (Facebook); `gclid` (Google). PostHog captures these on the first `$pageview` for funnel attribution. We strip them from the URL bar immediately after that capture so users see a clean, shareable URL.
+Ad campaigns and social platforms append tracking params to landing URLs. Examples: `utm_source`, `utm_medium`, `utm_campaign` (UTM); `rdt_cid` (Reddit); `fbclid` (Facebook); `gclid` (Google).
 
-- **When:** Right after `capturePageview()` in `onMount` (initial load).
-- **How:** Parse `location.search`, remove params matching `/^utm_/`, `/^rdt_/`, or exact names `fbclid`, `gclid`; `replaceState` with the cleaned URL.
+**PostHog (standard UTMs):** With `capture_pageview: false` (Spec 085, Spec 138), the SDK does not reliably attach `$utm_*` from the URL when we fire manual `$pageview` and then strip the query string. On production init (when `VITE_POSTHOG_KEY` is set), `app/src/analytics.ts` reads the **initial** `location.search` synchronously and calls `posthog.register()` with `$utm_campaign`, `$utm_source`, `$utm_medium`, `$utm_content`, and `$utm_term` when present. That runs before rendering, so values are captured before any `replaceState`. Session-only `persistence: 'memory'` keeps them from bleeding across sessions (GitHub #188).
+
+**URL bar:** We strip tracking params from the URL so users see a clean, shareable address. That is independent of PostHog registration.
+
+- **When (strip):** Right after `capturePageview()` in `onMount` (initial load).
+- **How (strip):** Parse `location.search`, remove params matching `/^utm_/`, `/^rdt_/`, or exact names `fbclid`, `gclid`; `replaceState` with the cleaned URL.
 - **Defense:** The URL sync effect builds params from `location.search`; a shared helper strips these params when constructing URLs so they never reappear on subsequent syncs or navigations.
 
 ## GitHub Pages Compatibility
@@ -177,3 +181,4 @@ In standalone mode (`display: standalone` in the web app manifest), the browser 
 
 - 2026-03-19: Extended platform tracking param stripping to include `rdt_*` (Reddit click ID, etc.) alongside `utm_*`.
 - 2026-03-19: Added `fbclid` (Facebook), `gclid` (Google) to exact-match strip list.
+- 2026-03-25: Documented explicit `posthog.register` of standard `$utm_*` at analytics init (GitHub #188); URL strip remains in `App` `onMount`.

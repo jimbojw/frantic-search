@@ -77,6 +77,8 @@ Do not use the `defaults` option; it enables behavior we explicitly disable.
 
 These are small static strings; registering them (rather than only adding them to the first `$pageview`) repeats them on every captured event so funnels and breakdowns can filter by deploy without joining on the pageview. Cost per event is negligible.
 
+**Campaign UTMs:** Also at init, parse the landing query string for `utm_campaign`, `utm_source`, `utm_medium`, `utm_content`, and `utm_term`. For each non-empty value, register the corresponding PostHog property (`$utm_campaign`, etc.). That preserves funnel attribution when Spec 013 strips `utm_*` from the URL after load; memory persistence keeps these session-scoped (GitHub #188).
+
 ### 4. Event Schemas
 
 Standardize event properties for easy grouping in the PostHog dashboard:
