@@ -6,7 +6,15 @@ import { ManaCost, OracleText } from './card-symbols'
 import { faceStat } from './app-utils'
 
 export default function CardFaceRow(props: {
-  d: DisplayColumns; fi: number; fullName?: string; showOracle: boolean; onCardClick?: () => void; setBadge?: string | null; collectorNumber?: string | null
+  d: DisplayColumns
+  fi: number
+  fullName?: string
+  showOracle: boolean
+  onCardClick?: () => void
+  setBadge?: string | null
+  collectorNumber?: string | null
+  /** Spec 161: fired after card name copy succeeds on search results. */
+  onCopyCardName?: () => void
 }) {
   const copyText = () => props.fullName ?? props.d.names[props.fi]
   const stat = () => faceStat(props.d, props.fi)
@@ -38,7 +46,7 @@ export default function CardFaceRow(props: {
             <Show when={badgeText()}>
               {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
             </Show>
-            <CopyButton text={copyText()} />
+            <CopyButton text={copyText()} onCopySuccess={props.onCopyCardName} />
           </div>
           <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             <span class={`min-w-0 ${props.showOracle ? 'whitespace-normal break-words' : 'truncate'}`}>

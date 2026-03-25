@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import posthog from 'posthog-js'
 import { isPwaSession } from './is-pwa-session'
+import type { ViewMode } from './view-mode'
 
 declare const __APP_VERSION__: string
 declare const __BUILD_TIME__: string
@@ -145,4 +146,52 @@ export type CardDetailInteractedPayload =
 
 export function captureCardDetailInteracted(params: CardDetailInteractedPayload): void {
   captureEvent('card_detail_interacted', params)
+}
+
+/** Card-index row vs printing-expanded row (Spec 161). */
+export type SearchResultsRowKind = 'cards' | 'printings'
+
+type SearchResultsListBase = {
+  view_mode: ViewMode
+  row_kind: SearchResultsRowKind
+  pane_id?: string
+}
+
+/** Search results surface only (Spec 161). */
+export type SearchResultsInteractedPayload =
+  | ({
+      control: 'open_card'
+      scryfall_id: string
+    } & SearchResultsListBase)
+  | ({ control: 'all_prints' } & SearchResultsListBase)
+  | ({ control: 'name_copy' } & SearchResultsListBase)
+  | ({
+      control: 'list_add'
+      list_scope: 'oracle'
+      oracle_id: string
+      finish: CardDetailListFinish
+    } & SearchResultsListBase)
+  | ({
+      control: 'list_add'
+      list_scope: 'printing'
+      oracle_id: string
+      finish: CardDetailListFinish
+      scryfall_id: string
+    } & SearchResultsListBase)
+  | ({
+      control: 'list_remove'
+      list_scope: 'oracle'
+      oracle_id: string
+      finish: CardDetailListFinish
+    } & SearchResultsListBase)
+  | ({
+      control: 'list_remove'
+      list_scope: 'printing'
+      oracle_id: string
+      finish: CardDetailListFinish
+      scryfall_id: string
+    } & SearchResultsListBase)
+
+export function captureSearchResultsInteracted(params: SearchResultsInteractedPayload): void {
+  captureEvent('search_results_interacted', params)
 }

@@ -36,11 +36,11 @@ Discriminated by `control` (required on every payload). Optional fields apply on
 
 - Do not attach card names or full `!"…" unique:prints` strings to this event. List events use **oracle_id** and optional **scryfall_id** (stable Scryfall identifiers), not display names.
 - Tag labels are game metadata (same class as menu drawer chip labels).
-- List events are scoped to the card detail surface only; search-result list popovers are out of scope (see below).
+- List events on card detail are scoped to that surface; search results use **`search_results_interacted`** (Spec 161).
 
 ## Out of scope (v1)
 
-- **Search results** [`ListControlsPopover`](app/src/ListControlsPopover.tsx) / result rows: not instrumented here. A follow-up may reuse `card_detail_interacted` with a `surface` property or introduce a separate event.
+- **Search results** list popovers and result rows: Spec 161 (`search_results_interacted`), not `card_detail_interacted`.
 
 ## Implementation notes
 

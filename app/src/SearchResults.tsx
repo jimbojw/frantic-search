@@ -16,6 +16,11 @@ import { formatDualCount } from './InlineBreakdown'
 import { Outlink } from './Outlink'
 import ResultsSummaryBar from './ResultsSummaryBar'
 import { SuggestionList } from './SuggestionList'
+import {
+  captureSearchResultsInteracted,
+  type CardDetailListFinish,
+  type SearchResultsRowKind,
+} from './analytics'
 
 declare const __REPO_URL__: string
 declare const __APP_VERSION__: string
@@ -23,6 +28,102 @@ declare const __BUILD_TIME__: string
 
 export default function SearchResults() {
   const ctx = useSearchContext()
+
+  function resultsBase(rowKind: SearchResultsRowKind) {
+    const paneId = ctx.paneId
+    return {
+      view_mode: ctx.viewMode(),
+      row_kind: rowKind,
+      ...(paneId !== undefined && paneId !== '' ? { pane_id: paneId } : {}),
+    } as const
+  }
+
+  function openCardFromResults(scryfallId: string, rowKind: SearchResultsRowKind) {
+    captureSearchResultsInteracted({
+      control: 'open_card',
+      scryfall_id: scryfallId,
+      ...resultsBase(rowKind),
+    })
+    ctx.navigateToCard(scryfallId)
+  }
+
+  function navigateAllPrintsFromPopover(
+    getName: () => string,
+    artScryfallId: string,
+    rowKind: SearchResultsRowKind,
+  ) {
+    const n = getName()
+    const q = n ? `!"${n}" unique:prints include:extras` : ''
+    if (q && ctx.navigateToQuery) {
+      captureSearchResultsInteracted({ control: 'all_prints', ...resultsBase(rowKind) })
+      ctx.navigateToQuery(q)
+    } else {
+      openCardFromResults(artScryfallId, rowKind)
+    }
+  }
+
+  function captureNameCopied(rowKind: SearchResultsRowKind) {
+    captureSearchResultsInteracted({ control: 'name_copy', ...resultsBase(rowKind) })
+  }
+
+  function wrapListAddOracle(oracleId: string, rowKind: SearchResultsRowKind, run: () => void) {
+    captureSearchResultsInteracted({
+      control: 'list_add',
+      list_scope: 'oracle',
+      oracle_id: oracleId,
+      finish: 'nonfoil',
+      ...resultsBase(rowKind),
+    })
+    run()
+  }
+
+  function wrapListRemoveOracle(oracleId: string, rowKind: SearchResultsRowKind, run: () => void) {
+    captureSearchResultsInteracted({
+      control: 'list_remove',
+      list_scope: 'oracle',
+      oracle_id: oracleId,
+      finish: 'nonfoil',
+      ...resultsBase(rowKind),
+    })
+    run()
+  }
+
+  function wrapListAddPrinting(
+    oracleId: string,
+    scryfallId: string,
+    finish: CardDetailListFinish,
+    rowKind: SearchResultsRowKind,
+    run: () => void,
+  ) {
+    captureSearchResultsInteracted({
+      control: 'list_add',
+      list_scope: 'printing',
+      oracle_id: oracleId,
+      finish,
+      scryfall_id: scryfallId,
+      ...resultsBase(rowKind),
+    })
+    run()
+  }
+
+  function wrapListRemovePrinting(
+    oracleId: string,
+    scryfallId: string,
+    finish: CardDetailListFinish,
+    rowKind: SearchResultsRowKind,
+    run: () => void,
+  ) {
+    captureSearchResultsInteracted({
+      control: 'list_remove',
+      list_scope: 'printing',
+      oracle_id: oracleId,
+      finish,
+      scryfall_id: scryfallId,
+      ...resultsBase(rowKind),
+    })
+    run()
+  }
+
   const d = () => ctx.display()
   const showResultsShell = () =>
     !!ctx.query().trim() || !!(ctx.urlHasEmptyLiveInUrl?.() ?? false)
@@ -194,17 +295,22 @@ export default function SearchResults() {
                                   colorIdentity: d()!.color_identity[ci],
                                   thumbHash: d()!.card_thumb_hashes[ci],
                                   onClick: () => {
-                                    const n = name()
-                                    const q = n ? `!"${n}" unique:prints include:extras` : ''
-                                    if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
-                                    else ctx.navigateToCard(artScryfallId())
+                                    navigateAllPrintsFromPopover(name, artScryfallId(), 'cards')
                                   },
                                 }}
                                 entries={[{
                                   label: 'Any printing',
                                   count: ctx.listCountForCard?.(ci) ?? 0,
-                                  onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
-                                  onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
+                                  onAdd: () =>
+                                    wrapListAddOracle(oracleId()!, 'cards', () => {
+                                      ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {})
+                                    }),
+                                  onRemove: () =>
+                                    wrapListRemoveOracle(oracleId()!, 'cards', () => {
+                                      ctx.cardListStore!
+                                        .removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!)
+                                        .catch(() => {})
+                                    }),
                                   addLabel: 'Add to list',
                                   removeLabel: 'Remove from list',
                                 }]}
@@ -224,13 +330,22 @@ export default function SearchResults() {
                           <div class="min-w-0 flex-1">
                             <Show when={faces().length > 1} fallback={
                               <>
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={ctx.showOracleText()} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
+                                <CardFaceRow
+                                  d={d()!}
+                                  fi={faces()[0]}
+                                  fullName={name()}
+                                  showOracle={ctx.showOracleText()}
+                                  onCardClick={() => openCardFromResults(artScryfallId(), 'cards')}
+                                  setBadge={setBadge()}
+                                  collectorNumber={collectorNumber()}
+                                  onCopyCardName={() => captureNameCopied('cards')}
+                                />
                               </>
                             }>
                               <div class="flex items-center gap-1.5 min-w-0">
                                 <button
                                   type="button"
-                                  onClick={() => ctx.navigateToCard(artScryfallId())}
+                                  onClick={() => openCardFromResults(artScryfallId(), 'cards')}
                                   class={`font-medium hover:underline text-left min-w-0 ${ctx.showOracleText() ? 'whitespace-normal break-words' : 'truncate'}`}
                                 >
                                   {name()}
@@ -238,11 +353,18 @@ export default function SearchResults() {
                                 <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
                                   {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                 </Show>
-                                <CopyButton text={name()} />
+                                <CopyButton text={name()} onCopySuccess={() => captureNameCopied('cards')} />
                               </div>
                               <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                                 <For each={faces()}>
-                                  {(fi) => <CardFaceRow d={d()!} fi={fi} showOracle={ctx.showOracleText()} />}
+                                  {(fi) => (
+                                    <CardFaceRow
+                                      d={d()!}
+                                      fi={fi}
+                                      showOracle={ctx.showOracleText()}
+                                      onCopyCardName={() => captureNameCopied('cards')}
+                                    />
+                                  )}
                                 </For>
                               </div>
                             </Show>
@@ -257,7 +379,7 @@ export default function SearchResults() {
                                 colorIdentity={d()!.color_identity[ci]}
                                 thumbHash={d()!.card_thumb_hashes[ci]}
                                 class="w-[336px] max-w-full cursor-pointer rounded-lg"
-                                onClick={() => ctx.navigateToCard(artScryfallId())}
+                                onClick={() => openCardFromResults(artScryfallId(), 'cards')}
                               />
                               <Show when={(aggCount() ?? 0) > 1}>
                                 <span class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">({aggCount()})</span>
@@ -271,17 +393,22 @@ export default function SearchResults() {
                                       colorIdentity: d()!.color_identity[ci],
                                       thumbHash: d()!.card_thumb_hashes[ci],
                                       onClick: () => {
-                                        const n = name()
-                                        const q = n ? `!"${n}" unique:prints include:extras` : ''
-                                        if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
-                                        else ctx.navigateToCard(artScryfallId())
+                                        navigateAllPrintsFromPopover(name, artScryfallId(), 'cards')
                                       },
                                     }}
                                     entries={[{
                                       label: 'Any printing',
                                       count: ctx.listCountForCard?.(ci) ?? 0,
-                                      onAdd: () => ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {}),
-                                      onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!).catch(() => {}),
+                                      onAdd: () =>
+                                        wrapListAddOracle(oracleId()!, 'cards', () => {
+                                          ctx.cardListStore!.addInstance(oracleId()!, DEFAULT_LIST_ID).catch(() => {})
+                                        }),
+                                      onRemove: () =>
+                                        wrapListRemoveOracle(oracleId()!, 'cards', () => {
+                                          ctx.cardListStore!
+                                            .removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleId()!)
+                                            .catch(() => {})
+                                        }),
                                       addLabel: 'Add to list',
                                       removeLabel: 'Remove from list',
                                     }]}
@@ -291,12 +418,21 @@ export default function SearchResults() {
                             </div>
                             <div class="min-w-0 flex-1 w-full">
                               <Show when={faces().length > 1} fallback={
-                                <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(artScryfallId())} setBadge={setBadge()} collectorNumber={collectorNumber()} />
+                                <CardFaceRow
+                                  d={d()!}
+                                  fi={faces()[0]}
+                                  fullName={name()}
+                                  showOracle={true}
+                                  onCardClick={() => openCardFromResults(artScryfallId(), 'cards')}
+                                  setBadge={setBadge()}
+                                  collectorNumber={collectorNumber()}
+                                  onCopyCardName={() => captureNameCopied('cards')}
+                                />
                               }>
                                 <div class="flex items-center gap-1.5 min-w-0">
                                   <button
                                     type="button"
-                                    onClick={() => ctx.navigateToCard(artScryfallId())}
+                                    onClick={() => openCardFromResults(artScryfallId(), 'cards')}
                                     class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
                                   >
                                     {name()}
@@ -304,11 +440,18 @@ export default function SearchResults() {
                                   <Show when={(() => { const s = setBadge(); const c = collectorNumber(); if (!s) return null; if (c) return `${s} · ${c}`; return s })()}>
                                     {(text) => <span class="shrink-0 text-[10px] font-mono text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none uppercase">{text()}</span>}
                                   </Show>
-                                  <CopyButton text={name()} />
+                                  <CopyButton text={name()} onCopySuccess={() => captureNameCopied('cards')} />
                                 </div>
                                 <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                                   <For each={faces()}>
-                                    {(fi) => <CardFaceRow d={d()!} fi={fi} showOracle={true} />}
+                                    {(fi) => (
+                                      <CardFaceRow
+                                        d={d()!}
+                                        fi={fi}
+                                        showOracle={true}
+                                        onCopyCardName={() => captureNameCopied('cards')}
+                                      />
+                                    )}
                                   </For>
                                 </div>
                               </Show>
@@ -342,13 +485,13 @@ export default function SearchResults() {
                                   colorIdentity={d()!.color_identity[ci]}
                                   thumbHash={d()!.card_thumb_hashes[ci]}
                                   class="cursor-pointer rounded-lg"
-                                  onClick={() => ctx.navigateToCard(pd.scryfall_ids[pi])}
+                                  onClick={() => openCardFromResults(pd.scryfall_ids[pi], 'printings')}
                                 />
                                 <Show when={showListTriggerPrint()}>
                                   <div class="mt-1 flex justify-center w-full">
                                     {(() => {
                                       const scryfallId = pd.scryfall_ids[pi]
-                                      const finish = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
+                                      const finish = (FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil') as CardDetailListFinish
                                       const finishLabel = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
                                       const cn = pd.collector_numbers[pi]?.trim() ?? ''
                                       const setCode = pd.set_codes[pi]?.toUpperCase() ?? ''
@@ -361,26 +504,66 @@ export default function SearchResults() {
                                             colorIdentity: d()!.color_identity[ci],
                                             thumbHash: d()!.card_thumb_hashes[ci],
                                             onClick: () => {
-                                              const n = name()
-                                              const q = n ? `!"${n}" unique:prints include:extras` : ''
-                                              if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
-                                              else ctx.navigateToCard(scryfallId)
+                                              navigateAllPrintsFromPopover(name, scryfallId, 'printings')
                                             },
                                           }}
                                           entries={[
                                             {
                                               label: 'Any printing',
                                               count: ctx.listCountForPrinting?.(pi) ?? 0,
-                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdPrint()!, DEFAULT_LIST_ID).catch(() => {}),
-                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdPrint()!).catch(() => {}),
+                                              onAdd: () =>
+                                                wrapListAddOracle(oracleIdPrint()!, 'printings', () => {
+                                                  ctx.cardListStore!
+                                                    .addInstance(oracleIdPrint()!, DEFAULT_LIST_ID)
+                                                    .catch(() => {})
+                                                }),
+                                              onRemove: () =>
+                                                wrapListRemoveOracle(oracleIdPrint()!, 'printings', () => {
+                                                  ctx.cardListStore!
+                                                    .removeMostRecentMatchingInstance(
+                                                      DEFAULT_LIST_ID,
+                                                      oracleIdPrint()!,
+                                                    )
+                                                    .catch(() => {})
+                                                }),
                                               addLabel: 'Add card to list',
                                               removeLabel: 'Remove card from list',
                                             },
                                             {
                                               label: printingLabel,
                                               count: ctx.listCountForPrinting?.(pi, scryfallId, finish) ?? 0,
-                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdPrint()!, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {}),
-                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdPrint()!, scryfallId, finish).catch(() => {}),
+                                              onAdd: () =>
+                                                wrapListAddPrinting(
+                                                  oracleIdPrint()!,
+                                                  scryfallId,
+                                                  finish,
+                                                  'printings',
+                                                  () => {
+                                                    ctx.cardListStore!
+                                                      .addInstance(oracleIdPrint()!, DEFAULT_LIST_ID, {
+                                                        scryfallId,
+                                                        finish,
+                                                      })
+                                                      .catch(() => {})
+                                                  },
+                                                ),
+                                              onRemove: () =>
+                                                wrapListRemovePrinting(
+                                                  oracleIdPrint()!,
+                                                  scryfallId,
+                                                  finish,
+                                                  'printings',
+                                                  () => {
+                                                    ctx.cardListStore!
+                                                      .removeMostRecentMatchingInstance(
+                                                        DEFAULT_LIST_ID,
+                                                        oracleIdPrint()!,
+                                                        scryfallId,
+                                                        finish,
+                                                      )
+                                                      .catch(() => {})
+                                                  },
+                                                ),
                                               addLabel: `Add ${finishLabel} printing to list`,
                                               removeLabel: `Remove ${finishLabel} printing from list`,
                                             },
@@ -393,21 +576,35 @@ export default function SearchResults() {
                               </div>
                               <div class="min-w-0 flex-1 w-full">
                                 <Show when={faces().length > 1} fallback={
-                                  <CardFaceRow d={d()!} fi={faces()[0]} fullName={name()} showOracle={true} onCardClick={() => ctx.navigateToCard(pd.scryfall_ids[pi])} />
+                                  <CardFaceRow
+                                    d={d()!}
+                                    fi={faces()[0]}
+                                    fullName={name()}
+                                    showOracle={true}
+                                    onCardClick={() => openCardFromResults(pd.scryfall_ids[pi], 'printings')}
+                                    onCopyCardName={() => captureNameCopied('printings')}
+                                  />
                                 }>
                                   <div class="flex items-center gap-1.5 min-w-0">
                                     <button
                                       type="button"
-                                      onClick={() => ctx.navigateToCard(pd.scryfall_ids[pi])}
+                                      onClick={() => openCardFromResults(pd.scryfall_ids[pi], 'printings')}
                                       class="font-medium hover:underline text-left min-w-0 whitespace-normal break-words"
                                     >
                                       {name()}
                                     </button>
-                                    <CopyButton text={name()} />
+                                    <CopyButton text={name()} onCopySuccess={() => captureNameCopied('printings')} />
                                   </div>
                                   <div class="mt-1 space-y-1 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                                     <For each={faces()}>
-                                      {(fi) => <CardFaceRow d={d()!} fi={fi} showOracle={true} />}
+                                      {(fi) => (
+                                        <CardFaceRow
+                                          d={d()!}
+                                          fi={fi}
+                                          showOracle={true}
+                                          onCopyCardName={() => captureNameCopied('printings')}
+                                        />
+                                      )}
                                     </For>
                                   </div>
                                 </Show>
@@ -487,7 +684,7 @@ export default function SearchResults() {
                             colorIdentity={d()!.color_identity[ci]}
                             thumbHash={d()!.card_thumb_hashes[ci]}
                             class="cursor-pointer hover:brightness-110 transition-[filter]"
-                            onClick={() => ctx.navigateToCard(d()!.scryfall_ids[ci])}
+                            onClick={() => openCardFromResults(d()!.scryfall_ids[ci], 'cards')}
                             aria-label={name()}
                           />
                           <Show when={showListTriggerImg()}>
@@ -499,17 +696,22 @@ export default function SearchResults() {
                                   colorIdentity: d()!.color_identity[ci],
                                   thumbHash: d()!.card_thumb_hashes[ci],
                                   onClick: () => {
-                                    const n = name()
-                                    const q = n ? `!"${n}" unique:prints include:extras` : ''
-                                    if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
-                                    else ctx.navigateToCard(d()!.scryfall_ids[ci])
+                                    navigateAllPrintsFromPopover(name, d()!.scryfall_ids[ci], 'cards')
                                   },
                                 }}
                                 entries={[{
                                   label: 'Any printing',
                                   count: ctx.listCountForCard?.(ci) ?? 0,
-                                  onAdd: () => ctx.cardListStore!.addInstance(oracleIdImg()!, DEFAULT_LIST_ID).catch(() => {}),
-                                  onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImg()!).catch(() => {}),
+                                  onAdd: () =>
+                                    wrapListAddOracle(oracleIdImg()!, 'cards', () => {
+                                      ctx.cardListStore!.addInstance(oracleIdImg()!, DEFAULT_LIST_ID).catch(() => {})
+                                    }),
+                                  onRemove: () =>
+                                    wrapListRemoveOracle(oracleIdImg()!, 'cards', () => {
+                                      ctx.cardListStore!
+                                        .removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImg()!)
+                                        .catch(() => {})
+                                    }),
                                   addLabel: 'Add to list',
                                   removeLabel: 'Remove from list',
                                 }]}
@@ -555,7 +757,7 @@ export default function SearchResults() {
                                   colorIdentity={d()!.color_identity[ci]}
                                   thumbHash={d()!.card_thumb_hashes[ci]}
                                   class="cursor-pointer hover:brightness-110 transition-[filter]"
-                                  onClick={() => ctx.navigateToCard(sid)}
+                                  onClick={() => openCardFromResults(sid, 'printings')}
                                   aria-label={name()}
                                 />
                               </div>
@@ -576,7 +778,7 @@ export default function SearchResults() {
                                   <span class="shrink-0">
                                     {(() => {
                                       const scryfallIdImg = pd.scryfall_ids[pi]
-                                      const finishImg = FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil'
+                                      const finishImg = (FINISH_TO_STRING[pd.finish[pi]] ?? 'nonfoil') as CardDetailListFinish
                                       const finishLabelImg = FINISH_LABELS[pd.finish[pi]] ?? 'Unknown'
                                       const cnImg = pd.collector_numbers[pi]?.trim() ?? ''
                                       const setCodeImg = pd.set_codes[pi]?.toUpperCase() ?? ''
@@ -589,26 +791,66 @@ export default function SearchResults() {
                                             colorIdentity: d()!.color_identity[ci],
                                             thumbHash: d()!.card_thumb_hashes[ci],
                                             onClick: () => {
-                                              const n = name()
-                                              const q = n ? `!"${n}" unique:prints include:extras` : ''
-                                              if (q && ctx.navigateToQuery) ctx.navigateToQuery(q)
-                                              else ctx.navigateToCard(scryfallIdImg)
+                                              navigateAllPrintsFromPopover(name, scryfallIdImg, 'printings')
                                             },
                                           }}
                                           entries={[
                                             {
                                               label: 'Any printing',
                                               count: ctx.listCountForPrinting?.(pi) ?? 0,
-                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID).catch(() => {}),
-                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImgPrint()!).catch(() => {}),
+                                              onAdd: () =>
+                                                wrapListAddOracle(oracleIdImgPrint()!, 'printings', () => {
+                                                  ctx.cardListStore!
+                                                    .addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID)
+                                                    .catch(() => {})
+                                                }),
+                                              onRemove: () =>
+                                                wrapListRemoveOracle(oracleIdImgPrint()!, 'printings', () => {
+                                                  ctx.cardListStore!
+                                                    .removeMostRecentMatchingInstance(
+                                                      DEFAULT_LIST_ID,
+                                                      oracleIdImgPrint()!,
+                                                    )
+                                                    .catch(() => {})
+                                                }),
                                               addLabel: 'Add card to list',
                                               removeLabel: 'Remove card from list',
                                             },
                                             {
                                               label: printingLabelImg,
                                               count: ctx.listCountForPrinting?.(pi, scryfallIdImg, finishImg) ?? 0,
-                                              onAdd: () => ctx.cardListStore!.addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID, { scryfallId: scryfallIdImg, finish: finishImg }).catch(() => {}),
-                                              onRemove: () => ctx.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oracleIdImgPrint()!, scryfallIdImg, finishImg).catch(() => {}),
+                                              onAdd: () =>
+                                                wrapListAddPrinting(
+                                                  oracleIdImgPrint()!,
+                                                  scryfallIdImg,
+                                                  finishImg,
+                                                  'printings',
+                                                  () => {
+                                                    ctx.cardListStore!
+                                                      .addInstance(oracleIdImgPrint()!, DEFAULT_LIST_ID, {
+                                                        scryfallId: scryfallIdImg,
+                                                        finish: finishImg,
+                                                      })
+                                                      .catch(() => {})
+                                                  },
+                                                ),
+                                              onRemove: () =>
+                                                wrapListRemovePrinting(
+                                                  oracleIdImgPrint()!,
+                                                  scryfallIdImg,
+                                                  finishImg,
+                                                  'printings',
+                                                  () => {
+                                                    ctx.cardListStore!
+                                                      .removeMostRecentMatchingInstance(
+                                                        DEFAULT_LIST_ID,
+                                                        oracleIdImgPrint()!,
+                                                        scryfallIdImg,
+                                                        finishImg,
+                                                      )
+                                                      .catch(() => {})
+                                                  },
+                                                ),
                                               addLabel: `Add ${finishLabelImg} printing to list`,
                                               removeLabel: `Remove ${finishLabelImg} printing from list`,
                                             },

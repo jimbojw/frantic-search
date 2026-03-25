@@ -2,12 +2,13 @@
 import { createSignal, Show } from 'solid-js'
 import { IconCheck, IconClipboardDocument } from './Icons'
 
-export default function CopyButton(props: { text: string }) {
+export default function CopyButton(props: { text: string; onCopySuccess?: () => void }) {
   const [copied, setCopied] = createSignal(false)
   async function handleClick(e: MouseEvent) {
     e.stopPropagation()
     try {
       await navigator.clipboard.writeText(props.text)
+      props.onCopySuccess?.()
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
