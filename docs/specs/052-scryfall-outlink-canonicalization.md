@@ -66,6 +66,7 @@ Canonicalization runs on `effectiveQuery`, not live query alone.
 For `FIELD` nodes where the field resolves to `date` or `year` via `FIELD_ALIASES`, use the range-based logic from **Spec 061**:
 
 - **Complete values** — Emit as-is: `date=2025`, `date=2025-02`, `year=2025`. Scryfall supports these natively.
+- **`year:` + four-digit year + comparison** — Emit as `year<op>YYYY` (e.g. `year>=2024`), not `year>=YYYY-MM-DD` (issue #193). `date:` may still use explicit `YYYY-MM-DD` for comparison operators; see Spec 061.
 - **Partial values** — Expand to explicit range: `date=202` → `date>=2020-01-01 date<2030-01-01`; `date>202` → `date>=2021-01-01`; etc.
 - **Special values** (`now`, `today`, set codes) — Pass through unchanged.
 

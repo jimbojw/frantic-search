@@ -114,6 +114,7 @@ The `year:` field inherits the same range-based semantics as `date:` with one ca
 For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
 
 - **Complete values** — Emit as-is: `date=2025`, `date=2025-02`, `year=2025`. Scryfall supports these natively.
+- **`year:` with a four-digit year and a comparison operator** — Emit the year literal and preserve the operator (e.g. `year>=2024`, `year<=2024`, `year>2023`). Do not expand to `YYYY-MM-DD`; Scryfall’s `year` syntax is year-granular. The `date:` field still expands complete `YYYY` / `YYYY-MM` operands to explicit `YYYY-MM-DD` boundaries where required (see canonicalize tests).
 - **Partial values** — Expand to explicit range syntax so Scryfall receives valid queries:
   - `date=202` → `date>=2020-01-01 date<2030-01-01`
   - `date>202` → `date>=2021-01-01`

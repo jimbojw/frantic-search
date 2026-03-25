@@ -282,6 +282,28 @@ describe("toScryfallQuery", () => {
     expect(canon("date>=neo")).toBe("date>=neo");
   });
 
+  // --- Year field: complete YYYY keeps year literal (GitHub #193, Spec 061) ---
+
+  it("year>=YYYY stays YYYY (not padded to YYYY-MM-DD)", () => {
+    expect(canon("year>=2024")).toBe("year>=2024");
+  });
+
+  it("year>YYYY keeps operator and YYYY", () => {
+    expect(canon("year>2023")).toBe("year>2023");
+  });
+
+  it("year<YYYY keeps operator and YYYY", () => {
+    expect(canon("year<2026")).toBe("year<2026");
+  });
+
+  it("year<=YYYY keeps operator and YYYY", () => {
+    expect(canon("year<=2024")).toBe("year<=2024");
+  });
+
+  it("partial year on year field still expands to YYYY-MM-DD", () => {
+    expect(canon("year>=202")).toBe("year>=2020-01-01");
+  });
+
   // --- Compound / complex queries ---
 
   it("handles a complex query with mixed terms", () => {

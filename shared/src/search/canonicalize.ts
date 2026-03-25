@@ -19,11 +19,17 @@ function isCompleteDate(val: string): boolean {
   return /^\d{4}$/.test(val) || /^\d{4}-\d{2}$/.test(val) || /^\d{4}-\d{2}-\d{2}$/.test(val);
 }
 
+/** Four-digit calendar year only (no month/day). Scryfall prefers `year>=2024` over `year>=2024-01-01` (issue #193). */
+function isYearOnlyLiteral(val: string): boolean {
+  return /^\d{4}$/.test(val.trim());
+}
+
 /**
  * Serialize a date/year field value for Scryfall. Uses parseDateRange (Spec 061).
  * Complete values emit as-is; partial values expand to explicit range.
  */
 function serializeDateField(field: string, op: string, val: string): string {
+  const canonicalField = FIELD_ALIASES[field.toLowerCase()] ?? field.toLowerCase();
   const lower = val.toLowerCase();
   if (lower === "now" || lower === "today") return `${field}${op}${val}`;
   if (/^[a-z0-9]{3,}$/.test(lower) && /[a-z]/.test(lower)) return `${field}${op}${val}`;
@@ -35,16 +41,36 @@ function serializeDateField(field: string, op: string, val: string): string {
   const loStr = formatYMD(lo);
   const hiStr = formatYMD(hi);
   const floorNextStr = formatYMD(floorNext);
+  const trimmed = val.trim();
 
-  if (isCompleteDate(val.trim())) {
+  if (isCompleteDate(trimmed)) {
+    if (canonicalField === "year" && isYearOnlyLiteral(val)) {
+      switch (op) {
+        case ":":
+        case "=":
+          return `${field}${op}${trimmed}`;
+        case "!=":
+          return `${field}!=${trimmed}`;
+        case ">":
+          return `${field}>${trimmed}`;
+        case ">=":
+          return `${field}>=${trimmed}`;
+        case "<":
+          return `${field}<${trimmed}`;
+        case "<=":
+          return `${field}<=${trimmed}`;
+        default:
+          return `${field}${op}${trimmed}`;
+      }
+    }
     switch (op) {
-      case ":": case "=": return `${field}${op}${val.trim()}`;
-      case "!=": return `${field}!=${val.trim()}`;
+      case ":": case "=": return `${field}${op}${trimmed}`;
+      case "!=": return `${field}!=${trimmed}`;
       case ">": return `${field}>=${hiStr}`;
       case ">=": return `${field}>=${loStr}`;
       case "<": return `${field}<${loStr}`;
       case "<=": return `${field}<${hiStr}`;
-      default: return `${field}${op}${val.trim()}`;
+      default: return `${field}${op}${trimmed}`;
     }
   }
 
