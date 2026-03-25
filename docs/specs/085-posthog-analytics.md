@@ -40,12 +40,15 @@ Because players are often in signal-dead environments, failed analytics network 
 
 ### 2. Dev vs Production
 
-PostHog is completely disabled when running in localhost/development mode to prevent dev data from polluting production metrics.
+PostHog is not initialized when running the Vite dev server (`import.meta.env.DEV`), so no analytics traffic is sent from local development and production metrics stay clean.
 
 - Use Vite's built-in `import.meta.env.DEV` flag.
-- Only call `posthog.init()` when `!import.meta.env.DEV`.
-- If not initialized, calling `posthog.capture()` is safe but does nothing.
-- Wrap all capture calls in a thin analytics module so callers never touch an uninitialized SDK.
+- Only call `posthog.init()` when `!import.meta.env.DEV` **and** `VITE_POSTHOG_KEY` is set (same condition as today).
+- All exported capture helpers in `app/src/analytics.ts` funnel through an internal **`captureEvent(eventName, properties?)`**:
+  - **Send:** If PostHog was initialized (`posthog.init` ran), call `posthog.capture(eventName, properties)`.
+  - **Console:** If `import.meta.env.DEV` is true **and** `import.meta.env.MODE !== 'test'` (so Vitest is excluded), log `console.log('[analytics]', eventName, properties)` so `npm run dev` shows what would have been sent. No PostHog network.
+  - **Otherwise** (production build without key, or Vitest): call `posthog.capture` anyway. If the SDK was never initialized, `posthog.capture()` is a no-op; in Vitest, tests mock `posthog-js` and assert on `capture`.
+- Callers never import PostHog directly outside the analytics module; the thin wrapper owns transport and dev logging.
 
 ### 3. Cookieless Initialization
 
@@ -179,11 +182,12 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 ## Acceptance Criteria
 
 1. PostHog API key and host are routed through GitHub Secrets and exposed to the Vite build via `VITE_POSTHOG_KEY` and `VITE_POSTHOG_HOST`.
-2. PostHog is completely disabled (or mocked) when running in localhost/development mode.
+2. PostHog is not initialized in Vite dev mode; would-be events are logged to the browser console with an `[analytics]` prefix instead of being sent. Vitest (`MODE === 'test'`) continues to exercise `posthog.capture` via mocks.
 3. Cookieless initialization: `persistence: 'memory'`, `autocapture: false`, `capture_pageview: false`.
 4. Custom event tracking: `search_executed` (throttled) and `ui_interacted` at the specified capture points.
 5. `used_extension` derived correctly from `includeExtras` and `uniqueMode`.
 6. Service worker intercepts failed PostHog requests and uses Workbox Background Sync to queue and replay them when connectivity is restored.
+7. `npm run dev` surfaces analytics payloads in the console; `npm test -w app` behavior is unchanged (no console-only path during tests).
 
 ## Edge Cases
 

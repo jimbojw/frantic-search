@@ -8,9 +8,12 @@ declare const __BUILD_TIME__: string
 /** Earliest moment in app bundle load (Spec 140). Used for search_resolved_from_url duration_ms. */
 export const pageLoadStartTime = performance.now()
 
+let posthogInitialized = false
+
 if (!import.meta.env.DEV) {
   const key = import.meta.env.VITE_POSTHOG_KEY
   if (key) {
+    posthogInitialized = true
     posthog.init(key, {
       api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
       persistence: 'memory',
@@ -27,6 +30,21 @@ if (!import.meta.env.DEV) {
   }
 }
 
+function captureEvent(
+  event: string,
+  properties?: Parameters<typeof posthog.capture>[1],
+): void {
+  if (posthogInitialized) {
+    posthog.capture(event, properties)
+    return
+  }
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+    console.log('[analytics]', event, properties ?? {})
+    return
+  }
+  posthog.capture(event, properties)
+}
+
 export function captureSearchExecuted(params: {
   query: string
   used_extension: boolean
@@ -35,7 +53,7 @@ export function captureSearchExecuted(params: {
   /** Pathname + search when the result was applied; aligns query/results with URL for analysis (GitHub #184). */
   url_snapshot: string
 }): void {
-  posthog.capture('search_executed', params)
+  captureEvent('search_executed', params)
 }
 
 export function captureUiInteracted(params: {
@@ -43,19 +61,19 @@ export function captureUiInteracted(params: {
   action: 'toggled' | 'clicked'
   state?: string
 }): void {
-  posthog.capture('ui_interacted', params)
+  captureEvent('ui_interacted', params)
 }
 
 export function capturePageview(): void {
-  posthog.capture('$pageview')
+  captureEvent('$pageview')
 }
 
 export function captureFacesLoaded(params: { duration_ms: number }): void {
-  posthog.capture('faces_loaded', params)
+  captureEvent('faces_loaded', params)
 }
 
 export function capturePrintingsLoaded(params: { duration_ms: number }): void {
-  posthog.capture('printings_loaded', params)
+  captureEvent('printings_loaded', params)
 }
 
 export function captureSearchResolvedFromUrl(params: {
@@ -63,7 +81,7 @@ export function captureSearchResolvedFromUrl(params: {
   results_count: number
   had_results: boolean
 }): void {
-  posthog.capture('search_resolved_from_url', params)
+  captureEvent('search_resolved_from_url', params)
 }
 
 export function captureSuggestionApplied(params: {
@@ -74,7 +92,7 @@ export function captureSuggestionApplied(params: {
   cta_action?: string
   mode?: 'empty' | 'rider'
 }): void {
-  posthog.capture('suggestion_applied', params)
+  captureEvent('suggestion_applied', params)
 }
 
 export function captureScryfallOutlinkClicked(params: {
@@ -83,14 +101,14 @@ export function captureScryfallOutlinkClicked(params: {
   results_count: number
   pane_id?: string
 }): void {
-  posthog.capture('scryfall_outlink_clicked', params)
+  captureEvent('scryfall_outlink_clicked', params)
 }
 
 export function captureMenuChipUsed(params: {
   section: string
   chip_label: string
 }): void {
-  posthog.capture('menu_chip_used', params)
+  captureEvent('menu_chip_used', params)
 }
 
 /** Same strings as `FINISH_TO_STRING` in app-utils (Spec 160). */
@@ -126,5 +144,5 @@ export type CardDetailInteractedPayload =
     }
 
 export function captureCardDetailInteracted(params: CardDetailInteractedPayload): void {
-  posthog.capture('card_detail_interacted', params)
+  captureEvent('card_detail_interacted', params)
 }
