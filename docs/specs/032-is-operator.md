@@ -71,7 +71,7 @@ These compare the face's layout string directly.
 | `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"` or `"spell commander"`, OR hardcoded exception (e.g. Grist); Vehicle/Spacecraft must have power and toughness (can become a creature); excludes tokens, meld results, and cards banned in Commander (Scryfall parity, Issue #148, #149) |
 | `is:brawler` | Same logic as `is:commander` |
 | `is:companion` | Oracle text contains `"Companion —"` |
-| `is:partner` | **Superset** of Scryfall’s `is:partner` (intentionally may match extra cards). Excludes Commander-banned faces (same spirit as `is:commander`). A face matches if **any** of: Scryfall `keywords` lists `Partner` or `Partner with …` for that oracle (`keywords_index`); oracle text (after reminder strip) has a standalone `Partner` line or a `Partner with` line; type line contains `Background`; oracle contains `choose a background`, `doctor's companion`, or `commander creatures you own`; or type line contains `Time Lord Doctor`. |
+| `is:partner` | **Superset** of Scryfall’s `is:partner` (intentionally may match extra cards). Faces whose type line contains `Saga` never match (no saga-partner assumption; revisit if WotC prints one). A face matches if **any** of: Scryfall `keywords` lists `Partner` or `Partner with …` for that oracle (`keywords_index`); oracle text (after reminder strip) has a standalone `Partner` line or a `Partner with` line; type line contains `Background`; oracle contains `choose a background`, `doctor's companion`, or `commander creatures you own`; or type line contains `Time Lord Doctor`. |
 
 ### Stat checks
 

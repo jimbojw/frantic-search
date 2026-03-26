@@ -61,11 +61,20 @@ describe("evalIsKeyword partner superset", () => {
     expect(matchCount(data, "is:partner")).toBe(1);
   });
 
-  test("is:partner excludes commander-banned cards with partner keyword", () => {
+  test("is:partner still matches commander-banned card with partner keyword", () => {
     const data = minimalData({
-      names: ["Banned Partner"],
+      names: ["Unfinity Partner"],
       keywords_index: { partner: [0] },
       legalities_banned: [Format.Commander],
+    });
+    expect(matchCount(data, "is:partner")).toBe(1);
+  });
+
+  test("is:partner does not match saga type line even with partner keyword", () => {
+    const data = minimalData({
+      names: ["Saga With Partner Kw"],
+      type_lines: ["Enchantment — Saga"],
+      keywords_index: { partner: [0] },
     });
     expect(matchCount(data, "is:partner")).toBe(0);
   });

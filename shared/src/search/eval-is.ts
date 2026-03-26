@@ -398,9 +398,9 @@ export function evalIsKeyword(
       break;
     case "partner":
       for (let i = 0; i < n; i++) {
-        if ((index.legalitiesBanned[cf[i]] & Format.Commander) !== 0) continue;
-        const ot = index.oracleTextsLower[i];
         const tl = index.typeLinesLower[i];
+        if (tl.includes("saga")) continue;
+        const ot = index.oracleTextsLower[i];
         if (index.partnerKeywordFace[i] !== 0) {
           buf[cf[i]] = 1;
           continue;
