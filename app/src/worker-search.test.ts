@@ -117,6 +117,94 @@ describe('runSearch pinned lip counts (issue #52)', () => {
   })
 })
 
+describe('usedExtension (Spec 085)', () => {
+  it('is false for unique:prints (Scryfall-supported; not Frantic-only syntax)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '', pinnedQuery: 't:instant unique:prints' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.uniqueMode).toBe('prints')
+    expect(result.usedExtension).toBe(false)
+  })
+
+  it('is true for ** (Frantic-only include:extras sugar)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:creature **' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.includeExtras).toBe(true)
+    expect(result.usedExtension).toBe(true)
+  })
+
+  it('is false for include:extras alone', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:creature include:extras' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.includeExtras).toBe(true)
+    expect(result.usedExtension).toBe(false)
+  })
+
+  it('is true when query uses salt field', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'salt>0' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.usedExtension).toBe(true)
+  })
+
+  it('is true for effective query with partial date when pinned + live', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'date=202', pinnedQuery: 'c:r' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.usedExtension).toBe(true)
+  })
+
+  it('is true for usd=null (Spec 080)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'usd=null' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.usedExtension).toBe(true)
+  })
+
+  it('empty URL starter path sets usedExtension false', () => {
+    const result = runSearch({
+      msg: {
+        type: 'search',
+        queryId: 1,
+        query: '',
+        pinnedQuery: '',
+        emptyUrlLiveQuery: true,
+      },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.usedExtension).toBe(false)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Default playable filter (Spec 057)
 // ---------------------------------------------------------------------------

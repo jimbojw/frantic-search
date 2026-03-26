@@ -70,6 +70,7 @@ The main thread sends `pinnedQuery` when it is non-empty. It sends a search mess
   histograms: Histograms;
   printingIndices?: Uint32Array;
   hasPrintingConditions: boolean; uniqueMode: 'cards' | 'prints' | 'art';
+  usedExtension: boolean; // Spec 085 — Frantic-vs-Scryfall syntax on effective query
 }
 ```
 

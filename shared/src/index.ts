@@ -74,6 +74,7 @@ export { normalizeAlphanumeric } from "./normalize";
 export { IS_KEYWORDS } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { toScryfallQuery } from "./search/canonicalize";
+export { astUsesFranticExtensionSyntax } from "./search/query-extension-syntax";
 export { resolveForField } from "./search/categorical-resolve";
 export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";

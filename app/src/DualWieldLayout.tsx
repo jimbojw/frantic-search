@@ -55,6 +55,7 @@ export type PaneState = {
   hasPrintingConditions: () => boolean
   uniqueMode: () => UniqueMode
   includeExtras: () => boolean
+  usedExtension: () => boolean
   suggestions: () => Suggestion[]
   display: () => DisplayColumns | null
   printingDisplay: () => PrintingDisplayColumns | null
@@ -227,6 +228,7 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     printingDisplay: state.printingDisplay,
     uniqueMode: state.uniqueMode,
     includeExtras: state.includeExtras,
+    usedExtension: state.usedExtension,
     suggestions: state.suggestions,
     viewMode,
     changeViewMode: state.changeViewMode,

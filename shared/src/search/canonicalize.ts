@@ -2,7 +2,7 @@
 import type { ASTNode } from "./ast";
 import { FIELD_ALIASES } from "./eval-leaves";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
-import { parseDateRange } from "./date-range";
+import { parseDateRange, isCompleteDateLiteral } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 
@@ -13,10 +13,6 @@ function formatYMD(n: number): string {
   const m = Math.floor((n % 10000) / 100);
   const d = n % 100;
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-}
-
-function isCompleteDate(val: string): boolean {
-  return /^\d{4}$/.test(val) || /^\d{4}-\d{2}$/.test(val) || /^\d{4}-\d{2}-\d{2}$/.test(val);
 }
 
 /** Four-digit calendar year only (no month/day). Scryfall prefers `year>=2024` over `year>=2024-01-01` (issue #193). */
@@ -43,7 +39,7 @@ function serializeDateField(field: string, op: string, val: string): string {
   const floorNextStr = formatYMD(floorNext);
   const trimmed = val.trim();
 
-  if (isCompleteDate(trimmed)) {
+  if (isCompleteDateLiteral(trimmed)) {
     if (canonicalField === "year" && isYearOnlyLiteral(val)) {
       switch (op) {
         case ":":

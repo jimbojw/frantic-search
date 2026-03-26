@@ -55,6 +55,7 @@ export interface CreatePaneStateOpts {
   hasPrintingConditions: Accessor<boolean>
   uniqueMode: Accessor<UniqueMode>
   includeExtras: Accessor<boolean>
+  usedExtension: Accessor<boolean>
   /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
   suggestions: Accessor<Suggestion[]>
   display: Accessor<DisplayColumns | null>
@@ -163,6 +164,7 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     hasPrintingConditions: opts.hasPrintingConditions,
     uniqueMode: opts.uniqueMode,
     includeExtras: opts.includeExtras,
+    usedExtension: opts.usedExtension,
     suggestions: opts.suggestions,
     display: opts.display,
     printingDisplay: opts.printingDisplay,

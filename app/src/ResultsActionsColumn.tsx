@@ -27,7 +27,7 @@ export default function ResultsActionsColumn() {
         onClick={() => {
           captureScryfallOutlinkClicked({
             query: ctx.effectiveQuery().trim(),
-            used_extension: ctx.includeExtras() || ctx.uniqueMode() !== 'cards',
+            used_extension: ctx.usedExtension(),
             results_count: resultsCountForSearchAnalytics(ctx),
             ...(ctx.paneId != null ? { pane_id: ctx.paneId } : {}),
           })

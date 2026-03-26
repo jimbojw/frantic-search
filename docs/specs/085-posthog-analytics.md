@@ -97,17 +97,27 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 
 ### 5. `used_extension` Definition
 
-`used_extension` is `true` when the query uses Frantic Search–specific syntax that Scryfall does not support or handles differently. Examples: `include:extras`, `**`, `++`, `@@`, `unique:prints`, `unique:art`.
+**Intent:** `used_extension` is `true` when the user’s **effective** search query (pinned + live, same string the worker evaluates) uses syntax that **Frantic Search accepts** but that would **fail or diverge on Scryfall**—custom handling, Frantic-only fields, or syntax Scryfall does not understand.
 
-Derive from evaluator output: `used_extension = includeExtras || uniqueMode !== 'cards'`.
+**Not** extension: terms that are valid on both engines, including `unique:` (`cards` / `prints` / `art`), `++` / `@@` (parser sugar for `unique:`), and `include:extras` (Scryfall supports including extras in search). Those must **not** set `used_extension`.
 
-The evaluator's `EvalOutput` exposes `includeExtras` and `uniqueMode`. The worker currently passes `uniqueMode` to the main thread but not `includeExtras`. Add `includeExtras` to the worker protocol.
+**Counted as extension** (non-exhaustive; align implementation with `toScryfallQuery` / Spec 057 / 061 / 080 / 095 / 099 / 101 / 136):
 
-### 6. Worker Protocol Change
+1. **`**` (include extras alias)** — Frantic-only sugar for `include:extras` (Spec 057); Scryfall does not accept the `**` token. Spelled-out `include:extras` is **not** extension (see above).
+2. **Salt** — any query on the `salt` field (and aliases), which Scryfall does not support.
+3. **Percentile literals** — a value matching `(\d+(?:\.\d+)?)%` on a field that Frantic treats as percentile-capable (`usd`, `date`, `name`, `edhrec`, `salt`), e.g. `edhrec>99%`, while Scryfall does not support that syntax for those filters.
+4. **Partial `date` / `year` literals** — values that Frantic expands to explicit ranges (Spec 061), e.g. `date=202` for the 2020s; Scryfall does not interpret those partials the same way.
+5. **`null` value queries** — `usd=null` / `usd!=null` (Spec 080) and `power` / `toughness` / `loyalty` / `defense` / `mana` (and aliases) with `null` (Spec 136); Scryfall does not support these.
 
-- Add `includeExtras?: boolean` to the `result` variant of `FromWorker` in `shared/src/worker-protocol.ts`.
-- In `app/src/worker-search.ts`, include `includeExtras` in the `SearchResult` (from `liveEval.includeExtras`).
-- In `app/src/App.tsx`, store `includeExtras` when handling results, pass it to the analytics module, and expose it on `SearchContext` so UI such as the Scryfall outlink can compute `used_extension` at click time.
+**Derivation:** The WebWorker parses the **effective** query (same `sealQuery` concatenation as the app’s `effectiveQuery()`), walks the AST, and sets boolean `usedExtension`. The `result` message includes `usedExtension`; the main thread passes it through to PostHog and the Scryfall outlink as `used_extension`. Do **not** derive `used_extension` from `includeExtras` or `uniqueMode`.
+
+**Future:** Additional Frantic-vs-Scryfall gaps (e.g. plain `edhrec:` filters, `$` price alias) may extend the same AST walk without changing the event schema.
+
+### 6. Worker Protocol (`result` message)
+
+- **`includeExtras`:** Still included on `result` for UI and the playable filter (Spec 057); it does **not** drive `used_extension`.
+- **`usedExtension`:** Required boolean on every `result` (Spec 085 §5). Computed in `app/src/worker-search.ts` from the effective query AST.
+- In `app/src/App.tsx`, store `usedExtension` when handling results and pass it to `scheduleSearchCapture` and `SearchContext` so the Scryfall outlink uses the same value as `search_executed`.
 
 ### 7. Search Capture Point
 
@@ -115,7 +125,7 @@ Search runs on every keystroke (ADR-003). Emitting every search would flood Post
 
 **Throttling:** Debounce or throttle: only capture after the user stops typing for 500–1000 ms, or on blur of the search input.
 
-**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.uniqueMode`, `msg.includeExtras`, and `location.pathname` + `location.search` read synchronously in that handler.
+**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.usedExtension`, `msg.uniqueMode`, `msg.includeExtras`, and `location.pathname` + `location.search` read synchronously in that handler.
 
 **Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot })`.
 
@@ -191,13 +201,17 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 2. PostHog is not initialized in Vite dev mode; would-be events are logged to the browser console with an `[analytics]` prefix instead of being sent. Vitest (`MODE === 'test'`) continues to exercise `posthog.capture` via mocks.
 3. Cookieless initialization: `persistence: 'memory'`, `autocapture: false`, `capture_pageview: false`.
 4. Custom event tracking: `search_executed` (throttled) and `ui_interacted` at the specified capture points.
-5. `used_extension` derived correctly from `includeExtras` and `uniqueMode`.
+5. `used_extension` matches `msg.usedExtension` from the worker (effective-query AST; Spec 085 §5), not `includeExtras` or `uniqueMode`.
 6. Service worker intercepts failed PostHog requests and uses Workbox Background Sync to queue and replay them when connectivity is restored.
 7. `npm run dev` surfaces analytics payloads in the console; `npm test -w app` behavior is unchanged (no console-only path during tests).
 
+## Revision history
+
+- **2026-03-26** ([GitHub #186](https://github.com/jimbojw/frantic-search/issues/186)): Redefined `used_extension` to mean Frantic-vs-Scryfall syntax divergence only; `unique:` / spelled-out `include:extras` no longer count; `**` does count (Frantic-only sugar). Worker computes `usedExtension` on the effective query AST and sends it on every `result`. Follow-up: `usd=null` / face-field `null` (Spec 080 / 136), aligned with `toScryfallQuery` stripping.
+
 ## Edge Cases
 
-- **Pinned + live query:** `used_extension` should reflect the effective combined query. The worker computes effective breakdown; ensure `includeExtras` and `uniqueMode` from the effective evaluation are used when both pinned and live are present.
+- **Pinned + live query:** `used_extension` must reflect the **effective** combined query (same parse as effective breakdown). The worker sets `usedExtension` from that AST.
 - **Empty query:** Do not capture `search_executed` when the user clears the search.
 - **Stale debounced capture:** If the user keeps typing after a result, drop the pending `search_executed` when the timer fires unless `effectiveQuery().trim()` still equals the pending `query`.
 - **Try on Scryfall with empty effective query:** If the control is still activated (e.g. rare edge), emit `scryfall_outlink_clicked` with `query: ''`. In normal UX the results summary bar is omitted when the effective query is empty (Spec 155), so this is uncommon.

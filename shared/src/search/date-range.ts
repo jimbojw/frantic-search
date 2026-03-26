@@ -36,6 +36,12 @@ function resolveSetDate(codeLower: string, pIdx: PrintingIndex): number | null {
   return null;
 }
 
+/** Whether a date/year literal is “complete” (YYYY, YYYY-MM, or YYYY-MM-DD). Partial literals trigger Frantic-only range expansion (Spec 061, 085). */
+export function isCompleteDateLiteral(val: string): boolean {
+  const t = val.trim();
+  return /^\d{4}$/.test(t) || /^\d{4}-\d{2}$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t);
+}
+
 /**
  * Parse a date value into a half-open range [lo, hi) in YYYYMMDD format.
  * Used by both evaluator and canonicalizer. See Spec 061.

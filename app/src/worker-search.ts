@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
@@ -54,6 +54,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       histograms: emptyHistograms,
       hasPrintingConditions: false,
       uniqueMode: 'cards',
+      usedExtension: false,
       suggestions: buildEmptyUrlLiveQuerySuggestions(sessionSalt),
     }
   }
@@ -74,6 +75,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       pinnedPrintingCount = count
     }
     const indices = new Uint32Array(0)
+    const usedExtension = astUsesFranticExtensionSyntax(pinnedAst)
     const result: SearchResult = {
       type: 'result', queryId: msg.queryId, indices,
       breakdown: { type: 'NOP', label: '', matchCount: 0 },
@@ -82,6 +84,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
       pinnedPrintingCount,
       hasPrintingConditions: pinnedEval.hasPrintingConditions,
       uniqueMode: pinnedEval.uniqueMode,
+      usedExtension,
       includeExtras: pinnedEval.includeExtras,
       suggestions: [],
       ...(pinnedEval.flavorUnavailable && { flavorUnavailable: true }),
@@ -320,6 +323,11 @@ export function runSearch(params: RunSearchParams): SearchResult {
     ? printingIndices.length
     : totalCards
 
+  const extensionAst = hasPinned
+    ? parse(sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(msg.query.trim()))
+    : ast
+  const usedExtension = astUsesFranticExtensionSyntax(extensionAst)
+
   const suggestions = buildSuggestions({
     msg: { query: msg.query, pinnedQuery: msg.pinnedQuery, viewMode: msg.viewMode },
     ast,
@@ -357,6 +365,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     printingIndices,
     hasPrintingConditions,
     uniqueMode,
+    usedExtension,
     includeExtras,
     effectiveBreakdown,
     suggestions,

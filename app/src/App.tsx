@@ -145,6 +145,7 @@ function App() {
   const [hasPrintingConditions, setHasPrintingConditions] = createSignal(false)
   const [uniqueMode, setUniqueMode] = createSignal<UniqueMode>('cards')
   const [includeExtras, setIncludeExtras] = createSignal(false)
+  const [usedExtension, setUsedExtension] = createSignal(false)
   const [pinnedBreakdown, setPinnedBreakdown] = createSignal<BreakdownNode | null>(null)
   const [effectiveBreakdown, setEffectiveBreakdown] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount, setPinnedIndicesCount] = createSignal<number | undefined>(undefined)
@@ -158,6 +159,7 @@ function App() {
   const [hasPrintingConditions2, setHasPrintingConditions2] = createSignal(false)
   const [uniqueMode2, setUniqueMode2] = createSignal<UniqueMode>('cards')
   const [includeExtras2, setIncludeExtras2] = createSignal(false)
+  const [usedExtension2, setUsedExtension2] = createSignal(false)
   const [pinnedBreakdown2, setPinnedBreakdown2] = createSignal<BreakdownNode | null>(null)
   const [effectiveBreakdown2, setEffectiveBreakdown2] = createSignal<BreakdownNode | null>(null)
   const [pinnedIndicesCount2, setPinnedIndicesCount2] = createSignal<number | undefined>(undefined)
@@ -650,6 +652,7 @@ function App() {
           setHasPrintingConditions2(msg.hasPrintingConditions)
           setUniqueMode2(msg.uniqueMode)
           setIncludeExtras2(msg.includeExtras ?? false)
+          setUsedExtension2(msg.usedExtension)
           setSuggestions2(msg.suggestions)
         } else if (matchesLeft || matchesLeftDual) {
           setIndices(msg.indices)
@@ -663,10 +666,11 @@ function App() {
           setHasPrintingConditions(msg.hasPrintingConditions)
           setUniqueMode(msg.uniqueMode)
           setIncludeExtras(msg.includeExtras ?? false)
+          setUsedExtension(msg.usedExtension)
           setSuggestions(msg.suggestions)
           const eq = effectiveQuery().trim()
           if (eq) {
-            const usedExtension = (msg.includeExtras ?? false) || msg.uniqueMode !== 'cards'
+            const usedExt = msg.usedExtension
             const liveQ = query().trim()
             const pinQ = pinnedQuery().trim()
             const vm = viewMode()
@@ -685,7 +689,7 @@ function App() {
                 ? 'url'
                 : 'user'
             const urlSnapshot = `${location.pathname}${location.search}`
-            scheduleSearchCapture(eq, usedExtension, resultsCount, triggeredBy, urlSnapshot)
+            scheduleSearchCapture(eq, usedExt, resultsCount, triggeredBy, urlSnapshot)
             if (hadQueryInUrlOnInit && !searchResolvedFromUrlFired && query().trim() === initialQueries.left.trim()) {
               searchResolvedFromUrlFired = true
               captureSearchResolvedFromUrl({
@@ -1191,6 +1195,7 @@ function App() {
     hasPrintingConditions,
     uniqueMode,
     includeExtras,
+    usedExtension,
     suggestions,
     display,
     printingDisplay,
@@ -1229,6 +1234,7 @@ function App() {
     hasPrintingConditions: hasPrintingConditions2,
     uniqueMode: uniqueMode2,
     includeExtras: includeExtras2,
+    usedExtension: usedExtension2,
     suggestions: suggestions2,
     display,
     printingDisplay,
@@ -1262,6 +1268,7 @@ function App() {
     printingDisplay,
     uniqueMode,
     includeExtras,
+    usedExtension,
     suggestions,
     viewMode,
     changeViewMode: leftPaneState.changeViewMode,
