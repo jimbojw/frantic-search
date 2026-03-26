@@ -130,6 +130,8 @@ export class CardIndex {
   readonly producesMasks: Record<string, number>;
   /** Unique words from all type lines (Spec 154 bare-term-upgrade). */
   readonly typeLineWords: Set<string>;
+  /** Face row has Scryfall `keywords` Partner / Partner with on its oracle card (Spec 032 is:partner superset). */
+  readonly partnerKeywordFace: Uint8Array;
 
   private readonly _facesOf: Map<number, number[]>;
 
@@ -239,6 +241,18 @@ export class CardIndex {
       }
     }
     this.producesData = producesData;
+
+    const partnerCanonical = new Set<number>();
+    const kwIdx = data.keywords_index ?? {};
+    for (const [kw, faceStarts] of Object.entries(kwIdx)) {
+      if (kw === "partner" || kw.startsWith("partner with")) {
+        for (let j = 0; j < faceStarts.length; j++) partnerCanonical.add(faceStarts[j]!);
+      }
+    }
+    this.partnerKeywordFace = new Uint8Array(this.faceCount);
+    for (let i = 0; i < this.faceCount; i++) {
+      if (partnerCanonical.has(data.canonical_face[i] ?? i)) this.partnerKeywordFace[i] = 1;
+    }
   }
 
   facesOf(canonicalIndex: number): number[] {

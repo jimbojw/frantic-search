@@ -71,7 +71,7 @@ These compare the face's layout string directly.
 | `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"` or `"spell commander"`, OR hardcoded exception (e.g. Grist); Vehicle/Spacecraft must have power and toughness (can become a creature); excludes tokens, meld results, and cards banned in Commander (Scryfall parity, Issue #148, #149) |
 | `is:brawler` | Same logic as `is:commander` |
 | `is:companion` | Oracle text contains `"Companion —"` |
-| `is:partner` | Oracle text contains `"Partner"` as a keyword line (starts with `Partner` at the beginning of the text or after `\n`, not as a substring of another word) |
+| `is:partner` | **Scryfall-aligned** with `is:partner` for oracle-unique comparison when using `cli diff … include:extras` (or evaluating without the diff tool’s legal/restricted filter — see below). Faces whose type line contains `Saga` never match (no saga-partner assumption; revisit if WotC prints one). If the type line contains `Creature`, it must also contain `Legendary` (excludes Battlebond-style nonlegendary `Partner with` creatures). A face matches if **any** of: Scryfall `keywords` lists `Partner` or `Partner with …` for that oracle (`keywords_index`); oracle text (after reminder strip) has a standalone `Partner` line or a `Partner with` line; type line contains `Background`; oracle contains `choose a background`, `doctor's companion`, or `commander creatures you own`; or type line contains `Time Lord Doctor`. **`cli diff` default (no `include:extras`)** drops faces with no format where the card is legal or restricted, which can make a few Scryfall `is:partner` hits (e.g. not-legal-anywhere acorn cards) look like “Scryfall only” even though the evaluator matches them — add `include:extras` to compare oracle sets fairly. |
 
 ### Stat checks
 
@@ -287,7 +287,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 5. `is:commander` correctly matches: front-face Legendary Creature/Vehicle/Background, oracle text "can be your commander", and hardcoded exceptions (e.g. Grist). Back-face-only creature types (e.g. Nicol Bolas modal DFC) do not match. Planeswalkers without the clause do not match.
 6. `is:frenchvanilla` matches creatures whose oracle text (after reminder text stripping) contains only recognized keyword ability lines, and does not match `is:vanilla` cards or non-creatures.
 7. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
-8. `is:partner` matches cards with the Partner keyword but not cards that merely contain the substring "partner" in other text.
+8. `is:partner` follows the § Oracle text checks row for `is:partner` (keyword index, oracle lines, templates, saga exclusion, legendary+creature rule). It does not match cards that only contain the substring `partner` in unrelated text without satisfying those rules.
 9. Layout-based keywords correctly match across both faces of multi-face cards.
 10. `is:reserved`, `is:funny`, and `is:universesbeyond` correctly check flag bits from the `flags` column.
 11. Land cycle keywords match exactly the curated card name lists.
