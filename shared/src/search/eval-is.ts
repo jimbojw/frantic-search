@@ -202,7 +202,8 @@ function isFrenchVanilla(oracleTextLower: string, typeLineLower: string): boolea
   return true;
 }
 
-const PARTNER_RE = /(?:^|\n)partner(?:\n|$)/;
+/** After reminder strip, Partner lines often end with trailing space (orphaned before `(`). */
+const PARTNER_RE = /(?:^|\n)partner(?:\s*(?:\n|$))/;
 
 /** Mask of PrintingFlags that indicate atypical frame treatments (Scryfall is:atypical). */
 const ATYPICAL_FRAME_MASK =

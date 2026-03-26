@@ -124,7 +124,7 @@ const IS_TEST_DATA: ColumnarData = {
     "Grizzly Bears can't block alone.",
     "",
     "Hexproof (This creature can't be the target of spells or abilities your opponents control.)",
-    "First strike, trample\nPartner",
+    "First strike, menace, trample\nPartner (You can have two commanders if both have partner.)",
     "Halana and Alena, Partners can be your commander.",
     "Companion — Each permanent card in your starting deck has mana value 2 or less.\nLifelink",
     "Lifelink",

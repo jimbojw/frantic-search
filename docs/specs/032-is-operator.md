@@ -71,7 +71,7 @@ These compare the face's layout string directly.
 | `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"` or `"spell commander"`, OR hardcoded exception (e.g. Grist); Vehicle/Spacecraft must have power and toughness (can become a creature); excludes tokens, meld results, and cards banned in Commander (Scryfall parity, Issue #148, #149) |
 | `is:brawler` | Same logic as `is:commander` |
 | `is:companion` | Oracle text contains `"Companion —"` |
-| `is:partner` | Oracle text contains `"Partner"` as a keyword line (starts with `Partner` at the beginning of the text or after `\n`, not as a substring of another word) |
+| `is:partner` | Oracle text contains `"Partner"` as a keyword line (starts with `Partner` at the beginning of the text or after `\n`, not as a substring of another word). After reminder-text stripping, optional whitespace may remain before the line break or end of string (Scryfall-style `Partner (...)` reminder). |
 
 ### Stat checks
 
