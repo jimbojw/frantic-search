@@ -400,6 +400,8 @@ export function evalIsKeyword(
       for (let i = 0; i < n; i++) {
         const tl = index.typeLinesLower[i];
         if (tl.includes("saga")) continue;
+        // Non-legendary creatures with Partner / Partner with (e.g. Battlebond) are kw:partner but not is:partner on Scryfall.
+        if (tl.includes("creature") && !tl.includes("legendary")) continue;
         const ot = index.oracleTextsLower[i];
         if (index.partnerKeywordFace[i] !== 0) {
           buf[cf[i]] = 1;

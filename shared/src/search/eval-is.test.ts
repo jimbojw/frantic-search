@@ -15,7 +15,7 @@ function minimalData(overrides: Partial<ColumnarData> & Pick<ColumnarData, "name
     oracle_texts: overrides.oracle_texts ?? Array(n).fill(""),
     colors: overrides.colors ?? z(),
     color_identity: overrides.color_identity ?? z(),
-    type_lines: overrides.type_lines ?? Array(n).fill("Creature — Test"),
+    type_lines: overrides.type_lines ?? Array(n).fill("Legendary Creature — Test"),
     powers: overrides.powers ?? z(),
     toughnesses: overrides.toughnesses ?? z(),
     loyalties: overrides.loyalties ?? z(),
@@ -75,6 +75,15 @@ describe("evalIsKeyword partner superset", () => {
       names: ["Saga With Partner Kw"],
       type_lines: ["Enchantment — Saga"],
       keywords_index: { partner: [0] },
+    });
+    expect(matchCount(data, "is:partner")).toBe(0);
+  });
+
+  test("is:partner does not match non-legendary creature with partner keyword (Battlebond-style)", () => {
+    const data = minimalData({
+      names: ["Lore Weaver"],
+      type_lines: ["Creature — Human Wizard"],
+      keywords_index: { partner: [0], "partner with ley weaver": [0] },
     });
     expect(matchCount(data, "is:partner")).toBe(0);
   });
