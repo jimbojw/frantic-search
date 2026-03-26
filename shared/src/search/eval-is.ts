@@ -202,8 +202,11 @@ function isFrenchVanilla(oracleTextLower: string, typeLineLower: string): boolea
   return true;
 }
 
-/** After reminder strip, Partner lines often end with trailing space (orphaned before `(`). */
-const PARTNER_RE = /(?:^|\n)partner(?:\s*(?:\n|$))/;
+/** After reminder strip, standalone Partner keyword line (optional trailing space before newline/EOS). */
+const PARTNER_LINE_RE = /(?:^|\n)partner(?:\s*(?:\n|$))/;
+
+/** Partner with … line (reminder stripped); `\b` avoids matching `partnership`. */
+const PARTNER_WITH_LINE_RE = /(?:^|\n)partner\s+with\b/;
 
 /** Mask of PrintingFlags that indicate atypical frame treatments (Scryfall is:atypical). */
 const ATYPICAL_FRAME_MASK =
@@ -395,7 +398,29 @@ export function evalIsKeyword(
       break;
     case "partner":
       for (let i = 0; i < n; i++) {
-        if (PARTNER_RE.test(index.oracleTextsLower[i])) buf[cf[i]] = 1;
+        if ((index.legalitiesBanned[cf[i]] & Format.Commander) !== 0) continue;
+        const ot = index.oracleTextsLower[i];
+        const tl = index.typeLinesLower[i];
+        if (index.partnerKeywordFace[i] !== 0) {
+          buf[cf[i]] = 1;
+          continue;
+        }
+        if (PARTNER_LINE_RE.test(ot) || PARTNER_WITH_LINE_RE.test(ot)) {
+          buf[cf[i]] = 1;
+          continue;
+        }
+        if (tl.includes("background")) {
+          buf[cf[i]] = 1;
+          continue;
+        }
+        if (
+          ot.includes("choose a background") ||
+          ot.includes("doctor's companion") ||
+          ot.includes("commander creatures you own") ||
+          tl.includes("time lord doctor")
+        ) {
+          buf[cf[i]] = 1;
+        }
       }
       break;
     case "bear":
