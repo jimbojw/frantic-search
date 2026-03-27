@@ -17,7 +17,7 @@ import QueryHighlight from './QueryHighlight'
 import { SearchProvider } from './SearchContext'
 import { useSetShellFullScreen } from './ShellContext'
 import SearchResults from './SearchResults'
-import { BATCH_SIZES, isViewMode } from './view-mode'
+import { BATCH_SIZES, isViewMode, type ViewMode } from './view-mode'
 import { dedupePrintingItems, aggregationCounts } from './dedup-printing-items'
 import {
   buildFacesOf, buildScryfallIndex, buildPrintingScryfallIndex,
@@ -921,6 +921,44 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  /**
+   * Card view + menu drawer: after query/view/unique chips mutate state, jump to search with the same
+   * URL rules as single-pane search (drop `card`, `q1`/`q2`, other view params; keep `q` / empty-`q` UX).
+   */
+  function leaveCardViewFromMenuInteraction() {
+    cancelPendingCommit()
+    saveScrollPosition()
+    const params = new URLSearchParams(location.search)
+    stripUtmParams(params)
+    params.delete('card')
+    params.delete('report')
+    params.delete('list')
+    params.delete('doc')
+    params.delete('docs')
+    params.delete('help')
+    params.delete('q1')
+    params.delete('q2')
+    setDualWieldActive(false)
+    setQuery2('')
+    const engaged = userEngaged() || termsExpanded()
+    const qRaw = query()
+    const qTrim = qRaw.trim()
+    if (qTrim) {
+      params.set('q', qRaw)
+    } else if (engaged) {
+      params.set('q', '')
+    } else {
+      params.delete('q')
+    }
+    setUrlHasQueryParam(params.has('q'))
+    const url = params.toString() ? `?${params}` : location.pathname
+    pushStateAndCapturePageview(url)
+    setView('search')
+    setCardId('')
+    setTermsExpanded(false)
+    window.scrollTo(0, 0)
+  }
+
   function navigateToReport(side: 'left' | 'right' = 'left') {
     cancelPendingCommit()
     saveScrollPosition()
@@ -1273,8 +1311,14 @@ function App() {
     usedExtension,
     suggestions,
     viewMode,
-    changeViewMode: leftPaneState.changeViewMode,
-    changeUniqueMode: leftPaneState.changeUniqueMode,
+    changeViewMode: (mode: ViewMode) => {
+      leftPaneState.changeViewMode(mode)
+      if (view() === 'card') leaveCardViewFromMenuInteraction()
+    },
+    changeUniqueMode: (mode: UniqueMode) => {
+      leftPaneState.changeUniqueMode(mode)
+      if (view() === 'card') leaveCardViewFromMenuInteraction()
+    },
     showOracleText,
     facesOf,
     visibleIndices,
@@ -1480,7 +1524,11 @@ function App() {
                   <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
                     <MenuDrawer
                       query={query()}
-                      onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
+                      onSetQuery={(q) => {
+                        flushPendingCommit()
+                        setQuery(q)
+                        leaveCardViewFromMenuInteraction()
+                      }}
                       onHelpClick={navigateToHelp}
                       onDocsClick={() => navigateToDocs()}
                       onReportClick={navigateToReport}

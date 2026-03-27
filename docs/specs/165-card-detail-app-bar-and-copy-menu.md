@@ -48,6 +48,8 @@ Same behavior as search: My list navigates to the lists view; Menu opens `MenuDr
 
 `MenuDrawer` uses `useSearchContext()`. **`SearchProvider` must wrap both card detail and single-pane search** so the card header’s Menu has a valid context (query from URL/state, view mode, etc.). Docs and Dual Wield full-screen layouts are unchanged.
 
+**Leaving card via menu chips:** Any filter chip that updates the live query (`onSetQuery`), view mode, or unique mode must return the user to **search** results: remove `card` from the URL, clear dual-wield query params, and apply the same `q` / empty-query URL rules as the single-pane search bar (so behavior matches having edited from search).
+
 ### Analytics
 
 Use `card_detail_interacted` only (not `ui_interacted`). New `control` values — see Spec 160 (updated for this spec). Do not attach card names to events; clipboard kind is encoded only as `control`.
@@ -75,6 +77,7 @@ Removing the in-page back / title / Scryfall row or the inline Slack copy row in
 ## Implementation notes
 
 - **2026-03-27:** Split URL copy into **URL (as is)** and **URL (card only)** so sharers can omit `q` and other query noise; Markdown link still uses the full page URL.
+- **2026-03-27:** Changing the query via menu chips (including `onSetQuery`, view mode, or unique mode) from the card view **leaves** card detail: `card` is removed from the URL, the user returns to the search view, and `q` is synced with the same rules as single-pane search (including empty-`q` when the box is “engaged”).
 
 ## Scope of documentation updates
 
