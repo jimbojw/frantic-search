@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Modified by:** Spec 129 (Back and Copy URL — adds Copy URL button to left rail)
+**Modified by:** Spec 129 (Back and Copy URL — adds copy control to left rail), Spec 164 (Copy link menu)
 
 **Depends on:** Spec 013 (URL State), Spec 083 (MenuDrawer), Spec 079 (Consolidated Query Accordion), Spec 038 (Collapsible Sparkline Histograms), Spec 041 (Result Display Modes)
 
@@ -71,7 +71,7 @@ Users who want to compare two queries (e.g. "creatures in my list" vs "creatures
 └─────┴──────────────────────────────────┴──────────────────────────────────┴─────┘
 ```
 
-- **Left rail:** Fixed to the left edge. Contains a hamburger icon at the top. Tapping it opens a drawer that slides in from the left and modifies the **left** pane's query (VIEWS, TERMS, etc.). Below the hamburger: Home button, then Copy URL button when a query is present (Spec 129).
+- **Left rail:** Fixed to the left edge. Contains a hamburger icon at the top. Tapping it opens a drawer that slides in from the left and modifies the **left** pane's query (VIEWS, TERMS, etc.). Below the hamburger: Home button, then Copy… control when a query is present (Spec 129, Spec 164).
 - **Right rail:** Fixed to the right edge. Same structure: hamburger at top, drawer slides in from the right, modifies the **right** pane.
 - **Center:** Two search panes side-by-side. Each pane is a full search session: search input, UnifiedBreakdown, histograms, SearchResults. No shared header — the rails provide the menu affordance.
 

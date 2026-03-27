@@ -6,7 +6,7 @@
 
 **Depends on:** Spec 013 (URL State), Spec 086 (Dual Wield)
 
-**Modifies:** Spec 086 (adds Copy URL button to left rail)
+**Modifies:** Spec 086 (adds copy control to left rail)
 
 ## Goal
 
@@ -47,39 +47,39 @@ When no query is present, neither button is shown.
 - **aria-label:** "Go back" (or equivalent).
 - **Dual Wield:** Not shown. Dual Wield is desktop-only (`viewportWide`), so Back is never visible in that layout.
 
-### Copy URL button
+### Copy link control (Spec 164)
 
 - **Visibility:** Shown whenever a query is present (single pane or Dual Wield).
-- **Label:** "Copy URL" — the button is named for what it does.
-- **Action:** Copies `location.href` to the clipboard via `navigator.clipboard.writeText(location.href)`.
+- **Label:** "Copy…" (header); icon-only in Dual Wield rail with accessible name "Copy…".
+- **Action:** Opens a small menu. The first item copies `location.href` (plain URL). Additional items copy Markdown links; see [Spec 164](164-copy-link-menu.md).
 - **Feedback:** On successful copy, show brief "Copied!" feedback (e.g., icon swap to checkmark for ~2 seconds, matching `CopyButton` pattern).
 - **Icon:** `IconClipboardDocument` from the internal icon library.
-- **aria-label:** "Copy URL" (or "Copied" when feedback is active).
+- **aria-label:** "Copy…" / "Copied" when feedback is active (see Spec 164 for `aria-expanded` / menu semantics).
 
 ### Single-pane layout
 
-Left-aligned next to the Home button. Order: Home, Split view (wide only), Back (if visible), Copy URL (if visible).
+Left-aligned next to the Home button. Order: Home, Split view (wide only), Back (if visible), Copy… (if visible).
 
 ```
-[ Home ] [ Split View ] [ Back ] [ Copy URL ] ... [ My List ] [ Menu ]
+[ Home ] [ Split View ] [ Back ] [ Copy… ] ... [ My List ] [ Menu ]
 ```
 
-- **Left group:** Home (always), Split view (when `viewportWide`), Back (narrow only), Copy URL — conditionally visible per rules above.
+- **Left group:** Home (always), Split view (when `viewportWide`), Back (narrow only), Copy… — conditionally visible per rules above.
 - **Right group:** My List, Menu — unchanged.
 
 The app bar is **persistent** (Spec 137): always visible from first load, including when the hero is shown.
 
 ### Dual Wield layout
 
-Copy URL appears in the **left rail**, after the Home button:
+Copy… appears in the **left rail**, after the Home button:
 
 ```
 [ Menu (hamburger) ]
 [ Home ]
-[ Copy URL ]
+[ Copy… ]
 ```
 
-- **Left rail:** Menu (top), Home, Copy URL (when query present).
+- **Left rail:** Menu (top), Home, Copy… (when query present).
 - **Right rail:** Unchanged (Menu, My list, Leave).
 - **Back:** Not shown in Dual Wield (desktop-only layout).
 
@@ -91,17 +91,17 @@ Use the existing `useViewportWide()` hook (1024px breakpoint). Back is shown whe
 
 | File | Change |
 |------|--------|
-| `app/src/App.tsx` | Add Back and Copy URL buttons to single-pane header. Condition on `viewportWide`, query presence. Wire Back to `history.back()`, Copy URL to clipboard write + feedback. |
-| `app/src/DualWieldLayout.tsx` | Add Copy URL button to left rail, after Home. Condition on query presence (q1 or q2). Wire to clipboard write + feedback. |
-| `docs/specs/086-dual-wield.md` | Add "Modified by Spec 129" note: left rail gains Copy URL button. |
+| `app/src/App.tsx` | Add Back and copy control to single-pane header. Condition on `viewportWide`, query presence. Wire Back to `history.back()`; copy menu per Spec 164. |
+| `app/src/DualWieldLayout.tsx` | Add Copy control to left rail, after Home. Condition on query presence (q1 or q2). See Spec 164 for menu behavior. |
+| `docs/specs/086-dual-wield.md` | Add "Modified by Spec 129" note: left rail gains copy control. |
 
 ## Acceptance Criteria
 
-1. **Single pane, narrow viewport:** When a query is present and viewport &lt; 1024px, Back and Copy URL buttons appear left of My List, after Home.
-2. **Single pane, wide viewport:** When a query is present and viewport ≥ 1024px, Back is hidden; Copy URL is shown.
-3. **Single pane, no query:** Neither Back nor Copy URL is shown.
-4. **Copy URL action:** Clicking Copy URL copies the current `location.href` to the clipboard. Brief "Copied!" feedback is shown (e.g., checkmark icon for ~2 seconds).
+1. **Single pane, narrow viewport:** When a query is present and viewport &lt; 1024px, Back and Copy… appear left of My List, after Home.
+2. **Single pane, wide viewport:** When a query is present and viewport ≥ 1024px, Back is hidden; Copy… is shown.
+3. **Single pane, no query:** Neither Back nor Copy… is shown.
+4. **Copy menu:** The control opens a menu (Spec 164). Choosing the URL item copies the current `location.href` to the clipboard. Brief "Copied!" feedback is shown (e.g., checkmark icon for ~2 seconds).
 5. **Back action:** Clicking Back calls `history.back()`.
-6. **Dual Wield:** Copy URL appears in the left rail after Home when q1 or q2 is non-empty. Back is not shown.
-7. **Icons:** Back uses `IconChevronLeft`; Copy URL uses `IconClipboardDocument`.
+6. **Dual Wield:** Copy… appears in the left rail after Home when q1 or q2 is non-empty. Back is not shown.
+7. **Icons:** Back uses `IconChevronLeft`; Copy… uses `IconClipboardDocument`.
 8. **Accessibility:** Both buttons have appropriate `aria-label` values.

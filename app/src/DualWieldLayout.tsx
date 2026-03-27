@@ -17,7 +17,7 @@ import { extractViewMode } from './view-query'
 import type { ViewMode } from './view-mode'
 import { BATCH_SIZES } from './view-mode'
 import { SearchProvider } from './SearchContext'
-import CopyUrlButton from './CopyUrlButton'
+import CopyLinkMenu from './CopyLinkMenu'
 import { IconBars3, IconList, IconMagnifyingGlass, IconXMark } from './Icons'
 import MenuDrawer from './MenuDrawer'
 import QueryHighlight from './QueryHighlight'
@@ -86,6 +86,21 @@ export type PaneState = {
   listEntryCountPerCard?: () => Map<number, number> | null
 }
 
+function effectiveQueryFromPane(state: PaneState): string {
+  const p = state.pinnedQuery().trim()
+  const q = state.query().trim()
+  if (!p) return q
+  if (!q) return p
+  return sealQuery(p) + ' ' + sealQuery(q)
+}
+
+function dualMarkdownSearchLabel(left: PaneState, right: PaneState): string {
+  const l = effectiveQueryFromPane(left).trim()
+  const r = effectiveQueryFromPane(right).trim()
+  if (l && r) return `${l} · ${r}`
+  return l || r
+}
+
 export type BuildPaneContextOpts = {
   cardListStore?: CardListStore
   listVersion?: () => number
@@ -93,13 +108,7 @@ export type BuildPaneContextOpts = {
 }
 
 function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): SearchContextValue {
-  const effectiveQuery = () => {
-    const p = state.pinnedQuery().trim()
-    const q = state.query().trim()
-    if (!p) return q
-    if (!q) return p
-    return sealQuery(p) + ' ' + sealQuery(q)
-  }
+  const effectiveQuery = () => effectiveQueryFromPane(state)
   const viewMode = () => extractViewMode(effectiveQuery())
   const facesOf = createMemo(() => {
     const d = state.display()
@@ -576,7 +585,11 @@ export function DualWieldLayout(props: {
           <img src="/pwa-192x192.png" alt="" class="size-6 rounded" />
         </button>
         <Show when={props.leftState.query().trim() !== '' || props.rightState.query().trim() !== ''}>
-          <CopyUrlButton variant="rail" />
+          <CopyLinkMenu
+            variant="rail"
+            markdownSearchText={() => dualMarkdownSearchLabel(props.leftState, props.rightState)}
+            exactNameQuery={() => effectiveQueryFromPane(props.leftState).trim()}
+          />
         </Show>
       </div>
 

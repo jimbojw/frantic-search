@@ -66,7 +66,7 @@ import {
   applyCompletion,
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
-import CopyUrlButton from './CopyUrlButton'
+import CopyLinkMenu from './CopyLinkMenu'
 import {
   IconBars3,
   IconChevronLeft,
@@ -1484,7 +1484,11 @@ function App() {
               </button>
             </Show>
             <Show when={query().trim() !== ''}>
-              <CopyUrlButton variant="header" />
+              <CopyLinkMenu
+                variant="header"
+                markdownSearchText={() => effectiveQuery().trim()}
+                exactNameQuery={() => effectiveQuery().trim()}
+              />
             </Show>
           </div>
           <div class="flex items-center gap-1">
