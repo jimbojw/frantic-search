@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import { formatSlackCardReference } from '@frantic-search/shared'
 import {
   IconArrowTopRightOnSquare,
   IconCheck,
@@ -391,12 +392,12 @@ export default function CardDetail(props: {
                 {(pcols) => {
                   const pidx = primaryPI()!
                   const indices = pis()!
-                  const slackBotName = () => {
-                    const name = fullName()
-                    const set = pcols().set_codes[pidx].toUpperCase()
-                    const num = pcols().collector_numbers[pidx]
-                    return `[[!${name}|${set}|${num}]]`
-                  }
+                  const slackBotName = () =>
+                    formatSlackCardReference(
+                      fullName(),
+                      pcols().set_codes[pidx],
+                      pcols().collector_numbers[pidx],
+                    )
                   const [copied, setCopied] = createSignal(false)
                   const copySlackName = () => {
                     navigator.clipboard.writeText(slackBotName()).then(() => {

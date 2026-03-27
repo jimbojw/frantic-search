@@ -126,6 +126,12 @@ export type CardDetailInteractedPayload =
   | { control: 'set_unique_prints'; set_code: string }
   | { control: 'face_toggle'; face: 'front' | 'back' }
   | { control: 'slack_copy' }
+  | { control: 'card_copy_menu_opened' }
+  | { control: 'card_copy_url' }
+  | { control: 'card_copy_url_card_only' }
+  | { control: 'card_copy_name' }
+  | { control: 'card_copy_markdown' }
+  | { control: 'card_copy_slack_reddit' }
   | { control: 'otag_nav'; tag_label: string }
   | { control: 'atag_nav'; tag_label: string }
   | { control: 'otag_copy'; tag_label: string }

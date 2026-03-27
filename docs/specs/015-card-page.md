@@ -6,6 +6,8 @@
 
 **See also:** Spec 050 (Printing-Aware Card Detail) — extends this page to show printing-specific images and metadata when navigating from printing-aware search results.
 
+**Related:** [Spec 165](165-card-detail-app-bar-and-copy-menu.md) — persistent app bar and Copy… menu on card view.
+
 ## Goal
 
 Give users a dedicated view for a single card, showing the largest, most legible version of the card data available. In the happy path (online), this means full-size card art from Scryfall. In the offline path, it means a well-formatted text layout using the data already in `columns.json`, with the art crop image from the PWA cache if available.

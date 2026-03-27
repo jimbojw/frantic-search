@@ -4,7 +4,7 @@
 
 **Depends on:** [Spec 129](129-back-and-copy-url-buttons.md) (Copy control placement), [Spec 013](013-url-state.md) (URL state), [Spec 086](086-dual-wield.md) (dual-pane URLs), [Spec 085](085-posthog-analytics.md) (`ui_interacted` events)
 
-**Related:** [GitHub #196](https://github.com/jimbojw/frantic-search/issues/196)
+**Related:** [GitHub #196](https://github.com/jimbojw/frantic-search/issues/196); [Spec 165](165-card-detail-app-bar-and-copy-menu.md) (card detail Copy… menu — parallel UX, `card_detail_interacted` analytics).
 
 ## Goal
 
@@ -69,7 +69,7 @@ Programmatic events only (Spec 085). Use `ui_interacted` with `element_name: 'co
 |-------|----------|
 | `escapeMarkdownLinkText`, `formatMarkdownInlineLink` | `shared/src/markdown-link.ts` |
 | `singleExactNameFromAst` | `shared/src/search/exact-name-from-ast.ts` |
-| Menu UI + clipboard | `app/src/CopyLinkMenu.tsx` (replaces `CopyUrlButton.tsx`) |
+| Menu UI + clipboard | `app/src/CopyLinkMenu.tsx` (replaces `CopyUrlButton.tsx`); card detail: `app/src/CardCopyMenu.tsx` (Spec 165) |
 | Wiring | `app/src/App.tsx`, `app/src/DualWieldLayout.tsx` |
 
 ## Acceptance criteria

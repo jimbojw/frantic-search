@@ -4,6 +4,8 @@
 
 **Depends on:** Spec 085 (PostHog Analytics), Spec 015 (Card Detail Page), Spec 050 (Printing-Aware Card Detail), Spec 106 (Card Detail Tags)
 
+**Extended by:** [Spec 165](165-card-detail-app-bar-and-copy-menu.md) (persistent header Copy… menu).
+
 ## Goal
 
 Instrument the card detail view ([`app/src/CardDetail.tsx`](app/src/CardDetail.tsx)) so PostHog receives structured events for navigational, copy, and list controls—without overloading `ui_interacted` (which only supports `toggled` / `clicked`) and without conflating the header Scryfall link with **Try on Scryfall** (`scryfall_outlink_clicked`, Spec 152).
@@ -24,7 +26,13 @@ Discriminated by `control` (required on every payload). Optional fields apply on
 | `all_prints` | “All prints →” runs `onNavigateToQuery` with the unique-prints query | Do **not** send the full query string (contains card name; redundant with `search_executed` after navigation). |
 | `set_unique_prints` | Set row button → `s:{code} unique:prints` | `set_code: string` |
 | `face_toggle` | DFC front/back image toggle | `face: 'front' \| 'back'` (face shown after the click) |
-| `slack_copy` | Slack bot reference copied to clipboard | Fire only after `clipboard.writeText` succeeds (same as UI “copied” feedback). |
+| `slack_copy` | Inline Slack bot reference row → clipboard | Fire only after `clipboard.writeText` succeeds (same as UI “copied” feedback). |
+| `card_copy_menu_opened` | User opened **Copy…** on the card header (Spec 165) | — |
+| `card_copy_url` | Header Copy… → **URL (as is)** (`location.href`), clipboard success | — |
+| `card_copy_url_card_only` | Header Copy… → **URL (card only)** (`?card=` only), clipboard success | — |
+| `card_copy_name` | Header Copy… → Card name (plain text) | — |
+| `card_copy_markdown` | Header Copy… → Markdown link | — |
+| `card_copy_slack_reddit` | Header Copy… → Slack/Reddit bracket line | — |
 | `otag_nav` | Tag chip primary action → search with `otag:label` | `tag_label: string` |
 | `atag_nav` | Tag chip primary action → search with `atag:label` | `tag_label: string` |
 | `otag_copy` | Tag chip copy button | `tag_label: string` |

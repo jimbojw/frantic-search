@@ -8,6 +8,8 @@
 
 **Extended by Spec 143:** The app bar is first shown as a minimal shell placeholder (logo, nav placeholders) for fast first paint. Once the main App chunk loads, the full bar (per this spec) is rendered via Portal into the shell's header slot.
 
+**Related:** [Spec 165](165-card-detail-app-bar-and-copy-menu.md) — same bar chrome portaled for card detail view.
+
 ## Goal
 
 Make the top app bar persistent and predictable. The bar is always visible from first load, containing Home, Split View, My List, and Menu. Remove the redundant filter toggle inside the search box. Collapse the hero when the user types a query or opens the menu (not on focus alone — that was too aggressive).

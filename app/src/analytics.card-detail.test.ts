@@ -69,4 +69,13 @@ describe('captureCardDetailInteracted', () => {
     captureCardDetailInteracted({ control: 'all_prints' })
     expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'all_prints' })
   })
+
+  it('captures card header copy menu controls (Spec 165)', () => {
+    captureCardDetailInteracted({ control: 'card_copy_menu_opened' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'card_copy_menu_opened' })
+    captureCardDetailInteracted({ control: 'card_copy_url_card_only' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'card_copy_url_card_only' })
+    captureCardDetailInteracted({ control: 'card_copy_markdown' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'card_copy_markdown' })
+  })
 })

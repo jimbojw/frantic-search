@@ -74,6 +74,7 @@ export { normalizeAlphanumeric } from "./normalize";
 export { IS_KEYWORDS } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { escapeMarkdownLinkText, formatMarkdownInlineLink } from "./markdown-link";
+export { formatSlackCardReference } from "./slack-card-reference";
 export { singleExactNameFromAst } from "./search/exact-name-from-ast";
 export { toScryfallQuery } from "./search/canonicalize";
 export { astUsesFranticExtensionSyntax } from "./search/query-extension-syntax";

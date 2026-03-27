@@ -3,7 +3,7 @@ import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup
 import { Portal } from 'solid-js/web'
 import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
-import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID } from '@frantic-search/shared'
+import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID, formatSlackCardReference } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
 import DocsLayout from './docs/DocsLayout'
 import CardDetail from './CardDetail'
@@ -45,6 +45,7 @@ import {
   getUniqueTagsFromView,
 } from '@frantic-search/shared'
 import {
+  captureCardDetailInteracted,
   captureUiInteracted,
   capturePageview,
   captureFacesLoaded,
@@ -67,6 +68,7 @@ import {
 } from './query-autocomplete'
 import { useDebouncedGhostText } from './useDebouncedGhostText'
 import CopyLinkMenu from './CopyLinkMenu'
+import CardCopyMenu from './CardCopyMenu'
 import {
   IconBars3,
   IconChevronLeft,
@@ -1362,6 +1364,7 @@ function App() {
           }}
         />
       </Show>
+      <SearchProvider value={searchContextValue}>
       <Show when={view() === 'card'}>
         {(() => {
           const oracleCI = () => scryfallIndex().get(cardId())
@@ -1375,56 +1378,133 @@ function App() {
             if (pi !== undefined && pd) return pd.canonical_face_ref[pi]
             return undefined
           }
+          const cardFullName = () => {
+            const cols = display()
+            const idx = resolvedCI()
+            if (!cols || idx == null) return ''
+            const faceList = facesOf().get(idx) ?? []
+            return faceList.map(fi => cols.names[fi]).join(' // ')
+          }
+          const slackReference = () => {
+            const indices = printingPIs()
+            const pd = printingDisplay()
+            if (!indices || indices.length === 0 || !pd) return null
+            const pidx = indices[0]
+            const name = cardFullName().trim()
+            const set = pd.set_codes[pidx]
+            const num = pd.collector_numbers[pidx]
+            if (!name || !set || num === undefined || num === '') return null
+            return formatSlackCardReference(name, set, num)
+          }
           return (
-            <CardDetail
-              canonicalIndex={resolvedCI()}
-              scryfallId={cardId()}
-              display={display()}
-              facesOf={facesOf()}
-              printingIndices={printingPIs()}
-              printingDisplay={printingDisplay()}
-              otags={cardTags()?.otags}
-              atags={cardTags()?.atags}
-              onNavigateToQuery={navigateToQuery}
-              cardListStore={cardListStore}
-              listVersion={listVersion()}
-            />
+            <>
+              <Portal mount={document.getElementById('app-header-slot')!}>
+                <header class="mx-auto max-w-4xl px-4 transition-all duration-200 ease-out pt-[max(1rem,env(safe-area-inset-top))] pb-4">
+                  <div class="flex h-11 items-center justify-between shrink-0 mb-2">
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => navigateHome()}
+                        aria-label="Go to home"
+                        class="flex h-11 min-w-11 -ml-2 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
+                      </button>
+                      <Show when={viewportWide()}>
+                        <button
+                          type="button"
+                          onClick={enterDualWield}
+                          aria-label="Split view"
+                          title="Split view"
+                          class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 shrink-0">
+                            <rect x="3" y="3" width="9" height="18" rx="1" />
+                            <rect x="12" y="3" width="9" height="18" rx="1" />
+                          </svg>
+                          <span class="text-sm whitespace-nowrap">Split view</span>
+                        </button>
+                      </Show>
+                      <Show when={!viewportWide()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            captureCardDetailInteracted({ control: 'back' })
+                            history.back()
+                          }}
+                          aria-label="Go back"
+                          class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <IconChevronLeft class="size-5" />
+                        </button>
+                      </Show>
+                      <CardCopyMenu
+                        cardScryfallId={() => cardId()}
+                        cardFullName={cardFullName}
+                        slackReference={slackReference}
+                      />
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => navigateToLists()}
+                        aria-label="My list"
+                        class="flex h-11 min-w-0 items-center gap-1.5 rounded-lg px-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <IconList class="size-5 shrink-0" />
+                        <span class="text-sm whitespace-nowrap">My list</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleTerms}
+                        aria-label="Menu"
+                        class={`flex h-11 min-w-11 items-center justify-center rounded-lg transition-colors ${termsExpanded() ? 'text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                      >
+                        <IconBars3 class="size-6" />
+                      </button>
+                    </div>
+                  </div>
+                </header>
+              </Portal>
+              <Show when={termsExpanded()}>
+                <div
+                  role="presentation"
+                  class="fixed inset-0 z-40 bg-black/30 transition-opacity"
+                  onClick={toggleTerms}
+                />
+                <aside
+                  class="fixed top-0 right-0 bottom-0 z-50 w-[min(100%,20rem)] overflow-hidden flex flex-col bg-white dark:bg-gray-900 shadow-xl transition-transform duration-200 ease-out translate-x-0"
+                  aria-label="Filters menu"
+                  onWheel={(e) => e.stopPropagation()}
+                >
+                  <div class="flex flex-col flex-1 min-h-0 pt-[env(safe-area-inset-top)]">
+                    <MenuDrawer
+                      query={query()}
+                      onSetQuery={(q) => { flushPendingCommit(); setQuery(q) }}
+                      onHelpClick={navigateToHelp}
+                      onDocsClick={() => navigateToDocs()}
+                      onReportClick={navigateToReport}
+                      onClose={toggleTerms}
+                    />
+                  </div>
+                </aside>
+              </Show>
+              <CardDetail
+                canonicalIndex={resolvedCI()}
+                scryfallId={cardId()}
+                display={display()}
+                facesOf={facesOf()}
+                printingIndices={printingPIs()}
+                printingDisplay={printingDisplay()}
+                otags={cardTags()?.otags}
+                atags={cardTags()?.atags}
+                onNavigateToQuery={navigateToQuery}
+                cardListStore={cardListStore}
+                listVersion={listVersion()}
+              />
+            </>
           )
         })()}
-      </Show>
-      <Show when={view() === 'report'}>
-        {(() => {
-          const params = new URLSearchParams(location.search)
-          const isDeckReport = params.get('deck') === '1'
-          return isDeckReport ? (
-            <DeckBugReport context={deckReportContext()} />
-          ) : (
-            <BugReport
-              query={reportQuery()}
-              breakdown={reportBreakdown()}
-              resultCount={reportResultCount()}
-              printingCount={reportPrintingCount()}
-            />
-          )
-        })()}
-      </Show>
-      <Show when={view() === 'lists'}>
-        <Suspense fallback={<div class="mx-auto max-w-2xl px-4 py-6 animate-pulse text-gray-500">Loading list…</div>}>
-          <ListsPage
-            listTab={listTab()}
-            onTabChange={navigateToListsTab}
-            cardListStore={cardListStore}
-            listVersion={listVersion()}
-            display={display()}
-            printingDisplay={printingDisplay()}
-            workerStatus={workerStatus}
-            onSerializeRequest={serializeDeckList}
-            onValidateRequest={validateLines}
-            onBack={() => history.back()}
-            onDeckReportClick={navigateToDeckReport}
-            onViewInSearch={navigateToViewList}
-          />
-        </Suspense>
       </Show>
       <Show when={view() === 'search'}>
         <Show when={showDualWield()}>
@@ -1444,7 +1524,6 @@ function App() {
           </Suspense>
         </Show>
         <Show when={!showDualWield()}>
-        <SearchProvider value={searchContextValue}>
       <Portal mount={document.getElementById('app-header-slot')!}>
       <header class={`mx-auto max-w-4xl px-4 transition-all duration-200 ease-out pt-[max(1rem,env(safe-area-inset-top))] ${headerCollapsed() ? 'pb-4' : 'pb-8'}`}>
         {/* Persistent app bar (Spec 137) — always at top */}
@@ -1686,8 +1765,42 @@ function App() {
           <SearchResults />
         </Show>
       </main>
-        </SearchProvider>
         </Show>
+      </Show>
+      </SearchProvider>
+      <Show when={view() === 'report'}>
+        {(() => {
+          const params = new URLSearchParams(location.search)
+          const isDeckReport = params.get('deck') === '1'
+          return isDeckReport ? (
+            <DeckBugReport context={deckReportContext()} />
+          ) : (
+            <BugReport
+              query={reportQuery()}
+              breakdown={reportBreakdown()}
+              resultCount={reportResultCount()}
+              printingCount={reportPrintingCount()}
+            />
+          )
+        })()}
+      </Show>
+      <Show when={view() === 'lists'}>
+        <Suspense fallback={<div class="mx-auto max-w-2xl px-4 py-6 animate-pulse text-gray-500">Loading list…</div>}>
+          <ListsPage
+            listTab={listTab()}
+            onTabChange={navigateToListsTab}
+            cardListStore={cardListStore}
+            listVersion={listVersion()}
+            display={display()}
+            printingDisplay={printingDisplay()}
+            workerStatus={workerStatus}
+            onSerializeRequest={serializeDeckList}
+            onValidateRequest={validateLines}
+            onBack={() => history.back()}
+            onDeckReportClick={navigateToDeckReport}
+            onViewInSearch={navigateToViewList}
+          />
+        </Suspense>
       </Show>
     </div>
   )
