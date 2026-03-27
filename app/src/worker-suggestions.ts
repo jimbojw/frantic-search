@@ -33,6 +33,12 @@ function bareTermUpgradePriority(label: string): 16 | 21 {
   return 16
 }
 
+/** Spec 131 / 151: tag bare-term chips do not suppress the oracle trailing-node hint. */
+function isTagBareTermLabel(label: string): boolean {
+  const lower = label.toLowerCase()
+  return lower.startsWith('otag:') || lower.startsWith('atag:')
+}
+
 export type BuildSuggestionsParams = {
   msg: { query: string; pinnedQuery?: string; viewMode?: 'slim' | 'detail' | 'images' | 'full' }
   ast: ASTNode
@@ -187,8 +193,9 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     })
   }
 
-  // Spec 154: Bare-term field upgrade — before oracle
-  const bareTermUpgradedValues = new Set<string>()
+  // Spec 154 + 131: Bare-term field upgrade — before oracle. Only non-tag upgrades
+  // add to oracleSuppressedBareValues so otag/atag (Spec 159) do not block oracle.
+  const oracleSuppressedBareValues = new Set<string>()
   if (
     totalCards === 0 &&
     hasLive &&
@@ -245,7 +252,9 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         })
       }
       for (const i of winIndices) consumedIndices.add(i)
-      for (const i of winIndices) bareTermUpgradedValues.add(bareNodes[i].value.toLowerCase())
+      if (alts.some((a) => !isTagBareTermLabel(a.label))) {
+        for (const i of winIndices) oracleSuppressedBareValues.add(bareNodes[i].value.toLowerCase())
+      }
     }
 
     // Single-node pass: skip nodes consumed by multi-word matches above.
@@ -285,19 +294,21 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           priority: bareTermUpgradePriority(alt.label),
           variant: 'rewrite',
         })
-        bareTermUpgradedValues.add(node.value.toLowerCase())
+        if (!isTagBareTermLabel(alt.label)) {
+          oracleSuppressedBareValues.add(node.value.toLowerCase())
+        }
       }
     }
   }
 
-  // Spec 131: Oracle "Did you mean?" hint - empty state only (skip terms that got bare-term-upgrade)
+  // Spec 131: Oracle "Did you mean?" hint - empty state only (skip trailing tokens that got non-tag bare-term-upgrade)
   let oracleSuggestion: Suggestion | null = null
   if (totalCards === 0 && hasLive && !(hasPinned && pinnedIndicesCount === 0)) {
     const root = ast.type === 'AND' || ast.type === 'BARE'
     if (root) {
       const rawTrailing = getTrailingBareNodes(ast)
       const trailing = rawTrailing?.filter(
-        (n) => !bareTermUpgradedValues.has(n.value.toLowerCase()),
+        (n) => !oracleSuppressedBareValues.has(n.value.toLowerCase()),
       )
       if (trailing && trailing.length > 0) {
         const variants: Array<'phrase' | 'per-word'> =

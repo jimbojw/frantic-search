@@ -98,6 +98,10 @@ Both `otag:` and `atag:` run independently; each may contribute **up to three** 
 
 **Precedence:** No need to prefer otag over kw when both match; show all chips returned. **Consumption:** Existing rule unchanged: if the window yields **any** multi-word alternative, **consume** all nodes in that window for the single-word pass (Spec 154).
 
+### Interaction with Spec 131 (oracle hint)
+
+Prefix and exact **`otag:`** / **`atag:`** chips are **optional discovery**; they must **not** remove bare nodes from the oracle hint’s **trailing** set. Multi-word windows may still **consume** nodes for the single-node bare-term pass (dedup / volume) without implying oracle suppression — only **non-tag** multi-word alternatives (e.g. `kw:"…"`, `a:"…"`) add token values to **`oracleSuppressedBareValues`** (Spec 151 / Spec 131).
+
 **API note:** Slug segments should come from **the same bare node values** the worker used to build the window (e.g. pass `segments: string[]` into `getMultiWordAlternatives` or split the phrase only when it equals those tokens joined with spaces). Prefer an explicit segment list so behavior stays aligned with the AST.
 
 ### Single-segment coexistence with exact `otag:` / `atag:`

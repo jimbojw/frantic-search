@@ -55,7 +55,9 @@ All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion 
 
 When a bare term matches **multiple** domains (e.g. `commander` matches format and is:), suggest each matching domain. Order: keyword → type-line → set → format → is: → otag → atag → game → frame → rarity. Only the first matching domain is required for MVP; others can be added incrementally.
 
-**Interaction with oracle (Spec 131):** When a bare term matches both a **non-tag** field domain (e.g. `kw:landfall`) and the oracle fallback (`o:landfall`), prefer the **field-specific** suggestion. That bare-term-upgrade row uses priority **16** and sorts **before** oracle (**20**). We show at most one suggestion per bare term — if `kw:landfall` returns results, we suggest that and do not also suggest `o:landfall` for that term. The oracle hint logic runs after bare-term-upgrade; if a bare term already produced a bare-term-upgrade suggestion, skip it for oracle. (Implementation: evaluate bare-term upgrades first; for terms that got a suggestion, do not feed them to the oracle path.) **`otag:`** / **`atag:`** bare-term-upgrade chips use priority **21** (Spec 151): when both oracle and tag chips appear (e.g. trailing bare `ramp` with tag data loaded), the oracle hint sorts **first**.
+**Interaction with oracle (Spec 131):** When a bare term matches both a **non-tag** field domain (e.g. `kw:landfall`) and the oracle fallback (`o:landfall`), prefer the **field-specific** suggestion for **oracle suppression** purposes: that token’s value is added to the worker’s **`oracleSuppressedBareValues`** set (Spec 151). The oracle hint then omits that token from trailing phrase / per-word construction, so we do not duplicate `o:landfall` when `kw:landfall` was already offered. Non-tag bare-term-upgrade rows use priority **16** and sort before oracle (**20**).
+
+**Tag domains do not suppress oracle:** **`otag:`** and **`atag:`** suggestions (exact match or Spec 159 prefix, single- or multi-word) **do not** add the affected bare token values to **`oracleSuppressedBareValues`**. Tag suggestions remain **last** among bare-token interpretations conceptually (priority **21**, Spec 151) but coexist with the oracle hint when trailing tokens would match oracle text. Example: `opponent skips` → oracle `o:"opponent skips"` plus optional `otag:…` chips.
 
 ### Domains
 
@@ -261,7 +263,7 @@ For the multi-word pass, the following are checked:
 - Use the live AST: `ast = parse(msg.query)`; call `getBareNodes(ast)` to collect all positive BARE nodes (anywhere in the tree). If empty, skip. Bare nodes are always in the live portion when pinned+live.
 - For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; push a `Suggestion` with `id: 'bare-term-upgrade'`. Include count/printingCount when > 0; omit when 0.
 - **Multi-word window pass:** For each adjacent bare window from `getAdjacentBareWindows`, call `getMultiWordAlternatives(phrase, context, segments)` where `phrase` is space-joined bare values and `segments` is the same values as an array (Spec 159 hyphen-slug path uses per-node trimming).
-- Track which bare terms (by value) received a bare-term-upgrade suggestion. When building the oracle hint (Spec 131), skip those terms — do not suggest both `kw:landfall` and `o:landfall` for the same term.
+- Track which bare terms (by value) received a **non-tag** bare-term-upgrade suggestion. When building the oracle hint (Spec 131), add only those values to **`oracleSuppressedBareValues`** — do not suggest `o:{term}` for the same token when `kw:landfall` (or another non-tag upgrade) was already offered. **`otag:`** / **`atag:`** emissions do not populate that set.
 
 ### Suggestion type extension
 
@@ -279,7 +281,7 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 | `app/src/worker-search.ts` | Pass `artistLabels` from `tagData.artist` to `buildSuggestions` |
 | `app/src/SuggestionList.tsx` | Add `'bare-term-upgrade'` to EMPTY_STATE_IDS |
 | `docs/specs/151-suggestion-system.md` | Add bare-term-upgrade to placement/priority table; add to empty-state eligible ids |
-| `docs/specs/131-oracle-did-you-mean.md` | Add note: "When a bare term receives a bare-term-upgrade suggestion (Spec 154), do not also suggest the oracle variant for that term." |
+| `docs/specs/131-oracle-did-you-mean.md` | Oracle suppression applies only to **non-tag** bare-term upgrades; see Spec 131 trigger condition 6. |
 
 ## Implementation Notes
 
@@ -298,7 +300,7 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 6. `landfall f:commander` with zero results shows `kw:landfall` chip (non-trailing bare term); tapping produces `kw:landfall f:commander`.
 7. `landfall flying` with zero results shows both `kw:landfall` and `kw:flying` chips (counts may be 0).
 8. Bare-term-upgrade suggestions appear below the Results Summary Bar. **Non-tag** upgrades (priority 16) sort before the oracle hint (20). **`otag:`** / **`atag:`** upgrades (21) sort after the oracle hint when both apply.
-9. When a bare term gets a bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term.
+9. When a bare term gets a **non-tag** bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term. **`otag:`** / **`atag:`** suggestions do not trigger that suppression (Spec 131).
 10. Works in single-pane and Dual Wield layouts.
 11. Each chip shows explain text and "Learn more" link when docRef is set.
 12. Domains with unavailable data (e.g. no PrintingIndex for set) are skipped gracefully.

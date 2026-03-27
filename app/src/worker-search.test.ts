@@ -644,6 +644,47 @@ describe('oracle hint (Spec 131)', () => {
     expect(otagChip!.priority).toBe(21)
   })
 
+  it('oracle coexists with multi-word otag prefix chips; oracle sorts first (issue #209)', () => {
+    const oracleTags209: OracleTagData = {
+      'target-opponent-a': [0],
+      'target-opponent-b': [1],
+      'target-opponent-c': [2],
+    }
+    const tagRef = {
+      oracle: oracleTags209,
+      illustration: null,
+      flavor: null,
+      artist: null,
+    } as const
+    const cache209 = new NodeCache(index, printingIndex, null, tagRef)
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'target opponent' },
+      cache: cache209,
+      index,
+      printingIndex,
+      sessionSalt,
+      tagData: tagRef,
+    })
+    expect(result.indices.length).toBe(0)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    expect(oracle!.query).toContain('o:')
+    expect(oracle!.label.toLowerCase()).toContain('target')
+    expect(oracle!.count).toBeGreaterThan(0)
+    expect(oracle!.priority).toBe(20)
+    const otagChips = result.suggestions.filter(
+      (s) => s.id === 'bare-term-upgrade' && s.label.startsWith('otag:'),
+    )
+    expect(otagChips.length).toBeGreaterThanOrEqual(1)
+    expect(otagChips[0]!.priority).toBe(21)
+    const sorted = [...result.suggestions].sort((a, b) => a.priority - b.priority)
+    const oracleIdx = sorted.findIndex((s) => s.id === 'oracle')
+    const firstOtagIdx = sorted.findIndex(
+      (s) => s.id === 'bare-term-upgrade' && s.label.startsWith('otag:'),
+    )
+    expect(oracleIdx).toBeLessThan(firstOtagIdx)
+  })
+
   it('kw bare-term-upgrade stays priority 16 (before oracle and otag chips)', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'landfall' },
@@ -657,6 +698,7 @@ describe('oracle hint (Spec 131)', () => {
     const kwChip = result.suggestions.find((s) => s.id === 'bare-term-upgrade' && s.label === 'kw:landfall')
     expect(kwChip).toBeDefined()
     expect(kwChip!.priority).toBe(16)
+    expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
   })
 })
 

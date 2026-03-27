@@ -8,7 +8,7 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol), Spec 154 (Bare-Term Field Upgrade)
 
-**Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143)
+**Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143), [Issue #209](https://github.com/jimbojw/frantic-search/issues/209) (oracle vs tag suppression)
 
 ## Goal
 
@@ -27,7 +27,9 @@ All of the following must hold for the oracle hint to appear:
 3. **Trailing bare tokens** — When root is AND, only the *trailing* bare tokens are considered: those that appear after the last non-bare token in source order. When root is a single BARE, that token is the trailing set. There must be at least one trailing bare token.
 4. **An alternative returns results** — The phrase variant (or per-word variant when applicable) returns at least one card.
 5. **Lower priority than other empty-state CTAs** — Do not show when the empty-list CTA (Spec 126) or `include:extras` hint (Spec 057) applies. The oracle hint appears only when those conditions do not hold.
-6. **Bare-term-upgrade takes precedence** — When a bare term receives a bare-term-upgrade suggestion (Spec 154, e.g. `kw:landfall` for "landfall"), do not also suggest the oracle variant (`o:landfall`) for that term. The worker skips such terms when building the oracle hint.
+6. **Non-tag bare-term-upgrade suppresses oracle for that token** — When a **trailing** bare token receives a **non-tag** bare-term-upgrade suggestion (Spec 154 domains other than `otag:` / `atag:` — e.g. `kw:landfall` for "landfall", or multi-word `kw:"first strike"`), do not also suggest the oracle variant (`o:landfall` or `o:first` / `o:strike` as part of the oracle hint) **for that token**. The worker maintains a set of suppressed bare **values** (case-insensitive) populated **only** from non-tag upgrades; trailing nodes whose value is in that set are omitted from the oracle phrase / per-word construction.
+
+   **`otag:` / `atag:`** bare-term upgrades (exact label per Spec 154 or prefix per Spec 159) **do not** suppress the oracle hint. Tag chips are optional discovery (Spec 159); users often mean oracle rules text instead. Example: `opponent skips` may show both `o:"opponent skips"` (when evaluation returns results) **and** `otag:…` prefix chips; oracle sorts before tag chips by priority (Spec 151).
 
 ### Examples
 
@@ -37,6 +39,8 @@ All of the following must hold for the oracle hint to appear:
 | `"deal 3"` | BARE (quoted) | `"deal 3"` | phrase only `o:"deal 3"` — user quoted, don't split |
 | `lightning bolt` | AND | `lightning`, `bolt` | phrase, per-word |
 | `(xyc OR abc)` | OR | — | skip (root not AND/BARE) |
+| `opponent skips` (with tag prefix matches) | AND | `opponent`, `skips` | phrase `o:"opponent skips"` **and** separate `bare-term-upgrade` chips for `otag:…` (priority 21); tag chips do not remove tokens from oracle trailing set |
+| `landfall` (keyword match) | AND | `landfall` | Oracle skips `landfall` because `kw:landfall` is emitted (non-tag); no redundant `o:landfall` for that token |
 
 ## Design
 
@@ -133,7 +137,8 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 - [ ] Button displays only the oracle part (e.g. `o:deal o:3`); tapping applies the full query (e.g. `lightning ci:r o:deal o:3`).
 - [ ] Negated bare words are not converted; they remain in the alternative query as-is.
 - [ ] The empty-list CTA and `include:extras` hint take priority over the oracle hint when their conditions hold.
-- [ ] When a bare term receives a bare-term-upgrade suggestion (Spec 154, e.g. `kw:landfall` for "landfall"), the oracle hint does not also suggest `o:landfall` for that term.
+- [ ] When a bare term receives a **non-tag** bare-term-upgrade suggestion (Spec 154, e.g. `kw:landfall` for "landfall"), the oracle hint does not also suggest `o:landfall` for that term.
+- [ ] When trailing tokens only receive **`otag:`** / **`atag:`** bare-term upgrades (Spec 159), the oracle hint is still evaluated for those tokens when other conditions hold (e.g. `opponent skips` with `o:"opponent skips"` returning results).
 - [ ] Works in both single-pane and Dual Wield layouts.
 - [ ] Button uses two-line layout: oracle label on top, `N cards (M prints)` on bottom (via `formatDualCount`); both counts shown when printing data available.
 - [ ] When pinned query alone yields zero results, oracle hint is not shown (alternatives skipped); future UX for alerting user about empty pinned query is out of scope.
