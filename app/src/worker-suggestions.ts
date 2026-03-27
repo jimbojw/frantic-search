@@ -26,6 +26,13 @@ import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuer
 import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
 
+/** Spec 151: `otag:` / `atag:` bare-term-upgrade chips sort after oracle (20). */
+function bareTermUpgradePriority(label: string): 16 | 21 {
+  const lower = label.toLowerCase()
+  if (lower.startsWith('otag:') || lower.startsWith('atag:')) return 21
+  return 16
+}
+
 export type BuildSuggestionsParams = {
   msg: { query: string; pinnedQuery?: string; viewMode?: 'slim' | 'detail' | 'images' | 'full' }
   ast: ASTNode
@@ -233,7 +240,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           explain: alt.explain,
           ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
           docRef: alt.docRef,
-          priority: 16,
+          priority: bareTermUpgradePriority(alt.label),
           variant: 'rewrite',
         })
       }
@@ -275,7 +282,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           explain: alt.explain,
           ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
           docRef: alt.docRef,
-          priority: 16,
+          priority: bareTermUpgradePriority(alt.label),
           variant: 'rewrite',
         })
         bareTermUpgradedValues.add(node.value.toLowerCase())

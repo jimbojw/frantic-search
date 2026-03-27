@@ -41,7 +41,7 @@ All of the following must hold:
 All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion is a single chip: label = the new term (e.g. `kw:landfall`), query = full query with that term spliced in, explain = teaching copy.
 
 - **Placement:** Empty state only (below Results Summary Bar, alongside oracle, wrong-field, etc.).
-- **Priority:** 16 (Spec 151: higher than oracle 20 — field-specific upgrades are narrower than generic oracle, so show first).
+- **Priority:** **16** for kw:, t:, set:, f:, is:, game:, frame:, and rarity: upgrades (Spec 151). **`otag:`** and **`atag:`** upgrades (exact + Spec 159 prefix) use **21** so they sort **after** the oracle “did you mean” hint (**20**) when both appear; other suggestion priorities are unchanged.
 - **Variant:** `rewrite`.
 - **Negation:** Only positive BARE nodes. Negated bare terms are not converted (same as Spec 131).
 
@@ -55,7 +55,7 @@ All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion 
 
 When a bare term matches **multiple** domains (e.g. `commander` matches format and is:), suggest each matching domain. Order: keyword → type-line → set → format → is: → otag → atag → game → frame → rarity. Only the first matching domain is required for MVP; others can be added incrementally.
 
-**Interaction with oracle (Spec 131):** When a bare term matches both a field domain (e.g. `kw:landfall`) and the oracle fallback (`o:landfall`), prefer the **field-specific** suggestion. The bare-term-upgrade suggestion (priority 16) will outrank oracle (priority 20). We show at most one suggestion per bare term — if `kw:landfall` returns results, we suggest that and do not also suggest `o:landfall` for that term. The oracle hint logic runs after bare-term-upgrade; if a bare term already produced a bare-term-upgrade suggestion, skip it for oracle. (Implementation: evaluate bare-term upgrades first; for terms that got a suggestion, do not feed them to the oracle path.)
+**Interaction with oracle (Spec 131):** When a bare term matches both a **non-tag** field domain (e.g. `kw:landfall`) and the oracle fallback (`o:landfall`), prefer the **field-specific** suggestion. That bare-term-upgrade row uses priority **16** and sorts **before** oracle (**20**). We show at most one suggestion per bare term — if `kw:landfall` returns results, we suggest that and do not also suggest `o:landfall` for that term. The oracle hint logic runs after bare-term-upgrade; if a bare term already produced a bare-term-upgrade suggestion, skip it for oracle. (Implementation: evaluate bare-term upgrades first; for terms that got a suggestion, do not feed them to the oracle path.) **`otag:`** / **`atag:`** bare-term-upgrade chips use priority **21** (Spec 151): when both oracle and tag chips appear (e.g. trailing bare `ramp` with tag data loaded), the oracle hint sorts **first**.
 
 ### Domains
 
@@ -297,7 +297,7 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 5. `lightning ci:r landfall` with zero results shows `kw:landfall` chip (replacing only "landfall"); tapping produces `lightning ci:r kw:landfall`.
 6. `landfall f:commander` with zero results shows `kw:landfall` chip (non-trailing bare term); tapping produces `kw:landfall f:commander`.
 7. `landfall flying` with zero results shows both `kw:landfall` and `kw:flying` chips (counts may be 0).
-8. Bare-term-upgrade suggestions appear below the Results Summary Bar, before oracle suggestions when both could apply.
+8. Bare-term-upgrade suggestions appear below the Results Summary Bar. **Non-tag** upgrades (priority 16) sort before the oracle hint (20). **`otag:`** / **`atag:`** upgrades (21) sort after the oracle hint when both apply.
 9. When a bare term gets a bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term.
 10. Works in single-pane and Dual Wield layouts.
 11. Each chip shows explain text and "Learn more" link when docRef is set.

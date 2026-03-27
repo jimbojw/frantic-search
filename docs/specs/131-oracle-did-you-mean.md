@@ -121,6 +121,8 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 
 **Current location (post–Spec 151, worker refactor):** Oracle suggestion is built in `buildSuggestions` (app/src/worker-suggestions.ts), using `evaluateAlternative` from app/src/worker-alternative-eval.ts. Delivered via `suggestions` array (id: 'oracle').
 
+**Sort order vs tag chips:** When the same query also produces `bare-term-upgrade` chips for **`otag:`** or **`atag:`** (Spec 154 / 159), the unified list is sorted by `priority`; oracle uses **20** and those tag chips use **21** (Spec 151), so the oracle rewrite appears first.
+
 ## Acceptance Criteria
 
 - [ ] When `lightning ci:r deal 3` returns zero and the phrase variant returns results, the hint shows `lightning ci:r o:"deal 3"`.
