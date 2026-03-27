@@ -76,6 +76,7 @@ No completion is offered for: regex patterns, quoted strings that are not exact-
 - **Placement:** Rendered inline in the highlight layer, immediately after the cursor position.
 - **Styling:** Muted color (e.g. `text-gray-400 dark:text-gray-500`) so it is visually distinct from typed text.
 - **Content:** The portion of the suggestion that would be *appended* — i.e. the suffix after the user's current prefix. Example: user typed `gris`, suggestion is `Griselbrand"`; ghost text shows `elbrand"`.
+- **Caret position:** Ghost text is shown only when the caret is at the **end of the query string** (`selectionStart === query.length`), in addition to a collapsed selection (no range), focus, and the other suppression rules below. Mid-query editing must not show inline ghost text.
 
 ### Acceptance behavior
 
@@ -84,6 +85,8 @@ When the user accepts a suggestion:
 1. **Replace** the current token's text (from token start to cursor) with the full suggestion.
 2. **Insert** any required delimiters (e.g. closing `"` for exact name).
 3. **Position** the cursor after the inserted text.
+
+**Field name, caret past the field token:** If the context is field-name completion and the caret is already **past** the field word (e.g. after typing `:`), replace only the field word `[tokenStart, tokenEnd)` with the canonical field name and **preserve** the substring from `tokenEnd` onward (so `:` and any typed value are not dropped). Example: `o:create …` + accept → `oracle:create …`, not `oraclecreate …`.
 
 Example: `!"gris` + accept → `!"Griselbrand"` with cursor after the closing quote.
 
@@ -129,6 +132,7 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 | `app/src/query-autocomplete.ts` | New: `getCompletionContext`, `computeSuggestion`. |
 | `app/src/QueryHighlight.tsx` | Add `cursorOffset`, `ghostText` props; render ghost span at cursor. |
 | `app/src/App.tsx` | Track cursor; call computeSuggestion; wire Tab, swipe, tap handlers. |
+| `app/src/useDebouncedGhostText.ts` | Debounced ghost; EOL-only guard; optional focus accessor (Issue #157). |
 | `app/src/DualWieldLayout.tsx` | Same wiring for SearchPane (single and dual-pane). |
 | `shared/src/worker-protocol.ts` | Optionally add `unique_set_codes: string[]` if deriving from printing rows is insufficient. |
 | `app/src/worker.ts` | If protocol changes: extract and send unique set codes. |
@@ -139,6 +143,7 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 - **Empty query:** No completion.
 - **Cursor at start/end of token:** Context still detected; suggestion may be full token or suffix.
 - **Selection (range):** When `selectionStart !== selectionEnd`, do not show ghost text. The syntax highlight layer must exactly match the textarea; ghost text would cause misalignment. When there is no selection (caret only), use `selectionStart` as the effective cursor for completion.
+- **Caret not at end:** When `selectionStart !== query.length`, do not show ghost text (editing earlier in the query).
 - **Multi-line query:** Cursor position is character offset; works across lines.
 - **DualWieldLayout:** Each pane has independent query and cursor. Autocomplete state is per-pane; no cross-talk.
 - **Worker error state:** Input disabled; no completion.
@@ -160,6 +165,8 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 11. No completion before `display` is ready; no `set:` completion before `printings-ready`.
 12. No regressions to syntax highlighting, scroll sync, or focus management.
 13. Ghost text is hidden when the search input loses focus; it reappears when the user refocuses and conditions for completion are met.
+14. No ghost text when the caret is not at the end of the query string.
+15. Tab (or other accept) on field-name completion does not drop `:` or other characters between the field alias and the caret when the caret is already past the field word (e.g. `o:` → `oracle:`).
 
 ## Implementation Notes
 
@@ -170,3 +177,4 @@ Do not show or update ghost text during IME composition (`compositionstart` → 
 - 2026-03-06: `applyCompletion` for exact names: `computeSuggestion` returns `"CardName"` (with both quotes); the prefix starts after `!` at the opening quote, so replacement includes the full quoted name.
 - 2026-03-08: Spec 097: Name field autocomplete. Value context now detected when previous token is any operator (not just COLON), so `name>M` and `name:bolt` suggest card names instead of field aliases. `computeSuggestion` adds `name`/`n` branch with prefix match on `names`.
 - 2026-03-19: Clear ghost on blur (Issue #157). `useDebouncedGhostText` now accepts optional `isFocused` accessor; ghost is suppressed when not focused.
+- 2026-03-27: Ghost only when caret at end of query (`useDebouncedGhostText`). `applyCompletion` for field context preserves `query.slice(tokenEnd)` when `cursorOffset > tokenEnd` so Tab after `o:` expands to `oracle:` without eating the colon.

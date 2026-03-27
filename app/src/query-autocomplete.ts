@@ -326,6 +326,14 @@ export function applyCompletion(
   suggestion: string,
   ctx: CompletionContext
 ): { newQuery: string; newCursor: number } {
+  if (ctx.type === 'field' && cursorOffset > ctx.tokenEnd) {
+    // Caret past the field word (e.g. after ":"): replace only [tokenStart, tokenEnd), keep ":" / operators.
+    const newQuery =
+      query.slice(0, ctx.tokenStart) + suggestion + query.slice(ctx.tokenEnd)
+    const newCursor =
+      ctx.tokenStart + suggestion.length + (cursorOffset - ctx.tokenEnd)
+    return { newQuery, newCursor }
+  }
   const before = query.slice(0, ctx.tokenStart)
   const after = query.slice(cursorOffset)
   const inserted = suggestion

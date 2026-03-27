@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
-import { getCompletionContext, computeSuggestion, applyCompletion, type AutocompleteData } from './query-autocomplete'
+import {
+  getCompletionContext,
+  computeSuggestion,
+  applyCompletion,
+  type AutocompleteData,
+  type CompletionContext,
+} from './query-autocomplete'
 
 function makeData(overrides: Partial<AutocompleteData> = {}): AutocompleteData {
   return {
@@ -303,5 +309,36 @@ describe('applyCompletion', () => {
     const { newQuery, newCursor } = applyCompletion('llan', 4, 'Llanowar', ctx)
     expect(newQuery).toBe('Llanowar')
     expect(newCursor).toBe(8)
+  })
+
+  it('field completion after colon preserves operator (o:create → oracle:create)', () => {
+    const fieldO: CompletionContext = {
+      type: 'field',
+      prefix: 'o',
+      tokenStart: 0,
+      tokenEnd: 1,
+    }
+    const { newQuery, newCursor } = applyCompletion(
+      'o:create creature token',
+      2,
+      'oracle',
+      fieldO,
+    )
+    expect(newQuery).toBe('oracle:create creature token')
+    expect(newCursor).toBe(7)
+  })
+
+  it('field completion on colon uses legacy slice (o|:create → oracle:create)', () => {
+    const ctx = getCompletionContext('o:create creature token', 1)!
+    expect(ctx.type).toBe('field')
+    const { newQuery, newCursor } = applyCompletion(
+      'o:create creature token',
+      1,
+      'oracle',
+      ctx,
+    )
+    expect(newQuery).toBe('oracle:create creature token')
+    // Legacy path (cursor <= tokenEnd): caret lands after inserted field name only (index 6).
+    expect(newCursor).toBe(6)
   })
 })

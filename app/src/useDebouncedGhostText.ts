@@ -6,6 +6,22 @@ import type { AutocompleteData } from './query-autocomplete'
 
 const DEBOUNCE_MS = 100
 
+/** Pure checks before debounced ghost computation (Spec 089: caret at end of query). Exported for tests. */
+export function ghostCompletionPreconditionsMet(
+  q: string,
+  cursor: number,
+  selectionEnd: number,
+  isComposing: boolean,
+  data: AutocompleteData | null,
+  isFocused?: boolean,
+): boolean {
+  if (isFocused !== undefined && !isFocused) return false
+  if (isComposing || !data) return false
+  if (cursor !== selectionEnd) return false
+  if (cursor !== q.length) return false
+  return true
+}
+
 export function useDebouncedGhostText(
   query: Accessor<string>,
   cursorOffset: Accessor<number>,
@@ -25,23 +41,22 @@ export function useDebouncedGhostText(
       }
     }
 
-    if (isFocused !== undefined && !isFocused()) {
-      clearTimer()
-      setGhostText(null)
-      return
-    }
-    if (isComposing() || !autocompleteData()) {
-      clearTimer()
-      setGhostText(null)
-      return
-    }
-    if (cursorOffset() !== selectionEnd()) {
-      clearTimer()
-      setGhostText(null)
-      return
-    }
     const q = query()
     const cursor = cursorOffset()
+    if (
+      !ghostCompletionPreconditionsMet(
+        q,
+        cursor,
+        selectionEnd(),
+        isComposing(),
+        autocompleteData(),
+        isFocused?.(),
+      )
+    ) {
+      clearTimer()
+      setGhostText(null)
+      return
+    }
     const ctx = getCompletionContext(q, cursor)
     if (!ctx || cursor < ctx.tokenEnd) {
       clearTimer()
