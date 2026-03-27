@@ -23,7 +23,12 @@ import {
   collectNonexistentFieldRewrites,
 } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
-import { spliceBareToOracle, getOracleLabel } from './oracle-hint-edit'
+import {
+  spliceBareToOracle,
+  getOracleLabel,
+  trailingOracleRegexEligible,
+  type OracleSpliceVariant,
+} from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
 
 /** Spec 151: `otag:` / `atag:` bare-term-upgrade chips sort after oracle (20). */
@@ -311,15 +316,14 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         (n) => !oracleSuppressedBareValues.has(n.value.toLowerCase()),
       )
       if (trailing && trailing.length > 0) {
-        const variants: Array<'phrase' | 'per-word'> =
-          trailing.length === 1 && trailing[0].quoted ? ['phrase'] : ['phrase', 'per-word']
-        let best: { query: string; label: string; count: number; printingCount?: number } | null = null
-        for (const variant of variants) {
-          const altLiveQuery = spliceBareToOracle(msg.query, trailing, variant)
+        const quotedPhraseOnly = trailing.length === 1 && trailing[0].quoted
+        const pinnedTrim = hasPinned ? msg.pinnedQuery!.trim() : ''
+
+        const evalLiveOracleAlt = (altLiveQuery: string) => {
           const altCombinedQuery = hasPinned
-            ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(altLiveQuery)
+            ? sealQuery(pinnedTrim) + ' ' + sealQuery(altLiveQuery)
             : altLiveQuery
-          const { cardCount, printingCount } = evaluateAlternative({
+          return evaluateAlternative({
             altQuery: altCombinedQuery,
             cache,
             index,
@@ -327,19 +331,52 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
             includeExtras,
             viewMode,
           })
-          if (cardCount > 0) {
-            const fullQuery = hasPinned
-              ? sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(altLiveQuery)
-              : altLiveQuery
-            best = {
-              query: fullQuery,
-              label: getOracleLabel(trailing, variant),
-              count: cardCount,
-              printingCount,
-            }
-            if (variant === 'phrase') break
+        }
+
+        const packBest = (
+          variant: OracleSpliceVariant,
+          altLiveQuery: string,
+          cardCount: number,
+          printingCount: number | undefined,
+        ) => ({
+          query: hasPinned ? sealQuery(pinnedTrim) + ' ' + sealQuery(altLiveQuery) : altLiveQuery,
+          label: getOracleLabel(trailing, variant),
+          count: cardCount,
+          printingCount,
+        })
+
+        let best: { query: string; label: string; count: number; printingCount?: number } | null = null
+
+        const phraseLive = spliceBareToOracle(msg.query, trailing, 'phrase')
+        const phraseEval = evalLiveOracleAlt(phraseLive)
+        if (phraseEval.cardCount > 0) {
+          best = packBest('phrase', phraseLive, phraseEval.cardCount, phraseEval.printingCount)
+        } else {
+          const perWordLive = quotedPhraseOnly
+            ? null
+            : spliceBareToOracle(msg.query, trailing, 'per-word')
+          const perWordEval = perWordLive
+            ? evalLiveOracleAlt(perWordLive)
+            : { cardCount: 0, printingCount: undefined as number | undefined }
+          const regexEligible = trailingOracleRegexEligible(trailing)
+          const regexLive = regexEligible
+            ? spliceBareToOracle(msg.query, trailing, 'regex')
+            : null
+          const regexEval = regexLive
+            ? evalLiveOracleAlt(regexLive)
+            : { cardCount: 0, printingCount: undefined as number | undefined }
+
+          const r = regexEval.cardCount
+          const p = perWordEval.cardCount
+          if (r > 0 && r < p && regexLive) {
+            best = packBest('regex', regexLive, r, regexEval.printingCount)
+          } else if (p > 0 && perWordLive) {
+            best = packBest('per-word', perWordLive, p, perWordEval.printingCount)
+          } else if (r > 0 && regexLive) {
+            best = packBest('regex', regexLive, r, regexEval.printingCount)
           }
         }
+
         if (best) {
           oracleSuggestion = {
             id: 'oracle',

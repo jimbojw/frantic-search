@@ -25,7 +25,7 @@ All of the following must hold for the oracle hint to appear:
 1. **Zero results** — The effective (combined) search returned zero cards (`totalCards() === 0`). With a pinned query, this is the pinned+live combined result.
 2. **Root shape** — The root AST node is either (a) an AND node, or (b) a leaf BARE node (single bare word, quoted or unquoted). Skip when root is OR (e.g. `(xyc OR abc)` does not trigger).
 3. **Trailing bare tokens** — When root is AND, only the *trailing* bare tokens are considered: those that appear after the last non-bare token in source order. When root is a single BARE, that token is the trailing set. There must be at least one trailing bare token.
-4. **An alternative returns results** — The phrase variant (or per-word variant when applicable) returns at least one card.
+4. **An alternative returns results** — At least one of the candidate variants (phrase, ordered-regex, or per-word) returns at least one card after the selection rules below.
 5. **Lower priority than other empty-state CTAs** — Do not show when the empty-list CTA (Spec 126) or `include:extras` hint (Spec 057) applies. The oracle hint appears only when those conditions do not hold.
 6. **Non-tag bare-term-upgrade suppresses oracle for that token** — When a **trailing** bare token receives a **non-tag** bare-term-upgrade suggestion (Spec 154 domains other than `otag:` / `atag:` — e.g. `kw:landfall` for "landfall", or multi-word `kw:"first strike"`), do not also suggest the oracle variant (`o:landfall` or `o:first` / `o:strike` as part of the oracle hint) **for that token**. The worker maintains a set of suppressed bare **values** (case-insensitive) populated **only** from non-tag upgrades; trailing nodes whose value is in that set are omitted from the oracle phrase / per-word construction.
 
@@ -35,7 +35,7 @@ All of the following must hold for the oracle hint to appear:
 
 | Query | Root | Trailing bare tokens | Variants tried |
 |-------|------|----------------------|----------------|
-| `lightning ci:r deal 3` | AND | `deal`, `3` | phrase `o:"deal 3"`, per-word `o:deal o:3` |
+| `lightning ci:r deal 3` | AND | `deal`, `3` | Candidates: phrase `o:"deal 3"`, ordered-regex `o:/deal.*3/`, per-word `o:deal o:3` — worker picks one per selection rules |
 | `"deal 3"` | BARE (quoted) | `"deal 3"` | phrase only `o:"deal 3"` — user quoted, don't split |
 | `lightning bolt` | AND | `lightning`, `bolt` | phrase, per-word |
 | `(xyc OR abc)` | OR | — | skip (root not AND/BARE) |
@@ -46,28 +46,50 @@ All of the following must hold for the oracle hint to appear:
 
 ### Alternative query variants
 
-When the main query returns zero and has trailing bare tokens, the worker builds alternative query(ies) by splicing those tokens into oracle field terms. All other terms remain in place.
+When the main query returns zero and has trailing bare tokens, the worker evaluates up to **three** candidate splices into oracle search. **Only one** suggestion is shown (`id: 'oracle'`, Spec 151). All other terms in the query remain in place.
 
 | Variant | Replacement | Example |
 |---------|-------------|---------|
-| **Phrase** | Replace trailing bare tokens with a single `o:"word1 word2 ..."` | `lightning ci:r deal 3` → `lightning ci:r o:"deal 3"` |
-| **Per-word** | Replace each trailing bare token with `o:value` | `lightning ci:r deal 3` → `lightning ci:r o:deal o:3` |
+| **Phrase** | Replace trailing span with a single `o:"word1 word2 ..."` (or `o:word` when one token, no quoting needed) | `lightning ci:r deal 3` → `lightning ci:r o:"deal 3"` |
+| **Ordered-regex** | Replace trailing span with `o:/word1.*word2.*…/` (words in order, not necessarily adjacent) | `ci:r damage target` → `ci:r o:/damage.*target/` |
+| **Per-word** | Replace each trailing span with `o:value` (quoted when needed) | `lightning ci:r deal 3` → `lightning ci:r o:deal o:3` |
 
-**Quoted bare words:** When the trailing bare tokens are a single BARE node with `quoted: true` (e.g. `"deal 3"`), only try the phrase variant. The user explicitly quoted — take them at their word; do not split into per-word.
+**Quoted bare words:** When the trailing bare tokens are a single BARE node with `quoted: true` (e.g. `"deal 3"`), only evaluate the **phrase** variant. Do not split into per-word or ordered-regex.
 
 **Negated bare words:** Do not convert. Only positive BARE nodes (those not under a NOT) are considered. Negated terms stay as-is.
+
+### Ordered-regex eligibility
+
+Do **not** build or evaluate the ordered-regex candidate when:
+
+- There is only **one** trailing bare token (phrase and per-word are already equivalent to a single `o:` term; regex adds no useful distinction), or
+- **Any** trailing token’s `value` contains a character outside the safe set **`[a-zA-Z0-9'-]`** (letters, digits, apostrophe, hyphen only). This avoids embedding regex escapes in the suggestion (e.g. mana symbols like `{C}{C}`).
+
+When ineligible, treat the ordered-regex candidate as having **zero** matches for selection purposes.
+
+### Single-suggestion selection (after evaluation)
+
+Evaluate candidates against the effective (pinned + live) query using the same playable-filter rules as other suggestion rewrites. Let `phraseCount`, `regexCount`, and `perWordCount` be the resulting card counts (0 if not evaluated).
+
+1. If **`phraseCount > 0`**, use the **phrase** variant (stop).
+2. Else if ordered-regex was **eligible** and **`regexCount > 0`** and **`regexCount < perWordCount`**, use **ordered-regex**.
+3. Else if **`perWordCount > 0`**, use **per-word**.
+4. Else if ordered-regex was **eligible** and **`regexCount > 0`**, use **ordered-regex** (only option with matches).
+
+**Tie:** If **`regexCount === perWordCount`** (and both &gt; 0), step 2 does **not** apply; step 3 chooses **per-word** (simpler form).
 
 ### Splicing logic
 
 - Use AST spans from the parser (Spec 036). BARE nodes carry `span: { start, end }`.
 - **Trailing bare tokens:** Walk the root's children in source order (by span.start). The trailing bare tokens are the contiguous suffix of BARE nodes at the end. When root is a single BARE, that node is the trailing set.
 - **Phrase variant:** Replace the first trailing BARE's span with `o:"<all trailing bare values joined by space>"`; splice out the remaining trailing BARE spans. Splice from end to start to preserve offsets.
-- **Per-word variant:** Replace each trailing BARE span with `o:value` (escape/quote if value contains spaces or special chars). Skip this variant when the trailing set is a single quoted BARE.
+- **Ordered-regex variant:** Same span replacement as phrase; replacement is `o:/w1.*w2.*…/` where each `wi` is the bare token value (only when every token passes the safe charset; no escaping).
+- **Per-word variant:** Replace each trailing BARE span with `o:value` (escape/quote if value contains spaces or special chars). Skip when the trailing set is a single quoted BARE.
 - Reuse `spliceQuery` from `app/src/query-edit-core.ts`.
 
 ### Variant preference
 
-When both variants are tried and both return results, prefer the **phrase** variant (more specific). Return only one hint to avoid UI clutter. When only the phrase variant is tried (quoted trailing bare), use that result.
+See **Single-suggestion selection** above. Historically only phrase vs per-word were considered; ordered-regex sits **between** them when phrase fails and regex is strictly narrower than per-word.
 
 ### Worker protocol
 
@@ -86,7 +108,7 @@ oracleHint?: {
 Present only when:
 - Main query returned zero results.
 - Root is AND or leaf BARE; at least one trailing bare token exists.
-- At least one alternative (phrase preferred over per-word when both tried) returns results.
+- At least one candidate (after selection rules) returns results.
 
 ### Empty-results UX
 
@@ -115,7 +137,7 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 
 | File | Change |
 |------|--------|
-| `shared/` or `app/` | Add `getTrailingBareNodes(ast)` and `spliceBareToOracle(query, trailingBareNodes, variant)` — root must be AND or leaf BARE; trailing = contiguous suffix of BARE nodes at end of AND children. |
+| `shared/` or `app/` | `getTrailingBareNodes(ast)`; `spliceBareToOracle(query, trailing, variant)` with `variant: 'phrase' \| 'per-word' \| 'regex'`; `trailingOracleRegexEligible(trailing)` in `app/src/oracle-hint-edit.ts`. |
 | `app/src/worker-search.ts` | When deduped.length === 0, root is AND or BARE, and trailing bare nodes exist: if pinned query alone yields zero, skip alternatives. Otherwise build variant(s) from live query, evaluate, populate `oracleHint` (phrase only when trailing is single quoted BARE). |
 | `shared/src/worker-protocol.ts` | Add `oracleHint?: { query, label, count, printingCount?, variant }` to result variant. |
 | `app/src/App.tsx` | Store `oracleHint` from result message; pass to SearchContext. |
@@ -131,8 +153,12 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 
 - [ ] When `lightning ci:r deal 3` returns zero and the phrase variant returns results, the hint shows `lightning ci:r o:"deal 3"`.
 - [ ] When `"deal 3"` returns zero and `o:"deal 3"` returns results, the hint shows only the phrase variant (no per-word split).
-- [ ] When the phrase variant returns zero but the per-word variant returns results, the hint shows the per-word query.
-- [ ] When both variants return results, the phrase variant is preferred.
+- [ ] When the phrase variant returns zero but the per-word variant returns results (and ordered-regex does not win per selection rules), the hint shows the per-word query.
+- [ ] When phrase and per-word both return results, the phrase variant is preferred.
+- [ ] When phrase returns zero, ordered-regex is eligible, and `regexCount` is strictly less than `perWordCount`, the hint uses `o:/…/` ordered-regex.
+- [ ] When `regexCount === perWordCount` (both &gt; 0), the hint uses per-word, not ordered-regex.
+- [ ] When a trailing token fails the regex safe charset (e.g. `{C}{C}`), the hint label is not an `o:/…/` regex form.
+- [ ] Single trailing bare token never produces an ordered-regex-only hint distinct from phrase/per-word.
 - [ ] `(xyc OR abc)` with zero results does not trigger the oracle hint (root is OR).
 - [ ] Button displays only the oracle part (e.g. `o:deal o:3`); tapping applies the full query (e.g. `lightning ci:r o:deal o:3`).
 - [ ] Negated bare words are not converted; they remain in the alternative query as-is.

@@ -597,6 +597,37 @@ describe('oracle hint (Spec 131)', () => {
     expect(oracle!.label).toContain('o:')
     expect(oracle!.count).toBeGreaterThan(0)
     expect(oracle!.priority).toBe(20)
+    expect(oracle!.label).toMatch(/o:deal|deal/)
+  })
+
+  it('prefers per-word over ordered-regex when both match the same count (Spec 131 tie rule)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ci:r damage target' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    expect(oracle!.label).toContain('o:damage')
+    expect(oracle!.label).toContain('o:target')
+    expect(oracle!.label).not.toMatch(/^o:\/.+\/$/)
+  })
+
+  it('does not emit ordered-regex oracle when a trailing token is not regex-safe (Spec 131)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'add {C}{C}' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    expect(oracle!.label).not.toMatch(/^o:\/.+\/$/)
   })
 
   it('(xyc OR abc) with zero results does not trigger oracle suggestion', () => {
