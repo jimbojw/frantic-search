@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
 import { NodeCache, index, printingIndex, TEST_DATA, TEST_PRINTING_DATA, CardFlag, Format } from '@frantic-search/shared'
+import type { OracleTagData } from '@frantic-search/shared'
+
+const FIXTURE_ORACLE_TAGS: OracleTagData = {
+  ramp: [0, 3, 4],
+}
+const tagDataForOtagTests = {
+  oracle: FIXTURE_ORACLE_TAGS,
+  illustration: null,
+  flavor: null,
+  artist: null,
+} as const
 import { CardIndex } from '@frantic-search/shared'
 import { PrintingIndex } from '@frantic-search/shared'
 import { emptyUrlLiveQuerySuggestionPool } from './worker-empty-url-suggestions'
@@ -585,6 +596,7 @@ describe('oracle hint (Spec 131)', () => {
     expect(oracle!.query).toContain('o:')
     expect(oracle!.label).toContain('o:')
     expect(oracle!.count).toBeGreaterThan(0)
+    expect(oracle!.priority).toBe(20)
   })
 
   it('(xyc OR abc) with zero results does not trigger oracle suggestion', () => {
@@ -609,6 +621,42 @@ describe('oracle hint (Spec 131)', () => {
     })
     expect(result.indices.length).toBeGreaterThan(0)
     expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
+  })
+
+  it('otag bare-term-upgrade uses priority 21 (Spec 151; sorts after oracle 20)', () => {
+    const cacheWithTags = new NodeCache(index, printingIndex, null, {
+      oracle: FIXTURE_ORACLE_TAGS,
+      illustration: null,
+      flavor: null,
+      artist: null,
+    })
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'ramp' },
+      cache: cacheWithTags,
+      index,
+      printingIndex,
+      sessionSalt,
+      tagData: tagDataForOtagTests,
+    })
+    expect(result.indices.length).toBe(0)
+    const otagChip = result.suggestions.find((s) => s.id === 'bare-term-upgrade' && s.label === 'otag:ramp')
+    expect(otagChip).toBeDefined()
+    expect(otagChip!.priority).toBe(21)
+  })
+
+  it('kw bare-term-upgrade stays priority 16 (before oracle and otag chips)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'landfall' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+      keywordLabels: ['landfall'],
+    })
+    expect(result.indices.length).toBe(0)
+    const kwChip = result.suggestions.find((s) => s.id === 'bare-term-upgrade' && s.label === 'kw:landfall')
+    expect(kwChip).toBeDefined()
+    expect(kwChip!.priority).toBe(16)
   })
 })
 

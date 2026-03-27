@@ -111,7 +111,7 @@ The single-node pass runs **`getBareTermAlternatives`** first (exact match for `
 ### Suggestion model
 
 - **`id`:** `bare-term-upgrade` (no new id).
-- **Priority:** **16** (unchanged; Spec 151).
+- **Priority:** **21** for these `otag:` / `atag:` chips (Spec 151) so they sort after the oracle hint (**20**). Other bare-term-upgrade domains remain at **16**.
 - **Placement:** Empty state only.
 - **Label:** `otag:{key}` or `atag:{key}` with canonical key from data.
 - **Explain:** Reuse Spec 154 otag/atag explain strings (“Use otag: for oracle tags.” / “Use atag: for illustration tags.”) and **docRef** (`reference/fields/face/otag`, `reference/fields/face/atag`).
@@ -150,7 +150,7 @@ The single-node pass runs **`getBareTermAlternatives`** first (exact match for `
 3. Tapping a chip applies the same rewrite path as other bare-term upgrades (Spec 151).
 4. When oracle tag data is missing, no `otag:` suggestion is produced for hyphen windows; illustration tag data gated similarly for `atag:`.
 5. At most three `otag:` suggestions and at most three `atag:` suggestions per multi-word window from tag prefix logic.
-6. Spec 154 is updated to reference this spec for otag/atag multi-word behavior; Spec 151 needs **no** new `id` or priority row (optional short cross-link under bare-term-upgrade notes).
+6. Spec 154 is updated to reference this spec for otag/atag multi-word behavior; Spec 151 documents **`bare-term-upgrade` priority 21** for `otag:` / `atag:` labels (oracle hint remains **20**).
 7. Bare query `triggere` (zero results, tag data loaded, `triggered-ability` in oracle labels) yields a **`bare-term-upgrade`** suggestion **`otag:triggered-ability`** (single-token prefix).
 8. When exact `otag:` / `atag:` already matches for a single bare token, no duplicate chip for the same tag from the prefix pass.
 
