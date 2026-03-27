@@ -18,6 +18,7 @@ const EMPTY_STATE_IDS = [
   'card-type',
   'keyword',
   'artist-atag',
+  'name-typo',
   'near-miss',
   'example-query',
 ] as const

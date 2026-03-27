@@ -10,6 +10,8 @@
 
 **Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143), [Issue #209](https://github.com/jimbojw/frantic-search/issues/209) (oracle vs tag suppression)
 
+**Related:** Spec 163 (name-token spellcheck) — also targets zero-result bare tokens but suggests a **name** correction (Levenshtein) instead of oracle text. Both may appear; Spec 151 priority puts **name-typo** (17) before **oracle** (20).
+
 ## Goal
 
 When a search returns zero results but the query contains bare words (which search the name field by default), offer a "Did you mean to search oracle text?" hint if an alternative query that searches oracle text instead would return results. Tapping the hint applies the alternative query.

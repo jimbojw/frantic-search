@@ -14,6 +14,7 @@ export type Suggestion = {
     | 'card-type'
     | 'keyword'
     | 'artist-atag'
+    | 'name-typo'
     | 'near-miss'
     | 'relaxed'
     | 'stray-comma'

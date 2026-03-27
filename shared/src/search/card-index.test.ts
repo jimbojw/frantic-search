@@ -367,3 +367,31 @@ describe("CardIndex.typeLineWords", () => {
     expect(index.typeLineWords.has("legendary")).toBe(true);
   });
 });
+
+describe("CardIndex.nameWords (Spec 163)", () => {
+  it("collects unique words from combined names, lowercased, with first-char buckets", () => {
+    const data = makeData({
+      names: ["Beck", "Call"],
+      combined_names: ["Beck // Call", "Beck // Call"],
+      mana_costs: ["{G}{U}", "{4}{W}{U}"],
+      oracle_texts: ["", ""],
+      colors: [0, 0],
+      color_identity: [0, 0],
+      type_lines: ["Instant", "Instant"],
+      powers: [0, 0],
+      toughnesses: [0, 0],
+      loyalties: [0, 0],
+      defenses: [0, 0],
+      legalities_legal: [0, 0],
+      legalities_banned: [0, 0],
+      legalities_restricted: [0, 0],
+      card_index: [0, 0],
+      canonical_face: [0, 0],
+    });
+    const index = new CardIndex(data);
+    expect(index.nameWords.has("beck")).toBe(true);
+    expect(index.nameWords.has("call")).toBe(true);
+    expect(index.nameWordsByFirstChar.get("b")).toEqual(["beck"]);
+    expect(index.nameWordsByFirstChar.get("c")).toEqual(["call"]);
+  });
+});

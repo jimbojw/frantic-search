@@ -58,6 +58,30 @@ function buildTypeLineWords(typeLines: string[]): Set<string> {
   return words;
 }
 
+/** Spec 163: words from combined names + first-letter buckets for Levenshtein spellcheck. */
+function buildNameWordIndex(combinedNames: string[]): {
+  nameWords: Set<string>;
+  nameWordsByFirstChar: ReadonlyMap<string, readonly string[]>;
+} {
+  const nameWords = new Set<string>();
+  for (const name of combinedNames) {
+    const tokens = name.toLowerCase().split(/\W+/).filter((w) => w.length > 0);
+    for (const w of tokens) nameWords.add(w);
+  }
+  const bucket = new Map<string, string[]>();
+  for (const w of nameWords) {
+    const c = w[0]!;
+    let arr = bucket.get(c);
+    if (!arr) {
+      arr = [];
+      bucket.set(c, arr);
+    }
+    arr.push(w);
+  }
+  for (const arr of bucket.values()) arr.sort();
+  return { nameWords, nameWordsByFirstChar: bucket };
+}
+
 /** Build sorted face indices for salt percentile. Ascending (lowest salt first, highest last).
  * No inversion: high-index end = saltier. Nulls excluded. */
 function buildSortedSaltIndices(
@@ -130,6 +154,10 @@ export class CardIndex {
   readonly producesMasks: Record<string, number>;
   /** Unique words from all type lines (Spec 154 bare-term-upgrade). */
   readonly typeLineWords: Set<string>;
+  /** Unique lowercase words from combined card names (Spec 163). */
+  readonly nameWords: Set<string>;
+  /** Spec 163: `nameWords` grouped by first UTF-16 code unit (lowercase). */
+  readonly nameWordsByFirstChar: ReadonlyMap<string, readonly string[]>;
   /** Face row has Scryfall `keywords` Partner / Partner with on its oracle card (Spec 032 is:partner superset). */
   readonly partnerKeywordFace: Uint8Array;
 
@@ -142,6 +170,10 @@ export class CardIndex {
       data.combined_names ??
       computeCombinedNames(data.names, data.canonical_face);
     this.combinedNames = combinedNames;
+
+    const { nameWords, nameWordsByFirstChar } = buildNameWordIndex(combinedNames);
+    this.nameWords = nameWords;
+    this.nameWordsByFirstChar = nameWordsByFirstChar;
 
     const oracleTextsTilde =
       data.oracle_texts_tilde ??

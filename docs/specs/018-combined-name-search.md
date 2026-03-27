@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Related:** Spec 163 uses a vocabulary of words split from **combined** card names to suggest spelling corrections when bare tokens return zero results.
+
 ## Goal
 
 Enable searching across multi-face card names so that queries like `imfa` find "Claim // Fame" and `" // "` finds split cards. Distinguish quoted from unquoted bare-word search semantics to match Scryfall's observed behavior.

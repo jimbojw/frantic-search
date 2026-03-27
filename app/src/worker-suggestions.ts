@@ -30,6 +30,7 @@ import {
   type OracleSpliceVariant,
 } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
+import { buildNameTypoSuggestion } from './name-typo-suggestion'
 
 /** Spec 151: `otag:` / `atag:` bare-term-upgrade chips sort after oracle (20). */
 function bareTermUpgradePriority(label: string): 16 | 21 {
@@ -303,6 +304,29 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           oracleSuppressedBareValues.add(node.value.toLowerCase())
         }
       }
+    }
+  }
+
+  // Spec 163: Name-token spellcheck (after bare-term-upgrade, before oracle)
+  if (totalCards === 0 && hasLive && !(hasPinned && pinnedIndicesCount === 0)) {
+    const nameTypo = buildNameTypoSuggestion({
+      ast,
+      liveQuery: msg.query,
+      index,
+      cache,
+      printingIndex,
+      hasPinned,
+      pinnedQueryTrim: hasPinned ? msg.pinnedQuery!.trim() : '',
+      pinnedIndicesCount,
+      hasLive,
+      totalCards,
+      includeExtras,
+      viewMode,
+      sealQuery,
+    })
+    if (nameTypo) {
+      const dup = suggestions.some((s) => s.variant === 'rewrite' && s.query === nameTypo.query)
+      if (!dup) suggestions.push(nameTypo)
     }
   }
 

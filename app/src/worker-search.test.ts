@@ -733,6 +733,71 @@ describe('oracle hint (Spec 131)', () => {
   })
 })
 
+describe('name-token spellcheck (Spec 163)', () => {
+  it('zero results with typo bare token suggests corrected query', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'thallia guardian' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const typo = result.suggestions.find((s) => s.id === 'name-typo')
+    expect(typo).toBeDefined()
+    expect(typo!.priority).toBe(17)
+    expect(typo!.query!.toLowerCase()).toContain('thalia')
+    expect(typo!.query!.toLowerCase()).toContain('guardian')
+    expect(typo!.count).toBeGreaterThan(0)
+  })
+
+  it('does not emit name-typo when pinned alone matches nothing (Spec 131 guard)', () => {
+    const result = runSearch({
+      msg: {
+        type: 'search',
+        queryId: 1,
+        query: 'thallia guardian',
+        pinnedQuery: 'name:ZxYzAbC123Nope',
+      },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.pinnedIndicesCount).toBe(0)
+    expect(result.suggestions.find((s) => s.id === 'name-typo')).toBeUndefined()
+  })
+
+  it('field-only zero query has no name-typo (no bare tokens)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:phonytype123xyz' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.suggestions.find((s) => s.id === 'name-typo')).toBeUndefined()
+  })
+
+  it('name-typo sorts before oracle when both apply', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'thallia guardian' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const typo = result.suggestions.find((s) => s.id === 'name-typo')
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(typo).toBeDefined()
+    if (oracle) {
+      expect(typo!.priority).toBeLessThan(oracle.priority)
+    }
+  })
+})
+
 describe('wrong-field suggestions (Spec 153)', () => {
   it('is:white with zero results yields ci:/c:/produces: suggestions', () => {
     const result = runSearch({
