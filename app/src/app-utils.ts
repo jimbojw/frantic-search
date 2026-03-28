@@ -88,6 +88,19 @@ export function buildPrintingScryfallGroupIndex(pd: PrintingDisplayColumns): Map
   return map
 }
 
+/** Printing rows for this oracle (canonical face), i.e. all set/finish rows in printings data — not just rows sharing the page `scryfall_id`. */
+export function countPrintingRowsForCanonicalFace(
+  pd: PrintingDisplayColumns,
+  canonicalFaceIndex: number,
+): number {
+  const refs = pd.canonical_face_ref
+  let n = 0
+  for (let i = 0; i < refs.length; i++) {
+    if (refs[i] === canonicalFaceIndex) n++
+  }
+  return n
+}
+
 export const RARITY_LABELS: Record<number, string> = {
   [Rarity.Common]: 'Common',
   [Rarity.Uncommon]: 'Uncommon',

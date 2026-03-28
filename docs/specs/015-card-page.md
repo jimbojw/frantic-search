@@ -6,7 +6,7 @@
 
 **See also:** Spec 050 (Printing-Aware Card Detail) — extends this page to show printing-specific images and metadata when navigating from printing-aware search results.
 
-**Related:** [Spec 165](165-card-detail-app-bar-and-copy-menu.md) — persistent app bar and Copy… menu on card view.
+**Related:** [Spec 165](165-card-detail-app-bar-and-copy-menu.md) — persistent app bar and Copy… menu on card view. [Spec 166](166-card-detail-body-cleanup.md) — card body title, all-prints chip, Scryfall ID in metadata, removal of duplicate chrome.
 
 ## Goal
 
@@ -64,13 +64,13 @@ Tapping a card in the result list calls `pushState` (Spec 013). The back button 
 
 The card detail page is a single-column scrollable view within the same `max-w-2xl` container.
 
-### Header
+### In-body title
 
-- Back arrow (←) on the left, calls `history.back()`.
-- Card name as the title.
-- Scryfall external link (↗) on the right, for users who want the full Scryfall page. Uses `https://scryfall.com/card/{id}` format.
+- **Card name** as the primary heading below the portaled app bar (Spec 165), **horizontally centered**. No duplicate back control or header-style Scryfall icon in the body (Spec 166).
 
-**PostHog:** Header back, Scryfall external link, all-prints link, printing metadata actions (set navigation, DFC face toggle, Slack copy, list controls), and tag chips are captured as `card_detail_interacted` (Spec 160)—distinct from **Try on Scryfall** in search results (`scryfall_outlink_clicked`, Spec 152).
+**PostHog:** Portaled header back (narrow) and Copy… menu (Spec 165); body interactions including all-prints chip, Scryfall ID outlink in printing metadata, set navigation, DFC face toggle, list controls, and tag chips — `card_detail_interacted` (Spec 160, Spec 166)—distinct from **Try on Scryfall** in search results (`scryfall_outlink_clicked`, Spec 152).
+
+**All prints** and **Scryfall** access on the body are defined in [Spec 166](166-card-detail-body-cleanup.md) (query chip; labeled Scryfall ID in the printing metadata panel when shown).
 
 ### Card Image Section
 
@@ -157,7 +157,7 @@ No additional service worker configuration is needed. The existing runtime cachi
 | Card image | Full `normal` size loads | Art crop from cache | Color identity placeholder |
 | Card data (name, type, oracle, P/T) | Shown | Shown | Shown |
 | Format legality | Shown | Shown | Shown |
-| Scryfall link | Works | Shows but won't load | Shows but won't load |
+| Scryfall (metadata outlink) | Works | Link present; target may not load | Link present; target may not load |
 
 All textual card data is available offline from `columns.json`. The image is the only component that degrades. The page is fully functional without any network access — it just looks less pretty.
 
@@ -169,5 +169,5 @@ All textual card data is available offline from `columns.json`. The image is the
 4. The card image loads progressively: art crop first, then full card image. Failure to load the full image is handled gracefully.
 5. Multi-face cards show all faces with a way to toggle between face images.
 6. Format legality is displayed using bitmask data from `columns.json`.
-7. A Scryfall external link is available for users who want the full Scryfall page.
+7. When printing metadata is shown, a labeled Scryfall ID outlink opens the Scryfall card page (Spec 166).
 8. The page is fully functional offline using data from `columns.json` and cached images.

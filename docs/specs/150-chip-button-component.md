@@ -28,7 +28,7 @@ Issue #169 reported that suggestion chips were smaller on desktop due to respons
 ### Out of scope
 
 - **BreakdownChip** (InlineBreakdown) — Different structure (pin icon, count, remove button); uses `span`, not a button. Stays as-is.
-- **TagChip** (CardDetail) — Copy/navigate behavior and flex-col layout. Stays as-is.
+- **TagChip** (CardDetail) — Full-chip navigate and flex-col layout; out of ChipButton scope. Stays as-is.
 - **DeckEditorStatus** chips — Intentionally `min-h-8` per Spec 122 ("Chips are small... to avoid crowding"). May adopt ChipButton with a `compact` variant in a follow-up, or remain custom.
 
 ## Design

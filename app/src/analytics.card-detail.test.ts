@@ -68,6 +68,8 @@ describe('captureCardDetailInteracted', () => {
   it('captures minimal controls', () => {
     captureCardDetailInteracted({ control: 'all_prints' })
     expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'all_prints' })
+    captureCardDetailInteracted({ control: 'scryfall_external' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'scryfall_external' })
   })
 
   it('captures card header copy menu controls (Spec 165)', () => {

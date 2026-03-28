@@ -125,7 +125,6 @@ export type CardDetailInteractedPayload =
   | { control: 'all_prints' }
   | { control: 'set_unique_prints'; set_code: string }
   | { control: 'face_toggle'; face: 'front' | 'back' }
-  | { control: 'slack_copy' }
   | { control: 'card_copy_menu_opened' }
   | { control: 'card_copy_url' }
   | { control: 'card_copy_url_card_only' }
@@ -134,8 +133,6 @@ export type CardDetailInteractedPayload =
   | { control: 'card_copy_slack_reddit' }
   | { control: 'otag_nav'; tag_label: string }
   | { control: 'atag_nav'; tag_label: string }
-  | { control: 'otag_copy'; tag_label: string }
-  | { control: 'atag_copy'; tag_label: string }
   | { control: 'list_add'; list_scope: 'oracle'; oracle_id: string; finish: CardDetailListFinish }
   | {
       control: 'list_add'

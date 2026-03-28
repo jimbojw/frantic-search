@@ -97,7 +97,7 @@ Stable enum for dashboard breakdowns; **do not** send full URLs.
 
 - Prefer wrapping existing handlers in [`DeckEditor.tsx`](app/src/deck-editor/DeckEditor.tsx) / [`ListsPage.tsx`](app/src/ListsPage.tsx) (or a small callback prop from `DeckEditor` into children) rather than importing analytics from many leaves—keep [`ListControls`](app/src/ListControls.tsx)-style shared components untouched if this surface does not use them.
 - Navigation-style captures (`back`, `view_in_search`, `bug_report_open`) fire immediately before the navigation side effect (or on link click for outlinks).
-- Clipboard (`copy`) fires only inside the `writeText` fulfillment path (same as Spec 160 `slack_copy`).
+- Clipboard (`copy`) fires only inside the `writeText` fulfillment path (same as Spec 160 header Copy… and other clipboard controls).
 - **`format_select`:** compare new `DeckFormat` to `selectedFormat()` before writing storage; skip capture if unchanged.
 - **Spec 085:** When implementation lands, add `my_list_interacted` to the Spec 085 event schema table in the same style as `card_detail_interacted` / `search_results_interacted` (control-based payload summary + pointer to this spec).
 - **Tests:** Optional Vitest coverage for `captureMyListInteracted` and discriminated payload shapes, consistent with other `capture*` helpers.

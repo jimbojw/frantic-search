@@ -4,11 +4,13 @@
 
 **Depends on:** Spec 050 (Printing-Aware Card Detail), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries)
 
+**Related:** [Spec 166](166-card-detail-body-cleanup.md) — all-prints query chip shares the same full-chip navigate pattern as tags.
+
 **Issue:** https://github.com/jimbojw/frantic-search/issues/105
 
 ## Goal
 
-On the card detail page, after the block showing format legalities, show all otags (oracle tags) for that card object and all atags (illustration tags) that map to the displayed printing's illustration. Tags are links to queries and have a copy button.
+On the card detail page, after the block showing format legalities, show all otags (oracle tags) for that card object and all atags (illustration tags) that map to the displayed printing's illustration. Each tag is a **single clickable chip** (query row + count row) that navigates to search. Users copy query text from the header **Copy…** menu on the search page if needed — no per-chip copy control (same as the all-prints chip; Spec 166).
 
 ## Background
 
@@ -20,8 +22,7 @@ To show tags on the card detail page, we need the **reverse lookup**: given a ca
 
 - **otags:** All tags for the card object (canonical face index). One lookup per card.
 - **atags:** All tags for the displayed printing's illustration (primary printing row index). Use `printingIndices[0]` as the displayed printing.
-- **Tags as links:** Each tag links to a query (`otag:label` or `atag:label`) and navigates via `onNavigateToQuery`.
-- **Copy button:** Each tag has a copy button that copies the query string to the clipboard (same UX as the Slack bot copy in CardDetail).
+- **Tags as links:** Each tag chip navigates via `onNavigateToQuery` with `otag:label` or `atag:label`. The **whole chip** is the hit target (including the count subtitle), not only the query text row.
 - **Pre-compute:** Build reverse indexes (face → otags, printing → atags) once when tag data loads; do not recompute per request.
 
 ## Technical Details
@@ -51,9 +52,9 @@ The worker handles `get-tags-for-card` by looking up `faceToOtags.get(canonicalI
 
 - Add props: `otags?: string[]`, `atags?: string[]` (in addition to existing `onNavigateToQuery`)
 - Add two sections after Format Legality: "Function Tags" (otags) and "Illustration Tags" (atags). Each section has its own heading and flex-wrap container of tag chips. Sections are shown only when they have tags.
-- **TagChip component:** Displays `otag:label` or `atag:label` (full query syntax) with syntax highlighting via `buildSpans` and `ROLE_CLASSES` (same as MenuDrawer chips). Two-line layout: top line shows the query label; bottom line shows match count — "N cards" for otags, "M prints" for atags (same format as unified breakdown chips). Chip height and styling matches MenuDrawer (`min-h-11`, `rounded`, `text-xs font-mono`). Includes a copy button. Use the same copy feedback pattern as the Slack bot reference (brief "copied" state, 1.5s timeout).
+- **TagChip component:** Displays `otag:label` or `atag:label` (full query syntax) with syntax highlighting via `buildSpans` and `ROLE_CLASSES` (same as MenuDrawer chips). Two-line layout: top line shows the query label; bottom line shows match count — "N cards" for otags, "M prints" for atags (same format as unified breakdown chips). Chip height and styling matches MenuDrawer (`min-h-11`, `rounded`, `text-xs font-mono`). Entire chip is one `<button>` (or read-only `<span>` when `onNavigateToQuery` is unavailable).
 
-**PostHog:** Tag navigate and copy fire `card_detail_interacted` with controls `otag_nav`, `atag_nav`, `otag_copy`, `atag_copy` and `tag_label` (Spec 160).
+**PostHog:** Tag navigate fires `card_detail_interacted` with controls `otag_nav`, `atag_nav` and `tag_label` (Spec 160).
 
 ### Placement
 
@@ -82,15 +83,15 @@ The Function Tags and Illustration Tags sections appear after the Format Legalit
 2. Oracle tags (otags) are shown in the Function Tags section for the card object.
 3. Illustration tags (atags) are shown in the Illustration Tags section for the displayed printing's artwork.
 4. Each tag displays the full query syntax (e.g. `otag:ramp`, `atag:chair`) with syntax highlighting matching MenuDrawer chips.
-5. Each tag is clickable and navigates to a search for that tag.
-6. Each tag has a copy button that copies the query string to the clipboard.
-7. Tag chips use the same height and styling as MenuDrawer chips (`min-h-11`, `text-xs font-mono`).
-8. Each tag chip shows a second line with match count: "N cards" for otags, "M prints" for atags (same format as unified breakdown chips).
-9. When no tags exist for the card, both tag sections are hidden.
-10. Tags load asynchronously; the sections update when the worker responds.
-11. Card detail works when tag data has not loaded (empty arrays, sections hidden).
+5. Each tag chip is fully clickable (including the count row) and navigates to a search for that tag.
+6. Tag chips use the same height and styling as MenuDrawer chips (`min-h-11`, `text-xs font-mono`).
+7. Each tag chip shows a second line with match count: "N cards" for otags, "M prints" for atags (same format as unified breakdown chips).
+8. When no tags exist for the card, both tag sections are hidden.
+9. Tags load asynchronously; the sections update when the worker responds.
+10. Card detail works when tag data has not loaded (empty arrays, sections hidden).
 
 ## Implementation Notes
 
-- 2026-03-08: Implemented per spec. Added `get-tags-for-card` / `card-tags` to worker protocol; built `faceToOtags` and `printingToAtags` reverse indexes in worker; App.tsx sends request when viewing card and passes tags to CardDetail; CardDetail renders Function Tags and Illustration Tags as separate sections with TagChip (syntax-highlighted `otag:value`/`atag:value`, link + copy button, same height as MenuDrawer chips) after Format Legality.
+- 2026-03-08: Implemented per spec. Added `get-tags-for-card` / `card-tags` to worker protocol; built `faceToOtags` and `printingToAtags` reverse indexes in worker; App.tsx sends request when viewing card and passes tags to CardDetail; CardDetail renders Function Tags and Illustration Tags as separate sections with TagChip after Format Legality.
+- 2026-03-28: Tag chips and all-prints chip are single full-chip buttons; per-chip copy removed (Spec 166 / header Copy… on search).
 - 2026-03-08: Added match counts to card-tags response. Tag chips now have two lines: top line shows the query label; bottom line shows "N cards" (otags) or "M prints" (atags), matching unified breakdown chip format.

@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
-import { formatSlackCardReference } from '@frantic-search/shared'
-import {
-  IconArrowTopRightOnSquare,
-  IconCheck,
-  IconChevronLeft,
-  IconClipboardDocument,
-} from './Icons'
 import ListControls from './ListControls'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
@@ -15,7 +8,13 @@ import type { CardListStore } from './card-list-store'
 import { getMatchingCount } from '@frantic-search/shared'
 import { ManaCost, OracleText } from './card-symbols'
 import { artCropUrl, normalImageUrl, CI_BACKGROUNDS, CI_COLORLESS } from './color-identity'
-import { RARITY_LABELS, FINISH_LABELS, FINISH_TO_STRING, formatPrice } from './app-utils'
+import {
+  RARITY_LABELS,
+  FINISH_LABELS,
+  FINISH_TO_STRING,
+  countPrintingRowsForCanonicalFace,
+  formatPrice,
+} from './app-utils'
 import { Outlink } from './Outlink'
 import { captureCardDetailInteracted, type CardDetailListFinish } from './analytics'
 
@@ -188,6 +187,78 @@ function formatTagCount(cards?: number, prints?: number): string {
   return ''
 }
 
+/** Spec 166: subtitle for all-prints chip; natural singular/plural. */
+function allPrintsChipSubtitle(cards?: number, prints?: number): string | null {
+  const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString())
+  if (cards !== undefined && prints !== undefined) {
+    return `${fmt(cards)} card${cards === 1 ? '' : 's'} (${fmt(prints)} print${prints === 1 ? '' : 's'})`
+  }
+  if (cards !== undefined) return `${fmt(cards)} card${cards === 1 ? '' : 's'}`
+  if (prints !== undefined) return `${fmt(prints)} print${prints === 1 ? '' : 's'}`
+  return null
+}
+
+function AllPrintsQueryChip(props: {
+  query: string
+  cards?: number
+  prints?: number
+  onNavigate?: (q: string) => void
+}) {
+  const sub = () => allPrintsChipSubtitle(props.cards, props.prints)
+  const chipBase =
+    'inline-flex flex-col min-w-0 max-w-full rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  const row1Class = () =>
+    `flex w-full min-w-0 items-center px-2 ${sub() ? 'min-h-[2.25rem] pt-1 pb-0.5' : 'flex-1 py-2'}`
+  const querySpans = () => (
+    <For each={buildSpans(props.query)}>
+      {(span) =>
+        span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+      }
+    </For>
+  )
+  return (
+    <Show
+      when={props.onNavigate}
+      fallback={
+        <span class={`${chipBase} min-h-[3.75rem]`}>
+          <div class={row1Class()}>
+            <span class="block min-w-0 flex-1 truncate">{querySpans()}</span>
+          </div>
+          <Show when={sub()}>
+            <div class="flex items-center justify-center px-1.5 pb-1 pt-0.5">
+              <span class="text-[10px] tabular-nums opacity-60" title={sub()!}>
+                {sub()!}
+              </span>
+            </div>
+          </Show>
+        </span>
+      }
+    >
+      {(nav) => (
+        <button
+          type="button"
+          class={`${chipBase} min-h-[3.75rem] cursor-pointer text-left`}
+          onClick={() => {
+            captureCardDetailInteracted({ control: 'all_prints' })
+            nav()(props.query)
+          }}
+        >
+          <div class={row1Class()}>
+            <span class="block min-w-0 flex-1 truncate">{querySpans()}</span>
+          </div>
+          <Show when={sub()}>
+            <div class="flex items-center justify-center px-1.5 pb-1 pt-0.5">
+              <span class="text-[10px] tabular-nums opacity-60" title={sub()!}>
+                {sub()!}
+              </span>
+            </div>
+          </Show>
+        </button>
+      )}
+    </Show>
+  )
+}
+
 function TagChip(props: {
   label: string
   prefix: 'otag' | 'atag'
@@ -196,72 +267,55 @@ function TagChip(props: {
   onNavigate?: (q: string) => void
 }) {
   const query = () => `${props.prefix}:${props.label}`
-  const [copied, setCopied] = createSignal(false)
-  const copyQuery = () => {
-    navigator.clipboard.writeText(query()).then(() => {
-      captureCardDetailInteracted(
-        props.prefix === 'otag'
-          ? { control: 'otag_copy', tag_label: props.label }
-          : { control: 'atag_copy', tag_label: props.label },
-      )
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
   const countDisplay = () => formatTagCount(props.cards, props.prints)
   const chipBase =
-    'inline-flex flex-col min-w-0 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+    'inline-flex max-w-full flex-col min-w-0 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  const querySpans = () => (
+    <For each={buildSpans(query())}>
+      {(span) =>
+        span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+      }
+    </For>
+  )
+  const countRow = () => (
+    <div class="flex items-center justify-center px-1.5 pb-1 pt-0.5">
+      <span class="text-[10px] tabular-nums opacity-60" title={countDisplay()}>
+        {countDisplay()}
+      </span>
+    </div>
+  )
   return (
-    <span class={chipBase}>
-      <div class="flex items-center gap-1 pl-2 pt-1 pb-0.5 pr-1 min-h-[2.25rem]">
-        <Show
-          when={props.onNavigate}
-          fallback={
-            <span class="flex-1 min-w-0 truncate">
-              <For each={buildSpans(query())}>
-                {(span) =>
-                  span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
-                }
-              </For>
-            </span>
-          }
-        >
-          <button
-            type="button"
-            onClick={() => {
-              captureCardDetailInteracted(
-                props.prefix === 'otag'
-                  ? { control: 'otag_nav', tag_label: props.label }
-                  : { control: 'atag_nav', tag_label: props.label },
-              )
-              props.onNavigate!(query())
-            }}
-            class="flex items-center gap-0 text-left cursor-pointer flex-1 min-w-0 truncate"
-          >
-            <For each={buildSpans(query())}>
-              {(span) =>
-                span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
-              }
-            </For>
-          </button>
-        </Show>
+    <Show
+      when={props.onNavigate}
+      fallback={
+        <span class={chipBase}>
+          <div class="flex min-h-[2.25rem] items-center px-2 pt-1 pb-0.5">
+            <span class="block min-w-0 flex-1 truncate">{querySpans()}</span>
+          </div>
+          {countRow()}
+        </span>
+      }
+    >
+      {(nav) => (
         <button
           type="button"
-          onClick={copyQuery}
-          class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
-          aria-label={`Copy ${query()} to clipboard`}
+          class={`${chipBase} cursor-pointer text-left`}
+          onClick={() => {
+            captureCardDetailInteracted(
+              props.prefix === 'otag'
+                ? { control: 'otag_nav', tag_label: props.label }
+                : { control: 'atag_nav', tag_label: props.label },
+            )
+            nav()(query())
+          }}
         >
-          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
-            <IconCheck class="size-3.5 text-green-500" />
-          </Show>
+          <div class="flex min-h-[2.25rem] items-center px-2 pt-1 pb-0.5">
+            <span class="block min-w-0 flex-1 truncate">{querySpans()}</span>
+          </div>
+          {countRow()}
         </button>
-      </div>
-      <div class="flex justify-center items-center px-1.5 pt-0.5 pb-1">
-        <span class="text-[10px] tabular-nums opacity-60" title={countDisplay()}>
-          {countDisplay()}
-        </span>
-      </div>
-    </span>
+      )}
+    </Show>
   )
 }
 
@@ -318,50 +372,34 @@ export default function CardDetail(props: {
     if (pidx !== undefined && pcols) return pcols.scryfall_ids[pidx]
     return props.scryfallId
   }
-  const scryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
   const allPrintsQuery = () => {
     const name = fullName()
     return name ? `!"${name}" unique:prints include:extras` : ''
   }
+  const allPrintsCardCount = () => (ci() != null && d() ? 1 : undefined)
+  const allPrintsPrintCount = () => {
+    const cols = d()
+    const idx = ci()
+    const pcols = pd()
+    if (cols != null && idx != null && pcols) {
+      return countPrintingRowsForCanonicalFace(pcols, idx)
+    }
+    const p = pis()
+    return p && p.length > 0 ? p.length : undefined
+  }
+  const pageScryfallUrl = () => `https://scryfall.com/card/${props.scryfallId}`
 
   return (
-    <div class="mx-auto max-w-2xl px-4 py-6">
-      <div class="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          onClick={() => {
-            captureCardDetailInteracted({ control: 'back' })
-            history.back()
-          }}
-          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 -ml-1"
-          aria-label="Back to search results"
-        >
-          <IconChevronLeft class="size-5" />
-        </button>
-        <h1 class="text-lg font-bold tracking-tight truncate mx-4">{fullName()}</h1>
-        <div class="flex items-center gap-1 shrink-0">
-          <Outlink
-            href={scryfallUrl()}
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
-            aria-label="View on Scryfall"
-            onClick={() => captureCardDetailInteracted({ control: 'scryfall_external' })}
-          >
-            <IconArrowTopRightOnSquare class="size-5" />
-          </Outlink>
-        </div>
-      </div>
+    <div class="mx-auto max-w-2xl px-4 pb-6 pt-0">
+      <h1 class="mb-2 text-center text-lg font-bold tracking-tight truncate">{fullName()}</h1>
       <Show when={allPrintsQuery() && props.onNavigateToQuery}>
-        <div class="flex justify-center mb-6">
-          <button
-            type="button"
-            onClick={() => {
-              captureCardDetailInteracted({ control: 'all_prints' })
-              props.onNavigateToQuery!(allPrintsQuery())
-            }}
-            class="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-          >
-            All prints &rarr;
-          </button>
+        <div class="mb-6 flex justify-center">
+          <AllPrintsQueryChip
+            query={allPrintsQuery()}
+            cards={allPrintsCardCount()}
+            prints={allPrintsPrintCount()}
+            onNavigate={props.onNavigateToQuery}
+          />
         </div>
       </Show>
 
@@ -392,20 +430,6 @@ export default function CardDetail(props: {
                 {(pcols) => {
                   const pidx = primaryPI()!
                   const indices = pis()!
-                  const slackBotName = () =>
-                    formatSlackCardReference(
-                      fullName(),
-                      pcols().set_codes[pidx],
-                      pcols().collector_numbers[pidx],
-                    )
-                  const [copied, setCopied] = createSignal(false)
-                  const copySlackName = () => {
-                    navigator.clipboard.writeText(slackBotName()).then(() => {
-                      captureCardDetailInteracted({ control: 'slack_copy' })
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 1500)
-                    })
-                  }
                   const oracleId = () => d()!.oracle_ids[faces()[0]]
                   const nameCount = () => {
                     props.listVersion
@@ -471,6 +495,17 @@ export default function CardDetail(props: {
                         <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
                         <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
                         <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
+                        <dt class="font-medium text-gray-600 dark:text-gray-300">Scryfall ID</dt>
+                        <dd class="min-w-0">
+                          <Outlink
+                            href={pageScryfallUrl()}
+                            class="inline-flex min-w-0 items-center gap-1 break-all font-mono text-sm text-blue-600 hover:underline dark:text-blue-400"
+                            aria-label="View this card on Scryfall"
+                            onClick={() => captureCardDetailInteracted({ control: 'scryfall_external' })}
+                          >
+                            <span class="min-w-0 break-all">{props.scryfallId}</span>
+                          </Outlink>
+                        </dd>
                         <Show when={d() && faces().length > 0}>
                           {(() => {
                             const r = d()!.edhrec_rank[faces()[0]]
@@ -623,19 +658,6 @@ export default function CardDetail(props: {
                           </dd>
                         </Show>
                       </dl>
-                      <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                        <code class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{slackBotName()}</code>
-                        <button
-                          type="button"
-                          onClick={copySlackName}
-                          class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
-                          aria-label="Copy Slack bot reference"
-                        >
-                          <Show when={copied()} fallback={<IconClipboardDocument class="size-3.5" />}>
-                            <IconCheck class="size-3.5 text-green-500" />
-                          </Show>
-                        </button>
-                      </div>
                     </div>
                   )
                 }}

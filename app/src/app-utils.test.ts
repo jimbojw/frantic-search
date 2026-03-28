@@ -8,6 +8,7 @@ import {
   buildScryfallIndex,
   buildPrintingScryfallIndex,
   buildPrintingScryfallGroupIndex,
+  countPrintingRowsForCanonicalFace,
   buildScryfallSearchUrl,
   RARITY_LABELS,
   FINISH_LABELS,
@@ -584,5 +585,33 @@ describe('buildPrintingScryfallGroupIndex', () => {
     })
     const result = buildPrintingScryfallGroupIndex(pd)
     expect(result.get('x')).toEqual([0, 1, 2])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// countPrintingRowsForCanonicalFace
+// ---------------------------------------------------------------------------
+
+describe('countPrintingRowsForCanonicalFace', () => {
+  it('returns 0 for empty printings', () => {
+    expect(countPrintingRowsForCanonicalFace(stubPrintingDisplay(), 0)).toBe(0)
+  })
+
+  it('counts all rows for the oracle, not just one scryfall_id group', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['same-id', 'same-id', 'other-a', 'other-b'],
+      canonical_face_ref: [7, 7, 7, 7],
+    })
+    expect(countPrintingRowsForCanonicalFace(pd, 7)).toBe(4)
+    expect(countPrintingRowsForCanonicalFace(pd, 0)).toBe(0)
+  })
+
+  it('counts only rows matching the canonical face index', () => {
+    const pd = stubPrintingDisplay({
+      scryfall_ids: ['a', 'b', 'c', 'd'],
+      canonical_face_ref: [1, 1, 2, 1],
+    })
+    expect(countPrintingRowsForCanonicalFace(pd, 1)).toBe(3)
+    expect(countPrintingRowsForCanonicalFace(pd, 2)).toBe(1)
   })
 })

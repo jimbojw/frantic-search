@@ -4,6 +4,8 @@
 
 **Depends on:** Spec 015 (Card Detail Page), Spec 046 (Printing Data Model), Spec 048 (Printing-Aware Display)
 
+**Related:** [Spec 166](166-card-detail-body-cleanup.md) — all-prints query chip, Scryfall ID row, body header cleanup.
+
 ## Goal
 
 Make the card detail page printing-aware. When a user navigates to a card detail from a printing-specific search result, the detail page should show that printing's image and metadata (set, rarity, finish, collector number, price) alongside the oracle card data (face details, format legality).
@@ -48,7 +50,7 @@ When navigating from search results to the card detail page, the scryfall_id pas
 
 ### Printing image
 
-When a printing is identified, `CardDetail` uses the printing's `scryfall_id` for the card image and Scryfall external link instead of the oracle card's. The progressive loading strategy (art crop → normal image) is unchanged.
+When a printing is identified, `CardDetail` uses the printing's `scryfall_id` for the card image instead of the oracle card's. The progressive loading strategy (art crop → normal image) is unchanged. The **Scryfall ID** row in metadata (Spec 166) uses the page `card` query id.
 
 ### Printing metadata panel
 
@@ -61,19 +63,16 @@ Shared fields use the first printing index:
 | Set | `set_names[pi]` (`set_codes[pi]`) |
 | Collector # | `collector_numbers[pi]` |
 | Rarity | Decoded from `rarity[pi]` bitmask |
+| Scryfall ID | URL `card` parameter (monospace + outlink to `scryfall.com/card/{id}`) — Spec 166 |
 
 Finish and price depend on how many finish variants exist for that `scryfall_id`:
 
 - **Single finish** (e.g., etched-only): show one Finish row and one Price row.
 - **Multiple finishes** (e.g., nonfoil + foil): show one labeled price row per variant (e.g., "Nonfoil Price: $0.25", "Foil Price: $1.50"). No standalone Finish row — the finish is embedded in the price label.
 
-### Scryfall link
+### All prints chip
 
-The external link updates to use the printing's scryfall_id when available, so it navigates to the specific printing's page on Scryfall.
-
-### All prints button
-
-The All prints button navigates to `!"{name}" unique:prints include:extras`. The `include:extras` modifier bypasses the default playable filter so non-tournament printings (gold-bordered, oversized, etc.) are shown. Images view is the default (Spec 058), so results display as a grid for browsing printings.
+The **all prints** control is a query chip (Spec 166) that navigates to `!"{name}" unique:prints include:extras`. The `include:extras` modifier bypasses the default playable filter so non-tournament printings (gold-bordered, oversized, etc.) are shown. Images view is the default (Spec 058), so results display as a grid for browsing printings.
 
 ### Fallback
 
@@ -95,7 +94,7 @@ When no printing data is available (oracle-level URL, or printings not yet loade
 3. The printing metadata panel (set, collector #, rarity, price) is visible when the scryfall_id exists in printing data — including for foil and nonfoil non-etched printings.
 4. When multiple finish variants share a scryfall_id (e.g., nonfoil + foil), separate price lines are shown for each variant.
 5. When a single finish variant exists (e.g., etched), a single Finish and Price row is shown.
-6. The Scryfall external link points to the specific printing's page.
+6. The Scryfall ID outlink in metadata uses the page `card` id and opens the correct Scryfall card page (Spec 166).
 7. Old URLs with oracle-level scryfall_ids continue to work unchanged.
 8. When printings data has not loaded, the page falls back to oracle-level display.
 9. Browser back from a printing card detail returns to the search results.

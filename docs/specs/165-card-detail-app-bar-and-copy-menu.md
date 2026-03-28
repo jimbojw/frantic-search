@@ -4,7 +4,7 @@
 
 **Depends on:** [Spec 015](015-card-page.md) (card URL, `q` context), [Spec 050](050-printing-aware-card-detail.md) (printing columns), [Spec 129](129-back-and-copy-url-buttons.md) (Back / Copy placement), [Spec 137](137-persistent-search-app-bar.md), [Spec 143](143-shell-first-loading.md) (portal + shell), [Spec 164](164-copy-link-menu.md) (Copy… UX), [Spec 160](160-card-detail-analytics.md), [Spec 085](085-posthog-analytics.md)
 
-**Related:** Extends persistent header behavior to card detail view.
+**Related:** Extends persistent header behavior to card detail view. [Spec 166](166-card-detail-body-cleanup.md) — card body cleanup (duplicate back / Scryfall icon / inline Slack removed; all-prints chip; Scryfall ID in metadata).
 
 ## Goal
 
@@ -70,10 +70,6 @@ Use `card_detail_interacted` only (not `ui_interacted`). New `control` values �
 4. Menu opens the same filter drawer as search (chips, help links) with working context.
 5. Analytics fire per Spec 160 additions for copy menu open and each copy kind.
 
-## Out of scope
-
-Removing the in-page back / title / Scryfall row or the inline Slack copy row in `CardDetail.tsx` — separate follow-up.
-
 ## Implementation notes
 
 - **2026-03-27:** Split URL copy into **URL (as is)** and **URL (card only)** so sharers can omit `q` and other query noise; Markdown link still uses the full page URL.
@@ -83,3 +79,4 @@ Removing the in-page back / title / Scryfall row or the inline Slack copy row in
 
 - [Spec 015](015-card-page.md), [137](137-persistent-search-app-bar.md), [164](164-copy-link-menu.md): related / modified-by note pointing here.
 - [Spec 160](160-card-detail-analytics.md), [085](085-posthog-analytics.md): new `card_detail_interacted` controls.
+- [Spec 166](166-card-detail-body-cleanup.md): card body cleanup (all-prints chip, metadata Scryfall ID, analytics follow-ups).
