@@ -25,7 +25,9 @@ import {
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import {
   spliceBareToOracle,
+  spliceBareToOracleSingle,
   getOracleLabel,
+  getOracleLabelSingleUpgrade,
   trailingOracleRegexEligible,
   type OracleSpliceVariant,
 } from './oracle-hint-edit'
@@ -398,6 +400,50 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
             best = packBest('per-word', perWordLive, p, perWordEval.printingCount)
           } else if (r > 0 && regexLive) {
             best = packBest('regex', regexLive, r, regexEval.printingCount)
+          }
+        }
+
+        // Spec 131: single-token hybrid when no primary variant matched
+        if (
+          !best &&
+          trailing.length >= 2 &&
+          !quotedPhraseOnly
+        ) {
+          let hybridWinner: {
+            query: string
+            label: string
+            count: number
+            printingCount?: number
+            spanStart: number
+          } | null = null
+          for (let i = 0; i < trailing.length; i++) {
+            const node = trailing[i]!
+            if (!node.span) continue
+            const altLive = spliceBareToOracleSingle(msg.query, trailing, i)
+            const ev = evalLiveOracleAlt(altLive)
+            if (ev.cardCount <= 0) continue
+            const spanStart = node.span.start
+            if (
+              !hybridWinner ||
+              ev.cardCount > hybridWinner.count ||
+              (ev.cardCount === hybridWinner.count && spanStart > hybridWinner.spanStart)
+            ) {
+              hybridWinner = {
+                query: hasPinned ? sealQuery(pinnedTrim) + ' ' + sealQuery(altLive) : altLive,
+                label: getOracleLabelSingleUpgrade(node),
+                count: ev.cardCount,
+                printingCount: ev.printingCount,
+                spanStart,
+              }
+            }
+          }
+          if (hybridWinner) {
+            best = {
+              query: hybridWinner.query,
+              label: hybridWinner.label,
+              count: hybridWinner.count,
+              printingCount: hybridWinner.printingCount,
+            }
           }
         }
 

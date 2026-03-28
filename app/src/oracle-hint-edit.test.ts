@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest'
 import { parse, getTrailingBareNodes } from '@frantic-search/shared'
 import {
   spliceBareToOracle,
+  spliceBareToOracleSingle,
+  getOracleLabelSingleUpgrade,
   trailingOracleRegexEligible,
 } from './oracle-hint-edit'
 
@@ -68,6 +70,26 @@ describe('spliceBareToOracle', () => {
     const ast = parse(query)
     const trailing = getTrailingBareNodes(ast)!
     expect(spliceBareToOracle(query, trailing, 'per-word')).toBe('o:damage')
+  })
+
+  it('raptor double — single-token hybrid index 0 yields o:raptor double', () => {
+    const query = 'raptor double'
+    const ast = parse(query)
+    const trailing = getTrailingBareNodes(ast)!
+    expect(spliceBareToOracleSingle(query, trailing, 0)).toBe('o:raptor double')
+  })
+
+  it('raptor double — single-token hybrid index 1 yields raptor o:double', () => {
+    const query = 'raptor double'
+    const ast = parse(query)
+    const trailing = getTrailingBareNodes(ast)!
+    expect(spliceBareToOracleSingle(query, trailing, 1)).toBe('raptor o:double')
+  })
+
+  it('getOracleLabelSingleUpgrade returns o: fragment for token (Spec 131 hybrid)', () => {
+    const ast = parse('raptor double')
+    const trailing = getTrailingBareNodes(ast)!
+    expect(getOracleLabelSingleUpgrade(trailing[1]!)).toBe('o:double')
   })
 })
 

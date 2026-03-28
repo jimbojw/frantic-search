@@ -8,7 +8,7 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 018 (Combined Name Search), Spec 036 (Source Spans), Spec 057 (include:extras), Spec 082 (Dual Count Filter Chips), Spec 126 (Empty List CTA), Spec 024 (Index-Based Result Protocol), Spec 154 (Bare-Term Field Upgrade)
 
-**Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143), [Issue #209](https://github.com/jimbojw/frantic-search/issues/209) (oracle vs tag suppression)
+**Addresses:** [Issue #143](https://github.com/jimbojw/frantic-search/issues/143), [Issue #209](https://github.com/jimbojw/frantic-search/issues/209) (oracle vs tag suppression), [Issue #221](https://github.com/jimbojw/frantic-search/issues/221) (single-token hybrid when all-oracle variants fail)
 
 **Related:** Spec 163 (name-token spellcheck) — also targets zero-result bare tokens but suggests a **name** correction (Levenshtein) instead of oracle text. Both may appear; Spec 151 priority puts **name-typo** (17) before **oracle** (20).
 
@@ -27,7 +27,7 @@ All of the following must hold for the oracle hint to appear:
 1. **Zero results** — The effective (combined) search returned zero cards (`totalCards() === 0`). With a pinned query, this is the pinned+live combined result.
 2. **Root shape** — The root AST node is either (a) an AND node, or (b) a leaf BARE node (single bare word, quoted or unquoted). Skip when root is OR (e.g. `(xyc OR abc)` does not trigger).
 3. **Trailing bare tokens** — When root is AND, only the *trailing* bare tokens are considered: those that appear after the last non-bare token in source order. When root is a single BARE, that token is the trailing set. There must be at least one trailing bare token.
-4. **An alternative returns results** — At least one of the candidate variants (phrase, ordered-regex, or per-word) returns at least one card after the selection rules below.
+4. **An alternative returns results** — At least one candidate returns at least one card after the selection rules below: primary variants (phrase, ordered-regex, per-word), or when those all fail, **single-token hybrid** variants (see Design).
 5. **Lower priority than other empty-state CTAs** — Do not show when the empty-list CTA (Spec 126) or `include:extras` hint (Spec 057) applies. The oracle hint appears only when those conditions do not hold.
 6. **Non-tag bare-term-upgrade suppresses oracle for that token** — When a **trailing** bare token receives a **non-tag** bare-term-upgrade suggestion (Spec 154 domains other than `otag:` / `atag:` — e.g. `kw:landfall` for "landfall", or multi-word `kw:"first strike"`), do not also suggest the oracle variant (`o:landfall` or `o:first` / `o:strike` as part of the oracle hint) **for that token**. The worker maintains a set of suppressed bare **values** (case-insensitive) populated **only** from non-tag upgrades; trailing nodes whose value is in that set are omitted from the oracle phrase / per-word construction.
 
@@ -43,20 +43,24 @@ All of the following must hold for the oracle hint to appear:
 | `(xyc OR abc)` | OR | — | skip (root not AND/BARE) |
 | `opponent skips` (with tag prefix matches) | AND | `opponent`, `skips` | phrase `o:"opponent skips"` **and** separate `bare-term-upgrade` chips for `otag:…` (priority 21); tag chips do not remove tokens from oracle trailing set |
 | `landfall` (keyword match) | AND | `landfall` | Oracle skips `landfall` because `kw:landfall` is emitted (non-tag); no redundant `o:landfall` for that token |
+| `raptor double` | AND | `raptor`, `double` | Primaries: phrase `o:"raptor double"`, regex `o:/raptor.*double/`, per-word `o:raptor o:double`. If all return zero, **hybrids**: `o:raptor double`, `raptor o:double` — selection picks e.g. `raptor o:double` when it is the unique or tie-breaking winner (Issue #221) |
 
 ## Design
 
 ### Alternative query variants
 
-When the main query returns zero and has trailing bare tokens, the worker evaluates up to **three** candidate splices into oracle search. **Only one** suggestion is shown (`id: 'oracle'`, Spec 151). All other terms in the query remain in place.
+When the main query returns zero and has trailing bare tokens, the worker first evaluates up to **three primary** candidate splices (phrase, ordered-regex, per-word). **Only one** suggestion is shown (`id: 'oracle'`, Spec 151). All other terms in the query remain in place.
+
+If **no** primary variant is selected (all return zero matches after steps 1–4 below), and there are **at least two** trailing bare tokens after suppression, the worker evaluates **single-token hybrid** candidates (step 5+). Hybrids are skipped when the trailing set is exactly one **quoted** BARE (same gate as per-word / ordered-regex: only phrase runs).
 
 | Variant | Replacement | Example |
 |---------|-------------|---------|
-| **Phrase** | Replace trailing span with a single `o:"word1 word2 ..."` (or `o:word` when one token, no quoting needed) | `lightning ci:r deal 3` → `lightning ci:r o:"deal 3"` |
-| **Ordered-regex** | Replace trailing span with `o:/word1.*word2.*…/` (words in order, not necessarily adjacent) | `ci:r damage target` → `ci:r o:/damage.*target/` |
-| **Per-word** | Replace each trailing span with `o:value` (quoted when needed) | `lightning ci:r deal 3` → `lightning ci:r o:deal o:3` |
+| **Phrase** (primary) | Replace trailing span with a single `o:"word1 word2 ..."` (or `o:word` when one token, no quoting needed) | `lightning ci:r deal 3` → `lightning ci:r o:"deal 3"` |
+| **Ordered-regex** (primary) | Replace trailing span with `o:/word1.*word2.*…/` (words in order, not necessarily adjacent) | `ci:r damage target` → `ci:r o:/damage.*target/` |
+| **Per-word** (primary) | Replace each trailing span with `o:value` (quoted when needed) | `lightning ci:r deal 3` → `lightning ci:r o:deal o:3` |
+| **Single-token hybrid** | Replace **one** trailing BARE span with `o:value` (same quoting rules as per-word); leave **all other** query text unchanged, including other trailing bare tokens | `raptor double` → `o:raptor double` (first token only) or `raptor o:double` (second token only) |
 
-**Quoted bare words:** When the trailing bare tokens are a single BARE node with `quoted: true` (e.g. `"deal 3"`), only evaluate the **phrase** variant. Do not split into per-word or ordered-regex.
+**Quoted bare words:** When the trailing bare tokens are a single BARE node with `quoted: true` (e.g. `"deal 3"`), only evaluate the **phrase** variant. Do not split into per-word, ordered-regex, or hybrid.
 
 **Negated bare words:** Do not convert. Only positive BARE nodes (those not under a NOT) are considered. Negated terms stay as-is.
 
@@ -80,6 +84,10 @@ Evaluate candidates against the effective (pinned + live) query using the same p
 
 **Tie:** If **`regexCount === perWordCount`** (and both &gt; 0), step 2 does **not** apply; step 3 chooses **per-word** (simpler form).
 
+5. **Single-token hybrid (only if steps 1–4 did not select a primary variant):** Require **at least two** trailing bare nodes and **not** the single-quoted-trailing-only case. For each trailing index `i` in source order (`span.start`), build the query that splices **only** that token’s span to `o:<value>`. Let `hybridCount[i]` be the card count (0 if not evaluated). Among indices with `hybridCount[i] > 0`, choose the index with **maximum** count. **Tie-break:** if two hybrids tie on count, prefer the candidate that upgrades the token with the **largest** `span.start` (rightmost in the query), so `raptor o:double` wins over `o:raptor double` when both match the same number of faces.
+
+6. **Chip label for hybrid:** The button’s oracle label shows **only** the upgraded fragment (e.g. `o:double`), not the full trailing oracle span, consistent with “oracle part only” for other variants.
+
 ### Splicing logic
 
 - Use AST spans from the parser (Spec 036). BARE nodes carry `span: { start, end }`.
@@ -87,11 +95,12 @@ Evaluate candidates against the effective (pinned + live) query using the same p
 - **Phrase variant:** Replace the first trailing BARE's span with `o:"<all trailing bare values joined by space>"`; splice out the remaining trailing BARE spans. Splice from end to start to preserve offsets.
 - **Ordered-regex variant:** Same span replacement as phrase; replacement is `o:/w1.*w2.*…/` where each `wi` is the bare token value (only when every token passes the safe charset; no escaping).
 - **Per-word variant:** Replace each trailing BARE span with `o:value` (escape/quote if value contains spaces or special chars). Skip when the trailing set is a single quoted BARE.
-- Reuse `spliceQuery` from `app/src/query-edit-core.ts`.
+- **Single-token hybrid:** Replace exactly **one** trailing BARE span with `o:value`; do not merge spans. Other bare tokens (trailing or not) stay as typed.
+- Reuse `spliceQuery` from `app/src/query-edit-core.ts`. Implementation: `spliceBareToOracleSingle` in `app/src/oracle-hint-edit.ts`.
 
 ### Variant preference
 
-See **Single-suggestion selection** above. Historically only phrase vs per-word were considered; ordered-regex sits **between** them when phrase fails and regex is strictly narrower than per-word.
+See **Single-suggestion selection** above. Historically only phrase vs per-word were considered; ordered-regex sits **between** them when phrase fails and regex is strictly narrower than per-word. **Single-token hybrid** runs only after no primary variant is chosen.
 
 ### Worker protocol
 
@@ -103,9 +112,11 @@ oracleHint?: {
   label: string;           // Oracle part only, for button display (e.g. o:deal o:3 or o:"deal 3")
   count: number;           // Face (card) count
   printingCount?: number;  // Printing count when PrintingIndex is loaded; always populate when available so UI can show both
-  variant: 'phrase' | 'per-word';
+  variant: 'phrase' | 'per-word';  // legacy shape; runtime uses unified suggestions (id: 'oracle') from buildSuggestions
 }
 ```
+
+**Note:** Post–Spec 151, the live UI consumes `suggestions` with `id: 'oracle'`, not the `oracleHint` field above. Hybrid wins are still a single oracle chip; no separate protocol field is required.
 
 Present only when:
 - Main query returned zero results.
@@ -139,7 +150,7 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 
 | File | Change |
 |------|--------|
-| `shared/` or `app/` | `getTrailingBareNodes(ast)`; `spliceBareToOracle(query, trailing, variant)` with `variant: 'phrase' \| 'per-word' \| 'regex'`; `trailingOracleRegexEligible(trailing)` in `app/src/oracle-hint-edit.ts`. |
+| `shared/` or `app/` | `getTrailingBareNodes(ast)`; `spliceBareToOracle(query, trailing, variant)` with `variant: 'phrase' \| 'per-word' \| 'regex'`; `spliceBareToOracleSingle(query, trailing, index)`; `getOracleLabelSingleUpgrade(node)`; `trailingOracleRegexEligible(trailing)` in `app/src/oracle-hint-edit.ts`. |
 | `app/src/worker-search.ts` | When deduped.length === 0, root is AND or BARE, and trailing bare nodes exist: if pinned query alone yields zero, skip alternatives. Otherwise build variant(s) from live query, evaluate, populate `oracleHint` (phrase only when trailing is single quoted BARE). |
 | `shared/src/worker-protocol.ts` | Add `oracleHint?: { query, label, count, printingCount?, variant }` to result variant. |
 | `app/src/App.tsx` | Store `oracleHint` from result message; pass to SearchContext. |
@@ -170,3 +181,6 @@ Queries like `t:creature` or `(xyc OR abc)` with zero results do not trigger the
 - [ ] Works in both single-pane and Dual Wield layouts.
 - [ ] Button uses two-line layout: oracle label on top, `N cards (M prints)` on bottom (via `formatDualCount`); both counts shown when printing data available.
 - [ ] When pinned query alone yields zero results, oracle hint is not shown (alternatives skipped); future UX for alerting user about empty pinned query is out of scope.
+- [ ] When phrase, ordered-regex, and per-word all return zero matches but a single-token hybrid returns matches, the hint uses that hybrid (after primary selection fails).
+- [ ] Issue #221 style: `raptor double` with name+oracle fixture yields oracle suggestion `raptor o:double` (or equivalent) with label showing the upgraded fragment (e.g. `o:double`) when primaries fail and that hybrid wins on count / tie-break.
+- [ ] When the **phrase** primary returns matches, phrase is still chosen; hybrid pass does not override a winning primary.

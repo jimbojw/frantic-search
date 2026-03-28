@@ -77,3 +77,23 @@ export function spliceBareToOracle(
   }
   return result
 }
+
+/**
+ * Spec 131: single-token hybrid — upgrade only one trailing bare token to oracle;
+ * other tokens (including other trailing bare words) stay as typed.
+ */
+export function spliceBareToOracleSingle(
+  query: string,
+  trailing: BareWordNode[],
+  index: number,
+): string {
+  if (index < 0 || index >= trailing.length) return query
+  const node = trailing[index]
+  if (!node?.span) return query
+  return spliceQuery(query, node.span, oracleTerm(node.value))
+}
+
+/** Spec 131: chip label for hybrid (oracle fragment for the upgraded token only). */
+export function getOracleLabelSingleUpgrade(node: BareWordNode): string {
+  return oracleTerm(node.value)
+}

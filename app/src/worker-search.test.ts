@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest'
-import { NodeCache, index, printingIndex, TEST_DATA, TEST_PRINTING_DATA, CardFlag, Format } from '@frantic-search/shared'
-import type { OracleTagData } from '@frantic-search/shared'
+import {
+  NodeCache,
+  index,
+  printingIndex,
+  TEST_DATA,
+  TEST_PRINTING_DATA,
+  CardFlag,
+  Color,
+  Format,
+  CardIndex,
+} from '@frantic-search/shared'
+import type { ColumnarData, OracleTagData } from '@frantic-search/shared'
 
 const FIXTURE_ORACLE_TAGS: OracleTagData = {
   ramp: [0, 3, 4],
@@ -12,7 +22,6 @@ const tagDataForOtagTests = {
   flavor: null,
   artist: null,
 } as const
-import { CardIndex } from '@frantic-search/shared'
 import { PrintingIndex } from '@frantic-search/shared'
 import { emptyUrlLiveQuerySuggestionPool } from './worker-empty-url-suggestions'
 import { runSearch } from './worker-search'
@@ -20,6 +29,72 @@ import { runSearch } from './worker-search'
 const cache = new NodeCache(index, printingIndex)
 
 const sessionSalt = 12345
+
+/** Spec 131 hybrid / Issue #221: bare AND fails; primaries 0; raptor o:double matches. */
+const RAPTOR_DOUBLE_HYBRID_DATA: ColumnarData = {
+  names: ['Savage Raptor'],
+  mana_costs: ['{2}{R}'],
+  oracle_texts: ['Double the tokens you create.'],
+  colors: [Color.Red],
+  color_identity: [Color.Red],
+  type_lines: ['Creature — Dinosaur'],
+  powers: [2],
+  toughnesses: [2],
+  loyalties: [0],
+  defenses: [0],
+  legalities_legal: [Format.Commander | Format.Legacy],
+  legalities_banned: [0],
+  legalities_restricted: [0],
+  card_index: [0],
+  canonical_face: [0],
+  scryfall_ids: [''],
+  oracle_ids: ['oid-raptor-double'],
+  art_crop_thumb_hashes: [''],
+  card_thumb_hashes: [''],
+  layouts: ['normal'],
+  flags: [0],
+  edhrec_ranks: [null],
+  edhrec_salts: [null],
+  power_lookup: ['', '0', '3'],
+  toughness_lookup: ['', '1', '3'],
+  loyalty_lookup: [''],
+  defense_lookup: [''],
+  keywords_index: {},
+  produces: {},
+}
+
+/** Phrase primary wins; hybrid must not override (Spec 131). */
+const GAMMA_DELTA_PHRASE_DATA: ColumnarData = {
+  names: ['Epsilon Whelp'],
+  mana_costs: ['{U}'],
+  oracle_texts: ['When gamma delta triggers, draw a card.'],
+  colors: [Color.Blue],
+  color_identity: [Color.Blue],
+  type_lines: ['Creature — Dragon'],
+  powers: [2],
+  toughnesses: [2],
+  loyalties: [0],
+  defenses: [0],
+  legalities_legal: [Format.Commander | Format.Legacy],
+  legalities_banned: [0],
+  legalities_restricted: [0],
+  card_index: [0],
+  canonical_face: [0],
+  scryfall_ids: [''],
+  oracle_ids: ['oid-gamma-delta'],
+  art_crop_thumb_hashes: [''],
+  card_thumb_hashes: [''],
+  layouts: ['normal'],
+  flags: [0],
+  edhrec_ranks: [null],
+  edhrec_salts: [null],
+  power_lookup: ['', '0', '3'],
+  toughness_lookup: ['', '1', '3'],
+  loyalty_lookup: [''],
+  defense_lookup: [''],
+  keywords_index: {},
+  produces: {},
+}
 
 describe('runSearch pinned lip counts (issue #52)', () => {
   it('pinned-only format query returns pinnedIndicesCount with printing-level filtering', () => {
@@ -730,6 +805,44 @@ describe('oracle hint (Spec 131)', () => {
     expect(kwChip).toBeDefined()
     expect(kwChip!.priority).toBe(16)
     expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
+  })
+
+  it('single-token hybrid suggests raptor o:double when primaries fail (Spec 131 / issue #221)', () => {
+    const idx = new CardIndex(RAPTOR_DOUBLE_HYBRID_DATA)
+    const localCache = new NodeCache(idx, null)
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'raptor double' },
+      cache: localCache,
+      index: idx,
+      printingIndex: null,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    if (!oracle) return
+    expect(oracle.query?.trim()).toBe('raptor o:double')
+    expect(oracle.label).toBe('o:double')
+    expect(oracle.count).toBe(1)
+  })
+
+  it('phrase primary wins; hybrid does not override (Spec 131)', () => {
+    const idx = new CardIndex(GAMMA_DELTA_PHRASE_DATA)
+    const localCache = new NodeCache(idx, null)
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'gamma delta' },
+      cache: localCache,
+      index: idx,
+      printingIndex: null,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const oracle = result.suggestions.find((s) => s.id === 'oracle')
+    expect(oracle).toBeDefined()
+    if (!oracle) return
+    expect(oracle.query?.trim()).toBe('o:"gamma delta"')
+    expect(oracle.label).toBe('o:"gamma delta"')
+    expect(oracle.count).toBe(1)
   })
 })
 
