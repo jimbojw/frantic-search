@@ -28,7 +28,7 @@ The toolbar and the terms panel serve related purposes (tools and filters) but l
 ### Section order (top to bottom)
 
 1. **VIEWS** — View mode chips: `view:slim`, `view:detail`, `view:images`, `view:full`. Same behavior as the current ViewModeToggle — tapping a chip updates or appends the view term in the query. Controls how each card row is rendered and whether oracle text is shown (Spec 041).
-2. **TERMS** — All eight sections from Spec 081: formats, layouts, roles, lands, rarities, printings, prices, sort. Layout, scrollspy, and chip behavior unchanged.
+2. **TERMS** — TERMS sections from Spec 081 (formats, layouts, roles, rarities, printings, prices, sort) plus later extensions; **Lands** was removed in 2026 (see Implementation Notes). Layout, scrollspy, and chip behavior follow the same patterns.
 3. **Sticky footer** — Syntax Help, Report Bug. Unchanged from Spec 081.
 
 **Note:** The TOOLS section (Try on Scryfall) was removed. Try Scryfall and Report a problem now appear in the UnifiedBreakdown expanded content (Spec 079), alongside the query chips.
@@ -48,7 +48,6 @@ The left rail (navigation column) lists section labels only. VIEWS is a section 
 │ formats            │
 │ layouts            │
 │ roles              │
-│ lands              │
 │ rarities           │
 │ printings          │
 │ prices             │
@@ -63,7 +62,7 @@ Tapping a section scrolls the right content area to that section. Scrollspy high
 
 ### Right content area
 
-All sections (VIEWS plus the eight TERMS sections) in one scroll container with IntersectionObserver-based scrollspy:
+All sections (MY LIST, VIEWS, plus all TERMS sections) in one scroll container with IntersectionObserver-based scrollspy:
 
 ```
 VIEWS
@@ -146,12 +145,16 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 ## Acceptance Criteria
 
 1. The terms panel is renamed to MenuDrawer. The header label reads "Menu".
-2. The left rail contains section labels only: views, formats, layouts, roles, lands, rarities, printings, prices, sort, followed by the sticky footer (Syntax Help, Report Bug). The right content area renders VIEWS (chips) and the eight TERMS sections in that order.
+2. The left rail contains section labels only (see `TERMS_SECTIONS` in `MenuDrawer.tsx` for the current list), followed by the sticky footer (Syntax Help, Report Bug). The right content area renders MY LIST, VIEWS, and all TERMS sections in that order. The **Lands** section (`is:dual`, `is:fetchland`, etc.) was removed due to very low usage; those filters remain valid in the query box.
 3. VIEWS chips (`view:slim`, `view:detail`, `view:images`, `view:full`) correctly control result display mode. Tapping a chip updates the query via `v:` or `view:` term (last one wins). The active chip reflects the effective view mode.
 4. Try on Scryfall is available in the UnifiedBreakdown expanded content (Spec 079); it opens the effective query in Scryfall search in a new tab.
 5. The toolbar between histograms and the card list is removed. Histograms connect directly to the card list.
 6. When the result set is empty, a compact row below "No cards found" provides "Try on Scryfall ↗" and "Report a problem" links.
 7. The MenuDrawer works correctly in both modal overlay and inline contexts.
-8. TERMS sections, scrollspy, chip behavior, and sticky footer are unchanged from Spec 081.
+8. TERMS sections, scrollspy, chip behavior, and sticky footer follow Spec 081 patterns except where Implementation Notes record intentional changes (e.g. Lands section removed).
 9. Report Bug remains accessible from the menu footer and from the zero-results inline row. The init-page "Report a problem" link (next to Source on GitHub) is unchanged.
 10. No new props are required from App; MenuDrawer uses SearchContext for viewMode and changeViewMode.
+
+## Implementation Notes
+
+- **2026-03-29:** Removed the **Lands** TERMS section from MenuDrawer (scrollspy id `lands`, chips `is:dual`, `is:fetchland`, `is:shockland`, etc.). PostHog showed almost no use; users can still type those `is:` keywords. `frantic-terms-tab` values of `lands` fall back to the default section on load because `lands` is no longer in `ALL_SECTIONS`.
