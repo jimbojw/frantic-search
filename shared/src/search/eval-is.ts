@@ -9,6 +9,18 @@ import { CardFlag, Finish, Format, PrintingFlag, PROMO_TYPE_FLAGS } from "../bit
 
 const PERMANENT_TYPES = ["artifact", "battle", "creature", "enchantment", "land", "planeswalker"];
 
+/** True if type line denotes a permanent per Scryfall-style rules (incl. legacy wording). */
+export function typeLineIsPermanent(typeLineLower: string): boolean {
+  if (PERMANENT_TYPES.some(t => typeLineLower.includes(t))) return true;
+  // Pre–Sixth Edition creature wording ("Summon Dragon", etc.) — no "creature" substring.
+  if (typeLineLower.startsWith("summon")) return true;
+  // Unhinged creature pun type line ("Eaturecray — Pig", etc.).
+  if (typeLineLower.startsWith("eaturecray")) return true;
+  // Oracle card "Copy" (Unstable) — type line is exactly "Token"; still a permanent on the battlefield.
+  if (typeLineLower === "token") return true;
+  return false;
+}
+
 const DFC_LAYOUTS = new Set(["transform", "modal_dfc", "meld"]);
 
 const PARTY_TYPES = ["cleric", "rogue", "warrior", "wizard"];
@@ -283,7 +295,7 @@ export function evalIsKeyword(
   switch (keyword) {
     case "permanent":
       for (let i = 0; i < n; i++) {
-        if (PERMANENT_TYPES.some(t => index.typeLinesLower[i].includes(t))) buf[cf[i]] = 1;
+        if (typeLineIsPermanent(index.typeLinesLower[i])) buf[cf[i]] = 1;
       }
       break;
     case "spell":

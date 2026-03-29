@@ -55,6 +55,9 @@ import { index, printingIndex, matchCountWithPrintings } from "./evaluator.test-
 // Row #38 Demonic Tutor             | B  | Sorcery                                 | -      cmc=2      | normal  flags=GameChanger
 // Row #43 Brisela (meld result)      | WB | Legendary Creature — Angel Horror       | pow=4 tou=3 cmc=7 | meld   flags=MeldResult (excluded from is:commander)
 // Row #44 Ransack (spell commander)  | B  | Sorcery                                 | -      cmc=2      | normal (oracle has "Spell commander" — can be commander)
+// Row #45 Legacy summon              | R  | Summon Dragon                           | 2/2    cmc=4      | normal (pre–Sixth Edition creature wording)
+// Row #46 Unhinged eaturecray        | -  | Eaturecray — Igpay                    | 2/2    cmc=3      | normal
+// Row #47 Oracle Copy token          | -  | Token                                   | -      cmc=0      | token  (type line exactly "Token" — still is:permanent)
 
 const isExtPowerDict = ["", "0", "*", "2", "3", "4", "1", "6"];
 const isExtToughnessDict = ["", "1", "1+*", "3", "4", "2", "6"];
@@ -84,6 +87,9 @@ const IS_TEST_DATA: ColumnarData = {
     "Gideon's Emblem",
     "Brisela, Voice of Nightmares",
     "Ransack, the Lab",
+    "Prismatic Dragon",
+    "Atinlay Igpay",
+    "Copy",
   ],
   mana_costs: [
     "{G}", "{R}", "{U}{U}", "{1}", "{1}{G}",
@@ -109,6 +115,9 @@ const IS_TEST_DATA: ColumnarData = {
     "",
     "{4}{W}{W}{W}",
     "{1}{B}",
+    "{2}{R}{R}",
+    "{3}",
+    "",
   ],
   oracle_texts: [
     "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{T}: Add one mana of any color.",
@@ -156,6 +165,9 @@ const IS_TEST_DATA: ColumnarData = {
     "Creatures you control get +1/+1.",
     "Flying, first strike, lifelink",
     "Spell commander (This card can be your commander.)\nLook at the top three cards of your library.",
+    "Flying",
+    "Eaturecray spells you cast cost {2} less to cast.",
+    "You may have Copy enter the battlefield as a copy of any card on the battlefield.",
   ],
   colors: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -181,6 +193,9 @@ const IS_TEST_DATA: ColumnarData = {
     0,
     Color.White | Color.Black,
     Color.Black,
+    Color.Red,
+    0,
+    0,
   ],
   color_identity: [
     Color.Green, Color.Red, Color.Blue, 0, Color.Green,
@@ -206,6 +221,9 @@ const IS_TEST_DATA: ColumnarData = {
     0,
     Color.White | Color.Black,
     Color.Black,
+    Color.Red,
+    0,
+    0,
   ],
   type_lines: [
     "Creature — Elf",
@@ -253,21 +271,24 @@ const IS_TEST_DATA: ColumnarData = {
     "Emblem — Gideon",
     "Legendary Creature — Angel Horror",
     "Sorcery",
+    "Summon Dragon",
+    "Eaturecray — Igpay",
+    "Token",
   ],
-  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44
-  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0, 5, 0],
-  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0, 3, 0],
-  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43, 44],
-  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44],
-  scryfall_ids:          Array(45).fill(""),
-  oracle_ids:            Array(45).fill(""),
-  art_crop_thumb_hashes: Array(45).fill(""),
-  card_thumb_hashes:     Array(45).fill(""),
+  //                              0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47
+  powers:      /* dict idx */   [ 1, 0, 0, 0, 2, 0, 3, 4, 5, 0, 3, 3, 6, 1, 3, 4, 3, 0, 0, 0, 0, 6, 4, 5, 6, 7, 0, 0, 4, 4, 0, 0, 0, 0, 0, 3, 6, 6, 0, 3, 0, 6, 0, 5, 0, 3, 3, 0],
+  toughnesses: /* dict idx */   [ 1, 0, 0, 0, 2, 0, 1, 3, 4, 0, 5, 5, 1, 1, 3, 5, 3, 0, 0, 0, 0, 1, 5, 3, 5, 6, 0, 0, 3, 4, 0, 0, 0, 0, 0, 5, 3, 1, 0, 5, 0, 1, 0, 3, 0, 5, 5, 0],
+  loyalties:                    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  defenses:                     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_legal:             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_banned:            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  legalities_restricted:        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  card_index:     [0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43, 44, 45, 46, 47],
+  canonical_face: [0, 1, 2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13, 14, 15, 16, 16, 18, 18, 20, 21, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
+  scryfall_ids:          Array(48).fill(""),
+  oracle_ids:            Array(48).fill(""),
+  art_crop_thumb_hashes: Array(48).fill(""),
+  card_thumb_hashes:     Array(48).fill(""),
   layouts: [
     "normal", "normal", "normal", "normal", "normal",
     "normal", "normal", "transform", "transform", "normal",
@@ -292,6 +313,9 @@ const IS_TEST_DATA: ColumnarData = {
     "emblem",
     "meld",
     "normal",
+    "normal",
+    "normal",
+    "token",
   ],
   flags: [
     0, 0, 0, 0, 0,
@@ -315,9 +339,12 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0,
     CardFlag.MeldResult,
     0,
+    0,
+    0,
+    0,
   ],
-  edhrec_ranks: Array(45).fill(null) as (number | null)[],
-  edhrec_salts: Array(45).fill(null) as (number | null)[],
+  edhrec_ranks: Array(48).fill(null) as (number | null)[],
+  edhrec_salts: Array(48).fill(null) as (number | null)[],
   power_lookup: isExtPowerDict,
   toughness_lookup: isExtToughnessDict,
   loyalty_lookup: [""],
@@ -357,8 +384,15 @@ describe("is: operator", () => {
     expect(indices).toContain(30); // Steam Vents (Land)
   });
 
+  test("is:permanent matches legacy Summon, Eaturecray, and bare Token type lines (Scryfall parity)", () => {
+    const indices = isMatchIndices("is:permanent");
+    expect(indices).toContain(45); // Summon Dragon (past)
+    expect(indices).toContain(46); // Eaturecray — Igpay (Unhinged)
+    expect(indices).toContain(47); // Token (oracle Copy)
+  });
+
   test("is:spell matches non-land cards", () => {
-    expect(isMatchCount("is:spell")).toBe(35);
+    expect(isMatchCount("is:spell")).toBe(38);
   });
 
   test("is:historic matches artifacts, legendaries, and sagas", () => {
@@ -458,7 +492,7 @@ describe("is: operator", () => {
 
   test("is:token matches token layout", () => {
     const indices = isMatchIndices("is:token");
-    expect(indices).toEqual([41]); // Goblin Token
+    expect(indices).toEqual([41, 47]); // Goblin Token; oracle Copy (layout token, type line Token)
   });
 
   test("is:emblem matches emblem layout", () => {
@@ -709,7 +743,7 @@ describe("is: operator", () => {
     const indices = isMatchIndices("-is:funny");
     expect(indices).not.toContain(28);
     expect(indices).toContain(0); // Birds
-    expect(indices.length).toBe(40); // 41 unique canonical faces - 1 funny
+    expect(indices.length).toBe(43); // was 40; +3 new non-funny canonical faces for is:permanent parity fixtures
   });
 
   // --- Land cycle checks ---

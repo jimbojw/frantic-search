@@ -5,6 +5,7 @@ import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { Format } from "../bits";
 import type { ColumnarData } from "../data";
+import { typeLineIsPermanent } from "./eval-is";
 
 function minimalData(overrides: Partial<ColumnarData> & Pick<ColumnarData, "names">): ColumnarData {
   const n = overrides.names.length;
@@ -113,5 +114,31 @@ describe("evalIsKeyword partner superset", () => {
       oracle_texts: ["When The Eighth Doctor enters, mill three."],
     });
     expect(matchCount(data, "is:partner")).toBe(1);
+  });
+});
+
+describe("typeLineIsPermanent (Scryfall is:permanent parity)", () => {
+  test("matches modern permanent type words", () => {
+    expect(typeLineIsPermanent("creature — goblin")).toBe(true);
+    expect(typeLineIsPermanent("instant")).toBe(false);
+    expect(typeLineIsPermanent("sorcery")).toBe(false);
+  });
+
+  test("matches pre–sixth edition Summon lines (no 'creature' substring)", () => {
+    expect(typeLineIsPermanent("summon dragon")).toBe(true);
+    expect(typeLineIsPermanent("summon — specter")).toBe(true);
+    expect(typeLineIsPermanent("summon legend")).toBe(true);
+  });
+
+  test("matches Unhinged Eaturecray creature type line", () => {
+    expect(typeLineIsPermanent("eaturecray — igpay")).toBe(true);
+  });
+
+  test("matches oracle-only Token type line (Unstable Copy)", () => {
+    expect(typeLineIsPermanent("token")).toBe(true);
+  });
+
+  test("does not treat mid-string summon as legacy creature", () => {
+    expect(typeLineIsPermanent("instant — ritual of summoning")).toBe(false);
   });
 });
