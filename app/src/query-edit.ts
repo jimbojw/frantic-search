@@ -47,6 +47,7 @@ export {
   cyclePercentileChip,
   popularityClearPredicate,
   saltClearPredicate,
+  manaCostGenericClearPredicate,
   getMetadataTagChipState,
   cycleMetadataTagChip,
   mvMenuClearPredicate,

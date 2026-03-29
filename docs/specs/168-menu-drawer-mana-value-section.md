@@ -6,6 +6,8 @@
 
 **Extends:** Spec 083 (MenuDrawer)
 
+**Extended by:** Spec 169 (MenuDrawer Mana Cost Section)
+
 **GitHub Issue:** [#220](https://github.com/jimbojw/frantic-search/issues/220)
 
 ## Goal
@@ -22,9 +24,9 @@ The mana histogram (`ResultsBreakdown`, Spec 038) exposes the same eight buckets
 
 There is no drawer affordance for mana value. Users who use the menu for filters may not discover the histogram row.
 
-### Follow-on (separate spec)
+### Follow-on
 
-A **Mana cost** block (e.g. mana symbols / `m:`-style filters) will be added **below** **Mana value** inside the same scrollspy bucket. It will **not** get a separate left-rail entry: the rail label **Mana** covers both. See **Layout** below.
+**Mana cost** chips are specified in **Spec 169** (`m:` / `mana:` symbol and generic controls below **Mana value** in the same `mana` section).
 
 ## Design
 
@@ -42,7 +44,7 @@ Insert **`mana`** in `TERMS_SECTIONS` immediately after **`types`** and before *
 
 - Single `<section id="mana">` for scrollspy and IntersectionObserver.
 - Sticky heading **Mana value**, then the chip row.
-- **Reserved:** A future **Mana cost** subsection (second sticky heading + chips) stacks below in this same `<section>` without a new `TERMS_SECTIONS` entry (follow-on spec).
+- **Mana cost** (Spec 169): second sticky heading + chip rows below, same `<section>`, no extra `TERMS_SECTIONS` entry.
 
 ### Chips
 

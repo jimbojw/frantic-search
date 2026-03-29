@@ -140,6 +140,28 @@ export function saltClearPredicate(label: string): boolean {
   return SALT_FIELDS.some(f => raw.toLowerCase().startsWith(f))
 }
 
+const MANA_COST_CLEAR_FIELDS = ['m', 'mana']
+
+/**
+ * Spec 169: one mutually exclusive MenuDrawer family for “generic pip count” filters:
+ * - `m>=N` / `mana>=N` (drawer canonical), or
+ * - legacy digit-only `m:N` / `mana:N` (still cleared when applying a drawer chip).
+ * Excludes colored symbols, `m:x`, hybrids, etc.
+ */
+export function manaCostGenericClearPredicate(label: string): boolean {
+  const raw = label.startsWith('-') ? label.slice(1) : label
+  const lower = raw.toLowerCase()
+  if (isFieldLabel(label, MANA_COST_CLEAR_FIELDS, ['>='])) {
+    const ge = lower.indexOf('>=')
+    if (ge >= 0 && /^\d+$/.test(lower.slice(ge + 2))) return true
+  }
+  if (isFieldLabel(label, MANA_COST_CLEAR_FIELDS, [':'])) {
+    const colon = lower.indexOf(':')
+    if (colon >= 0 && /^\d+$/.test(lower.slice(colon + 1))) return true
+  }
+  return false
+}
+
 export function cyclePercentileChip(
   query: string,
   breakdown: BreakdownNode | null,

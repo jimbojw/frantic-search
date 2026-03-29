@@ -22,6 +22,7 @@ import {
   cycleCiNumericChip,
   cycleManaValueMenuChip,
   getManaValueMenuActiveIndex,
+  manaCostGenericClearPredicate,
 } from './query-edit'
 import { MV_FIELDS, MV_LABELS, MV_OPS, MV_TERMS, MV_VALUES } from './mana-value-query'
 import { captureMenuChipUsed } from './analytics'
@@ -413,6 +414,74 @@ function IncludeExtrasChip(props: {
           }
         </For>
       )}
+    </ChipButton>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Mana cost chips — tri-state cycleChip (Spec 169)
+// ---------------------------------------------------------------------------
+
+const MANA_COST_FIELDS = ['m', 'mana'] as const
+const MANA_COST_WUBRGC = ['w', 'u', 'b', 'r', 'g', 'c'] as const
+const MANA_COST_DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const
+
+function manaCostGenericPercentileChip(value: string): PercentileChipDef {
+  const term = `m>=${value}`
+  return {
+    label: term,
+    field: [...MANA_COST_FIELDS],
+    operator: '>=',
+    value,
+    term,
+    clearPredicate: manaCostGenericClearPredicate,
+  }
+}
+
+function manaCostChipDef(value: string): ChipDef {
+  const term = `m:${value}`
+  return { label: term, field: [...MANA_COST_FIELDS], operator: ':', value, term }
+}
+
+function ManaCostMenuChip(props: {
+  value: string
+  /** Mana font suffix: `ms-${msSuffix}` (e.g. `w`, `1`, `x`). */
+  msSuffix: string
+  query: string
+  breakdown: BreakdownNode | null
+  onSetQuery: (query: string) => void
+}) {
+  const chip = () => manaCostChipDef(props.value)
+  const state = () => getChipState(props.breakdown, chip())
+  const iconClass = () => `ms ms-cost ms-${props.msSuffix}`
+
+  return (
+    <ChipButton
+      state={state()}
+      class="gap-0.5"
+      onClick={() => {
+        captureMenuChipUsed({ section: 'mana', chip_label: chip().term })
+        props.onSetQuery(
+          cycleChip(props.query, props.breakdown, {
+            field: [...MANA_COST_FIELDS],
+            operator: ':',
+            value: props.value,
+            term: chip().term,
+          }),
+        )
+      }}
+    >
+      <Show when={state() === 'negative'}>
+        <span>-</span>
+      </Show>
+      <For each={buildSpans('m:')}>
+        {(span) =>
+          span.role
+            ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+            : <>{span.text}</>
+        }
+      </For>
+      <i class={iconClass()} />
     </ChipButton>
   )
 }
@@ -946,23 +1015,65 @@ export default function MenuDrawer(props: {
                       />
                     </Show>
                     <Show when={section === 'mana'}>
-                      <div class="flex flex-wrap gap-1.5 content-start">
-                        <For each={[...MV_LABELS]}>
-                          {(_, i) => (
-                            <ManaValueMenuChip
-                              active={getManaValueMenuActiveIndex(bd()) === i()}
-                              query={props.query}
-                              breakdown={bd()}
-                              chip={{
-                                field: MV_MENU_FIELDS,
-                                operator: MV_OPS[i()]!,
-                                value: MV_VALUES[i()]!,
-                                term: MV_TERMS[i()]!,
-                              }}
-                              onSetQuery={props.onSetQuery}
-                            />
-                          )}
-                        </For>
+                      <div class="flex flex-col gap-1.5">
+                        <div class="flex flex-wrap gap-1.5 content-start">
+                          <For each={[...MV_LABELS]}>
+                            {(_, i) => (
+                              <ManaValueMenuChip
+                                active={getManaValueMenuActiveIndex(bd()) === i()}
+                                query={props.query}
+                                breakdown={bd()}
+                                chip={{
+                                  field: MV_MENU_FIELDS,
+                                  operator: MV_OPS[i()]!,
+                                  value: MV_VALUES[i()]!,
+                                  term: MV_TERMS[i()]!,
+                                }}
+                                onSetQuery={props.onSetQuery}
+                              />
+                            )}
+                          </For>
+                        </div>
+                        <h3 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
+                          Mana cost
+                        </h3>
+                        <div class="flex flex-wrap gap-1.5 content-start">
+                          <For each={[...MANA_COST_WUBRGC]}>
+                            {(sym) => (
+                              <ManaCostMenuChip
+                                value={sym}
+                                msSuffix={sym}
+                                query={props.query}
+                                breakdown={bd()}
+                                onSetQuery={props.onSetQuery}
+                              />
+                            )}
+                          </For>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 content-start">
+                          <ManaCostMenuChip
+                            value="x"
+                            msSuffix="x"
+                            query={props.query}
+                            breakdown={bd()}
+                            onSetQuery={props.onSetQuery}
+                          />
+                          <For each={[...MANA_COST_DIGITS]}>
+                            {(d) => {
+                              const chip = manaCostGenericPercentileChip(d)
+                              return (
+                                <PercentileTermChip
+                                  chip={chip}
+                                  state={getChipState(bd(), chip)}
+                                  query={props.query}
+                                  breakdown={bd()}
+                                  section="mana"
+                                  onSetQuery={props.onSetQuery}
+                                />
+                              )
+                            }}
+                          </For>
+                        </div>
                       </div>
                     </Show>
                     <Show when={section !== 'color' && section !== 'mana'}>

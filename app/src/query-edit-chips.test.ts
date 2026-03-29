@@ -9,6 +9,7 @@ import {
   cyclePercentileChip,
   popularityClearPredicate,
   saltClearPredicate,
+  manaCostGenericClearPredicate,
   cycleManaValueMenuChip,
   getManaValueMenuActiveIndex,
 } from './query-edit-chips'
@@ -382,6 +383,88 @@ describe('cycleChip — is keywords', () => {
     q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature is:dfc')
     q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature -is:dfc')
     q = cycleIs(q, 'dfc');  expect(q).toBe('t:creature')
+  })
+})
+
+describe('cycleChip — mana cost (m: / mana:, Spec 169)', () => {
+  const MANA_COST_FIELDS = ['m', 'mana']
+
+  function cycleMana(q: string, value: string) {
+    return cycleChip(q, parseBreakdown(q), {
+      field: MANA_COST_FIELDS,
+      operator: ':',
+      value,
+      term: `m:${value}`,
+    })
+  }
+
+  it('neutral → positive → negative → neutral for m:w', () => {
+    let q = ''
+    q = cycleMana(q, 'w')
+    expect(q).toBe('m:w')
+    q = cycleMana(q, 'w')
+    expect(q).toBe('-m:w')
+    q = cycleMana(q, 'w')
+    expect(q).toBe('')
+  })
+
+  it('detects mana: alias and cycles to negative preserving alias label', () => {
+    expect(cycleMana('mana:w', 'w')).toBe('-mana:w')
+    expect(cycleMana('-mana:w', 'w')).toBe('')
+  })
+
+  it('m:w and m:x still compose via cycleChip', () => {
+    let q = ''
+    q = cycleMana(q, 'w')
+    expect(q).toBe('m:w')
+    q = cycleMana(q, 'x')
+    expect(q).toBe('m:w m:x')
+    q = cycleMana(q, 'w')
+    expect(q).toBe('m:x -m:w')
+  })
+})
+
+describe('cyclePercentileChip — mana cost generic m>=1–m>=8 (Spec 169)', () => {
+  const MANA_COST_FIELDS = ['m', 'mana']
+
+  function cycleManaGeneric(q: string, value: string): string {
+    return cyclePercentileChip(q, parseBreakdown(q), {
+      field: MANA_COST_FIELDS,
+      operator: '>=',
+      value,
+      term: `m>=${value}`,
+      clearPredicate: manaCostGenericClearPredicate,
+    })
+  }
+
+  it('replaces legacy m:2 with m>=8', () => {
+    expect(cycleManaGeneric('m:2', '8')).toBe('m>=8')
+  })
+
+  it('replaces m>=2 with m>=8', () => {
+    expect(cycleManaGeneric('m>=2', '8')).toBe('m>=8')
+  })
+
+  it('clears user-typed m:9 when choosing m>=2', () => {
+    expect(cycleManaGeneric('m:9', '2')).toBe('m>=2')
+  })
+
+  it('active m>=3 → tap m>=3 → -m>=3', () => {
+    expect(cycleManaGeneric('m>=3', '3')).toBe('-m>=3')
+  })
+
+  it('negated m:3 → tap m>=8 → m>=8', () => {
+    expect(cycleManaGeneric('-m:3', '8')).toBe('m>=8')
+  })
+
+  it('does not clear m:x when changing generic digit', () => {
+    let q = 'm:1 m:x'
+    q = cycleManaGeneric(q, '8')
+    expect(q).toBe('m:x m>=8')
+  })
+
+  it('appends m>=1 without removing m:x', () => {
+    expect(cycleManaGeneric('m:x', '1')).toBe('m:x m>=1')
   })
 })
 
