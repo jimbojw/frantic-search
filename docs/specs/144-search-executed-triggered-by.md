@@ -18,7 +18,7 @@ When a user arrives from an ad campaign with a pre-populated query in the URL (e
 
 ### 1. Schema Extension
 
-Add `triggered_by: "url" | "user"` to the `search_executed` event properties (Spec 085 §4). Other properties on the same event (e.g. `url_snapshot`, coherence rules) are defined in Spec 085 §7 ([GitHub #184](https://github.com/jimbojw/frantic-search/issues/184)).
+Add `triggered_by: "url" | "user"` to the `search_executed` event properties (Spec 085 §4). Other properties on the same event (e.g. `url_snapshot`, `session_search_index`, `coalesced_prior_search_count`, coherence rules) are defined in Spec 085 §7 and §7a ([GitHub #184](https://github.com/jimbojw/frantic-search/issues/184)).
 
 ### 2. Value Semantics
 

@@ -85,7 +85,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 
 | Event                     | Properties                                                              |
 |---------------------------|-------------------------------------------------------------------------|
-| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user", url_snapshot: string }` (Spec 144; `url_snapshot` + coherence rules — [GitHub #184](https://github.com/jimbojw/frantic-search/issues/184)) |
+| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user", url_snapshot: string, session_search_index: number, coalesced_prior_search_count: number }` (Spec 144; `url_snapshot` + coherence rules — [GitHub #184](https://github.com/jimbojw/frantic-search/issues/184); session ordinals — §7a) |
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` — for `element_name: 'copy_link_menu'`, `state` is one of `opened`, `copied_url`, `copied_markdown_search`, `copied_markdown_card_name` (Spec 164). |
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
@@ -127,9 +127,21 @@ Search runs on every keystroke (ADR-003). Emitting every search would flood Post
 
 **Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.usedExtension`, `msg.uniqueMode`, `msg.includeExtras`, and `location.pathname` + `location.search` read synchronously in that handler.
 
-**Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot })`.
+**Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot, session_search_index, coalesced_prior_search_count })`.
 
 **Coherence (Issue #184):** The debounced send must not fire if the trimmed effective query has changed since that result was scheduled; discard the pending payload. PostHog’s automatic `$current_url` reflects the moment `capture` runs, which can lag the stored `query` by the debounce window—use `url_snapshot` (pathname + search at result-handling time) for analysis that must align query, result count, and URL.
+
+#### §7a. Session ordinals and coalescing
+
+Each browser tab load maintains:
+
+- **`session_search_index`:** Non-negative integer, starts at `0` on the first emitted `search_executed` of the tab session and increments by `1` on each subsequent emission. This is the ordinal of the **analytics event**, not of every worker completion.
+
+- **`coalesced_prior_search_count`:** Non-negative integer on each emission. Counts **completed left-pane search results** that were eligible for `scheduleSearchCapture` (non-empty effective query at the result handler; Spec 144 scope) but **did not** produce their own `search_executed` before this event, including:
+  - completions folded into this emit because the debounce timer reset (user kept typing or results updated within the debounce window); and
+  - completions whose pending batch was discarded by the coherence check (timer fired or flush ran, but the trimmed effective query no longer matched the pending payload)—those completions are attributed to the **next** successful emit via this count so session-level “completed vs reported” totals stay consistent.
+
+When a single worker completion leads directly to one emission with no prior backlog, `coalesced_prior_search_count` is `0`. Industry-aligned naming: **coalesced** denotes debounce/batch aggregation (common in event pipelines); the coherence-discarded case is a small extension of the same “completed but not separately reported” notion.
 
 **Pinned-only (live query empty):** `results_count` uses the same cardinality as normal searches: `pinnedPrintingCount` when view mode is `images` or `full`, otherwise `pinnedIndicesCount`. The card list is empty by design, but the count must reflect pinned matches, not `indices.length` (always zero).
 
@@ -206,6 +218,8 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 7. `npm run dev` surfaces analytics payloads in the console; `npm test -w app` behavior is unchanged (no console-only path during tests).
 
 ## Revision history
+
+- **2026-03-29**: `search_executed` adds `session_search_index` (0-based per-tab emission ordinal) and `coalesced_prior_search_count` (completed captures not emitted as separate events before this one, including debounce coalescing and coherence-discarded batches attributed to the next emit).
 
 - **2026-03-26** ([GitHub #186](https://github.com/jimbojw/frantic-search/issues/186)): Redefined `used_extension` to mean Frantic-vs-Scryfall syntax divergence only; `unique:` / spelled-out `include:extras` no longer count; `**` does count (Frantic-only sugar). Worker computes `usedExtension` on the effective query AST and sends it on every `result`. Follow-up: `usd=null` / face-field `null` (Spec 080 / 136), aligned with `toScryfallQuery` stripping.
 
