@@ -15,10 +15,28 @@ export type PendingSearchCapturePayload = {
 export function useSearchCapture(getEffectiveQuery: () => string) {
   let searchCaptureTimer: ReturnType<typeof setTimeout> | null = null
   let pendingSearchCapture: PendingSearchCapturePayload | null = null
+  /** Completions folded into the next emit (superseded debounce batches + coherence drops). Spec 085 §7a. */
+  let coalescedForNextEmit = 0
+  /** Completions in the current pending debounce batch (always 0 or 1 while a batch is open). */
+  let pendingBatchCompletionCount = 0
+  let sessionSearchEmissionIndex = 0
 
   function trySendCapture(pending: PendingSearchCapturePayload): void {
-    if (pending.query !== getEffectiveQuery().trim()) return
-    captureSearchExecuted(pending)
+    if (pending.query !== getEffectiveQuery().trim()) {
+      coalescedForNextEmit += pendingBatchCompletionCount
+      pendingBatchCompletionCount = 0
+      return
+    }
+    const coalesced_prior_search_count =
+      coalescedForNextEmit + Math.max(0, pendingBatchCompletionCount - 1)
+    coalescedForNextEmit = 0
+    pendingBatchCompletionCount = 0
+    captureSearchExecuted({
+      ...pending,
+      session_search_index: sessionSearchEmissionIndex,
+      coalesced_prior_search_count,
+    })
+    sessionSearchEmissionIndex++
   }
 
   function scheduleSearchCapture(
@@ -29,6 +47,10 @@ export function useSearchCapture(getEffectiveQuery: () => string) {
     urlSnapshot: string
   ): void {
     if (!query.trim()) return
+    if (searchCaptureTimer !== null || pendingBatchCompletionCount > 0) {
+      coalescedForNextEmit += pendingBatchCompletionCount
+    }
+    pendingBatchCompletionCount = 1
     pendingSearchCapture = {
       query: query.trim(),
       used_extension: usedExtension,
