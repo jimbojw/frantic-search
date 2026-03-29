@@ -161,7 +161,7 @@ Add `captureUiInteracted({ element_name, action, state? })` at these locations:
 
 Suggestion chips (Spec 151, Spec 153) use a dedicated `suggestion_applied` event via `captureSuggestionApplied()`, fired in SuggestionList when the user taps a chip. Properties include `suggestion_id`, `suggestion_label`, `variant`, `applied_query` (rewrite) or `cta_action` (CTA), and `mode` (empty vs rider) for funnel analysis.
 
-MenuDrawer filter chips (Spec 083) use `menu_chip_used` via `captureMenuChipUsed()`, fired in each chip's onClick when the user taps. Properties: `section` (mylist, views, formats, color, types, layouts, etc.) and `chip_label` (e.g. `f:commander`, `view:images`, `ci:w`, `t:creature`, `is:permanent`).
+MenuDrawer filter chips (Spec 083) use `menu_chip_used` via `captureMenuChipUsed()`, fired in each chip's onClick when the user taps. Properties: `section` (mylist, views, formats, color, types, mana, layouts, etc.) and `chip_label` (e.g. `f:commander`, `view:images`, `ci:w`, `t:creature`, `is:permanent`, `mv=3`, `mv>=7`).
 
 **Card detail (Spec 160, Spec 165, Spec 166):** The card detail page uses `card_detail_interacted` via `captureCardDetailInteracted()`, not `ui_interacted`, so dashboards stay on one structured event for back, metadata Scryfall ID outlink, all-prints chip navigate, set navigation, DFC face toggle, header Copy… menu open and clipboard rows, tag chip navigate, and list add/remove.
 

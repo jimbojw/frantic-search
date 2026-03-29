@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BreakdownNode } from '@frantic-search/shared'
 import { normalizeAlphanumeric } from '@frantic-search/shared'
-import { findFieldNode, findBareNode, removeNode, appendTerm, parseBreakdown, clearFieldTermsRecursive } from './query-edit-core'
+import {
+  findFieldNode,
+  findBareNode,
+  removeNode,
+  appendTerm,
+  parseBreakdown,
+  clearFieldTermsRecursive,
+  isFieldLabel,
+} from './query-edit-core'
+import { MV_FIELDS, MV_OPS, MV_TERMS, MV_VALUES } from './mana-value-query'
 
 /** Normalize for # metadata matching. Spec 123 / Spec 125. */
 function normalizeMetadata(s: string): string {
@@ -159,4 +168,48 @@ export function cyclePercentileChip(
     return cleared
   }
   return appendTerm(cleared, opts.term, freshBd)
+}
+
+// ---------------------------------------------------------------------------
+// Mana value MenuDrawer: mutually exclusive positive chips (Spec 168)
+// ---------------------------------------------------------------------------
+
+const MV_MENU_FIELDS = MV_FIELDS
+
+export function mvMenuClearPredicate(label: string): boolean {
+  return isFieldLabel(label, MV_MENU_FIELDS, ['=', '>='])
+}
+
+/**
+ * At most one of mv=0…mv=6 / mv>=7 from the drawer. Tapping the active chip clears
+ * all mana-value histogram-family terms; tapping another replaces them.
+ */
+export function cycleManaValueMenuChip(
+  query: string,
+  breakdown: BreakdownNode | null,
+  opts: { field: string[]; operator: string; value: string; term: string },
+): string {
+  const positive = breakdown
+    ? findFieldNode(breakdown, opts.field, opts.operator, false, v => v === opts.value)
+    : null
+
+  if (positive) {
+    return clearFieldTermsRecursive(query, breakdown, mvMenuClearPredicate)
+  }
+
+  const cleared = clearFieldTermsRecursive(query, breakdown, mvMenuClearPredicate)
+  const freshBd = parseBreakdown(cleared)
+  return appendTerm(cleared, opts.term, freshBd)
+}
+
+/** Index into MV_TERMS / MV_LABELS, or null if zero or multiple positive MV histogram terms. */
+export function getManaValueMenuActiveIndex(breakdown: BreakdownNode | null): number | null {
+  if (!breakdown) return null
+  const hits: number[] = []
+  for (let i = 0; i < MV_TERMS.length; i++) {
+    if (findFieldNode(breakdown, MV_MENU_FIELDS, MV_OPS[i]!, false, v => v === MV_VALUES[i])) {
+      hits.push(i)
+    }
+  }
+  return hits.length === 1 ? hits[0]! : null
 }

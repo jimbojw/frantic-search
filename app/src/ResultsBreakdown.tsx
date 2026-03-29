@@ -18,18 +18,20 @@ import {
   isWubrgColorActive,
   parseBreakdown,
 } from './query-edit'
+import {
+  MV_FIELDS,
+  MV_LABELS,
+  MV_OPS,
+  MV_TERMS,
+  MV_VALUES,
+  isManaValueHistogramLabel,
+} from './mana-value-query'
 
 export const MV_BAR_COLOR = '#60a5fa'    // blue-400
 export const TYPE_BAR_COLOR = '#34d399'  // emerald-400
 
 const CI_FIELDS = ['ci', 'identity', 'id', 'commander', 'cmd']
-const MV_FIELDS = ['mv', 'cmc', 'manavalue']
 const TYPE_FIELDS = ['t', 'type']
-
-const MV_LABELS = ['0', '1', '2', '3', '4', '5', '6', '7+']
-const MV_TERMS = ['mv=0', 'mv=1', 'mv=2', 'mv=3', 'mv=4', 'mv=5', 'mv=6', 'mv>=7']
-const MV_OPS = ['=', '=', '=', '=', '=', '=', '=', '>=']
-const MV_VALUES = ['0', '1', '2', '3', '4', '5', '6', '7']
 
 const TYPE_LABELS = ['Lgn', 'Cre', 'Ins', 'Sor', 'Art', 'Enc', 'Plw', 'Lnd']
 const TYPE_TERMS = ['t:legendary', 't:creature', 't:instant', 't:sorcery', 't:artifact', 't:enchantment', 't:planeswalker', 't:land']
@@ -212,13 +214,12 @@ export default function ResultsBreakdown(props: {
     return b.children.filter(c => isCILabel(c.label)).map(c => c.label)
   })
 
-  const isMVLabel = (label: string) => isFieldLabel(label, MV_FIELDS, ['=', '>='])
   const mvTermLabels = createMemo((): string[] => {
     const b = bd()
     if (!b) return []
-    if (isMVLabel(b.label)) return [b.label]
+    if (isManaValueHistogramLabel(b.label)) return [b.label]
     if (!b.children) return []
-    return b.children.filter(c => isMVLabel(c.label)).map(c => c.label)
+    return b.children.filter(c => isManaValueHistogramLabel(c.label)).map(c => c.label)
   })
 
   const isTypeLabel = (label: string) => isFieldLabel(label, TYPE_FIELDS, [':'])
@@ -304,7 +305,7 @@ export default function ResultsBreakdown(props: {
               <div class="flex items-center h-11 md:h-6">
                 <button
                   type="button"
-                  onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
+                  onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isManaValueHistogramLabel))}
                   class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
                 >
                   Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)
@@ -402,7 +403,7 @@ export default function ResultsBreakdown(props: {
             <div class="flex items-center h-11 md:h-6">
               <button
                 type="button"
-                onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isMVLabel))}
+                onClick={() => props.onSetQuery(clearFieldTerms(props.query, bd(), isManaValueHistogramLabel))}
                 class="w-full h-full min-h-11 md:min-h-0 px-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors truncate"
               >
                 Clear (<code class="font-mono">{mvTermLabels().join(' ')}</code>)

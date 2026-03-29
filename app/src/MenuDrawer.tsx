@@ -3,7 +3,27 @@ import { For, Show, createMemo, createSignal, onMount, onCleanup } from 'solid-j
 import { IconBookOpen, IconBug, IconInfoCircle, IconXMark } from './Icons'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { SORT_FIELDS } from '@frantic-search/shared'
-import { findFieldNode, cycleChip, parseBreakdown, toggleIncludeExtras, hasIncludeExtras, cycleSortChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate, getMetadataTagChipState, cycleMetadataTagChip, CI_FIELDS, getIdentityColorChipState, toggleIdentityColorChip, toggleIdentityColorlessChip, cycleCiNumericChip } from './query-edit'
+import {
+  findFieldNode,
+  cycleChip,
+  parseBreakdown,
+  toggleIncludeExtras,
+  hasIncludeExtras,
+  cycleSortChip,
+  cyclePercentileChip,
+  popularityClearPredicate,
+  saltClearPredicate,
+  getMetadataTagChipState,
+  cycleMetadataTagChip,
+  CI_FIELDS,
+  getIdentityColorChipState,
+  toggleIdentityColorChip,
+  toggleIdentityColorlessChip,
+  cycleCiNumericChip,
+  cycleManaValueMenuChip,
+  getManaValueMenuActiveIndex,
+} from './query-edit'
+import { MV_FIELDS, MV_LABELS, MV_OPS, MV_TERMS, MV_VALUES } from './mana-value-query'
 import { captureMenuChipUsed } from './analytics'
 import { ChipButton } from './ChipButton'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
@@ -81,7 +101,21 @@ function saltPercentileChip(value: string): PercentileChipDef {
   }
 }
 
-const TERMS_SECTIONS = ['formats', 'color', 'types', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
+const TERMS_SECTIONS = [
+  'formats',
+  'color',
+  'types',
+  'mana',
+  'layouts',
+  'roles',
+  'lands',
+  'rarities',
+  'printings',
+  'prices',
+  'popularity',
+  'salt',
+  'sort',
+] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
 const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
@@ -89,6 +123,7 @@ type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
   color: [], // Spec 130: rendered by ColorSection
+  mana: [], // Spec 168: rendered by ManaValueMenuChip grid
   types: [ // Spec 167
     typeChip('legendary'),
     typeChip('creature'),
@@ -197,6 +232,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
   formats: 'Formats',
   color: 'Colors',
   types: 'Types',
+  mana: 'Mana',
   layouts: 'Layouts',
   roles: 'Roles',
   lands: 'Lands',
@@ -212,6 +248,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
 const SECTION_HEADINGS: Record<SectionId, string> = {
   ...SECTION_LABELS,
   color: 'Color Identity',
+  mana: 'Mana value',
 }
 
 const STORAGE_KEY = 'frantic-terms-tab'
@@ -383,6 +420,42 @@ function IncludeExtrasChip(props: {
         'include:extras'
       ) : (
         <For each={buildSpans('include:extras')}>
+          {(span) =>
+            span.role
+              ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
+              : <>{span.text}</>
+          }
+        </For>
+      )}
+    </ChipButton>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Mana value chips — mutually exclusive (Spec 168)
+// ---------------------------------------------------------------------------
+
+const MV_MENU_FIELDS: string[] = [...MV_FIELDS]
+
+function ManaValueMenuChip(props: {
+  active: boolean
+  query: string
+  breakdown: BreakdownNode | null
+  chip: { field: string[]; operator: string; value: string; term: string }
+  onSetQuery: (query: string) => void
+}) {
+  return (
+    <ChipButton
+      active={props.active}
+      onClick={() => {
+        captureMenuChipUsed({ section: 'mana', chip_label: props.chip.term })
+        props.onSetQuery(cycleManaValueMenuChip(props.query, props.breakdown, props.chip))
+      }}
+    >
+      {props.active ? (
+        props.chip.term
+      ) : (
+        <For each={buildSpans(props.chip.term)}>
           {(span) =>
             span.role
               ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span>
@@ -886,7 +959,27 @@ export default function MenuDrawer(props: {
                         onSetQuery={props.onSetQuery}
                       />
                     </Show>
-                    <Show when={section !== 'color'}>
+                    <Show when={section === 'mana'}>
+                      <div class="flex flex-wrap gap-1.5 content-start">
+                        <For each={[...MV_LABELS]}>
+                          {(_, i) => (
+                            <ManaValueMenuChip
+                              active={getManaValueMenuActiveIndex(bd()) === i()}
+                              query={props.query}
+                              breakdown={bd()}
+                              chip={{
+                                field: MV_MENU_FIELDS,
+                                operator: MV_OPS[i()]!,
+                                value: MV_VALUES[i()]!,
+                                term: MV_TERMS[i()]!,
+                              }}
+                              onSetQuery={props.onSetQuery}
+                            />
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+                    <Show when={section !== 'color' && section !== 'mana'}>
                       <div class="flex flex-wrap gap-1.5 content-start">
                         <For each={SECTION_CHIPS[section]}>
                           {(chip) => (

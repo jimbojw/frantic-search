@@ -49,6 +49,9 @@ export {
   saltClearPredicate,
   getMetadataTagChipState,
   cycleMetadataTagChip,
+  mvMenuClearPredicate,
+  cycleManaValueMenuChip,
+  getManaValueMenuActiveIndex,
 } from './query-edit-chips'
 
 export {

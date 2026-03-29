@@ -2,13 +2,20 @@
 import { describe, it, expect } from 'vitest'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { parseBreakdown } from './query-edit-core'
-import { toggleSimple, cycleChip, cyclePercentileChip, popularityClearPredicate, saltClearPredicate } from './query-edit-chips'
+import { MV_FIELDS } from './mana-value-query'
+import {
+  toggleSimple,
+  cycleChip,
+  cyclePercentileChip,
+  popularityClearPredicate,
+  saltClearPredicate,
+  cycleManaValueMenuChip,
+  getManaValueMenuActiveIndex,
+} from './query-edit-chips'
 
 function buildBreakdown(query: string): BreakdownNode {
   return parseBreakdown(query)!
 }
-
-const MV_FIELDS = ['mv', 'cmc', 'manavalue']
 const TYPE_FIELDS = ['t', 'type']
 const FORMAT_FIELDS = ['f', 'format', 'legal']
 const IS_FIELDS = ['is']
@@ -100,6 +107,88 @@ describe('toggleSimple — mana value 7+', () => {
   it('removes mv>=7 when excluding (less of this)', () => {
     const q = 'mv>=7'
     expect(exclude(q, buildBreakdown(q))).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Mana value MenuDrawer — exclusive chips (Spec 168)
+// ---------------------------------------------------------------------------
+
+function menuChip(value: string, operator: string, term: string) {
+  return { field: [...MV_FIELDS], operator, value, term }
+}
+
+describe('cycleManaValueMenuChip', () => {
+  const tap3 = (q: string, bd: BreakdownNode | null) =>
+    cycleManaValueMenuChip(q, bd, menuChip('3', '=', 'mv=3'))
+  const tap5 = (q: string, bd: BreakdownNode | null) =>
+    cycleManaValueMenuChip(q, bd, menuChip('5', '=', 'mv=5'))
+  const tap7 = (q: string, bd: BreakdownNode | null) =>
+    cycleManaValueMenuChip(q, bd, menuChip('7', '>=', 'mv>=7'))
+
+  it('appends mv=3 to empty query', () => {
+    expect(tap3('', null)).toBe('mv=3')
+  })
+
+  it('clears when tapping active mv=3', () => {
+    const q = 'mv=3'
+    expect(tap3(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('replaces mv=3 with mv=5', () => {
+    const q = 'mv=3'
+    expect(tap5(q, buildBreakdown(q))).toBe('mv=5')
+  })
+
+  it('collapses stacked mv=3 mv=5 to mv=2', () => {
+    const q = 'mv=3 mv=5'
+    expect(
+      cycleManaValueMenuChip(q, buildBreakdown(q), menuChip('2', '=', 'mv=2')),
+    ).toBe('mv=2')
+  })
+
+  it('removes -mv=3 and appends mv=2', () => {
+    const q = '-mv=3'
+    expect(
+      cycleManaValueMenuChip(q, buildBreakdown(q), menuChip('2', '=', 'mv=2')),
+    ).toBe('mv=2')
+  })
+
+  it('normalizes cmc=4 to mv=5 (replace family)', () => {
+    const q = 'cmc=4'
+    expect(tap5(q, buildBreakdown(q))).toBe('mv=5')
+  })
+
+  it('mv>=7 tap toggles off', () => {
+    const q = 'mv>=7'
+    expect(tap7(q, buildBreakdown(q))).toBe('')
+  })
+
+  it('mv=3 to mv>=7', () => {
+    const q = 'mv=3'
+    expect(tap7(q, buildBreakdown(q))).toBe('mv>=7')
+  })
+})
+
+describe('getManaValueMenuActiveIndex', () => {
+  it('returns index for single mv=4', () => {
+    expect(getManaValueMenuActiveIndex(buildBreakdown('mv=4'))).toBe(4)
+  })
+
+  it('returns index for cmc=2 alias', () => {
+    expect(getManaValueMenuActiveIndex(buildBreakdown('cmc=2'))).toBe(2)
+  })
+
+  it('returns null when stacked', () => {
+    expect(getManaValueMenuActiveIndex(buildBreakdown('mv=2 mv=3'))).toBe(null)
+  })
+
+  it('returns null when no MV chip term', () => {
+    expect(getManaValueMenuActiveIndex(buildBreakdown('t:creature'))).toBe(null)
+  })
+
+  it('returns null for mv=10', () => {
+    expect(getManaValueMenuActiveIndex(buildBreakdown('mv=10'))).toBe(null)
   })
 })
 
