@@ -32,7 +32,7 @@ interface AllPart {
   name?: string;
 }
 
-interface Card {
+export interface Card {
   id?: string;
   oracle_id?: string;
   layout?: string;
@@ -50,6 +50,7 @@ interface Card {
   edhrec_rank?: number;
   reserved?: boolean;
   game_changer?: boolean;
+  content_warning?: boolean;
   security_stamp?: string;
   border_color?: string;
   set_type?: string;
@@ -134,13 +135,14 @@ function isMeldResult(card: Card): boolean {
   );
 }
 
-function encodeFlags(card: Card, oracleIdsWithUB: Set<string>): number {
+export function encodeFlags(card: Card, oracleIdsWithUB: Set<string>): number {
   let flags = 0;
   if (card.reserved) flags |= CardFlag.Reserved;
   if (isFunny(card)) flags |= CardFlag.Funny;
   if (isUniversesBeyond(card, oracleIdsWithUB)) flags |= CardFlag.UniversesBeyond;
   if (card.game_changer) flags |= CardFlag.GameChanger;
   if (isMeldResult(card)) flags |= CardFlag.MeldResult;
+  if (card.content_warning) flags |= CardFlag.ContentWarning;
   return flags;
 }
 

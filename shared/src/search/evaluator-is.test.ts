@@ -335,7 +335,7 @@ const IS_TEST_DATA: ColumnarData = {
     0, 0, 0, 0,
     0, 0,
     CardFlag.GameChanger,
-    0, 0,
+    CardFlag.ContentWarning, 0,
     0, 0,
     CardFlag.MeldResult,
     0,
@@ -737,6 +737,16 @@ describe("is: operator", () => {
   test("is:gc is alias for is:gamechanger", () => {
     const indices = isMatchIndices("is:gc");
     expect(indices).toEqual([38]); // Demonic Tutor
+  });
+
+  test("is:content_warning matches faces with ContentWarning flag (Spec 170)", () => {
+    expect(isMatchIndices("is:content_warning")).toEqual([39]); // Host Creature — Pangolin Beast
+  });
+
+  test("-is:content_warning excludes the content-warning face (canonical NOT semantics)", () => {
+    const indices = isMatchIndices("-is:content_warning");
+    expect(indices).not.toContain(39);
+    expect(isMatchCount("-is:content_warning")).toBe(43);
   });
 
   test("-is:funny excludes funny cards", () => {

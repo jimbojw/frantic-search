@@ -332,3 +332,11 @@
   scryfall_query: "is:gc"
   assertions:
     count: 53
+
+# --- is:content_warning (Issue #224, Spec 170) ---
+
+- name: "is:content_warning matches Scryfall content-warning oracles"
+  query: "is:content_warning"
+  scryfall_query: "is:content_warning"
+  assertions:
+    count: 7

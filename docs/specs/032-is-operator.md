@@ -89,6 +89,7 @@ These require a new `flags` column in `ColumnarData`, populated by the ETL pipel
 | `is:funny` | `CardFlag.Funny` | See § Funny Flag Logic below |
 | `is:universesbeyond` / `is:ub` | `CardFlag.UniversesBeyond` (face) or `promo_types_flags_0`/`promo_types_flags_1` (printing) | Dual-domain: when printings are loaded, evaluates in printing domain via `promo_types_flags_0`/`promo_types_flags_1`. When printings are not loaded, falls back to face domain via `CardFlag.UniversesBeyond`. See Spec 047. |
 | `is:gamechanger` / `is:gc` | `CardFlag.GameChanger` | `game_changer === true` (Commander Game Changer list) |
+| `is:content_warning` | `CardFlag.ContentWarning` | `content_warning === true` (Spec 170, Issue #224) |
 
 ### Curated land cycle lists (via name lookup)
 
@@ -289,7 +290,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 7. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
 8. `is:partner` follows the § Oracle text checks row for `is:partner` (keyword index, oracle lines, templates, saga exclusion, legendary+creature rule). It does not match cards that only contain the substring `partner` in unrelated text without satisfying those rules.
 9. Layout-based keywords correctly match across both faces of multi-face cards.
-10. `is:reserved`, `is:funny`, and `is:universesbeyond` correctly check flag bits from the `flags` column.
+10. `is:reserved`, `is:funny`, `is:universesbeyond`, `is:gamechanger` / `is:gc`, `is:content_warning`, and related flag-backed keywords correctly check flag bits from the `flags` column (see Spec 170 for `content_warning`).
 11. Land cycle keywords match exactly the curated card name lists.
 12. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, `border_color`, `set_type`, `promo_types`, and `legalities` fields.
 
@@ -301,6 +302,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 
 ## Implementation Notes
 
+- 2026-03-29: Added `is:content_warning` via `CardFlag.ContentWarning` and oracle `content_warning` in ETL (Spec 170, Issue #224).
 - 2026-03-03: Spec 047 adds printing-domain `is:` keywords for Scryfall `promo_types` (51 values: `rainbowfoil`, `poster`, `alchemy`, `rebalanced`, etc.). `is:universesbeyond`/`is:ub` become dual-domain: printing domain when printings loaded, face-domain fallback when not.
 - 2026-03-04: Added layout keywords for Issue #80: `is:token`, `is:double_faced_token`, `is:dfctoken`, `is:art_series`, `is:emblem`, `is:planar`, `is:scheme`, `is:vanguard`. These match cards indexed after ETL-level layout filtering was removed.
 - 2026-02-25: Spec 040 extended coverage with 14 additional land cycle keywords

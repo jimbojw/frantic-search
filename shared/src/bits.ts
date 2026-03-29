@@ -139,6 +139,7 @@ export const CardFlag = {
   UniversesBeyond: 1 << 2,
   GameChanger: 1 << 3,
   MeldResult: 1 << 4,
+  ContentWarning: 1 << 5,
 } as const;
 
 // --- Rarity (bitmask, 6 bits: common through mythic + special + bonus) ---

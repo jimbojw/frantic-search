@@ -281,7 +281,7 @@ export const IS_KEYWORDS = [
     "token", "double_faced_token", "dfctoken", "art_series", "emblem",
     "planar", "scheme", "vanguard", "transform", "modal", "mdfc", "dfc", "meld",
     "vanilla", "frenchvanilla", "commander", "brawler", "companion", "partner",
-    "bear", "reserved", "funny", "gamechanger", "gc", "hybrid", "phyrexian",
+    "bear", "reserved", "funny", "gamechanger", "gc", "content_warning", "hybrid", "phyrexian",
   ]),
 ];
 
@@ -466,6 +466,11 @@ export function evalIsKeyword(
     case "gc":
       for (let i = 0; i < n; i++) {
         if ((index.flags[i] & CardFlag.GameChanger) !== 0) buf[cf[i]] = 1;
+      }
+      break;
+    case "content_warning":
+      for (let i = 0; i < n; i++) {
+        if ((index.flags[i] & CardFlag.ContentWarning) !== 0) buf[cf[i]] = 1;
       }
       break;
     case "hybrid":
