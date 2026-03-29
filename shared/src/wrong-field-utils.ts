@@ -240,3 +240,91 @@ export function getArtistAtagAlternative(
     docRef: 'reference/fields/face/artist',
   }
 }
+
+// ---------------------------------------------------------------------------
+// Spec 153: is:/not: + unknown keyword → kw: / t: (parity with Spec 154 value sets)
+// ---------------------------------------------------------------------------
+
+const KW_EXPLAIN = 'Use kw: for keyword abilities.'
+const KW_DOC = 'reference/fields/face/kw'
+const T_EXPLAIN = 'Use t: for type line.'
+const T_DOC = 'reference/fields/face/type'
+
+/** Substring match for evaluator `unknown keyword "…"` on is:/not:. */
+export function isUnknownKeywordIsNotError(error?: string): boolean {
+  return !!error && error.includes('unknown keyword')
+}
+
+/**
+ * Parse `is:value` or `not:value` from a breakdown label (no leading `-`).
+ * Only field tokens `is` and `not` are accepted.
+ */
+export function parseIsNotInnerLabel(innerLabel: string): { field: 'is' | 'not'; value: string } | null {
+  const opIdx = innerLabel.indexOf(':')
+  if (opIdx <= 0) return null
+  const field = innerLabel.slice(0, opIdx).toLowerCase()
+  if (field !== 'is' && field !== 'not') return null
+  const value = innerLabel.slice(opIdx + 1)
+  if (!value) return null
+  return { field: field as 'is' | 'not', value }
+}
+
+/**
+ * Build replacement clause for kw: or t: given is/not semantics and outer NOT.
+ * See Spec 153 negation table.
+ */
+export function buildIsNotKwTReplacement(
+  field: 'is' | 'not',
+  outerNot: boolean,
+  kind: 'kw' | 't',
+  rawValue: string,
+): string {
+  const core = `${kind}:${rawValue}`
+  const negations = (field === 'not' ? 1 : 0) + (outerNot ? 1 : 0)
+  return negations % 2 === 1 ? `-${core}` : core
+}
+
+export type IsNotKeywordWrongFieldContext = {
+  keywordLowerSet?: Set<string>
+  typeLineWords?: Set<string>
+}
+
+export type IsNotKwTWrongFieldAlternative = {
+  label: string
+  explain: string
+  docRef: string
+  /** When false, emit the chip even if evaluateAlternative returns 0 cards. */
+  requirePositiveCount: boolean
+}
+
+/**
+ * Ordered kw: then t: alternatives when value is not a color literal and matches
+ * keyword / type-line sets (same idea as bare-term-upgrade-utils).
+ */
+export function getIsNotKeywordWrongFieldAlternatives(
+  field: 'is' | 'not',
+  outerNot: boolean,
+  rawValue: string,
+  ctx: IsNotKeywordWrongFieldContext,
+): IsNotKwTWrongFieldAlternative[] {
+  if (!rawValue || isKnownColorValue(rawValue)) return []
+  const lower = rawValue.toLowerCase()
+  const out: IsNotKwTWrongFieldAlternative[] = []
+  if (ctx.keywordLowerSet?.has(lower)) {
+    out.push({
+      label: buildIsNotKwTReplacement(field, outerNot, 'kw', rawValue),
+      explain: KW_EXPLAIN,
+      docRef: KW_DOC,
+      requirePositiveCount: false,
+    })
+  }
+  if (ctx.typeLineWords?.has(lower)) {
+    out.push({
+      label: buildIsNotKwTReplacement(field, outerNot, 't', rawValue),
+      explain: T_EXPLAIN,
+      docRef: T_DOC,
+      requirePositiveCount: true,
+    })
+  }
+  return out
+}

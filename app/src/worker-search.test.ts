@@ -993,6 +993,99 @@ describe('wrong-field suggestions (Spec 153)', () => {
     expect(labels).toContain('f:commander')
     expect(labels).toContain('is:commander')
   })
+
+  it('is:instant suggests t:instant when replacement matches cards', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:instant' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    const tChip = wf.find((s) => s.label === 't:instant')
+    expect(tChip).toBeDefined()
+    expect(tChip!.count).toBeGreaterThan(0)
+    expect(tChip!.query?.replace(/\s+/g, ' ').trim()).toBe('t:instant')
+  })
+
+  it('is:flying suggests kw:flying pedagogically even when count is zero', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:flying' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+      keywordLabels: ['flying'],
+    })
+    expect(result.indices.length).toBe(0)
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    const kw = wf.find((s) => s.label === 'kw:flying')
+    expect(kw).toBeDefined()
+    expect(kw!.query?.replace(/\s+/g, ' ').trim()).toBe('kw:flying')
+    expect(kw!.count).toBeUndefined()
+  })
+
+  it('is:white does not emit kw:/t: wrong-field chips (color excluded)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:white' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    expect(wf.some((s) => s.label.startsWith('kw:'))).toBe(false)
+    expect(wf.some((s) => s.label.startsWith('t:'))).toBe(false)
+    expect(wf.some((s) => s.label === 'ci:w')).toBe(true)
+  })
+
+  it('not:creature suggests -t:creature when count > 0', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'not:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    const chip = wf.find((s) => s.label === '-t:creature')
+    expect(chip).toBeDefined()
+    expect(chip!.count).toBeGreaterThan(0)
+  })
+
+  it('-not:creature suggests t:creature when count > 0', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: '-not:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    const chip = wf.find((s) => s.label === 't:creature')
+    expect(chip).toBeDefined()
+    expect(chip!.count).toBeGreaterThan(0)
+  })
+
+  it('lightning is:instant yields results and wrong-field t:instant rider-style chip', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'lightning is:instant' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBeGreaterThan(0)
+    const wf = result.suggestions.filter((s) => s.id === 'wrong-field')
+    const tChip = wf.find((s) => s.label === 't:instant')
+    expect(tChip).toBeDefined()
+    expect(tChip!.query).toContain('t:instant')
+    expect(tChip!.query).toContain('lightning')
+  })
 })
 
 describe('nonexistent-field suggestions (Spec 158)', () => {

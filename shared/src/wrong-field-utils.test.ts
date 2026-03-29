@@ -11,6 +11,10 @@ import {
   COLOR_EQUALS_RELAX_FIELDS,
   IDENTITY_EQUALS_RELAX_FIELDS,
   getOperatorRelaxAlternatives,
+  isUnknownKeywordIsNotError,
+  parseIsNotInnerLabel,
+  buildIsNotKwTReplacement,
+  getIsNotKeywordWrongFieldAlternatives,
 } from './wrong-field-utils'
 
 describe('isKnownColorValue', () => {
@@ -254,5 +258,50 @@ describe('ARTIST_TRIGGER_FIELDS and ATAG_TRIGGER_FIELDS', () => {
   test('atag trigger includes atag and art', () => {
     expect(ATAG_TRIGGER_FIELDS).toContain('atag')
     expect(ATAG_TRIGGER_FIELDS).toContain('art')
+  })
+})
+
+describe('is:/not: unknown keyword wrong-field helpers (Spec 153)', () => {
+  test('isUnknownKeywordIsNotError', () => {
+    expect(isUnknownKeywordIsNotError('unknown keyword "foo"')).toBe(true)
+    expect(isUnknownKeywordIsNotError('unsupported keyword "foo"')).toBe(false)
+    expect(isUnknownKeywordIsNotError(undefined)).toBe(false)
+  })
+
+  test('parseIsNotInnerLabel', () => {
+    expect(parseIsNotInnerLabel('is:instant')).toEqual({ field: 'is', value: 'instant' })
+    expect(parseIsNotInnerLabel('not:creature')).toEqual({ field: 'not', value: 'creature' })
+    expect(parseIsNotInnerLabel('t:creature')).toBe(null)
+    expect(parseIsNotInnerLabel('is:')).toBe(null)
+  })
+
+  test('buildIsNotKwTReplacement negation table', () => {
+    expect(buildIsNotKwTReplacement('is', false, 'kw', 'fly')).toBe('kw:fly')
+    expect(buildIsNotKwTReplacement('is', true, 'kw', 'fly')).toBe('-kw:fly')
+    expect(buildIsNotKwTReplacement('not', false, 'kw', 'fly')).toBe('-kw:fly')
+    expect(buildIsNotKwTReplacement('not', true, 'kw', 'fly')).toBe('kw:fly')
+    expect(buildIsNotKwTReplacement('is', false, 't', 'instant')).toBe('t:instant')
+    expect(buildIsNotKwTReplacement('not', false, 't', 'instant')).toBe('-t:instant')
+  })
+
+  test('getIsNotKeywordWrongFieldAlternatives skips color values', () => {
+    const ctx = {
+      keywordLowerSet: new Set(['flying']),
+      typeLineWords: new Set(['creature']),
+    }
+    expect(getIsNotKeywordWrongFieldAlternatives('is', false, 'white', ctx)).toEqual([])
+  })
+
+  test('getIsNotKeywordWrongFieldAlternatives kw before t', () => {
+    const ctx = {
+      keywordLowerSet: new Set(['flying']),
+      typeLineWords: new Set(['flying']),
+    }
+    const alts = getIsNotKeywordWrongFieldAlternatives('is', false, 'Flying', ctx)
+    expect(alts).toHaveLength(2)
+    expect(alts[0]!.label).toBe('kw:Flying')
+    expect(alts[0]!.requirePositiveCount).toBe(false)
+    expect(alts[1]!.label).toBe('t:Flying')
+    expect(alts[1]!.requirePositiveCount).toBe(true)
   })
 })

@@ -23,7 +23,13 @@ const EMPTY_STATE_IDS = [
   'example-query',
 ] as const
 
-const RIDER_ORDER: Suggestion['id'][] = ['empty-list', 'nonexistent-field', 'unique-prints', 'include-extras']
+const RIDER_ORDER: Suggestion['id'][] = [
+  'empty-list',
+  'nonexistent-field',
+  'wrong-field',
+  'unique-prints',
+  'include-extras',
+]
 
 /** Outline on sky panel: neutral chips read as distinct controls. */
 const NEUTRAL_SUGGESTION_CHIP =

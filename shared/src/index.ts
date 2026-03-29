@@ -101,8 +101,19 @@ export {
   COLOR_EQUALS_RELAX_FIELDS,
   IDENTITY_EQUALS_RELAX_FIELDS,
   getOperatorRelaxAlternatives,
+  isUnknownKeywordIsNotError,
+  parseIsNotInnerLabel,
+  buildIsNotKwTReplacement,
+  getIsNotKeywordWrongFieldAlternatives,
 } from "./wrong-field-utils";
-export type { ColorAlternative, FormatOrIsAlternative, ArtistAtagAlternative, OperatorRelaxAlternative } from "./wrong-field-utils";
+export type {
+  ColorAlternative,
+  FormatOrIsAlternative,
+  ArtistAtagAlternative,
+  OperatorRelaxAlternative,
+  IsNotKeywordWrongFieldContext,
+  IsNotKwTWrongFieldAlternative,
+} from "./wrong-field-utils";
 export {
   getBareTermAlternatives,
   getBareTagPrefixAlternatives,

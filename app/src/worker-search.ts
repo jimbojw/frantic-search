@@ -338,6 +338,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     hasLive,
     effectiveQuery,
     effectiveBd,
+    evalEffectiveBreakdown: effectiveBreakdown,
     liveBd,
     totalCards,
     pinnedIndicesCount,

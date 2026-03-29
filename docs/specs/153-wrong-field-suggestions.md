@@ -22,17 +22,19 @@ In each case, the value is valid for color-related fields (`ci:`, `c:`, `produce
 
 ### Pattern
 
-1. **Trigger:** Main query returns zero results.
-2. **Detection:** Walk the `BreakdownNode` tree from `parseBreakdown(effectiveQuery)` for offending terms. Positive terms: `type === 'FIELD'` nodes. Negated terms: `type === 'NOT'` nodes whose `label` matches the trigger pattern (e.g. `-is:white`). For each, check that the field is in the trigger set and the value matches a "right-value" pattern.
+1. **Trigger:** Either (a) the main query returns **zero** results, or (b) the **evaluated** effective breakdown (same query as the live search, with per-node `error` from the worker evaluator) contains an `is:` or `not:` leaf whose `error` text includes **`unknown keyword`**. Case (b) covers invalid `is:`/`not:` values that the engine **drops** from AND combination while still returning matches from other clauses (or, for a single invalid `is:` term alone, zero matches with a flagged error on that leaf).
+2. **Detection:** Walk the **evaluated** `BreakdownNode` tree (from `toBreakdown(evaluate(effectiveQuery))`) for offending terms. Positive terms: `type === 'FIELD'` nodes. Negated terms: `type === 'NOT'` leaf nodes whose `label` is `-field:value`. For each domain, check the field trigger set and value / error rules below. Spans for `spliceQuery` come from these nodes (same offsets as the effective query string).
 3. **Alternatives:** Build replacement terms by swapping the field while preserving the value (normalized as needed).
-4. **Filter:** Evaluate each alternative; only suggest alternatives that return at least one result.
-5. **Output:** One `Suggestion` per alternative that returns results. Tapping replaces the offending term via `spliceQuery`.
+4. **Filter:** For most domains, evaluate each alternative and only suggest when `count > 0`. The **keyword / type-line in `is:`/`not:`** domain (below) uses a **pedagogical** rule for `kw:`: emit the chip even when the replacement query returns zero results; for `t:`, still require `count > 0`.
+5. **Output:** One `Suggestion` per qualifying alternative. Tapping replaces the offending term via `spliceQuery`.
+
+**Pinned dead-state:** When a pinned segment exists but matches zero cards (`hasPinned && pinnedIndicesCount === 0`), skip the entire wrong-field block (unchanged).
 
 ### Suggestion model
 
 All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a single chip: label = the new term (e.g. `ci:w`), query = full query with that term spliced in, explain = teaching copy.
 
-- **Placement:** Empty state only (below Results Summary Bar, alongside oracle, include-extras, etc.).
+- **Placement:** Primarily below the Results Summary Bar in the **empty** state. When the trigger is **unknown `is:`/`not:`** while other clauses still match cards, the same chips may appear as a **rider** below the bar (Spec 151 / `SuggestionList`) so users still see the fix.
 - **Priority:** 22 (between oracle 20 and unique-prints 30).
 - **Variant:** `rewrite`.
 - **Negation:** Preserved. `-is:white` → suggest `-ci:w`, `-c:w`, `-produces:w` (only those that return results).
@@ -91,6 +93,33 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 **Domain separation:** Color domain uses trigger fields `is:`, `in:`, `type:` + color values. Format/is domain uses `type:`, `in:` + format or is: values. A value cannot match both (e.g. `commander` is not a color; `white` is not a format). The worker runs both domains in sequence.
 
+### Domain: Keyword / type-line values in `is:` or `not:`
+
+**Trigger fields:** Only the literal field tokens **`is`** and **`not`** (no aliases — these are the only `FIELD_ALIASES` keys for those canonicals).
+
+**Error predicate:** The node's `error` (FIELD node, or NOT leaf propagating the child's error) must contain the substring **`unknown keyword`** as produced by the evaluator for invalid `is:`/`not:` values. Do **not** trigger on `unsupported keyword` or `printing data not loaded`.
+
+**Value overlap:** If the value is a **known color value** (`isKnownColorValue`, same as the color domain), **skip** `kw:` and `t:` suggestions for that term — the color subdomain already teaches `ci:`/`c:`/`produces:`.
+
+**Keyword path (`kw:`):** `value.toLowerCase()` must appear in the same **keyword label set** as Spec 154 (worker `keywordLabels` / keyword index keys). **Always** emit the chip when it matches (even if `evaluateAlternative` returns `cardCount === 0`). Optionally attach counts when &gt; 0.
+
+**Type path (`t:`):** `value.toLowerCase()` must appear in **`CardIndex.typeLineWords`** (same construction as Spec 154). Emit only when the replacement query returns **`cardCount > 0`**.
+
+**Order:** When both apply, suggest **`kw:`** before **`t:`**.
+
+**Explain / docRef:** Same as Spec 154 for `kw:` and `t:` (`bare-term-upgrade-utils` copy).
+
+**Replacement strings** (splice at the FIELD span, or the NOT leaf span for negated `is:`/`not:`):
+
+| Offending node | Example label | Replacement examples |
+|----------------|---------------|----------------------|
+| FIELD | `is:fly` | `kw:fly`, `t:fly` |
+| NOT | `-is:fly` | `-kw:fly`, `-t:fly` |
+| FIELD | `not:fly` | `-kw:fly`, `-t:fly` |
+| NOT | `-not:fly` | `kw:fly`, `t:fly` |
+
+**Parity with Spec 154:** Value recognition for keywords and type-line words uses the **same** sets as bare-term-upgrade; this domain only differs by operating on FIELD/NOT nodes and the `is:`/`not:` + unknown-keyword error trigger.
+
 ### Domain: Artist / atag reflexive
 
 **Trigger fields:** `a:`, `artist:` and `atag:`, `art:` (all aliases via `FIELD_ALIASES`).
@@ -135,6 +164,10 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 | atag:frazier | atag:frazier | a:frazier (if frazier matches artist) |
 | sol ring atag:frazier | atag:frazier | a:frazier |
 | -atag:frazier | -atag:frazier | -a:frazier (if a:frazier returns > 0) |
+| is:instant | is:instant | t:instant (if count > 0); kw: not shown unless in keyword set |
+| is:flying | is:flying | kw:flying (always if flying ∈ keyword index); t: if applicable |
+| not:creature | not:creature | -t:creature (if count > 0) |
+| -not:creature | -not:creature | t:creature (if count > 0) |
 
 ### Multiple offending terms
 
@@ -143,11 +176,13 @@ When the query has multiple terms that match the pattern (e.g. `is:white type:az
 ### Worker integration
 
 - In `runSearch`, after building empty-list, include-extras, unique-prints, oracle suggestions and before the final sort.
-- When `totalCards === 0`, walk `effectiveBd` (from `parseBreakdown(effectiveQuery)`) for offending terms: FIELD nodes and NOT nodes whose child is a FIELD.
+- **Gate:** Run the wrong-field block when **`totalCards === 0`** **or** the evaluated effective breakdown contains at least one **`is:`/`not:`** leaf with **`unknown keyword`** in `error`, and **`!(hasPinned && pinnedIndicesCount === 0)`**.
+- Walk the **evaluated** effective breakdown (with errors and match counts) for the **is/not + unknown keyword** subdomain; for color, format/is, stray-comma, relaxed, and artist-atag, the same walk uses the same tree so spans stay aligned with evaluation (structure matches `parse(effectiveQuery)`).
 - **Color domain:** If field ∈ color trigger set and value is a known color value, build ci:/c:/produces: alternatives.
 - **Format/is domain:** If field ∈ format-is trigger set and value is format or is: keyword, build f:/is: alternatives.
+- **Keyword/type in is/not:** As above; dedupe suggestion `query` strings against chips already emitted in the pass.
 - **Artist/atag domain:** If field ∈ artist trigger set, try atag:{value}; if field ∈ atag trigger set, try a:{value}. No value predicate — evaluation decides.
-- For each alternative: evaluate the query with the term replaced; if count > 0, push a Suggestion.
+- For each alternative: evaluate the query with the term replaced when a positive count is required; if count > 0, push a Suggestion (except `kw:` in the is/not domain, which may emit with zero count).
 - Use `spliceQuery(effectiveQuery, node.span, newTerm)` — the node's span is in effective-query coordinates. The suggestion's `query` is the full effective query with that replacement.
 
 ### Suggestion type extension
@@ -161,7 +196,9 @@ Add `'wrong-field'` to the `Suggestion.id` union in `shared/src/suggestion-types
 | `shared/src/suggestion-types.ts` | Add `'wrong-field'` to Suggestion.id union |
 | `app/src/worker-suggestions.ts` | Add wrong-field detection and suggestion building in `buildSuggestions` when totalCards === 0; call spliceQuery for each alternative; add artist-atag domain loop; uses `evaluateAlternative` |
 | `app/src/worker-alternative-eval.ts` | `evaluateAlternative` — evaluate alt query, apply playable filter, return counts (shared by oracle and wrong-field) |
-| `shared/src/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain); add `ARTIST_TRIGGER_FIELDS`, `ATAG_TRIGGER_FIELDS` for artist-atag |
+| `shared/src/wrong-field-utils.ts` | Add `isKnownColorValue`, `getColorAlternatives` (color domain); add `isFormatOrIsValue`, `getFormatOrIsAlternatives` (format/is domain); add `ARTIST_TRIGGER_FIELDS`, `ATAG_TRIGGER_FIELDS` for artist-atag; add is/not + kw/t helpers (unknown-keyword subdomain) |
+| `app/src/worker-search.ts` | Pass evaluated `effectiveBreakdown` into `buildSuggestions` for wrong-field walks |
+| `app/src/SuggestionList.tsx` / `SearchResults.tsx` | Show `wrong-field` in rider when suggestions include it (unknown is/not with non-empty results) |
 | `app/src/SuggestionList.tsx` | Add `'wrong-field'` to EMPTY_STATE_IDS; artist-atag already in EMPTY_STATE_IDS; both use `suggestion.explain` |
 | `docs/specs/151-suggestion-system.md` | Add wrong-field to placement/priority table; add "Unified by Spec 153" note for this trigger |
 
@@ -190,7 +227,7 @@ Each would be a new section in this spec (or a separate spec if complex). Artist
 3. Tapping a chip applies the full query with the offending term replaced.
 4. `-is:white` suggests -ci:w, -c:w, -produces:w (negation preserved).
 5. `t:creature is:white` suggests for is:white only; tapping ci:w produces `t:creature ci:w`.
-6. Wrong-field suggestions do not appear when totalCards > 0 (empty state only).
+6. Wrong-field suggestions appear when `totalCards === 0`, or when the evaluated breakdown has an `is:`/`not:` **unknown keyword** error (including rider placement when other clauses still match cards).
 7. Wrong-field suggestions appear below the Results Summary Bar alongside oracle and include-extras.
 8. Each chip shows explain text and "Learn more" link when docRef is set.
 9. Works in single-pane and Dual Wield layouts.
@@ -202,3 +239,8 @@ Each would be a new section in this spec (or a separate spec if complex). Artist
 15. `sol ring atag:frazier` with zero results suggests a:frazier; tapping applies `sol ring a:frazier`.
 16. Negation preserved: `-atag:frazier` suggests `-a:frazier` when that returns > 0.
 17. Artist-atag suggestions use id `artist-atag`, priority 25, and docRef for Learn more link.
+18. `is:instant` suggests `t:instant` when that replacement returns &gt; 0 (and does not suggest `kw:` unless `instant` is in the keyword index).
+19. `is:flying` suggests `kw:flying` when `flying` is in the keyword index, even when the replacement returns 0 cards.
+20. `is:white` does not emit `kw:`/`t:` wrong-field chips (color value excluded); color chips still apply when the wrong-field gate is open.
+21. `not:creature` suggests `-t:creature` when count &gt; 0; `-not:creature` suggests `t:creature` when count &gt; 0.
+22. Duplicate `query` strings in the same suggestion pass are not emitted twice.

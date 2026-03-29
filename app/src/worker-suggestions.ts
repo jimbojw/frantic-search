@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ASTNode, BreakdownNode, CardIndex, PrintingIndex, NodeCache, Suggestion } from '@frantic-search/shared'
 import {
+  parse,
+  FIELD_ALIASES,
   getBareNodes,
   getTrailingBareNodes,
   getBareTermAlternatives,
@@ -21,6 +23,9 @@ import {
   getOperatorRelaxAlternatives,
   buildStrayCommaCleanup,
   collectNonexistentFieldRewrites,
+  isUnknownKeywordIsNotError,
+  parseIsNotInnerLabel,
+  getIsNotKeywordWrongFieldAlternatives,
 } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import {
@@ -47,6 +52,86 @@ function isTagBareTermLabel(label: string): boolean {
   return lower.startsWith('otag:') || lower.startsWith('atag:')
 }
 
+/** Spec 153: evaluated breakdown carries `unknown keyword` on is:/not: leaves. */
+function breakdownHasUnknownIsNotKeyword(bd: BreakdownNode | null): boolean {
+  if (!bd) return false
+  let found = false
+  function walk(n: BreakdownNode) {
+    if (found) return
+    if (
+      (n.type === 'FIELD' || (n.type === 'NOT' && !n.children)) &&
+      isUnknownKeywordIsNotError(n.error)
+    ) {
+      const inner = n.type === 'NOT' && n.label.startsWith('-') ? n.label.slice(1) : n.label
+      const parsed = parseIsNotInnerLabel(inner)
+      if (parsed) found = true
+    }
+    if (n.children) for (const c of n.children) walk(c)
+  }
+  walk(bd)
+  return found
+}
+
+function collectIsNotUnknownKeywordNodes(bd: BreakdownNode): BreakdownNode[] {
+  const out: BreakdownNode[] = []
+  function walk(n: BreakdownNode) {
+    if (
+      (n.type === 'FIELD' || (n.type === 'NOT' && !n.children)) &&
+      isUnknownKeywordIsNotError(n.error)
+    ) {
+      const inner = n.type === 'NOT' && n.label.startsWith('-') ? n.label.slice(1) : n.label
+      if (parseIsNotInnerLabel(inner)) out.push(n)
+    }
+    if (n.children) for (const c of n.children) walk(c)
+  }
+  walk(bd)
+  return out
+}
+
+/**
+ * Evaluator breakdown spans for FIELD terms inside AND can be wrong (Issue: overlapping starts).
+ * Use parser spans for is:/not: splice coordinates (Spec 153 kw/t wrong-field).
+ */
+function spanForIsNotWrongFieldQuery(
+  query: string,
+  outerNot: boolean,
+  canonicalField: 'is' | 'not',
+  rawValue: string,
+): { start: number; end: number } | undefined {
+  const trimmed = query.trim()
+  if (!trimmed) return undefined
+  const ast = parse(trimmed)
+
+  function matchesField(n: ASTNode): n is ASTNode & { type: 'FIELD'; span: { start: number; end: number } } {
+    if (n.type !== 'FIELD' || !n.span) return false
+    const cf = FIELD_ALIASES[n.field.toLowerCase()]
+    if (cf !== 'is' && cf !== 'not') return false
+    return n.operator === ':' && n.value === rawValue && cf === canonicalField
+  }
+
+  function walk(n: ASTNode): { start: number; end: number } | undefined {
+    if (n.type === 'NOT' && n.child) {
+      if (outerNot && n.span && matchesField(n.child)) {
+        return n.span
+      }
+      const inner = walk(n.child)
+      if (inner) return inner
+    }
+    if (!outerNot && matchesField(n)) {
+      return n.span
+    }
+    if (n.type === 'AND' || n.type === 'OR') {
+      for (const c of n.children) {
+        const s = walk(c)
+        if (s) return s
+      }
+    }
+    return undefined
+  }
+
+  return walk(ast)
+}
+
 export type BuildSuggestionsParams = {
   msg: { query: string; pinnedQuery?: string; viewMode?: 'slim' | 'detail' | 'images' | 'full' }
   ast: ASTNode
@@ -57,6 +142,8 @@ export type BuildSuggestionsParams = {
   hasLive: boolean
   effectiveQuery: string
   effectiveBd: BreakdownNode | null
+  /** Evaluated effective query breakdown (per-node errors, match counts). Spec 153 wrong-field walks this tree. */
+  evalEffectiveBreakdown: BreakdownNode
   /** Live query breakdown; may be null for empty or invalid query. */
   liveBd: BreakdownNode | null
   totalCards: number
@@ -92,6 +179,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     hasLive,
     effectiveQuery,
     effectiveBd,
+    evalEffectiveBreakdown,
     liveBd,
     totalCards,
     pinnedIndicesCount,
@@ -466,14 +554,17 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     suggestions.push(oracleSuggestion)
   }
 
-  // Spec 153: Wrong-field suggestions — color, format/is, artist-atag domains
-  if (
-    totalCards === 0 &&
-    effectiveBd &&
+  // Spec 153: Wrong-field suggestions — color, format/is, is/not→kw/t, artist-atag domains
+  const openWrongField =
+    (totalCards === 0 || breakdownHasUnknownIsNotKeyword(evalEffectiveBreakdown)) &&
     !(hasPinned && pinnedIndicesCount === 0)
-  ) {
+
+  if (openWrongField) {
+    const suggestionBd = evalEffectiveBreakdown
+    const wrongFieldEmittedQueries = new Set<string>()
+
     // Color value in is:/in:/type: → suggest ci:/c:/produces:
-    const offendingNodes = collectFieldNodes(effectiveBd, COLOR_TRIGGER_FIELDS, ':', {
+    const offendingNodes = collectFieldNodes(suggestionBd, COLOR_TRIGGER_FIELDS, ':', {
       valuePredicate: isKnownColorValue,
     })
     for (const node of offendingNodes) {
@@ -491,7 +582,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           includeExtras,
           viewMode,
         })
-        if (cardCount > 0) {
+        if (cardCount > 0 && !wrongFieldEmittedQueries.has(altQuery)) {
+          wrongFieldEmittedQueries.add(altQuery)
           suggestions.push({
             id: 'wrong-field',
             query: altQuery,
@@ -508,7 +600,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     }
 
     // Format/is value in type:/in: → suggest f:/is:
-    const formatIsNodes = collectFieldNodes(effectiveBd, FORMAT_IS_TRIGGER_FIELDS, ':', {
+    const formatIsNodes = collectFieldNodes(suggestionBd, FORMAT_IS_TRIGGER_FIELDS, ':', {
       valuePredicate: isFormatOrIsValue,
     })
     for (const node of formatIsNodes) {
@@ -526,7 +618,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           includeExtras,
           viewMode,
         })
-        if (cardCount > 0) {
+        if (cardCount > 0 && !wrongFieldEmittedQueries.has(altQuery)) {
+          wrongFieldEmittedQueries.add(altQuery)
           suggestions.push({
             id: 'wrong-field',
             query: altQuery,
@@ -539,6 +632,54 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
             variant: 'rewrite',
           })
         }
+      }
+    }
+
+    // is:/not: + unknown keyword → kw:/t: (Spec 153 / parity with Spec 154 value sets)
+    const keywordLowerSet = keywordLabels?.length
+      ? new Set(keywordLabels.map((l) => l.toLowerCase()))
+      : undefined
+    const isNotCtx = { keywordLowerSet, typeLineWords: index.typeLineWords }
+    for (const node of collectIsNotUnknownKeywordNodes(suggestionBd)) {
+      if (!node.span) continue
+      const outerNot = node.type === 'NOT'
+      const inner = outerNot && node.label.startsWith('-') ? node.label.slice(1) : node.label
+      const parsed = parseIsNotInnerLabel(inner)
+      if (!parsed) continue
+      const alts = getIsNotKeywordWrongFieldAlternatives(
+        parsed.field,
+        outerNot,
+        parsed.value,
+        isNotCtx,
+      )
+      for (const alt of alts) {
+        const replacementTerm = alt.label
+        const span =
+          spanForIsNotWrongFieldQuery(effectiveQuery, outerNot, parsed.field, parsed.value) ??
+          node.span
+        if (!span) continue
+        const altQuery = spliceQuery(effectiveQuery, span, replacementTerm)
+        if (wrongFieldEmittedQueries.has(altQuery)) continue
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        if (alt.requirePositiveCount && cardCount <= 0) continue
+        wrongFieldEmittedQueries.add(altQuery)
+        suggestions.push({
+          id: 'wrong-field',
+          query: altQuery,
+          label: alt.label,
+          explain: alt.explain,
+          ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
+          docRef: alt.docRef,
+          priority: 22,
+          variant: 'rewrite',
+        })
       }
     }
 
@@ -580,8 +721,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       return isKnownColorValue(v) && !/^\d+$/.test(v)
     }
     const relaxFieldOpts = { positive: true, negated: false, valuePredicate: relaxValuePredicate } as const
-    const colorEqNodes = collectFieldNodes(effectiveBd, COLOR_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
-    const identityEqNodes = collectFieldNodes(effectiveBd, IDENTITY_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
+    const colorEqNodes = collectFieldNodes(suggestionBd, COLOR_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
+    const identityEqNodes = collectFieldNodes(suggestionBd, IDENTITY_EQUALS_RELAX_FIELDS, '=', relaxFieldOpts)
     const relaxedEmitted = new Set<string>()
     for (const node of [...colorEqNodes, ...identityEqNodes]) {
       if (!node.span || node.type !== 'FIELD') continue
@@ -630,8 +771,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     }
 
     // Artist/atag reflexive — a:value ↔ atag:value
-    const artistNodes = collectFieldNodes(effectiveBd, ARTIST_TRIGGER_FIELDS, ':')
-    const atagNodes = collectFieldNodes(effectiveBd, ATAG_TRIGGER_FIELDS, ':')
+    const artistNodes = collectFieldNodes(suggestionBd, ARTIST_TRIGGER_FIELDS, ':')
+    const atagNodes = collectFieldNodes(suggestionBd, ATAG_TRIGGER_FIELDS, ':')
     const artistAtagPairs: Array<{ nodes: BreakdownNode[]; fromField: 'artist' | 'atag' }> = [
       { nodes: artistNodes, fromField: 'artist' },
       { nodes: atagNodes, fromField: 'atag' },

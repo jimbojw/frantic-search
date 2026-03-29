@@ -899,7 +899,10 @@ export default function SearchResults() {
           />
           <Show when={
             ctx.suggestions()?.some((s) =>
-              s.id === 'unique-prints' || s.id === 'include-extras' || s.id === 'empty-list'
+              s.id === 'unique-prints' ||
+              s.id === 'include-extras' ||
+              s.id === 'empty-list' ||
+              s.id === 'wrong-field'
             )
           }>
             <SuggestionList
