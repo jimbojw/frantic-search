@@ -71,7 +71,7 @@ export {
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
 export { levenshteinDistance } from "./levenshtein";
 export { normalizeAlphanumeric } from "./normalize";
-export { IS_KEYWORDS } from "./search/eval-is";
+export { IS_KEYWORDS, typeLineIsPermanent } from "./search/eval-is";
 export { parse } from "./search/parser";
 export { escapeMarkdownLinkText, formatMarkdownInlineLink } from "./markdown-link";
 export { formatSlackCardReference } from "./slack-card-reference";
