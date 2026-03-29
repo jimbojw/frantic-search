@@ -32,6 +32,8 @@ describe('useSearchCapture', () => {
       results_count: 12,
       triggered_by: 'user',
       url_snapshot: '/?q=lightning',
+      session_search_index: 0,
+      coalesced_prior_search_count: 0,
     })
   })
 
@@ -42,6 +44,64 @@ describe('useSearchCapture', () => {
     eq = 'b'
     vi.advanceTimersByTime(750)
     expect(captureSearchExecuted).not.toHaveBeenCalled()
+  })
+
+  it('attributes coherence drop to coalesced_prior_search_count on next emit', () => {
+    let eq = 'a'
+    const { scheduleSearchCapture } = useSearchCapture(() => eq)
+    scheduleSearchCapture('a', false, 1, 'user', '/a')
+    vi.advanceTimersByTime(749)
+    eq = 'b'
+    vi.advanceTimersByTime(1)
+    expect(captureSearchExecuted).not.toHaveBeenCalled()
+
+    scheduleSearchCapture('b', false, 2, 'user', '/b')
+    vi.advanceTimersByTime(750)
+    expect(captureSearchExecuted).toHaveBeenCalledTimes(1)
+    expect(captureSearchExecuted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'b',
+        session_search_index: 0,
+        coalesced_prior_search_count: 1,
+      }),
+    )
+  })
+
+  it('increments session_search_index on each emission', () => {
+    let eq = 'x'
+    const { scheduleSearchCapture } = useSearchCapture(() => eq)
+    scheduleSearchCapture('x', false, 1, 'user', '/x')
+    vi.advanceTimersByTime(750)
+    eq = 'y'
+    scheduleSearchCapture('y', false, 2, 'user', '/y')
+    vi.advanceTimersByTime(750)
+    expect(captureSearchExecuted).toHaveBeenCalledTimes(2)
+    expect(captureSearchExecuted).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ session_search_index: 0, coalesced_prior_search_count: 0 }),
+    )
+    expect(captureSearchExecuted).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ session_search_index: 1, coalesced_prior_search_count: 0 }),
+    )
+  })
+
+  it('counts debounce-resets as coalesced on emit', () => {
+    let eq = 'q'
+    const { scheduleSearchCapture } = useSearchCapture(() => eq)
+    scheduleSearchCapture('q', false, 1, 'user', '/1')
+    vi.advanceTimersByTime(400)
+    scheduleSearchCapture('q', false, 2, 'user', '/2')
+    vi.advanceTimersByTime(750)
+    expect(captureSearchExecuted).toHaveBeenCalledTimes(1)
+    expect(captureSearchExecuted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results_count: 2,
+        url_snapshot: '/2',
+        session_search_index: 0,
+        coalesced_prior_search_count: 1,
+      }),
+    )
   })
 
   it('flush sends only when query still matches', () => {
@@ -58,7 +118,11 @@ describe('useSearchCapture', () => {
     expect(captureSearchExecuted).toHaveBeenCalledTimes(1)
     expect(captureSearchExecuted).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ query: 'z' }),
+      expect.objectContaining({
+        query: 'z',
+        session_search_index: 0,
+        coalesced_prior_search_count: 1,
+      }),
     )
   })
 
@@ -73,7 +137,12 @@ describe('useSearchCapture', () => {
     vi.advanceTimersByTime(350)
     expect(captureSearchExecuted).toHaveBeenCalledTimes(1)
     expect(captureSearchExecuted).toHaveBeenCalledWith(
-      expect.objectContaining({ results_count: 2, url_snapshot: '/2' }),
+      expect.objectContaining({
+        results_count: 2,
+        url_snapshot: '/2',
+        session_search_index: 0,
+        coalesced_prior_search_count: 1,
+      }),
     )
   })
 })

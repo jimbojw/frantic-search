@@ -56,6 +56,13 @@ export function captureSearchExecuted(params: {
   triggered_by: 'url' | 'user'
   /** Pathname + search when the result was applied; aligns query/results with URL for analysis (GitHub #184). */
   url_snapshot: string
+  /** 0-based ordinal of this emitted event within the browser tab (Spec 085 §7a). */
+  session_search_index: number
+  /**
+   * Completed left-pane search results not emitted as separate events before this one (debounce coalescing
+   * and coherence-discarded batches; Spec 085 §7a).
+   */
+  coalesced_prior_search_count: number
 }): void {
   captureEvent('search_executed', params)
 }
