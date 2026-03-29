@@ -17,6 +17,7 @@ import { VIEW_MODES } from './view-mode'
 
 const FORMAT_FIELDS = ['f', 'format', 'legal']
 const IS_FIELDS = ['is']
+const TYPE_FIELDS = ['t', 'type']
 const RARITY_FIELDS = ['r', 'rarity']
 const USD_FIELDS = ['usd', '$']
 
@@ -29,6 +30,10 @@ function fmtChip(value: string): ChipDef {
 
 function isChip(value: string): ChipDef {
   return { label: `is:${value}`, field: IS_FIELDS, operator: ':', value, term: `is:${value}` }
+}
+
+function typeChip(value: string): ChipDef {
+  return { label: `t:${value}`, field: TYPE_FIELDS, operator: ':', value, term: `t:${value}` }
 }
 
 function rarityChip(value: string): ChipDef {
@@ -76,7 +81,7 @@ function saltPercentileChip(value: string): PercentileChipDef {
   }
 }
 
-const TERMS_SECTIONS = ['formats', 'color', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
+const TERMS_SECTIONS = ['formats', 'color', 'types', 'layouts', 'roles', 'lands', 'rarities', 'printings', 'prices', 'popularity', 'salt', 'sort'] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
 const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
@@ -84,6 +89,17 @@ type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
   color: [], // Spec 130: rendered by ColorSection
+  types: [ // Spec 167
+    typeChip('legendary'),
+    typeChip('creature'),
+    typeChip('instant'),
+    typeChip('sorcery'),
+    typeChip('artifact'),
+    typeChip('enchantment'),
+    typeChip('planeswalker'),
+    typeChip('land'),
+    isChip('permanent'),
+  ],
   formats: [
     fmtChip('commander'),
     fmtChip('modern'),
@@ -108,7 +124,6 @@ const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
     isChip('companion'),
     isChip('gamechanger'),
     isChip('reserved'),
-    isChip('permanent'),
     isChip('spell'),
   ],
   lands: [
@@ -181,6 +196,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
   views: 'Views',
   formats: 'Formats',
   color: 'Colors',
+  types: 'Types',
   layouts: 'Layouts',
   roles: 'Roles',
   lands: 'Lands',

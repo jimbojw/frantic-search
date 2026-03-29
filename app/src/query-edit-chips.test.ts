@@ -296,6 +296,27 @@ describe('cycleChip — is keywords', () => {
   })
 })
 
+describe('cycleChip — type (t:) keywords', () => {
+  function cycleType(q: string, value: string) {
+    return cycleChip(q, parseBreakdown(q), {
+      field: TYPE_FIELDS,
+      operator: ':',
+      value,
+      term: `t:${value}`,
+    })
+  }
+
+  it('neutral → positive → negative → neutral for t:land', () => {
+    let q = ''
+    q = cycleType(q, 'land')
+    expect(q).toBe('t:land')
+    q = cycleType(q, 'land')
+    expect(q).toBe('-t:land')
+    q = cycleType(q, 'land')
+    expect(q).toBe('')
+  })
+})
+
 describe('cycleChip — multi-chip sequences', () => {
   it('multiple different chips coexist', () => {
     let q = ''
