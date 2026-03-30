@@ -10,6 +10,7 @@ import { parseStatValue } from "./stats";
 import { evalIsKeyword } from "./eval-is";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
+import { isEquatableNullLiteral } from "./null-query-literal";
 import { normalizeAlphanumeric } from "../normalize";
 
 export const FIELD_ALIASES: Record<string, string> = {
@@ -203,18 +204,18 @@ export function evalLeafField(
       break;
     }
     case "edhrec": {
-      if (valLower === "null") {
-        switch (op) {
-          case ":": case "=":
-            for (let i = 0; i < n; i++) if (index.edhrecRank[i] === null) buf[cf[i]] = 1;
-            break;
-          case "!=":
-            for (let i = 0; i < n; i++) if (index.edhrecRank[i] !== null) buf[cf[i]] = 1;
-            break;
-          default:
-            return "null cannot be used with comparison operators";
+      if (isEquatableNullLiteral(val)) {
+        if (op === ":" || op === "=") {
+          for (let i = 0; i < n; i++) if (index.edhrecRank[i] === null) buf[cf[i]] = 1;
+          break;
         }
-        break;
+        if (op === "!=") {
+          for (let i = 0; i < n; i++) if (index.edhrecRank[i] !== null) buf[cf[i]] = 1;
+          break;
+        }
+        if (val.trim().toLowerCase() === "null") {
+          return "null cannot be used with comparison operators";
+        }
       }
       const edhrecPercentile = parsePercentile(val);
       if (edhrecPercentile !== null) {
@@ -230,7 +231,9 @@ export function evalLeafField(
       }
       if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       const queryNum = Number(val);
-      if (isNaN(queryNum) || !Number.isInteger(queryNum)) break;
+      if (!Number.isFinite(queryNum) || !Number.isInteger(queryNum)) {
+        return `invalid edhrec rank "${val}"`;
+      }
       const col = index.edhrecRank;
       for (let i = 0; i < n; i++) {
         const r = col[i];
@@ -249,18 +252,18 @@ export function evalLeafField(
       break;
     }
     case "salt": {
-      if (valLower === "null") {
-        switch (op) {
-          case ":": case "=":
-            for (let i = 0; i < n; i++) if (index.edhrecSalt[i] === null) buf[cf[i]] = 1;
-            break;
-          case "!=":
-            for (let i = 0; i < n; i++) if (index.edhrecSalt[i] !== null) buf[cf[i]] = 1;
-            break;
-          default:
-            return "null cannot be used with comparison operators";
+      if (isEquatableNullLiteral(val)) {
+        if (op === ":" || op === "=") {
+          for (let i = 0; i < n; i++) if (index.edhrecSalt[i] === null) buf[cf[i]] = 1;
+          break;
         }
-        break;
+        if (op === "!=") {
+          for (let i = 0; i < n; i++) if (index.edhrecSalt[i] !== null) buf[cf[i]] = 1;
+          break;
+        }
+        if (val.trim().toLowerCase() === "null") {
+          return "null cannot be used with comparison operators";
+        }
       }
       const saltPercentile = parsePercentile(val);
       if (saltPercentile !== null) {
@@ -276,7 +279,9 @@ export function evalLeafField(
       }
       if (PERCENTILE_RE.test(val)) return `invalid percentile "${val.replace(/%$/, "")}"`;
       const queryNum = parseFloat(val);
-      if (isNaN(queryNum)) break;
+      if (!Number.isFinite(queryNum)) {
+        return `invalid salt "${val}"`;
+      }
       const col = index.edhrecSalt;
       for (let i = 0; i < n; i++) {
         const s = col[i];

@@ -28,7 +28,7 @@ For multi-face cards (e.g., Unstable variants), the same name may map to multipl
 ## Domain
 
 - **Face-domain:** EDHREC salt is at the card (oracle) level. All faces of a multi-face card share the same salt score. Same pattern as `edhrec` rank.
-- **Null handling:** Cards without salt are excluded from percentile distribution and results (Spec 095 § "Null handling").
+- **Null handling:** Cards without salt are excluded from percentile distribution and results (Spec 095 § "Null handling"). Query `salt=null` / `!=null` uses Spec 136 patterns. **Spec 172:** Equatable-null prefixes (`n`, `nu`, `nul`) behave like `null` for `=` / `:` / `!=`; other non-numeric, non-percentile values are leaf errors (`invalid salt "…"`).
 - **No percentile inversion:** Higher numeric value = saltier. `salt>90%` yields top 10% saltiest cards. Sort ascending (lowest salt first); the slice logic is identical to `usd` and `date`.
 
 ## Spec Updates

@@ -131,7 +131,9 @@ The key distinction is between **closed-set fields** (format, is) and **open-end
 
    Examples: `ci:cb`, `c:cw`, `ci:cwubrg` → error. `ci:c`, `ci:colorless`, `ci:wu` → not an error.
 
-4. **No errors for other field/value combinations.** String fields (`name`, `oracle`, `type`), other color field values, numeric fields, and `mana` all have open-ended or context-dependent value spaces where zero results is meaningful information. These fields continue to show `0` in amber, not an error indicator.
+4. **No errors for other field/value combinations.** String fields (`name`, `oracle`, `type`), other color field values, most numeric fields, and `mana` have open-ended or context-dependent value spaces where zero results is meaningful information. These fields continue to show `0` in amber, not an error indicator.
+
+   **Exception (Spec 172):** The fields `usd` (and `$`), `edhrec`, and `salt` accept only a **validated** value space: equatable-null / `null` (where supported), percentile literals (`NN%`), or a parseable numeric literal appropriate to the field. Any other value is a **leaf error** (e.g. `invalid price`, `invalid edhrec rank`, `invalid salt`), not a legitimate zero-card match.
 
 #### `evalLeafRegex`
 

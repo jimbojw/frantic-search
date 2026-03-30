@@ -267,6 +267,24 @@ describe("usd field", () => {
     expect(evalField("usd", ">", "null").error).toBe("null cannot be used with comparison operators");
   });
 
+  test("equatable-null prefix matches usd=null for = and != (Spec 172)", () => {
+    const dataWithZero: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      price_usd: [100, 0, 50, 75, 500, 200, 150],
+    };
+    const idx = new PrintingIndex(dataWithZero);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", "=", "n", idx, buf);
+    expect(marked(buf)).toEqual([1]);
+    const bufNu = new Uint8Array(idx.printingCount);
+    evalPrintingField("usd", "!=", "nu", idx, bufNu);
+    expect(marked(bufNu)).toEqual([0, 2, 3, 4, 5, 6]);
+  });
+
+  test("usd>n on comparison op is invalid price not null error (Spec 172)", () => {
+    expect(evalField("usd", ">", "n").error).toBe('invalid price "n"');
+  });
+
   // -- Percentile (Spec 095) -------------------------------------------------
 
   test("usd>90% returns top 10% most expensive (Spec 095)", () => {

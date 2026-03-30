@@ -5,6 +5,7 @@ import { resolveForField, type ResolutionContext } from "./categorical-resolve";
 import { parseDateRange, isCompleteDateLiteral } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
+import { isEquatableNullLiteral } from "./null-query-literal";
 
 const DATE_FIELDS = new Set(["date", "year"]);
 
@@ -109,7 +110,7 @@ function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionC
       if (canonical && PERCENTILE_CAPABLE_FIELDS.has(canonical) && PERCENTILE_RE.test(node.value)) return "";
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
-      if (canonical === "usd" && node.value.toLowerCase() === "null") return "";
+      if (canonical === "usd" && isEquatableNullLiteral(node.value)) return "";
       // Spec 136: pow/tou/loy/def/m=null and !=null have no Scryfall equivalent — strip
       const NULLABLE_FACE_FIELDS = new Set(["power", "toughness", "loyalty", "defense", "mana"]);
       if (canonical && NULLABLE_FACE_FIELDS.has(canonical) && node.value.toLowerCase() === "null") return "";

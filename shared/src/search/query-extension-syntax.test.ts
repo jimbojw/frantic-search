@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { parse } from "./parser";
 import { astUsesFranticExtensionSyntax } from "./query-extension-syntax";
@@ -70,5 +69,11 @@ describe("astUsesFranticExtensionSyntax", () => {
     expect(ext("loy:null")).toBe(true);
     expect(ext("def=null")).toBe(true);
     expect(ext("m=null")).toBe(true);
+  });
+
+  it("is true for equatable-null on usd and edhrec (Spec 172 / 085)", () => {
+    expect(ext("usd=n")).toBe(true);
+    expect(ext("edhrec=n")).toBe(true);
+    expect(ext("edhrec=null")).toBe(true);
   });
 });

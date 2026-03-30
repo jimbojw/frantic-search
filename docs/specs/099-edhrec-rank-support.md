@@ -21,7 +21,7 @@ Scryfall supports `order=edhrec` for sorting ([example](https://scryfall.com/sea
 ## Domain
 
 - **Face-domain:** EDHREC rank is at the card (oracle) level. All faces of a multi-face card share the same rank. Same pattern as `name` percentile.
-- **Null handling:** Cards without rank are excluded from percentile distribution and results (Spec 095 § "Null handling").
+- **Null handling:** Cards without rank are excluded from percentile distribution and results (Spec 095 § "Null handling"). Query values `edhrec=null` / `!=null` use Spec 136. **Spec 172:** Equatable-null prefixes (`n`, `nu`, `nul`) behave like `null` for `=` / `:` / `!=`; other non-numeric, non-percentile values are leaf errors (`invalid edhrec rank "…"`). Rank comparisons require **integer** literals.
 - **Rank inversion:** Lower numeric value = more popular. `edhrec>90%` yields top 10% most popular cards.
 
 ## Spec Updates

@@ -89,6 +89,11 @@ describe("toScryfallQuery", () => {
     expect(canon("usd!=null lightning")).toBe("lightning");
   });
 
+  it("strips equatable-null usd prefixes like Spec 080 null (Spec 172)", () => {
+    expect(canon("usd=n")).toBe("");
+    expect(canon("t:creature usd=nu")).toBe("t:creature");
+  });
+
   it("strips pow/tou/loy/def/m=null and !=null for Scryfall (Spec 136)", () => {
     expect(canon("pow=null")).toBe("");
     expect(canon("pow!=null")).toBe("");

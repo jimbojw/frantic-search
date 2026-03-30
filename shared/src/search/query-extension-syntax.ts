@@ -8,6 +8,7 @@ import { FIELD_ALIASES } from "./eval-leaves";
 import { parseDateRange, isCompleteDateLiteral } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
+import { isEquatableNullLiteral } from "./null-query-literal";
 
 const DATE_CANONICAL = new Set(["date", "year"]);
 
@@ -28,8 +29,10 @@ function fieldUsesFranticExtension(node: FieldNode): boolean {
   }
 
   const valLower = node.value.trim().toLowerCase();
+  if (isEquatableNullLiteral(node.value)) {
+    if (canonical === "usd" || canonical === "edhrec") return true;
+  }
   if (valLower === "null") {
-    if (canonical === "usd") return true;
     if (canonical && NULL_QUERY_VALUE_FACE_FIELDS.has(canonical)) return true;
   }
 

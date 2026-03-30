@@ -5,6 +5,7 @@ import type { FlavorTagData, ArtistIndexData } from "../data";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
+import { isEquatableNullLiteral } from "./null-query-literal";
 
 export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
 
@@ -137,18 +138,18 @@ export function evalPrintingField(
       break;
     }
     case "usd": {
-      if (valLower === "null") {
-        switch (op) {
-          case ":": case "=":
-            for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] === 0) buf[i] = 1;
-            break;
-          case "!=":
-            for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] !== 0) buf[i] = 1;
-            break;
-          default:
-            return "null cannot be used with comparison operators";
+      if (isEquatableNullLiteral(val)) {
+        if (op === ":" || op === "=") {
+          for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] === 0) buf[i] = 1;
+          break;
         }
-        break;
+        if (op === "!=") {
+          for (let i = 0; i < n; i++) if (pIdx.priceUsd[i] !== 0) buf[i] = 1;
+          break;
+        }
+        if (val.trim().toLowerCase() === "null") {
+          return "null cannot be used with comparison operators";
+        }
       }
       const usdPercentile = parsePercentile(val);
       if (usdPercentile !== null) {

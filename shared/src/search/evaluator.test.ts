@@ -5,7 +5,7 @@ import type { ColumnarData } from "../data";
 import { NodeCache, nodeKey } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { index, matchCount, TEST_DATA, saltMatchCount } from "./evaluator.test-fixtures";
+import { index, matchCount, TEST_DATA, saltIndex, saltMatchCount } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Node key uniqueness
@@ -771,6 +771,52 @@ describe("salt (Spec 101)", () => {
   test("saltiness and edhrecsalt aliases work", () => {
     expect(saltMatchCount("saltiness>50")).toBe(saltMatchCount("salt>50"));
     expect(saltMatchCount("edhrecsalt>50")).toBe(saltMatchCount("salt>50"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 172: strict numeric literals + equatable null (usd / edhrec / salt)
+// ---------------------------------------------------------------------------
+
+describe("Spec 172: strict numeric literals + equatable null", () => {
+  test("salt=abc returns error", () => {
+    const cache = new NodeCache(saltIndex);
+    const { result } = cache.evaluate(parse("salt=abc"));
+    expect(result.error).toBe('invalid salt "abc"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("edhrec=abc returns error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("edhrec=abc"));
+    expect(result.error).toBe('invalid edhrec rank "abc"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("edhrec=1.5 returns error", () => {
+    const cache = new NodeCache(index);
+    const { result } = cache.evaluate(parse("edhrec=1.5"));
+    expect(result.error).toBe('invalid edhrec rank "1.5"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("salt=n matches salt=null on salt fixture", () => {
+    expect(saltMatchCount("salt=n")).toBe(saltMatchCount("salt=null"));
+  });
+
+  test("edhrec=nu matches edhrec=null on default index", () => {
+    expect(matchCount("edhrec=nu")).toBe(matchCount("edhrec=null"));
+  });
+
+  test("salt>n with n is invalid salt not null comparison error", () => {
+    const cache = new NodeCache(saltIndex);
+    const { result } = cache.evaluate(parse("salt>n"));
+    expect(result.error).toBe('invalid salt "n"');
+    expect(result.matchCount).toBe(-1);
+  });
+
+  test("-salt=n agrees with -salt=null", () => {
+    expect(saltMatchCount("-salt=n")).toBe(saltMatchCount("-salt=null"));
   });
 });
 

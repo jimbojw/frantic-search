@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search), Spec 147 (Produces Evaluator)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search), Spec 147 (Produces Evaluator), Spec 172 (Strict Numeric Literals)
 
 **Referenced by:** Spec 014 (Syntax Help Overlay), Spec 135 (Reference Docs Restructure)
 
@@ -45,8 +45,8 @@ The Fields table must include every queryable field with canonical name, aliases
 | `kw` | `keyword` | Keyword ability (Scryfall catalog) | `kw:flying` |
 | `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
-| `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; numeric and percentile (`>90%` = top 10% most popular) | `edhrec<100`, `edhrec>90%` |
-| `salt` | `edhrecsalt`, `saltiness` | EDHREC saltiness; numeric and percentile (`>90%` = top 10% saltiest) | `salt>2`, `salt>90%` |
+| `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; integer numeric, percentile, `=null`; invalid text → error (Spec 172) | `edhrec<100`, `edhrec>90%`, `edhrec=n` while typing `null` |
+| `salt` | `edhrecsalt`, `saltiness` | EDHREC saltiness; numeric, percentile, `=null`; invalid text → error (Spec 172) | `salt>2`, `salt>90%`, `salt=n` while typing `null` |
 | `my` | — | Cards in a list | `my:list` |
 
 #### Printing-domain fields
@@ -55,7 +55,7 @@ The Fields table must include every queryable field with canonical name, aliases
 |-------|---------|-------------|---------|
 | `set` | `s`, `e`, `edition` | Set code | `set:mh2` |
 | `rarity` | `r` | Rarity (exact or comparison) | `r:mythic` |
-| `usd` | `$` | Price in USD; `=null` for no price data; percentile (`>90%`) | `usd<5`, `usd=null`, `usd>90%` |
+| `usd` | `$` | Price in USD; `=null` (or `n`/`nu`/`nul` while typing) for no price data; percentile (`>90%`); invalid price text → error (Spec 172) | `usd<5`, `usd=null`, `usd>90%` |
 | `collectornumber` | `cn`, `number` | Collector number | `cn:261` |
 | `frame` | — | Frame version (1993, 1997, 2003, 2015, future) | `frame:2015` |
 | `year` | — | Release year (YYYY or partial) | `year:2021` |

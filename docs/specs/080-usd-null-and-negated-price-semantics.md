@@ -30,7 +30,7 @@ Scryfall does not support negated price queries. A query like `-usd<2000` on Scr
 
 ### `usd=null` / `usd:null`
 
-The value `null` (case-insensitive) is a special sentinel for the `usd` field.
+The value `null` (case-insensitive) is a special sentinel for the `usd` field. **Spec 172:** The same semantics apply to **equatable-null prefixes** — after trim and lowercasing, `n`, `nu`, and `nul` — but **only** for `:`, `=`, and `!=`. Comparison operators treat those prefixes as invalid numeric values, not as `null`.
 
 | Operator | Semantics |
 |----------|-----------|
@@ -55,11 +55,11 @@ When a NOT node wraps a FIELD with canonical `usd` and value is **not** `null`, 
 
 So `-usd>100` = `usd<=100` (excluding nulls), and `-usd>=0.01` = `usd<0.01` (excluding nulls).
 
-When the value **is** `null`, negation uses normal buffer inversion: `-usd=null` matches printings with price data (correct).
+When the value **is** `null` or equatable-null (Spec 172), negation uses normal buffer inversion: `-usd=null` / `-usd=n` matches printings with price data (correct).
 
 ### Canonicalization
 
-When serializing to Scryfall outlinks, `usd=null` and `usd!=null` have no Scryfall equivalent. Strip these terms from the serialized query (emit empty for the node, same as other Frantic Search–only constructs).
+When serializing to Scryfall outlinks, `usd=null`, `usd!=null`, and any **equatable-null** value (Spec 172) have no Scryfall equivalent. Strip these terms from the serialized query (emit empty for the node, same as other Frantic Search–only constructs).
 
 ## Implementation
 

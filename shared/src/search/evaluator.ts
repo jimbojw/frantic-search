@@ -16,6 +16,7 @@ import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
 import { evalKeyword } from "./eval-keywords";
 import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { PERCENTILE_RE } from "./eval-printing";
+import { isEquatableNullLiteral } from "./null-query-literal";
 
 function isPercentileQuery(canonical: string | undefined, value: string): boolean {
   return canonical !== undefined
@@ -865,7 +866,7 @@ export class NodeCache {
           // percentile value → operator inversion (excludes nulls).
           const useOpInversion =
             childField
-            && (canonical === "usd" && childField.value.toLowerCase() !== "null"
+            && (canonical === "usd" && !isEquatableNullLiteral(childField.value)
                 || isPercentileQuery(canonical, childField.value));
           if (useOpInversion && childField) {
             const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
@@ -902,10 +903,15 @@ export class NodeCache {
           const faceCanonical = childField ? FIELD_ALIASES[childField.field.toLowerCase()] : undefined;
           const nameCmpOps = new Set([">", "<", ">=", "<="]);
           const opInversionNullableFace = new Set(["power", "toughness", "loyalty", "defense", "edhrec", "salt"]);
+          const nullStopsFaceOpInversion = childField
+            ? (faceCanonical === "edhrec" || faceCanonical === "salt"
+                ? isEquatableNullLiteral(childField.value)
+                : childField.value.toLowerCase() === "null")
+            : false;
           const isFaceCmpOrPercentile = childField
             && (
               (faceCanonical === "name" && (nameCmpOps.has(childField.operator) || isPercentileQuery(faceCanonical, childField.value)))
-              || (faceCanonical && opInversionNullableFace.has(faceCanonical) && childField.value.toLowerCase() !== "null")
+              || (faceCanonical && opInversionNullableFace.has(faceCanonical) && !nullStopsFaceOpInversion)
             );
           if (isFaceCmpOrPercentile && childField) {
             const invOp: Record<string, string> = { ">": "<=", ">=": "<", "<": ">=", "<=": ">", "=": "!=", ":": "!=", "!=": "=" };
