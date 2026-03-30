@@ -99,6 +99,8 @@ describe("resolveForField", () => {
     it("resolves is keywords", () => {
       expect(resolveForField("is", "per")).toBe("permanent");
       expect(resolveForField("is", "commander")).toBe("commander");
+      expect(resolveForField("is", "alchem")).toBe("alchemy");
+      expect(resolveForField("is", "unse")).toBe("unset");
     });
 
     it("resolves not keywords (same set as is)", () => {

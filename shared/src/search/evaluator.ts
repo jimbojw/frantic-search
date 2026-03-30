@@ -191,6 +191,11 @@ export class NodeCache {
     return Object.keys(ctx).length > 0 ? ctx : undefined;
   }
 
+  /** Spec 103: resolve is:/not: value before routing printing vs face (printing keywords need full form). */
+  private _resolvedIsKeyword(value: string): string {
+    return resolveForField("is", value, this._getResolutionContext()).toLowerCase();
+  }
+
   setPrintingIndex(pIdx: PrintingIndex): void {
     this._printingIndex = pIdx;
     // Invalidate all cached results: printing-domain nodes need new data,
@@ -351,11 +356,12 @@ export class NodeCache {
           if (masks === null) return false;
           return masks.printingIndices !== undefined;
         }
-        if (canonical === "is") {
-          if (!PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase())) return false;
+        if (canonical === "is" || canonical === "not") {
+          const kw = this._resolvedIsKeyword(ast.value);
+          if (!PRINTING_IS_KEYWORDS.has(kw)) return false;
           // Face-fallback is: keywords only count as printing leaves when
           // printing data is available; otherwise they evaluate in face domain.
-          if (FACE_FALLBACK_IS_KEYWORDS.has(ast.value.toLowerCase())) {
+          if (FACE_FALLBACK_IS_KEYWORDS.has(kw)) {
             return this._printingIndex !== null;
           }
           return true;
@@ -394,7 +400,10 @@ export class NodeCache {
     switch (ast.type) {
       case "FIELD": {
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
-        const isPrinting = (canonical === "is" && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase()))
+        const resolvedIsKw = (canonical === "is" || canonical === "not")
+          ? this._resolvedIsKeyword(ast.value)
+          : "";
+        const isPrinting = ((canonical === "is" || canonical === "not") && PRINTING_IS_KEYWORDS.has(resolvedIsKw))
           || (canonical !== undefined && isPrintingField(canonical))
           || (canonical === "my");
         if (isPrinting) {
@@ -591,9 +600,13 @@ export class NodeCache {
 
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
+        const resolvedIsKw = (canonical === "is" || canonical === "not")
+          ? this._resolvedIsKeyword(ast.value)
+          : "";
+
         // Check if this is a printing-domain field or is:/not: keyword
         const isPrintingIs = (canonical === "is" || canonical === "not")
-          && PRINTING_IS_KEYWORDS.has(ast.value.toLowerCase());
+          && PRINTING_IS_KEYWORDS.has(resolvedIsKw);
         const isPrintingDomain = isPrintingIs
           || (canonical !== undefined && isPrintingField(canonical));
 
@@ -609,7 +622,7 @@ export class NodeCache {
               error = null; // silently ignore non-colon operators on is:
             } else {
               const status = evalPrintingIsKeyword(
-                ast.value.toLowerCase(), pIdx, buf, pn,
+                resolvedIsKw, pIdx, buf, pn,
               );
               if (status === "unknown") error = `unknown keyword "${ast.value}"`;
               else if (canonical === "not") {
@@ -664,7 +677,7 @@ export class NodeCache {
           // (universesbeyond/ub) fall through to face-domain evaluation when
           // printing data is not yet loaded.
           const isFaceFallbackField = canonical && FACE_FALLBACK_PRINTING_FIELDS.has(canonical);
-          const isFaceFallbackIs = isPrintingIs && FACE_FALLBACK_IS_KEYWORDS.has(ast.value.toLowerCase());
+          const isFaceFallbackIs = isPrintingIs && FACE_FALLBACK_IS_KEYWORDS.has(resolvedIsKw);
           if (isFaceFallbackField || isFaceFallbackIs) {
             // Fall through to face-domain evaluation below.
           } else {

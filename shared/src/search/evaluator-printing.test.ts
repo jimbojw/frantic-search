@@ -805,6 +805,16 @@ describe("promo types is: keywords", () => {
     expect(cardCount("is:alchemy")).toBe(0);
   });
 
+  test("is:alchem resolves like is:alchemy (Spec 103 printing-domain is:)", () => {
+    expect(cardCount("is:alchem")).toBe(cardCount("is:alchemy"));
+    const a = evaluate("is:alchem");
+    expect(a.result.error).toBeUndefined();
+  });
+
+  test("is:unse resolves like is:unset (Spec 103)", () => {
+    expect(cardCount("is:unse")).toBe(cardCount("is:unset"));
+  });
+
   test("is:unset matches Lightning Bolt (printing #8 has Unset in fixture; Spec 171)", () => {
     expect(cardCount("is:unset")).toBe(1);
     expect(cardCount("is:unset lightning")).toBe(1);
