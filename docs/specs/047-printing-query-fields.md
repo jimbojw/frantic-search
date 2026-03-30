@@ -84,7 +84,9 @@ All unique `promo_types` values discovered in Scryfall bulk data are queryable a
 
 **`is:alchemy`** — Semantics match Scryfall: a printing counts as alchemy if it would match Scryfall's `is:alchemy` (Alchemy-set printings, not only those with `promo_types: ["alchemy"]`). Implementation: the same `PROMO_TYPE_FLAGS.alchemy` bit as other promo types; ETL sets that bit from `promo_types` **or** from `set_type: "alchemy"` on the printing (Spec 046).
 
-Implementation: Each keyword maps to `{ column: 0 | 1, bit: number }` in `PROMO_TYPE_FLAGS`. For column 0, test `promo_types_flags_0[i] & (1 << bit)`; for column 1, test `promo_types_flags_1[i] & (1 << bit)`. Keywords not in the mapping return `"unknown"`.
+**`is:unset`** — Semantics match Scryfall: a printing is “unset” when it belongs to a funny-type set (`set_type: "funny"` on default_cards). This is **not** the same as oracle `is:funny` (which unions acorn stamps, silver borders, playtest cards, etc.). Implementation: `PrintingFlag.Unset` in `printing_flags` (Spec 046 bit 17); ETL sets it from `set_type` only (Spec 171). There is no `promo_types` value for unset. When promoted to face domain, semantics are “card has at least one unset printing.” Negation (`-is:unset`) follows the same printing-domain rules as other printing-only `is:` terms. There is **no** face fallback when printings are unloaded (unlike `is:universesbeyond` / `is:ub`).
+
+**Promo-type keywords:** Each maps to `{ column: 0 | 1, bit: number }` in `PROMO_TYPE_FLAGS`. For column 0, test `promo_types_flags_0[i] & (1 << bit)`; for column 1, test `promo_types_flags_1[i] & (1 << bit)`. Keywords not in the mapping return `"unknown"`.
 
 When promoted to face domain (e.g. `t:creature is:poster`), semantics are "card has at least one printing with this promo type." Negation (`-is:poster`) works as expected.
 
@@ -294,7 +296,7 @@ if (isPrintingField(canonical)) {
 
 ### `is:` keyword changes (`shared/src/search/eval-is.ts`)
 
-Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
+Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, `unset`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
 
 `alchemy`, `rebalanced`, and `glossy` are removed from `UNSUPPORTED_IS_KEYWORDS` when they become supported via `promo_types_flags_0`/`promo_types_flags_1`.
 
@@ -450,3 +452,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-03-03: Added printing-domain `is:` keywords for Scryfall `promo_types` (52 values). Added `FACE_FALLBACK_IS_KEYWORDS` for dual-domain `is:universesbeyond`/`is:ub`. Removed `alchemy`, `rebalanced`, `glossy` from `UNSUPPORTED_IS_KEYWORDS`. See issue #72.
 - 2026-03-22: Added `is:default` and `is:atypical` for Issue #173. Derived from existing PrintingFlags; no ETL changes.
 - 2026-03-25: Documented principled divergence for `is:alchemy` vs Scryfall default search (seven MB2 printings) in Syntax Reference `app/src/docs/reference/fields/face/is.mdx`, cheat sheet, Scryfall Differences, Spec 098, and `docs/guides/scryfall-comparison.md`. Example in-app query link: `?q=is%3Aalchemy%20set%3Amb2` (issue #191).
+- 2026-03-30: Added printing-domain `is:unset` from `set_type: "funny"` → `PrintingFlag.Unset` (Spec 171 / issue #213). No face fallback when printings are unloaded.

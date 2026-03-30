@@ -192,7 +192,7 @@ export const FINISH_FROM_STRING: Record<string, number> = {
   etched: Finish.Etched,
 };
 
-// --- Printing Flags (bitmask, 17 bits) ---
+// --- Printing Flags (bitmask, 18 bits) ---
 export const PrintingFlag = {
   FullArt: 1 << 0,
   Textless: 1 << 1,
@@ -211,6 +211,8 @@ export const PrintingFlag = {
   Showcase: 1 << 14,
   Inverted: 1 << 15,
   Nyxtouched: 1 << 16,
+  /** Set-level `set_type: "funny"` on default_cards (Scryfall `is:unset`; Spec 171). */
+  Unset: 1 << 17,
 } as const;
 
 // --- Frame (bitmask, 5 bits) ---

@@ -107,6 +107,12 @@
   assertions:
     count_min: 1000
 
+- name: "is:unset finds funny-set printings (Spec 171)"
+  query: "is:unset"
+  scryfall_query: "is:unset include:extras"
+  assertions:
+    count_min: 400
+
 - name: "is:reprint finds reprints"
   query: "is:reprint t:creature c:r"
   scryfall_query: "is:reprint t:creature c:r include:extras"

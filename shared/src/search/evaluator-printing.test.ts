@@ -805,6 +805,15 @@ describe("promo types is: keywords", () => {
     expect(cardCount("is:alchemy")).toBe(0);
   });
 
+  test("is:unset matches Lightning Bolt (printing #8 has Unset in fixture; Spec 171)", () => {
+    expect(cardCount("is:unset")).toBe(1);
+    expect(cardCount("is:unset lightning")).toBe(1);
+  });
+
+  test("t:instant is:unset — cross-domain AND", () => {
+    expect(cardCount("t:instant is:unset")).toBe(1);
+  });
+
   test("is:universesbeyond with printings loaded matches Lightning Bolt", () => {
     // Printing #8 (SLD) has universesbeyond promo type
     expect(cardCount("is:universesbeyond")).toBe(1);

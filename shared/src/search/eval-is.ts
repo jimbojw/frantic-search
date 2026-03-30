@@ -262,6 +262,7 @@ export const PRINTING_IS_KEYWORDS = new Set([
   "full", "fullart", "textless", "reprint", "promo", "digital", "hires",
   "borderless", "extended", "oversized",
   "spotlight", "booster", "masterpiece", "colorshifted", "showcase", "inverted", "nyxtouched",
+  "unset",
   "default", "atypical",
   ...Object.keys(PROMO_TYPE_FLAGS),
 ]);
@@ -563,6 +564,9 @@ export function evalPrintingIsKeyword(
       break;
     case "nyxtouched":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Nyxtouched) buf[i] = 1;
+      break;
+    case "unset":
+      for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & PrintingFlag.Unset) buf[i] = 1;
       break;
     case "atypical":
       for (let i = 0; i < n; i++) if (pIdx.printingFlags[i] & ATYPICAL_FRAME_MASK) buf[i] = 1;

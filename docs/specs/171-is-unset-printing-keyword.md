@@ -1,6 +1,6 @@
 # Spec 171: `is:unset` (printing domain)
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 032 (The `is:` Operator), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields)
 
@@ -33,9 +33,9 @@ Add **`PrintingFlag.Unset`** in `shared/src/bits.ts` at **`1 << 17`** (next free
 
 ### ETL
 
-- In `etl/src/process-printings.ts`, extend `encodePrintingFlags()`:
+- In `etl/src/encode-printing-flags.ts`, extend `encodePrintingFlags()`:
   - If `(card.set_type ?? "").toLowerCase() === "funny"`, OR `PrintingFlag.Unset` into the flags word.
-- Extend the `DefaultCard` comment on `set_type` to document both alchemy (via `encodePromoTypesFlags`) and unset (via `encodePrintingFlags`), consistent with Spec 046.
+- `process-printings.ts` imports the encoder; extend the `DefaultCard` comment on `set_type` to document both alchemy (via `encodePromoTypesFlags`) and unset (via `encodePrintingFlags`), consistent with Spec 046.
 
 No change to `encodePromoTypesFlags` or promo bit layout.
 
@@ -64,8 +64,8 @@ No change to `encodePromoTypesFlags` or promo bit layout.
 | Layer | File | Changes |
 |-------|------|---------|
 | Shared | `shared/src/bits.ts` | `PrintingFlag.Unset = 1 << 17`; refresh `PrintingFlag` bitmask line count comment (17 → 18 bits) |
-| ETL | `etl/src/process-printings.ts` | `encodePrintingFlags`: OR `Unset` when `set_type` is `funny` (case-insensitive); comment on `set_type` |
-| ETL tests | New or existing test module (see acceptance criterion 4) | `set_type: "funny"` / `Funny` / non-funny — mirror `encode-promo-types-flags.test.ts` |
+| ETL | `etl/src/encode-printing-flags.ts`, `etl/src/process-printings.ts` | `encodePrintingFlags`: OR `Unset` when `set_type` is `funny` (case-insensitive); `DefaultCard.set_type` JSDoc |
+| ETL tests | `etl/src/encode-printing-flags.test.ts` | `set_type: "funny"` / `Funny` / non-funny — mirror `encode-promo-types-flags.test.ts` |
 | Evaluator | `shared/src/search/eval-is.ts` | `PRINTING_IS_KEYWORDS`, `evalPrintingIsKeyword` branch |
 | Tests | `shared/src/search/evaluator-printing.test.ts`, `evaluator-is.test.ts` | Synthetic `printing_flags` + keyword wiring |
 | Fixtures | `shared/src/search/evaluator.test-fixtures.ts` | Optional: printing row with `PrintingFlag.Unset` for integration-style tests |
@@ -79,5 +79,5 @@ No change to `encodePromoTypesFlags` or promo bit layout.
 
 ## Implementation notes
 
-- (To be filled when implemented.) Status → **Implemented**; link PR / commit; note any Scryfall parity caveats discovered during validation.
-- Optional: add a **`printing.yaml`** compliance scenario so `npm run cli -- compliance` catches accidental removal of `is:unset`; not required for the spec to be complete if unit + diff validation already pass.
+- **2026-03-30:** `PrintingFlag.Unset` (`1 << 17`); ETL [`encode-printing-flags.ts`](../../etl/src/encode-printing-flags.ts) ORs it when `set_type` is `funny`; [`eval-is.ts`](../../shared/src/search/eval-is.ts) `PRINTING_IS_KEYWORDS` + `evalPrintingIsKeyword` branch. Compliance: [`printing.yaml`](../../cli/suites/printing.yaml).
+- **Scryfall parity:** Match bulk `set_type: "funny"`; see `docs/guides/scryfall-comparison.md` for comparison to oracle `is:funny` and count expectations vs Scryfall `is:unset`.

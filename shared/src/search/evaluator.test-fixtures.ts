@@ -114,7 +114,7 @@ export const index = new CardIndex(TEST_DATA);
 // Printing #5  Lightning Bolt (face 1) | CMR  | uncommon | etched  | $2.00 | 2015 | 2020-11-20
 // Printing #6  Lightning Bolt (face 1) | WCD  | rare     | nonfoil | $0.10 | 2015 | 1998-08-12 | GoldBorder
 // Printing #7  Sol Ring       (face 3) | OC21 | uncommon | nonfoil | $0.50 | 2015 | 2021-06-18 | Oversized
-// Printing #8  Lightning Bolt (face 1) | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06
+// Printing #8  Lightning Bolt (face 1) | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06 | Unset (test synthetic; real data uses set_type funny → bit in ETL)
 // Printing #9  Lightning Bolt (face 1) | MH2  | rare     | nonfoil | $1.50 | 2015 | 2021-06-18 | Spotlight
 // Printing #10 Lightning Bolt (face 1) | A25  | uncommon | nonfoil | $0.60 | 2015 | 2018-03-16 | Booster, Masterpiece
 
@@ -128,7 +128,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     0, 0, 0, 0, 0, 0,
     PrintingFlag.GoldBorder,
     PrintingFlag.Oversized,
-    0,
+    PrintingFlag.Unset,
     PrintingFlag.Spotlight,
     PrintingFlag.Booster | PrintingFlag.Masterpiece,
   ],

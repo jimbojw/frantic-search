@@ -96,6 +96,7 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 | 14 | `showcase` (Spec 073; from `frame_effects`) |
 | 15 | `inverted` (Spec 073; from `frame_effects`) |
 | 16 | `nyxtouched` (Spec 073; from `frame_effects`) |
+| 17 | `unset` — Scryfall `is:unset` parity: set when the printing's **`set_type` is `funny`** (case-insensitive) on default_cards, not from `promo_types` (Spec 171). |
 
 - `frame: number[]` — uint8 bitmask. `1993=1, 1997=2, 2003=4, 2015=8, future=16`. One bit set per row.
 
@@ -227,7 +228,7 @@ New module. The `processPrintings()` function:
    - **Pass 2 (emit):** When emitting each row, assign `illustration_id_index`: canonical printing (where `card.id === canonical_scryfall_id`) gets 0; others get 1, 2, 3… in first-appearance order. Null `illustration_id` receives a synthetic index (maxRealIndex + 1, etc.) so each such printing is distinct.
 4. Iterates each printing entry in `default-cards.json`:
    a. Looks up `canonical_face_ref` via `oracle_id`. Drops unmapped printings.
-   b. Encodes `rarity`, `printing_flags`, `frame` as bitmasks.
+   b. Encodes `rarity`, `printing_flags` (including `PrintingFlag.Unset` from `set_type: "funny"` per Spec 171), and `frame` as bitmasks.
    c. Encodes `promo_types` (string array) into `promo_types_flags_0` and `promo_types_flags_1` via `PROMO_TYPE_FLAGS` bit mapping.
    d. Dictionary-encodes the set via a `SetEncoder` (analogous to `DictEncoder` but for uint16 indices).
    e. For each finish in `entry.finishes`:
@@ -278,3 +279,4 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
   Added fallback `card.oracle_id ?? card.card_faces?.[0]?.oracle_id` so 81 reversible printings
   (e.g. Krark's Thumb SLD) are no longer dropped (Issue #98).
 - 2026-03-25: `promo_types_flags_0` bit 0 (`alchemy`) is OR'd when `set_type` is `alchemy` on the default-cards printing, not only when `promo_types` contains `alchemy`, matching Scryfall `is:alchemy` for Alchemy-set printings (issue #191).
+- 2026-03-30: `printing_flags` bit 17 (`unset`) is OR'd when `set_type` is `funny` on the default-cards printing, matching Scryfall `is:unset` (Spec 171 / issue #213). This is not oracle `is:funny`.

@@ -3,9 +3,10 @@ import { describe, test, expect } from "vitest";
 import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { CardIndex } from "./card-index";
-import { Format } from "../bits";
-import type { ColumnarData } from "../data";
-import { typeLineIsPermanent } from "./eval-is";
+import { Format, Finish, Frame, PrintingFlag, Rarity } from "../bits";
+import type { ColumnarData, PrintingColumnarData } from "../data";
+import { evalPrintingIsKeyword, typeLineIsPermanent } from "./eval-is";
+import { PrintingIndex } from "./printing-index";
 
 function minimalData(overrides: Partial<ColumnarData> & Pick<ColumnarData, "names">): ColumnarData {
   const n = overrides.names.length;
@@ -140,5 +141,29 @@ describe("typeLineIsPermanent (Scryfall is:permanent parity)", () => {
 
   test("does not treat mid-string summon as legacy creature", () => {
     expect(typeLineIsPermanent("instant — ritual of summoning")).toBe(false);
+  });
+});
+
+describe("evalPrintingIsKeyword unset (Spec 171)", () => {
+  test("matches only rows with PrintingFlag.Unset", () => {
+    const data: PrintingColumnarData = {
+      canonical_face_ref: [0, 0],
+      scryfall_ids: ["a", "b"],
+      collector_numbers: ["1", "2"],
+      set_indices: [0, 0],
+      rarity: [Rarity.Common, Rarity.Common],
+      printing_flags: [PrintingFlag.Unset, 0],
+      finish: [Finish.Nonfoil, Finish.Nonfoil],
+      frame: [Frame.Y2015, Frame.Y2015],
+      price_usd: [100, 100],
+      released_at: [20200101, 20200101],
+      set_lookup: [{ code: "UST", name: "Unstable", released_at: 20200101 }],
+    };
+    const pIdx = new PrintingIndex(data);
+    const n = 2;
+    const buf = new Uint8Array(n);
+    expect(evalPrintingIsKeyword("unset", pIdx, buf, n)).toBe("ok");
+    expect(buf[0]).toBe(1);
+    expect(buf[1]).toBe(0);
   });
 });
