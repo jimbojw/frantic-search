@@ -40,6 +40,41 @@ function hearthfireHeroSpellcheckFixture(): ColumnarData {
   }
 }
 
+/** One card: `t:legendary creature` is zero hits (name has `creator`, not `creature`); substitution fixes the bare token. */
+function legendaryCreatorTypoFixture(): ColumnarData {
+  const n = 1
+  const z = <T>(v: T): T[] => Array.from({ length: n }, () => v)
+  return {
+    names: ['The Creator'],
+    mana_costs: z(''),
+    oracle_texts: z(''),
+    colors: z(0),
+    color_identity: z(0),
+    type_lines: z('Legendary Creature'),
+    powers: z(0),
+    toughnesses: z(0),
+    loyalties: z(0),
+    defenses: z(0),
+    legalities_legal: z(Format.Commander),
+    legalities_banned: z(0),
+    legalities_restricted: z(0),
+    card_index: [0],
+    canonical_face: [0],
+    scryfall_ids: z(''),
+    oracle_ids: z('oid'),
+    layouts: z('normal'),
+    flags: z(0),
+    edhrec_ranks: z(null),
+    edhrec_salts: z(null),
+    power_lookup: [''],
+    toughness_lookup: [''],
+    loyalty_lookup: [''],
+    defense_lookup: [''],
+    keywords_index: {},
+    produces: {},
+  }
+}
+
 describe('buildNameTypoSuggestion', () => {
   it('suggests heartfire when hearthfire and hero are both nameWords but no card matches both (Spec 163)', () => {
     const index = new CardIndex(hearthfireHeroSpellcheckFixture())
@@ -70,8 +105,38 @@ describe('buildNameTypoSuggestion', () => {
 
     expect(s).toBeDefined()
     expect(s!.id).toBe('name-typo')
+    expect(s!.label).toBe('heartfire')
     expect(s!.query!.toLowerCase()).toContain('heartfire')
     expect(s!.query!.toLowerCase()).toContain('hero')
+    expect(s!.count).toBeGreaterThan(0)
+  })
+
+  it('chip label is the bare token only when query mixes field term and misspelled name word (Spec 163)', () => {
+    const index = new CardIndex(legendaryCreatorTypoFixture())
+    const cache = new NodeCache(index, null)
+    const live = 't:legendary creature'
+    const ast = parse(live)
+    expect(cache.evaluate(ast).result.matchCount).toBe(0)
+
+    const s = buildNameTypoSuggestion({
+      ast,
+      liveQuery: live,
+      index,
+      cache,
+      printingIndex: null,
+      hasPinned: false,
+      pinnedQueryTrim: '',
+      pinnedIndicesCount: undefined,
+      hasLive: true,
+      totalCards: 0,
+      includeExtras: false,
+      viewMode: 'slim',
+      sealQuery,
+    })
+
+    expect(s).toBeDefined()
+    expect(s!.label).toBe('creator')
+    expect(s!.query!.toLowerCase()).toBe('t:legendary creator')
     expect(s!.count).toBeGreaterThan(0)
   })
 })

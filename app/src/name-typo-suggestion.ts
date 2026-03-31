@@ -101,7 +101,7 @@ export function buildNameTypoSuggestion(p: BuildNameTypoSuggestionParams): Sugge
   return {
     id: 'name-typo',
     query: altEffective,
-    label: best.modifiedLive.trim(),
+    label: best.candidate,
     explain: 'Did you mean this spelling for a card name?',
     count: best.cardCount,
     printingCount: best.printingCount,

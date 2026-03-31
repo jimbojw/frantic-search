@@ -53,7 +53,7 @@ Do **not** suggest a candidate equal to the token (`candidate === token`); that 
 - `id: 'name-typo'`
 - `variant: 'rewrite'`
 - `query` — Full effective query to apply
-- `label` — Corrected live query (or equivalent short chip text)
+- `label` — **Substituted name word only** (lowercase, same string written into the live query by `spliceQuery`), not the full live or effective query. The right column already carries did-you-mean copy; the chip should show the *delta* (like wrong-field chips showing `ci:w`), so mixed queries such as `t:legendary creature` → `t:legendary creator` display **`creator`** on the chip, not the entire rewritten query.
 - `count` / `printingCount` — When evaluation returns &gt; 0, populated like other rewrites
 - `explain` — e.g. did-you-mean style copy for the right column
 - `priority: 17` — After bare-term-upgrade (16), before oracle (20)
@@ -77,3 +77,8 @@ Runs only when `totalCards === 0` and trigger conditions hold. Vocabulary is bui
 - [x] Multi-word bare values (whitespace in `value`) are skipped.
 - [x] Pinned-only-zero guard matches Spec 131.
 - [x] Dual-wield / worker protocol unchanged aside from new optional suggestion in `suggestions[]`.
+- [x] Chip `label` is the single corrected token; full rewritten query remains only in `query`.
+
+## Implementation notes
+
+- 2026-03-31: Chip `label` narrowed from full corrected live query to token-only so the chip matches other rewrite suggestions (short delta on the left, explanation on the right).

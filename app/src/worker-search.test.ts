@@ -859,6 +859,7 @@ describe('name-token spellcheck (Spec 163)', () => {
     const typo = result.suggestions.find((s) => s.id === 'name-typo')
     expect(typo).toBeDefined()
     expect(typo!.priority).toBe(17)
+    expect(typo!.label).toBe('thalia')
     expect(typo!.query!.toLowerCase()).toContain('thalia')
     expect(typo!.query!.toLowerCase()).toContain('guardian')
     expect(typo!.count).toBeGreaterThan(0)
