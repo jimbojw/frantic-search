@@ -16,13 +16,13 @@
       - "Ornithopter"
     count_min: 500
 
-- name: "Query value x treated as 0 (Spec 034)"
+- name: "Spec 173: pow=x is exact oracle power X/Y (use pow=0 for * as zero, Spec 034)"
   query: "pow=x t:creature"
   scryfall_query: "pow=x t:creature include:extras"
   assertions:
-    contains:
+    excludes:
       - "Birds of Paradise"
-    count_min: 500
+  divergence: "Query-side x/y no longer map to numeric 0; Birds matches pow=0 (Spec 173)."
 
 - name: "1+* power parsed as 1 (Spec 034)"
   query: "pow=1 t:creature"

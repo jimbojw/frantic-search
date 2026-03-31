@@ -9,11 +9,14 @@ import { parseDateRange, isCompleteDateLiteral } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { isEquatableNullLiteral } from "./null-query-literal";
+import { isPlainNumericStatQueryToken } from "./stats";
 
 const DATE_CANONICAL = new Set(["date", "year"]);
 
 /** Face/mana fields where `=null` / `!=null` are stripped in canonicalize (Spec 136); same set as canonicalize.ts */
 const NULL_QUERY_VALUE_FACE_FIELDS = new Set(["power", "toughness", "loyalty", "defense", "mana"]);
+
+const STAT_EXTENSION_FIELDS = new Set(["power", "toughness", "loyalty", "defense"]);
 
 function fieldUsesFranticExtension(node: FieldNode): boolean {
   if (node.value === "") return false;
@@ -31,9 +34,23 @@ function fieldUsesFranticExtension(node: FieldNode): boolean {
   const valLower = node.value.trim().toLowerCase();
   if (isEquatableNullLiteral(node.value)) {
     if (canonical === "usd" || canonical === "edhrec") return true;
+    if (canonical && STAT_EXTENSION_FIELDS.has(canonical)) return true;
   }
   if (valLower === "null") {
     if (canonical && NULL_QUERY_VALUE_FACE_FIELDS.has(canonical)) return true;
+  }
+
+  if (canonical && STAT_EXTENSION_FIELDS.has(canonical)) {
+    if (node.sourceText !== undefined) return true;
+    const trim = node.value.trim();
+    const eqOps = new Set([":", "=", "!="]);
+    if (
+      trim !== ""
+      && !isPlainNumericStatQueryToken(trim)
+      && eqOps.has(node.operator)
+    ) {
+      return true;
+    }
   }
 
   if (!DATE_CANONICAL.has(canonical)) return false;

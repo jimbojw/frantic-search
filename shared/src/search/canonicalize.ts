@@ -6,6 +6,7 @@ import { parseDateRange, isCompleteDateLiteral } from "./date-range";
 import { PERCENTILE_RE } from "./eval-printing";
 import { PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { isEquatableNullLiteral } from "./null-query-literal";
+import { isPlainNumericStatQueryToken } from "./stats";
 
 const DATE_FIELDS = new Set(["date", "year"]);
 
@@ -111,9 +112,16 @@ function serializeNode(node: ASTNode, parentType?: string, context?: ResolutionC
       if (isDateField(node.field)) return serializeDateField(node.field, node.operator, node.value);
       // Spec 080: usd=null / usd!=null have no Scryfall equivalent — strip
       if (canonical === "usd" && isEquatableNullLiteral(node.value)) return "";
-      // Spec 136: pow/tou/loy/def/m=null and !=null have no Scryfall equivalent — strip
-      const NULLABLE_FACE_FIELDS = new Set(["power", "toughness", "loyalty", "defense", "mana"]);
-      if (canonical && NULLABLE_FACE_FIELDS.has(canonical) && node.value.toLowerCase() === "null") return "";
+      // Spec 173: stat quoted / equatable-null / unquoted non-plain-numeric — strip for Scryfall
+      const STAT_SCRYFALL_STRIP = new Set(["power", "toughness", "loyalty", "defense"]);
+      if (canonical && STAT_SCRYFALL_STRIP.has(canonical)) {
+        if (node.sourceText !== undefined) return "";
+        if (isEquatableNullLiteral(node.value)) return "";
+        const st = node.value.trim();
+        if (st !== "" && !isPlainNumericStatQueryToken(st)) return "";
+      }
+      // Spec 136: mana=null / !=null — strip (stats null family handled above)
+      if (canonical === "mana" && node.value.toLowerCase() === "null") return "";
       // Spec 096: name comparison operators have no Scryfall equivalent — strip
       const nameCmpOps = new Set([">", "<", ">=", "<="]);
       if (canonical === "name" && nameCmpOps.has(node.operator)) return "";

@@ -106,6 +106,20 @@ describe("toScryfallQuery", () => {
     expect(canon("pow!=null lightning")).toBe("lightning");
   });
 
+  it("strips equatable-null stat prefixes and non-plain stat values for Scryfall (Spec 173)", () => {
+    expect(canon("pow=n")).toBe("");
+    expect(canon("tou=nu")).toBe("");
+    expect(canon("tou=1+*")).toBe("");
+    expect(canon('tou:"1"')).toBe("");
+    expect(canon("pow>1+*")).toBe("");
+  });
+
+  it("emits plain-numeric stat equality and ranges for Scryfall (Spec 173)", () => {
+    expect(canon("pow=2")).toBe("pow=2");
+    expect(canon("tou:1")).toBe("tou:1");
+    expect(canon("pow>=3")).toBe("pow>=3");
+  });
+
   it("strips name comparison operators for Scryfall (Spec 096)", () => {
     expect(canon("name>M")).toBe("");
     expect(canon("name<M")).toBe("");

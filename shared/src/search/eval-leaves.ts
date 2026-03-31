@@ -6,7 +6,7 @@ import {
   FORMAT_NAMES,
 } from "../bits";
 import { parseManaSymbols, manaContains, manaEquals } from "./mana";
-import { parseStatValue } from "./stats";
+import { parseStatValue, isPlainNumericStatQueryToken } from "./stats";
 import { evalIsKeyword } from "./eval-is";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
@@ -125,6 +125,23 @@ function parseProducesValue(
 }
 
 const NAME_CMP_OPS = new Set([">", "<", ">=", "<="]);
+
+const STAT_RANGE_OPS = new Set([">", ">=", "<", "<="]);
+
+/** Spec 173 §3.6: trim + ASCII-oriented fold for oracle stat string compare. */
+function statStringFold(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+function statFieldErrorLabel(canonical: string): string {
+  switch (canonical) {
+    case "power": return "power";
+    case "toughness": return "toughness";
+    case "loyalty": return "loyalty";
+    case "defense": return "defense";
+    default: return "stat";
+  }
+}
 
 function getStringColumn(canonical: string, index: CardIndex): string[] | null {
   switch (canonical) {
@@ -400,7 +417,16 @@ export function evalLeafField(
         : canonical === "toughness" ? index.toughnesses
         : canonical === "loyalty" ? index.loyalties
         : index.defenses;
-      if (valLower === "null") {
+      const numericLookup = canonical === "power" ? index.numericPowerLookup
+        : canonical === "toughness" ? index.numericToughnessLookup
+        : canonical === "loyalty" ? index.numericLoyaltyLookup
+        : index.numericDefenseLookup;
+      const fieldLabel = statFieldErrorLabel(canonical);
+      const isQuoted = node.sourceText !== undefined;
+      const trimVal = val.trim();
+
+      // Spec 173 §2: equatable-null prefixes on range ops fail plain-numeric gate, not null semantics.
+      if (!isQuoted && isEquatableNullLiteral(val) && !STAT_RANGE_OPS.has(op)) {
         switch (op) {
           case ":": case "=":
             for (let i = 0; i < n; i++) if (strLookup[idxCol[i]] === "") buf[cf[i]] = 1;
@@ -413,25 +439,98 @@ export function evalLeafField(
         }
         break;
       }
-      const numericLookup = canonical === "power" ? index.numericPowerLookup
-        : canonical === "toughness" ? index.numericToughnessLookup
-        : canonical === "loyalty" ? index.numericLoyaltyLookup
-        : index.numericDefenseLookup;
-      const queryNum = parseStatValue(val);
-      if (isNaN(queryNum)) break;
-      for (let i = 0; i < n; i++) {
-        const cardNum = numericLookup[idxCol[i]];
-        if (isNaN(cardNum)) continue;
-        let match = false;
-        switch (op) {
-          case ":": case "=": match = cardNum === queryNum; break;
-          case "!=": match = cardNum !== queryNum; break;
-          case ">":  match = cardNum > queryNum; break;
-          case "<":  match = cardNum < queryNum; break;
-          case ">=": match = cardNum >= queryNum; break;
-          case "<=": match = cardNum <= queryNum; break;
+
+      if (STAT_RANGE_OPS.has(op)) {
+        if (trimVal.toLowerCase() === "null") {
+          return "null cannot be used with comparison operators";
         }
-        if (match) buf[cf[i]] = 1;
+        if (!isPlainNumericStatQueryToken(trimVal)) {
+          return `invalid ${fieldLabel} value for comparison "${val}"`;
+        }
+        const queryNum = parseStatValue(trimVal);
+        if (!Number.isFinite(queryNum)) {
+          return `invalid ${fieldLabel} value "${val}"`;
+        }
+        for (let i = 0; i < n; i++) {
+          const cardNum = numericLookup[idxCol[i]];
+          if (isNaN(cardNum)) continue;
+          let match = false;
+          switch (op) {
+            case ">": match = cardNum > queryNum; break;
+            case "<": match = cardNum < queryNum; break;
+            case ">=": match = cardNum >= queryNum; break;
+            case "<=": match = cardNum <= queryNum; break;
+            default: break;
+          }
+          if (match) buf[cf[i]] = 1;
+        }
+        break;
+      }
+
+      if (isQuoted) {
+        const qFold = statStringFold(val);
+        for (let i = 0; i < n; i++) {
+          const raw = strLookup[idxCol[i]];
+          const rawFold = statStringFold(raw);
+          let match = false;
+          switch (op) {
+            case ":":
+              match = rawFold.includes(qFold);
+              break;
+            case "=":
+              match = rawFold === qFold;
+              break;
+            case "!=":
+              match = raw !== "" && rawFold !== qFold;
+              break;
+            default:
+              break;
+          }
+          if (match) buf[cf[i]] = 1;
+        }
+        break;
+      }
+
+      if (isPlainNumericStatQueryToken(trimVal)) {
+        const queryNum = parseStatValue(trimVal);
+        if (!Number.isFinite(queryNum)) {
+          return `invalid ${fieldLabel} value "${val}"`;
+        }
+        for (let i = 0; i < n; i++) {
+          const cardNum = numericLookup[idxCol[i]];
+          if (isNaN(cardNum)) continue;
+          let match = false;
+          switch (op) {
+            case ":": case "=": match = cardNum === queryNum; break;
+            case "!=": match = cardNum !== queryNum; break;
+            default: break;
+          }
+          if (match) buf[cf[i]] = 1;
+        }
+        break;
+      }
+
+      {
+        const qFold = statStringFold(val);
+        for (let i = 0; i < n; i++) {
+          const raw = strLookup[idxCol[i]];
+          const rawFold = statStringFold(raw);
+          let match = false;
+          switch (op) {
+            case ":":
+              match = rawFold.includes(qFold);
+              break;
+            case "=":
+              match = rawFold === qFold;
+              break;
+            case "!=":
+              match = raw !== "" && rawFold !== qFold;
+              break;
+            default:
+              break;
+          }
+          if (match) buf[cf[i]] = 1;
+        }
       }
       break;
     }

@@ -906,7 +906,10 @@ export class NodeCache {
           const nullStopsFaceOpInversion = childField
             ? (faceCanonical === "edhrec" || faceCanonical === "salt"
                 ? isEquatableNullLiteral(childField.value)
-                : childField.value.toLowerCase() === "null")
+                : faceCanonical === "power" || faceCanonical === "toughness"
+                  || faceCanonical === "loyalty" || faceCanonical === "defense"
+                  ? isEquatableNullLiteral(childField.value) && childField.sourceText === undefined
+                  : childField.value.toLowerCase() === "null")
             : false;
           const isFaceCmpOrPercentile = childField
             && (

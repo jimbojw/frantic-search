@@ -1,6 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, test, expect } from "vitest";
-import { parseStatValue } from "./stats";
+import { parseStatValue, isPlainNumericStatQueryToken } from "./stats";
+
+describe("isPlainNumericStatQueryToken (Spec 173)", () => {
+  test.each([
+    ["1", true],
+    ["3.5", true],
+    ["+0", true],
+    ["-1", true],
+    ["001", true],
+    ["  2  ", true],
+    [".5", true],
+  ])("%s → %s", (input, expected) => {
+    expect(isPlainNumericStatQueryToken(input)).toBe(expected);
+  });
+
+  test.each([
+    ["", false],
+    ["1+*", false],
+    ["*", false],
+    ["+*", false],
+    ["7-*", false],
+    ["1d4+1", false],
+    ["x", false],
+    ["X", false],
+    ["n", false],
+    ["null", false],
+    ["+", false],
+    ["-", false],
+    [".", false],
+  ])("%s → false", (input) => {
+    expect(isPlainNumericStatQueryToken(input)).toBe(false);
+  });
+});
 
 describe("parseStatValue", () => {
   // Standard numeric values

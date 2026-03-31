@@ -1,6 +1,6 @@
 # Spec 173: Power, Toughness, Loyalty, and Defense — Query Semantics (Equality vs Range)
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 034 (Numeric Stat Value Parsing), Spec 039 (Non-Destructive Error Handling), Spec 052 (Scryfall Outlink Canonicalization), Spec 136 (Nullable Face Fields), Spec 172 (Equatable-Null Prefixes — `usd`/`edhrec`/`salt`; this spec **extends** the equatable-null pattern to stat fields), ADR-009 (Bitmask-per-Node AST)
 
@@ -211,10 +211,9 @@ Count as **Frantic extension** when Scryfall cannot express the same intent:
 
 ## Implementation Notes
 
-*(Append decisions and any deviations from this spec as implementation proceeds.)*
-
-- **Quoted detection:** Use `node.sourceText !== undefined` on `FieldNode` to detect quoted values. The parser already sets `sourceText` only for `QUOTED` tokens. If a dedicated `quoted` boolean is preferred for clarity, it can be added to `FieldNode` during implementation.
-- **Plain-numeric predicate:** `/^[+-]?\d*\.?\d+$/` on the trimmed value. Share between range validation (§2) and equality routing (§3.3).
-- **Equatable-null:** Reuse `isEquatableNullLiteral` from `shared/src/search/null-query-literal.ts`. Add calls in the stat field `case` branches of `eval-leaves.ts`, replacing the current `valLower === "null"` check.
-- **String access:** Use the existing `strLookup[idxCol[i]]` pattern (already in the stat case for null detection) for substring and exact matching.
-- **Evaluation order in the stat case:** (1) if quoted → skip to string matching; (2) if unquoted equatable-null → null semantics; (3) if range operator → plain-numeric gate → `parseStatValue` → compare; (4) if equality operator + plain numeric → `parseStatValue` → numeric equality; (5) if equality operator + not plain numeric → string matching (substring for `:`, exact for `=`/`!=`).
+- **`isPlainNumericStatQueryToken`:** Exported from [`shared/src/search/stats.ts`](../../shared/src/search/stats.ts); used by `eval-leaves.ts`, `canonicalize.ts`, and `query-extension-syntax.ts`.
+- **Equatable-null vs range:** The equatable-null branch runs only for equality operators (`:`, `=`, `!=`). On range ops, values like `n` still satisfy `isEquatableNullLiteral` but §2 requires them to fail the plain-numeric gate (`invalid … value for comparison`), not null semantics.
+- **Quoted detection:** `node.sourceText !== undefined` on `FieldNode` (parser sets it only for `QUOTED` tokens).
+- **String compare:** Trim + `toLowerCase()` on query and oracle stat for substring / exact / `!=` string paths (§3.6 ASCII-oriented fold).
+- **NOT / operator inversion:** [`shared/src/search/evaluator.ts`](../../shared/src/search/evaluator.ts) — for power/toughness/loyalty/defense, `nullStopsFaceOpInversion` uses `isEquatableNullLiteral(value) && sourceText === undefined` (quoted `"null"` uses inversion, not XOR-at-null).
+- **Tests:** [`shared/src/search/stat-field-query.test.ts`](../../shared/src/search/stat-field-query.test.ts); compliance [`cli/suites/numeric.yaml`](../../cli/suites/numeric.yaml) (pow=x case updated for Spec 173).

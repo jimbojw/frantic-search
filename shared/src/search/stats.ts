@@ -1,5 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
+/** Spec 173: plain numeric query token for stat field routing (unquoted only). */
+const PLAIN_NUMERIC_STAT_QUERY_RE = /^[+-]?\d*\.?\d+$/;
+
+/**
+ * True when the trimmed value matches the plain-numeric predicate (Spec 173 §3.2).
+ * Used to route equality/range operators; not used for quoted values.
+ */
+export function isPlainNumericStatQueryToken(raw: string): boolean {
+  return PLAIN_NUMERIC_STAT_QUERY_RE.test(raw.trim());
+}
+
 const ZERO_ALIASES = new Set(["*", "x", "y", "?"]);
 
 const DICE_RE = /(\d+)d(\d+)/gi;

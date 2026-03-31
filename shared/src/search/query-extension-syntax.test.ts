@@ -76,4 +76,18 @@ describe("astUsesFranticExtensionSyntax", () => {
     expect(ext("edhrec=n")).toBe(true);
     expect(ext("edhrec=null")).toBe(true);
   });
+
+  it("is true for Spec 173 stat extensions (quoted, non-plain, equatable-null)", () => {
+    expect(ext("pow=n")).toBe(true);
+    expect(ext('tou:"1"')).toBe(true);
+    expect(ext("tou:1+*")).toBe(true);
+    expect(ext("tou=+*")).toBe(true);
+  });
+
+  it("is false for plain-numeric stat equality and numeric ranges (Spec 173)", () => {
+    expect(ext("pow=2")).toBe(false);
+    expect(ext("tou:1")).toBe(false);
+    expect(ext("pow>3")).toBe(false);
+    expect(ext("tou!=0")).toBe(false);
+  });
 });

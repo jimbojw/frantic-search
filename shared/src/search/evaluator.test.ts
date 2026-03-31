@@ -255,10 +255,11 @@ describe("evaluate", () => {
     expect(matchCount("tou=1")).toBe(2);
   });
 
-  test("query value x/y treated as 0 (Spec 034)", () => {
-    expect(matchCount("pow=x")).toBe(2);   // same as pow=0
-    expect(matchCount("pow=y")).toBe(2);
-    expect(matchCount("pow=X")).toBe(2);
+  test("Spec 173: pow=x/y is exact oracle string match, not numeric 0 (query side)", () => {
+    expect(matchCount("pow=x")).toBe(0);
+    expect(matchCount("pow=y")).toBe(0);
+    expect(matchCount("pow=X")).toBe(0);
+    expect(matchCount("pow=0")).toBe(2);
   });
 
   test("mana symbol contains (braced)", () => {
