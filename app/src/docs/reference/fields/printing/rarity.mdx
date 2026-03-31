@@ -17,8 +17,12 @@ Rarity of the printing.
 | `:` | Exact or substring | `q=r:mythic` |
 | `=` | Exact rarity | `q=rarity=mythic` |
 | `!=` | Not rarity | `q=r!=common` |
-| `>`, `<`, `>=`, `<=` | Rarity comparison (common < uncommon < rare < mythic) | `q=r>=rare` |
+| `>`, `<`, `>=`, `<=` | Rarity comparison (tier order below) | `q=r>=rare` |
 
 ## Allowed values
 
-Rarity codes: `common`, `uncommon`, `rare`, `mythic`. Matching is case-insensitive. Comparison uses rarity tier order.
+Rarity codes: `common`, `uncommon`, `rare`, `special`, `mythic`, `bonus`. Matching is case-insensitive.
+
+Single-letter aliases (where unambiguous for this field): `c` (common), `u` (uncommon), `r` (rare), `m` (mythic), `s` (special), `b` (bonus).
+
+**Comparison order** (for `>`, `<`, `>=`, `<=`): common &lt; uncommon &lt; rare &lt; special &lt; mythic &lt; bonus. For example, `q=rarity<mythic` includes special-rarity printings but not mythic or bonus.

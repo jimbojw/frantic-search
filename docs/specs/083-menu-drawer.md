@@ -6,7 +6,7 @@
 
 **Modifies:** Spec 038 (toolbar removal), Spec 016 (Report Bug entry points), Spec 026 (Options Panel), Spec 041 (view mode toggle location), Spec 058 (adds `v:` alias for `view:`)
 
-**Extended by:** Spec 084 (MenuDrawer View Consolidation — unique row, include:extras in VIEWS), Spec 102 (EDHREC and Salt Percentile Chips), Spec 125 (MY LIST section — my:list + deck tag chips), Spec 130 (COLOR section — color identity toggle chips), Spec 150 (ChipButton), Spec 167 (Types section — `t:` chips + `is:permanent`), Spec 168 (Mana section — mana value exclusive chips; rail **Mana**, heading **Mana value**), Spec 169 (Mana cost — `m:` tri-state chips under **Mana cost** in the same `mana` section)
+**Extended by:** Spec 084 (MenuDrawer View Consolidation — unique row, include:extras in VIEWS), Spec 102 (EDHREC and Salt Percentile Chips), Spec 125 (MY LIST section — my:list + deck tag chips), Spec 130 (COLOR section — color identity toggle chips), Spec 150 (ChipButton), Spec 167 (Types section — `t:` chips + `is:permanent`), Spec 168 (Mana section — mana value exclusive chips; rail **Mana**, heading **Mana value**), Spec 169 (Mana cost — `m:` tri-state chips under **Mana cost** in the same `mana` section), GitHub [#231](https://github.com/jimbojw/frantic-search/issues/231) (section intros + “Learn more” doc links)
 
 ## Goal
 
@@ -82,6 +82,34 @@ LAYOUTS
 
 **PostHog (Spec 085):** Tapping any MenuDrawer chip fires `menu_chip_used` with `section` and `chip_label` for funnel analysis.
 
+### Section intros and documentation links
+
+Immediately **below each content-area section heading** (`<h2>` for MY LIST, VIEWS, and every TERMS section), **before** any chips, render a **single line** of **italic** helper text. On the same line (or immediately adjacent), a **“Learn more”** control opens in-app documentation using the same navigation as Spec 133 / `SuggestionList` (`navigateToDocs(docParam)` from `SearchContext`).
+
+- **Mana** (Spec 168/169): The **Mana value** `<h2>` and the nested **Mana cost** `<h3>` each get their own one-liner and link (different `docParam` values).
+- **Views** (Spec 084): One `<h2>` covers view mode, `unique:`, and `include:extras`. One combined one-liner is enough. **Primary** “Learn more” target is `reference/modifiers/view`; `unique` and `include:extras` are documented on sibling reference pages (`reference/modifiers/unique`, `reference/modifiers/include-extras`).
+- When `navigateToDocs` is absent, the italic line still renders; omit the “Learn more” control only (same pattern as optional docs links elsewhere).
+
+**`docParam` mapping** (each string must exist in `app/src/docs/index.ts` / `DOC_INDEX`):
+
+| Area | `docParam` |
+|------|------------|
+| My List | `reference/special/my-list` |
+| Views | `reference/modifiers/view` |
+| Color Identity | `reference/fields/face/identity` |
+| Mana value (h2) | `reference/fields/face/mana-value` |
+| Mana cost (h3) | `reference/fields/face/mana` |
+| Types | `reference/fields/face/type` |
+| Formats | `reference/fields/face/legal` |
+| Layouts | `reference/fields/face/is` |
+| Roles | `reference/fields/face/is` |
+| Rarities | `reference/fields/printing/rarity` |
+| Printings | `reference/fields/face/is` (chips are `is:` print traits) |
+| Prices | `reference/fields/printing/usd` |
+| Popularity | `reference/fields/face/edhrec` |
+| Salt | `reference/fields/face/salt` |
+| Sort | `reference/sorting/overview` |
+
 ### Data source for VIEWS
 
 MenuDrawer is rendered within `SearchProvider` in both modal and inline contexts. It uses `useSearchContext()` to obtain:
@@ -154,7 +182,10 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 8. TERMS sections, scrollspy, chip behavior, and sticky footer follow Spec 081 patterns except where Implementation Notes record intentional changes (e.g. Lands section removed).
 9. Report Bug remains accessible from the menu footer and from the zero-results inline row. The init-page "Report a problem" link (next to Source on GitHub) is unchanged.
 10. No new props are required from App; MenuDrawer uses SearchContext for viewMode and changeViewMode.
+11. Every MY LIST, VIEWS, and TERMS content section shows an italic one-line intro beneath its `<h2>` (and the Mana section shows a second intro beneath the **Mana cost** `<h3>`), each with a “Learn more” link to the `docParam` in the mapping table above when `navigateToDocs` is available.
+12. Tapping “Learn more” opens the corresponding in-app reference article; drawer close behavior matches other `navigateToDocs` entry points (no special case required).
 
 ## Implementation Notes
 
 - **2026-03-29:** Removed the **Lands** TERMS section from MenuDrawer (scrollspy id `lands`, chips `is:dual`, `is:fetchland`, `is:shockland`, etc.). PostHog showed almost no use; users can still type those `is:` keywords. `frantic-terms-tab` values of `lands` fall back to the default section on load because `lands` is no longer in `ALL_SECTIONS`.
+- **2026-03-31:** [#231](https://github.com/jimbojw/frantic-search/issues/231) — Section intros and per-section “Learn more” links to in-app docs (`menu-drawer-section-docs.ts` + `MenuDrawer.tsx`).

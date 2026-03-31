@@ -31,6 +31,7 @@ import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { useSearchContext } from './SearchContext'
 import type { ViewMode } from './view-mode'
 import { VIEW_MODES } from './view-mode'
+import { MENU_DRAWER_MANA_COST_INTRO, MENU_DRAWER_SECTION_INTROS } from './menu-drawer-section-docs'
 
 // ---------------------------------------------------------------------------
 // Chip data
@@ -118,7 +119,8 @@ const TERMS_SECTIONS = [
 ] as const
 type TermsSectionId = (typeof TERMS_SECTIONS)[number]
 
-const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
+/** Exported for tests — keep in sync with `MENU_DRAWER_SECTION_INTROS`. */
+export const ALL_SECTIONS = ['mylist', 'views', ...TERMS_SECTIONS] as const
 type SectionId = (typeof ALL_SECTIONS)[number]
 
 const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
@@ -244,6 +246,30 @@ function loadSection(): SectionId {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === 'tools') return 'views' // migrated: TOOLS removed
   return ALL_SECTIONS.includes(stored as SectionId) ? (stored as SectionId) : 'views'
+}
+
+function SectionDocIntro(props: {
+  description: string
+  docParam: string
+  navigateToDocs?: (docParam?: string) => void
+}) {
+  return (
+    <p class="text-[11px] italic text-gray-500 dark:text-gray-400 leading-snug -mt-0.5">
+      {props.description}
+      <Show when={props.navigateToDocs}>
+        <>
+          {' '}
+          <button
+            type="button"
+            class="not-italic font-medium text-blue-600 dark:text-blue-400 hover:underline p-0 bg-transparent border-0 cursor-pointer"
+            onClick={() => props.navigateToDocs!(props.docParam)}
+          >
+            Learn more
+          </button>
+        </>
+      </Show>
+    </p>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -935,6 +961,10 @@ export default function MenuDrawer(props: {
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                 My List
               </h2>
+              <SectionDocIntro
+                {...MENU_DRAWER_SECTION_INTROS.mylist}
+                navigateToDocs={ctx.navigateToDocs}
+              />
               <div class="flex flex-wrap gap-1.5 content-start">
                 <TermChip
                   chip={myChip('list')}
@@ -962,6 +992,10 @@ export default function MenuDrawer(props: {
               <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                 Views
               </h2>
+              <SectionDocIntro
+                {...MENU_DRAWER_SECTION_INTROS.views}
+                navigateToDocs={ctx.navigateToDocs}
+              />
               <div class="flex flex-wrap gap-1.5 content-start">
                 <For each={VIEW_MODES}>
                   {(mode) => (
@@ -1005,6 +1039,10 @@ export default function MenuDrawer(props: {
                   <h2 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                     {SECTION_HEADINGS[section]}
                   </h2>
+                  <SectionDocIntro
+                    {...MENU_DRAWER_SECTION_INTROS[section]}
+                    navigateToDocs={ctx.navigateToDocs}
+                  />
                   <div class="flex flex-col gap-1.5">
                     <Show when={section === 'color'}>
                       <ColorSection
@@ -1037,6 +1075,10 @@ export default function MenuDrawer(props: {
                         <h3 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 bg-white dark:bg-gray-900 py-0.5 -mb-0.5 z-10">
                           Mana cost
                         </h3>
+                        <SectionDocIntro
+                          {...MENU_DRAWER_MANA_COST_INTRO}
+                          navigateToDocs={ctx.navigateToDocs}
+                        />
                         <div class="flex flex-wrap gap-1.5 content-start">
                           <For each={[...MANA_COST_WUBRGC]}>
                             {(sym) => (
