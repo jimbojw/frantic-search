@@ -25,7 +25,7 @@ export type Suggestion = {
   label: string
   /** Optional teaching copy: explains why this helps. */
   explain?: string
-  /** Optional doc param for deep-link (e.g. "reference/fields/face/oracle"). Rendered as "Learn more" link when present. */
+  /** Optional doc param for deep-link (e.g. "reference/fields/face/oracle", "reference/fields/card/identity"). Rendered as "Learn more" link when present. */
   docRef?: string
   /** Card count when tapping would change results; for two-line chip display. */
   count?: number

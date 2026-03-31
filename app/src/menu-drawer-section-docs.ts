@@ -33,11 +33,11 @@ export const MENU_DRAWER_SECTION_INTROS: Record<
   },
   formats: {
     description: 'Legality in Commander, Modern, Standard, and other formats.',
-    docParam: 'reference/fields/face/legal',
+    docParam: 'reference/fields/card/legal',
   },
   color: {
     description: 'Include or exclude colors in a card’s color identity.',
-    docParam: 'reference/fields/face/identity',
+    docParam: 'reference/fields/card/identity',
   },
   types: {
     description: 'Filter by card type line (creature, instant, land, and more).',
@@ -69,11 +69,11 @@ export const MENU_DRAWER_SECTION_INTROS: Record<
   },
   popularity: {
     description: 'EDHREC popularity percentiles.',
-    docParam: 'reference/fields/face/edhrec',
+    docParam: 'reference/fields/card/edhrec',
   },
   salt: {
     description: 'EDHREC saltiness percentiles.',
-    docParam: 'reference/fields/face/salt',
+    docParam: 'reference/fields/card/salt',
   },
   sort: {
     description: 'Ordering of results.',

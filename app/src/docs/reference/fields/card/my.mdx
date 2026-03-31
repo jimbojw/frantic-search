@@ -8,7 +8,7 @@ Cards in the user's list.
 
 **Canonical:** `my`  
 **Aliases:** —  
-**Domain:** Face (derived from list contents)
+**Domain:** Card (list membership; not a per-face attribute)
 
 ## Operators
 
@@ -25,4 +25,4 @@ Cards in the user's list.
 ## Notes
 
 - `q=my:list` filters to cards in the user's My List. Use with [my:list](?doc=reference/special/my-list) for semantics.
-- Domain (face vs printing) is determined by list contents: if the list has card names, face; if printings, printing.
+- Whether matches are deduplicated by oracle or by printing depends on list contents (names vs specific printings).

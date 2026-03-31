@@ -39,9 +39,9 @@ const SINGLE_COLOR_TO_LETTER: Record<string, string> = {
 }
 
 const ALTERNATIVES: Array<{ field: string; explain: string; docRef: string }> = [
-  { field: 'ci', explain: 'Use ci: for color identity.', docRef: 'reference/fields/face/identity' },
+  { field: 'ci', explain: 'Use ci: for color identity.', docRef: 'reference/fields/card/identity' },
   { field: 'c', explain: 'Use c: for card color.', docRef: 'reference/fields/face/color' },
-  { field: 'produces', explain: 'Use produces: for mana the card can produce.', docRef: 'reference/fields/face/produces' },
+  { field: 'produces', explain: 'Use produces: for mana the card can produce.', docRef: 'reference/fields/card/produces' },
 ]
 
 /**
@@ -112,7 +112,7 @@ export function getOperatorRelaxAlternatives(
   if (!rawValue || /^\d+$/.test(rawValue) || !isKnownColorValue(rawValue)) return []
   const normalized = normalizeForDisplay(rawValue)
   const docRef =
-    canonical === 'identity' ? 'reference/fields/face/identity' : 'reference/fields/face/color'
+    canonical === 'identity' ? 'reference/fields/card/identity' : 'reference/fields/face/color'
   if (canonical === 'color') {
     return [
       {
@@ -192,7 +192,7 @@ export function getFormatOrIsAlternatives(node: BreakdownNode): FormatOrIsAltern
       label: `f:${rawValue}`,
       value: rawValue,
       explain: 'Use f: for format legality.',
-      docRef: 'reference/fields/face/legal',
+      docRef: 'reference/fields/card/legal',
     })
   }
   if (isIsKeyword) {
@@ -230,7 +230,7 @@ export function getArtistAtagAlternative(
       field: 'atag',
       label: `atag:${value}`,
       explain: 'Use atag: for illustration tags.',
-      docRef: 'reference/fields/face/atag',
+      docRef: 'reference/fields/printing/atag',
     }
   }
   return {

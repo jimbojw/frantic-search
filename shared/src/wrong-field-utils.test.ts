@@ -64,9 +64,9 @@ describe('getColorAlternatives', () => {
     const node = { type: 'FIELD' as const, label: 'is:white', matchCount: 0 }
     const alts = getColorAlternatives(node)
     expect(alts).toHaveLength(3)
-    expect(alts[0]).toEqual({ field: 'ci', label: 'ci:w', value: 'w', explain: 'Use ci: for color identity.', docRef: 'reference/fields/face/identity' })
+    expect(alts[0]).toEqual({ field: 'ci', label: 'ci:w', value: 'w', explain: 'Use ci: for color identity.', docRef: 'reference/fields/card/identity' })
     expect(alts[1]).toEqual({ field: 'c', label: 'c:w', value: 'w', explain: 'Use c: for card color.', docRef: 'reference/fields/face/color' })
-    expect(alts[2]).toEqual({ field: 'produces', label: 'produces:w', value: 'w', explain: 'Use produces: for mana the card can produce.', docRef: 'reference/fields/face/produces' })
+    expect(alts[2]).toEqual({ field: 'produces', label: 'produces:w', value: 'w', explain: 'Use produces: for mana the card can produce.', docRef: 'reference/fields/card/produces' })
   })
 
   test('NOT node -is:white returns positive-form alternatives', () => {
@@ -133,7 +133,7 @@ describe('getFormatOrIsAlternatives', () => {
       label: 'f:commander',
       value: 'commander',
       explain: 'Use f: for format legality.',
-      docRef: 'reference/fields/face/legal',
+      docRef: 'reference/fields/card/legal',
     })
     expect(alts[1]).toEqual({
       field: 'is',
@@ -175,7 +175,7 @@ describe('getArtistAtagAlternative (Spec 153)', () => {
     expect(alt!.field).toBe('atag')
     expect(alt!.label).toBe('atag:spear')
     expect(alt!.explain).toBe('Use atag: for illustration tags.')
-    expect(alt!.docRef).toBe('reference/fields/face/atag')
+    expect(alt!.docRef).toBe('reference/fields/printing/atag')
   })
 
   test('atag:frazier from atag suggests a:frazier', () => {
@@ -219,8 +219,8 @@ describe('getOperatorRelaxAlternatives (Spec 156)', () => {
     expect(alts[1].label).toBe('commander>=u')
     expect(alts[0].explain).toContain('subset')
     expect(alts[1].explain).toContain('superset')
-    expect(alts[0].docRef).toBe('reference/fields/face/identity')
-    expect(alts[1].docRef).toBe('reference/fields/face/identity')
+    expect(alts[0].docRef).toBe('reference/fields/card/identity')
+    expect(alts[1].docRef).toBe('reference/fields/card/identity')
   })
 
   test('color returns only colon alternative', () => {

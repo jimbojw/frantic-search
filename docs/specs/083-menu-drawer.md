@@ -96,18 +96,18 @@ Immediately **below each content-area section heading** (`<h2>` for MY LIST, VIE
 |------|------------|
 | My List | `reference/special/my-list` |
 | Views | `reference/modifiers/view` |
-| Color Identity | `reference/fields/face/identity` |
+| Color Identity | `reference/fields/card/identity` |
 | Mana value (h2) | `reference/fields/face/mana-value` |
 | Mana cost (h3) | `reference/fields/face/mana` |
 | Types | `reference/fields/face/type` |
-| Formats | `reference/fields/face/legal` |
+| Formats | `reference/fields/card/legal` |
 | Layouts | `reference/fields/face/is` |
 | Roles | `reference/fields/face/is` |
 | Rarities | `reference/fields/printing/rarity` |
 | Printings | `reference/fields/face/is` (chips are `is:` print traits) |
 | Prices | `reference/fields/printing/usd` |
-| Popularity | `reference/fields/face/edhrec` |
-| Salt | `reference/fields/face/salt` |
+| Popularity | `reference/fields/card/edhrec` |
+| Salt | `reference/fields/card/salt` |
 | Sort | `reference/sorting/overview` |
 
 ### Data source for VIEWS

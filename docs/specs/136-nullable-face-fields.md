@@ -99,7 +99,7 @@ When serializing to Scryfall outlinks, `field=null` and `field!=null` for these 
 | `shared/src/search/evaluator.ts` | In NOT case (face domain): when child is FIELD with canonical in {power, toughness, loyalty, defense, edhrec, salt} and val ≠ `null`, evaluate inverted operator instead of buffer invert. Mana always uses buffer inversion. |
 | `shared/src/search/canonicalize.ts` | Strip `field=null` / `field!=null` for power, toughness, loyalty, defense, mana when serializing to Scryfall (edhrec/salt already stripped per Spec 099/101) |
 | `app/src/docs/reference/syntax.mdx` | Add `field=null` examples for nullable face fields (per Spec 098 content spec) |
-| `app/src/docs/reference/fields/face/*.mdx` | Document `=null` / `!=null` for pow, tou, loy, def, m, edhrec, salt (per Spec 135 structure) |
+| `app/src/docs/reference/fields/face/*.mdx`, `card/edhrec.mdx`, `card/salt.mdx` | Document `=null` / `!=null` for pow, tou, loy, def, m (face); edhrec, salt (card) |
 
 ## Test Plan
 

@@ -12,10 +12,10 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 |----------|----------|----------------|
 | [Bare regex](?doc=reference/special/bare-regex) | Not supported | `/pattern` searches name, oracle text, and type line |
 | Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy). See [name](?doc=reference/fields/face/name). |
-| Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/face/edhrec), [salt](?doc=reference/fields/face/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |
+| Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/card/edhrec), [salt](?doc=reference/fields/card/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |
 | =null | Not supported | Nullable numeric fields support `=null` to match faces and printings with no data |
 | $ alias | Uses usd | [usd](?doc=reference/fields/printing/usd): `$` is alias for usd |
-| [produces](?doc=reference/fields/face/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
+| [produces](?doc=reference/fields/card/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
 | [`is:alchemy`](?doc=reference/fields/face/is) | Default search omits a few MB2 playtest printings that still have the alchemy promo tag in bulk | We honor bulk `promo_types` and `set_type: alchemy`. Example: [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2) |
 | [`set:`](?doc=reference/fields/printing/set) | Exact set code (unknown code → 0 cards) | **Prefix** on normalized set code for discovery; empty `set:` matches printings with a set code; no matching prefix → 0 results, no leaf error |

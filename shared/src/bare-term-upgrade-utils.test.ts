@@ -51,7 +51,7 @@ describe('getBareTermAlternatives', () => {
     expect(alts).toContainEqual({
       label: 'f:commander',
       explain: 'Use f: for format legality.',
-      docRef: 'reference/fields/face/legal',
+      docRef: 'reference/fields/card/legal',
     })
   })
 
@@ -114,7 +114,7 @@ describe('getBareTermAlternatives', () => {
     expect(alts).toContainEqual({
       label: 'otag:ramp',
       explain: 'Use otag: for oracle tags.',
-      docRef: 'reference/fields/face/otag',
+      docRef: 'reference/fields/card/otag',
     })
   })
 
@@ -126,7 +126,7 @@ describe('getBareTermAlternatives', () => {
     expect(alts).toContainEqual({
       label: 'atag:chair',
       explain: 'Use atag: for illustration tags.',
-      docRef: 'reference/fields/face/atag',
+      docRef: 'reference/fields/printing/atag',
     })
   })
 })
@@ -205,9 +205,9 @@ describe('getMultiWordAlternatives', () => {
 
 describe('Spec 159: hyphen-slug otag/atag multi-word', () => {
   const otagExplain = 'Use otag: for oracle tags.'
-  const otagDoc = 'reference/fields/face/otag'
+  const otagDoc = 'reference/fields/card/otag'
   const atagExplain = 'Use atag: for illustration tags.'
-  const atagDoc = 'reference/fields/face/atag'
+  const atagDoc = 'reference/fields/printing/atag'
 
   test('mana + rock suggests otag:mana-rock with canonical casing', () => {
     const ctx: BareTermUpgradeContext = {
@@ -323,7 +323,7 @@ describe('Spec 159: hyphen-slug otag/atag multi-word', () => {
 
 describe('Spec 159: single-token getBareTagPrefixAlternatives', () => {
   const otagExplain = 'Use otag: for oracle tags.'
-  const otagDoc = 'reference/fields/face/otag'
+  const otagDoc = 'reference/fields/card/otag'
 
   test('partial token prefixes hyphenated oracle tag', () => {
     const ctx: BareTermUpgradeContext = {

@@ -118,7 +118,7 @@ The single-node pass runs **`getBareTermAlternatives`** first (exact match for `
 - **Priority:** **21** for these `otag:` / `atag:` chips (Spec 151) so they sort after the oracle hint (**20**). Other bare-term-upgrade domains remain at **16**.
 - **Placement:** Empty state only.
 - **Label:** `otag:{key}` or `atag:{key}` with canonical key from data.
-- **Explain:** Reuse Spec 154 otag/atag explain strings (“Use otag: for oracle tags.” / “Use atag: for illustration tags.”) and **docRef** (`reference/fields/face/otag`, `reference/fields/face/atag`).
+- **Explain:** Reuse Spec 154 otag/atag explain strings (“Use otag: for oracle tags.” / “Use atag: for illustration tags.”) and **docRef** (`reference/fields/card/otag`, `reference/fields/printing/atag`).
 - **`count` / `printingCount`:** Same as Spec 154 — include when `evaluateAlternative` returns `cardCount > 0`; omit when zero (field prefix still teaches correct syntax).
 
 ### Out of scope

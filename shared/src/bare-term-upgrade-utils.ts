@@ -47,7 +47,7 @@ const DOMAINS: Array<{
   {
     field: 'f',
     explain: 'Use f: for format legality.',
-    docRef: 'reference/fields/face/legal',
+    docRef: 'reference/fields/card/legal',
     check: (v) => v in FORMAT_NAMES,
   },
   {
@@ -59,7 +59,7 @@ const DOMAINS: Array<{
   {
     field: 'otag',
     explain: 'Use otag: for oracle tags.',
-    docRef: 'reference/fields/face/otag',
+    docRef: 'reference/fields/card/otag',
     check: (v, ctx) =>
       !!ctx.oracleTagLabels?.length &&
       new Set(ctx.oracleTagLabels.map((l) => l.toLowerCase())).has(v),
@@ -67,7 +67,7 @@ const DOMAINS: Array<{
   {
     field: 'atag',
     explain: 'Use atag: for illustration tags.',
-    docRef: 'reference/fields/face/atag',
+    docRef: 'reference/fields/printing/atag',
     check: (v, ctx) =>
       !!ctx.illustrationTagLabels?.length &&
       new Set(ctx.illustrationTagLabels.map((l) => l.toLowerCase())).has(v),

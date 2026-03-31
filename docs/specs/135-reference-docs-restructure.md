@@ -8,7 +8,7 @@
 
 ## Goal
 
-Break the monolithic syntax reference into a granular, nested structure of MDX files organized by query-language component. Each filter field, modifier, composition rule, and special term gets its own document. This improves discoverability, maintainability, and alignment with Diátaxis ("reference should mirror the structure of the machinery").
+Break the monolithic syntax reference into a granular, nested structure of MDX files organized by query-language component. Each filter field, modifier, composition rule, and special term gets its own document. Field articles are grouped under **card** (oracle-wide), **face** (per-face), and **printing** (per-edition) paths. This improves discoverability, maintainability, and alignment with Diátaxis ("reference should mirror the structure of the machinery").
 
 ## Background
 
@@ -31,31 +31,33 @@ A single table-based page cannot adequately document this. Industry practice (St
 app/src/docs/reference/
 ├── index.mdx                    # Reference quadrant hub; ?doc=reference; links to sections + cheat sheet
 ├── fields/
-│   ├── index.mdx                # Fields overview: face vs printing, operator summary
+│   ├── index.mdx                # Fields overview: card vs face vs printing, operator summary
+│   ├── card/
+│   │   ├── banned.mdx
+│   │   ├── edhrec.mdx
+│   │   ├── identity.mdx
+│   │   ├── legal.mdx
+│   │   ├── my.mdx
+│   │   ├── otag.mdx
+│   │   ├── produces.mdx
+│   │   ├── restricted.mdx
+│   │   └── salt.mdx
 │   ├── face/
 │   │   ├── name.mdx
 │   │   ├── oracle.mdx
 │   │   ├── type.mdx
 │   │   ├── color.mdx
-│   │   ├── identity.mdx
 │   │   ├── power.mdx
 │   │   ├── toughness.mdx
 │   │   ├── loyalty.mdx
 │   │   ├── defense.mdx
 │   │   ├── mana-value.mdx
 │   │   ├── mana.mdx
-│   │   ├── produces.mdx
-│   │   ├── legal.mdx
-│   │   ├── banned.mdx
-│   │   ├── restricted.mdx
 │   │   ├── is.mdx
-│   │   ├── kw.mdx
-│   │   ├── otag.mdx
-│   │   ├── atag.mdx
-│   │   ├── edhrec.mdx
-│   │   ├── salt.mdx
-│   │   └── my.mdx
+│   │   └── kw.mdx
 │   └── printing/
+│       ├── artist.mdx
+│       ├── atag.mdx
 │       ├── set.mdx
 │       ├── rarity.mdx
 │       ├── usd.mdx
@@ -64,7 +66,8 @@ app/src/docs/reference/
 │       ├── year.mdx
 │       ├── date.mdx
 │       ├── game.mdx
-│       └── in.mdx
+│       ├── in.mdx
+│       └── flavor.mdx
 ├── modifiers/
 │   ├── include-extras.mdx        # include:extras, **
 │   ├── unique.mdx                # unique:cards|prints|art, ++, @@
@@ -113,7 +116,7 @@ title: <Field Name>
 
 **Canonical:** `field`  
 **Aliases:** `a`, `b` (or — if none)  
-**Domain:** Face | Printing
+**Domain:** Card | Face | Printing
 
 ## Operators
 
@@ -265,7 +268,7 @@ Sort fields (~10 canonical: name, mv, color, power, toughness, edhrec, salt, usd
 
 **Index:** Each leaf article is a `DocEntry`. Prev/next follow index order within quadrant.
 
-**Index order** (for prev/next): `reference/index` → `reference/syntax` → `reference/fields/index` → face fields (alphabetically by docParam) → printing fields (alphabetically) → modifiers → composition → sorting → special (bare-regex, my-list, tag-filter) → feedback → scryfall → lists. This order keeps related content adjacent.
+**Index order** (for prev/next): `reference/index` → `reference/syntax` → `reference/fields/index` → card fields (alphabetically by slug) → face fields (alphabetically) → printing fields (alphabetically) → modifiers → composition → sorting → special (bare-regex, my-list, tag-filter) → feedback → scryfall → lists. This order keeps related content adjacent.
 
 ### Hierarchical collapsible sidebar
 
@@ -273,14 +276,14 @@ The Reference sidebar uses a **hierarchical, collapsible** structure (accordion-
 
 **Top level (always visible):** Reference (hub), Syntax Cheat Sheet, Fields, Modifiers, Composition, Sorting, Special, Feedback, Scryfall, Lists.
 
-**Indented children:** Under each section, child articles are shown when expanded. For example, Fields expands to show Fields Overview plus two sub-sections: **Face Fields** (atag, banned, color, …) and **Printing Fields** (collectornumber, date, …). Each sub-section is collapsible. Modifiers expands to include-extras, unique, view. And so on.
+**Indented children:** Under each section, child articles are shown when expanded. For example, Fields expands to show Fields Overview plus **Card Fields**, **Face Fields**, and **Printing Fields** (each collapsible, entries in `DOC_INDEX` order). Modifiers expands to include-extras, unique, view. And so on.
 
 **Expand/collapse behavior:**
-- **Auto-expand:** The section containing the current article is expanded when the user navigates to it (e.g. viewing `reference/fields/face/atag` → Fields expanded).
+- **Auto-expand:** The section containing the current article is expanded when the user navigates to it (e.g. viewing `reference/fields/printing/atag` → Fields expanded).
 - **Manual toggle:** Users can click a section header to expand or collapse it. A chevron (▼ expanded / ▶ collapsed) indicates state.
 - **Other quadrants:** Tutorials, How-To, and Explanation keep a flat sidebar (few items).
 
-**Implementation:** The tree is derived from `DOC_INDEX` at runtime by grouping reference entries by docParam path prefix. No `parent` or `children` fields on `DocEntry`; the sidebar builder groups by `reference/fields/`, `reference/modifiers/`, etc. The Fields section uses special handling: entries under `reference/fields/face/` are grouped into a "Face Fields" sub-section, and entries under `reference/fields/printing/` into a "Printing Fields" sub-section. See `buildReferenceSidebarTree()` in `app/src/docs/index.ts`.
+**Implementation:** The tree is derived from `DOC_INDEX` at runtime by grouping reference entries by docParam path prefix. No `parent` or `children` fields on `DocEntry`; the sidebar builder groups by `reference/fields/`, `reference/modifiers/`, etc. The Fields section uses special handling: `reference/fields/card/` → **Card Fields**, `reference/fields/face/` → **Face Fields**, `reference/fields/printing/` → **Printing Fields**. See `buildReferenceSidebarTree()` in `app/src/docs/index.ts`.
 
 ## Spec 098 Relationship
 
@@ -305,7 +308,7 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 | `app/src/docs/reference/scryfall/differences.mdx` | New — high-level divergences with links to per-field sections |
 | `app/src/docs/reference/lists/index.mdx` | New — deck list overview; import/export format syntax |
 | `app/src/docs/doc-loader.ts` | Extend for multi-segment paths; use import.meta.glob for reference articles |
-| `app/src/docs/index.ts` | Add entries; add `buildReferenceSidebarTree()` helper; Fields section groups face vs printing into separate collapsible sub-sections |
+| `app/src/docs/index.ts` | Add entries; add `buildReferenceSidebarTree()` helper; Fields section groups card, face, and printing into separate collapsible sub-sections |
 | `app/src/docs/DocsHub.tsx` | Update Reference section: primary link to `?doc=reference` (hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax` |
 | `app/src/docs/DocsLayout.tsx` | Render hierarchical collapsible sidebar for Reference quadrant |
 | `app/src/docs/reference/syntax.tsx` | Replaced by cheat sheet MDX |
@@ -326,8 +329,9 @@ Spec 098 defines the canonical content for the syntax reference. After this rest
 11. Spec 098 is updated to reference Spec 135 as the implementation structure.
 12. `reference/lists/index.mdx` exists (placeholder acceptable); cheat sheet links to it.
 13. DocsHub Reference section links to `?doc=reference` (reference hub); optional "Syntax cheat sheet" link to `?doc=reference/syntax`.
-14. Reference sidebar shows hierarchical collapsible sections (Fields, Modifiers, etc.) with indented children; Fields has Face Fields and Printing Fields as nested sub-sections; section containing current article is auto-expanded; users can toggle sections manually.
+14. Reference sidebar shows hierarchical collapsible sections (Fields, Modifiers, etc.) with indented children; Fields has Card Fields, Face Fields, and Printing Fields as nested sub-sections; section containing current article is auto-expanded; users can toggle sections manually.
 
 ## Changelog
 
 - 2026-03-18: Face/printing split: Fields sidebar now shows Face Fields and Printing Fields as separate collapsible sub-sections for clearer navigation.
+- 2026-03-31: Card/face/printing split: oracle-wide fields live under `reference/fields/card/` (sidebar **Card Fields**); per-face fields remain under `face/`; `atag` moved to `printing/` to match the query engine’s printing domain.

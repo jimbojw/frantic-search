@@ -61,9 +61,9 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 | Suggested field | Label form | Explain | docRef |
 |----------------|------------|---------|--------|
-| ci: | `ci:{value}` | "Use ci: for color identity." | reference/fields/face/identity |
+| ci: | `ci:{value}` | "Use ci: for color identity." | reference/fields/card/identity |
 | c: | `c:{value}` | "Use c: for card color." | reference/fields/face/color |
-| produces: | `produces:{value}` | "Use produces: for mana the card can produce." | reference/fields/face/produces |
+| produces: | `produces:{value}` | "Use produces: for mana the card can produce." | reference/fields/card/produces |
 
 **Value normalization for display:** Use WUBRG letter form for single colors when applicable (`white` → `w`, `red` → `r`) to keep chips compact. Keep full names for multi-color (`azorius`, `wubrg`, `colorless`, `multicolor`). All three fields accept both forms per eval-leaves; normalization is for chip label brevity only.
 
@@ -84,7 +84,7 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 | Suggested field | Label form | Explain | docRef |
 |-----------------|------------|---------|--------|
-| f: | `f:{value}` | "Use f: for format legality." | reference/fields/face/legal |
+| f: | `f:{value}` | "Use f: for format legality." | reference/fields/card/legal |
 | is: | `is:{value}` | "Use is: for card properties." | reference/fields/face/is |
 
 **Order:** When both apply (e.g. `commander`), suggest f: first, then is:.
@@ -132,7 +132,7 @@ These fields do not accept color values. All field aliases from `FIELD_ALIASES` 
 
 | User field | Suggested field | Label form | Explain | docRef |
 |------------|-----------------|------------|---------|--------|
-| a:, artist: | atag | `atag:{value}` | "Use atag: for illustration tags." | reference/fields/face/atag |
+| a:, artist: | atag | `atag:{value}` | "Use atag: for illustration tags." | reference/fields/printing/atag |
 | atag:, art: | a | `a:{value}` | "Use a: for artist name." | reference/fields/face/artist |
 
 **Order:** One alternative per offending term. Evaluate the swapped query; suggest only if count > 0.

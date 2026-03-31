@@ -107,7 +107,7 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 | Suggested field | Label form | Explain | docRef |
 |-----------------|------------|---------|--------|
-| f: | `f:{value}` | "Use f: for format legality." | reference/fields/face/legal |
+| f: | `f:{value}` | "Use f: for format legality." | reference/fields/card/legal |
 
 #### Domain: is: keywords
 
@@ -129,7 +129,7 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 | Suggested field | Label form | Explain | docRef |
 |-----------------|------------|---------|--------|
-| otag: | `otag:{value}` | "Use otag: for oracle tags." | reference/fields/face/otag |
+| otag: | `otag:{value}` | "Use otag: for oracle tags." | reference/fields/card/otag |
 
 **Dependency:** Oracle tags must be loaded. If `otagsUnavailable`, skip this domain.
 
@@ -143,7 +143,7 @@ When a bare term matches **multiple** domains (e.g. `commander` matches format a
 
 | Suggested field | Label form | Explain | docRef |
 |-----------------|------------|---------|--------|
-| atag: | `atag:{value}` | "Use atag: for illustration tags." | reference/fields/face/atag |
+| atag: | `atag:{value}` | "Use atag: for illustration tags." | reference/fields/printing/atag |
 
 **Dependency:** Illustration tags must be loaded. If illustration/atag data is unavailable (e.g. no atag index loaded), skip this domain.
 

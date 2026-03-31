@@ -8,7 +8,7 @@ Format legality (whether the card is legal in a format).
 
 **Canonical:** `legal`  
 **Aliases:** `f`, `format`  
-**Domain:** Face
+**Domain:** Card
 
 ## Operators
 
@@ -25,7 +25,8 @@ Format codes: `standard`, `pioneer`, `modern`, `legacy`, `vintage`, `commander`,
 ## Notes
 
 - By default, Frantic Search shows all cards. Use `q=f:modern` (or `q=f:commander`, etc.) to filter by format legality.
-- For banned/restricted, use [banned](?doc=reference/fields/face/banned) and [restricted](?doc=reference/fields/face/restricted).
+- For banned/restricted, use [banned](?doc=reference/fields/card/banned) and [restricted](?doc=reference/fields/card/restricted).
+- Legality is stored per printing in the dataset; most oracle cards share the same status across printings.
 
 ## Scryfall
 

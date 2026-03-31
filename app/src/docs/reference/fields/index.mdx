@@ -4,16 +4,17 @@ title: Fields Overview
 
 # Fields Overview
 
-Filter fields are organized by **domain**: face (card-level) vs printing (edition-level). Face fields match cards by their oracle characteristics; printing fields match by edition-specific attributes.
+Filter fields are grouped by **what part of the game object** they describe:
 
-## Face vs printing
+| Group | Meaning | Examples |
+|-------|---------|----------|
+| **Card** | Oracle-wide: same for every face and (usually) every printing of that card | `q=ci:w`, `q=otag:ramp`, `q=produces:w` |
+| **Face** | This **face** on a card: name, type line, mana cost, colors on this side, P/T on this face, etc. | `q=name:bolt`, `q=t:creature`, `q=c:green` |
+| **Printing** | This **edition** / physical printing: set, price, frame, illustration tags, etc. | `q=set:mh2`, `q=usd<5`, `q=atag:bolt` |
 
-| Domain | Description | Examples |
-|--------|-------------|----------|
-| **Face** | Card identity: name, type, color, rules text, mana cost, format legality, etc. | `q=name:bolt`, `q=t:creature`, `q=c:green` |
-| **Printing** | Edition-specific: set, rarity, price, release date, collector number, etc. | `q=set:mh2`, `q=usd<5`, `q=date:2021` |
+`is:` mixes **face** and **printing** keywords; see the [is](?doc=reference/fields/face/is) article for which is which.
 
-When you combine face and printing fields, results are printing-level: each row is a specific printing that matches both. Use `q=unique:cards` (or `q=++` for unique prints) to control deduplication.
+When you combine fields from different groups, results are still **printing-level** when any printing condition is involved: each row is a specific printing that matches. Use `q=unique:cards` (or `q=++` for unique prints) to control deduplication.
 
 ## Operators
 
@@ -29,32 +30,37 @@ When you combine face and printing fields, results are printing-level: each row 
 
 Not all fields support all operators. For example, `q=game:` supports only `:`, `=`, and `!=`. See each field's article for details.
 
+## Card fields
+
+- [banned](?doc=reference/fields/card/banned), [legal](?doc=reference/fields/card/legal), [restricted](?doc=reference/fields/card/restricted) — Format legality (stored per printing; usually uniform across printings of an oracle)
+- [edhrec](?doc=reference/fields/card/edhrec), [salt](?doc=reference/fields/card/salt) — EDHREC popularity and saltiness
+- [identity](?doc=reference/fields/card/identity) — Color identity
+- [my](?doc=reference/fields/card/my) — Cards in a list
+- [otag](?doc=reference/fields/card/otag) — Oracle (function) tags
+- [produces](?doc=reference/fields/card/produces) — Mana the card can produce
+
 ## Face fields
 
 - [name](?doc=reference/fields/face/name) — Card name (substring, range, percentile)
 - [oracle](?doc=reference/fields/face/oracle) — Rules text
 - [type](?doc=reference/fields/face/type) — Type line
-- [color](?doc=reference/fields/face/color) — Card colors
-- [identity](?doc=reference/fields/face/identity) — Color identity
+- [color](?doc=reference/fields/face/color) — Colors on this face
 - [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) — Oracle P/T, loyalty, defense: numeric, substring, or exact match depending on operator and value shape (see each article)
-- [mana value](?doc=reference/fields/face/mana-value), [mana](?doc=reference/fields/face/mana), [produces](?doc=reference/fields/face/produces) — Mana cost and production
-- [legal](?doc=reference/fields/face/legal), [banned](?doc=reference/fields/face/banned), [restricted](?doc=reference/fields/face/restricted) — Format legality
-- [is](?doc=reference/fields/face/is) — Mechanics, layouts, roles, finish
+- [mana value](?doc=reference/fields/face/mana-value), [mana](?doc=reference/fields/face/mana) — Converted mana cost and mana cost symbols
+- [is](?doc=reference/fields/face/is) — Layouts, oracle mechanics, roles, and printing traits (see article)
 - [kw](?doc=reference/fields/face/kw) — Keyword ability
-- [otag](?doc=reference/fields/face/otag), [atag](?doc=reference/fields/face/atag) — Tags
-- [edhrec](?doc=reference/fields/face/edhrec), [salt](?doc=reference/fields/face/salt) — EDHREC popularity and saltiness
-- [my](?doc=reference/fields/face/my) — Cards in a list
 
 ## Printing fields
 
-- [set](?doc=reference/fields/printing/set) — Set code
-- [rarity](?doc=reference/fields/printing/rarity) — Rarity
-- [usd](?doc=reference/fields/printing/usd) — Price in USD
+- [artist](?doc=reference/fields/printing/artist) — Artist name (substring)
+- [atag](?doc=reference/fields/printing/atag) — Illustration (art) tags
 - [collectornumber](?doc=reference/fields/printing/collectornumber) — Collector number
-- [frame](?doc=reference/fields/printing/frame) — Frame version
-- [year](?doc=reference/fields/printing/year) — Release year
 - [date](?doc=reference/fields/printing/date) — Release date
+- [flavor](?doc=reference/fields/printing/flavor) — Flavor text (substring or regex)
+- [frame](?doc=reference/fields/printing/frame) — Frame version
 - [game](?doc=reference/fields/printing/game) — Paper, Arena, MTGO availability
 - [in](?doc=reference/fields/printing/in) — Game, set, or rarity (disambiguated by value)
-- [flavor](?doc=reference/fields/printing/flavor) — Flavor text (substring or regex)
-- [artist](?doc=reference/fields/printing/artist) — Artist name (substring)
+- [rarity](?doc=reference/fields/printing/rarity) — Rarity
+- [set](?doc=reference/fields/printing/set) — Set code
+- [usd](?doc=reference/fields/printing/usd) — Price in USD
+- [year](?doc=reference/fields/printing/year) — Release year

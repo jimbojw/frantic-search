@@ -66,8 +66,11 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
     const segmentEntries = refEntries.filter((e) => e.docParam.startsWith(prefix))
 
     if (segment === 'fields' && segmentEntries.length > 0) {
-      // Nested structure: Fields Overview + Face Fields + Printing Fields
+      // Nested: Overview + Card + Face + Printing (order matches DOC_INDEX)
       const fieldsIndex = segmentEntries.find((e) => e.docParam === 'reference/fields/index')
+      const cardEntries = segmentEntries
+        .filter((e) => e.docParam.startsWith('reference/fields/card/'))
+        .map((e) => ({ type: 'link' as const, docParam: e.docParam, title: e.title }))
       const faceEntries = segmentEntries
         .filter((e) => e.docParam.startsWith('reference/fields/face/'))
         .map((e) => ({ type: 'link' as const, docParam: e.docParam, title: e.title }))
@@ -78,6 +81,15 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
       const fieldsChildren: ReferenceSidebarNode[] = []
       if (fieldsIndex) {
         fieldsChildren.push({ type: 'link', docParam: fieldsIndex.docParam, title: fieldsIndex.title })
+      }
+      if (cardEntries.length > 0) {
+        fieldsChildren.push({
+          type: 'section',
+          id: 'reference-fields-card',
+          title: 'Card Fields',
+          indexDocParam: cardEntries[0].docParam,
+          children: cardEntries,
+        })
       }
       if (faceEntries.length > 0) {
         fieldsChildren.push({
@@ -101,7 +113,12 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
         type: 'section',
         id: 'reference-fields',
         title: REFERENCE_SECTION_LABELS.fields,
-        indexDocParam: fieldsIndex?.docParam ?? faceEntries[0]?.docParam ?? printingEntries[0]?.docParam ?? prefix,
+        indexDocParam:
+          fieldsIndex?.docParam
+          ?? cardEntries[0]?.docParam
+          ?? faceEntries[0]?.docParam
+          ?? printingEntries[0]?.docParam
+          ?? prefix,
         children: fieldsChildren,
       })
     } else if (segmentEntries.length > 0) {
@@ -127,37 +144,37 @@ export function buildReferenceSidebarTree(entries: DocEntry[]): ReferenceSidebar
 const REFERENCE_ENTRIES: DocEntry[] = [
   { id: 'reference-index', docParam: 'reference/index', title: 'Reference', quadrant: 'reference', next: 'reference/syntax' },
   { id: 'syntax', docParam: 'reference/syntax', title: 'Syntax Cheat Sheet', quadrant: 'reference', prev: 'reference/index', next: 'reference/fields/index' },
-  { id: 'fields-index', docParam: 'reference/fields/index', title: 'Fields Overview', quadrant: 'reference', prev: 'reference/syntax', next: 'reference/fields/face/atag' },
-  // Face fields (alphabetically)
-  { id: 'atag', docParam: 'reference/fields/face/atag', title: 'atag', quadrant: 'reference', prev: 'reference/fields/index', next: 'reference/fields/face/banned' },
-  { id: 'banned', docParam: 'reference/fields/face/banned', title: 'banned', quadrant: 'reference', prev: 'reference/fields/face/atag', next: 'reference/fields/face/color' },
-  { id: 'color', docParam: 'reference/fields/face/color', title: 'color', quadrant: 'reference', prev: 'reference/fields/face/banned', next: 'reference/fields/face/defense' },
-  { id: 'defense', docParam: 'reference/fields/face/defense', title: 'defense', quadrant: 'reference', prev: 'reference/fields/face/color', next: 'reference/fields/face/edhrec' },
-  { id: 'edhrec', docParam: 'reference/fields/face/edhrec', title: 'edhrec', quadrant: 'reference', prev: 'reference/fields/face/defense', next: 'reference/fields/face/identity' },
-  { id: 'identity', docParam: 'reference/fields/face/identity', title: 'identity', quadrant: 'reference', prev: 'reference/fields/face/edhrec', next: 'reference/fields/face/is' },
-  { id: 'is', docParam: 'reference/fields/face/is', title: 'is', quadrant: 'reference', prev: 'reference/fields/face/identity', next: 'reference/fields/face/kw' },
-  { id: 'kw', docParam: 'reference/fields/face/kw', title: 'kw', quadrant: 'reference', prev: 'reference/fields/face/is', next: 'reference/fields/face/legal' },
-  { id: 'legal', docParam: 'reference/fields/face/legal', title: 'legal', quadrant: 'reference', prev: 'reference/fields/face/kw', next: 'reference/fields/face/loyalty' },
-  { id: 'loyalty', docParam: 'reference/fields/face/loyalty', title: 'loyalty', quadrant: 'reference', prev: 'reference/fields/face/legal', next: 'reference/fields/face/mana' },
-  { id: 'mana', docParam: 'reference/fields/face/mana', title: 'mana', quadrant: 'reference', prev: 'reference/fields/face/loyalty', next: 'reference/fields/face/produces' },
-  { id: 'produces', docParam: 'reference/fields/face/produces', title: 'produces', quadrant: 'reference', prev: 'reference/fields/face/mana', next: 'reference/fields/face/mana-value' },
-  { id: 'mana-value', docParam: 'reference/fields/face/mana-value', title: 'mana value', quadrant: 'reference', prev: 'reference/fields/face/produces', next: 'reference/fields/face/my' },
-  { id: 'my', docParam: 'reference/fields/face/my', title: 'my', quadrant: 'reference', prev: 'reference/fields/face/mana-value', next: 'reference/fields/face/name' },
-  { id: 'name', docParam: 'reference/fields/face/name', title: 'name', quadrant: 'reference', prev: 'reference/fields/face/my', next: 'reference/fields/face/oracle' },
-  { id: 'oracle', docParam: 'reference/fields/face/oracle', title: 'oracle', quadrant: 'reference', prev: 'reference/fields/face/name', next: 'reference/fields/face/otag' },
-  { id: 'otag', docParam: 'reference/fields/face/otag', title: 'otag', quadrant: 'reference', prev: 'reference/fields/face/oracle', next: 'reference/fields/face/power' },
-  { id: 'power', docParam: 'reference/fields/face/power', title: 'power', quadrant: 'reference', prev: 'reference/fields/face/otag', next: 'reference/fields/face/restricted' },
-  { id: 'restricted', docParam: 'reference/fields/face/restricted', title: 'restricted', quadrant: 'reference', prev: 'reference/fields/face/power', next: 'reference/fields/face/salt' },
-  { id: 'salt', docParam: 'reference/fields/face/salt', title: 'salt', quadrant: 'reference', prev: 'reference/fields/face/restricted', next: 'reference/fields/face/toughness' },
-  { id: 'toughness', docParam: 'reference/fields/face/toughness', title: 'toughness', quadrant: 'reference', prev: 'reference/fields/face/salt', next: 'reference/fields/face/type' },
-  { id: 'type', docParam: 'reference/fields/face/type', title: 'type', quadrant: 'reference', prev: 'reference/fields/face/toughness', next: 'reference/fields/printing/collectornumber' },
-  // Printing fields (alphabetically)
-  { id: 'artist', docParam: 'reference/fields/printing/artist', title: 'artist', quadrant: 'reference', prev: 'reference/fields/face/type', next: 'reference/fields/printing/collectornumber' },
-  { id: 'collectornumber', docParam: 'reference/fields/printing/collectornumber', title: 'collectornumber', quadrant: 'reference', prev: 'reference/fields/printing/artist', next: 'reference/fields/printing/date' },
+  { id: 'fields-index', docParam: 'reference/fields/index', title: 'Fields Overview', quadrant: 'reference', prev: 'reference/syntax', next: 'reference/fields/card/banned' },
+  // Card fields (alphabetically by slug)
+  { id: 'card-banned', docParam: 'reference/fields/card/banned', title: 'banned', quadrant: 'reference', prev: 'reference/fields/index', next: 'reference/fields/card/edhrec' },
+  { id: 'card-edhrec', docParam: 'reference/fields/card/edhrec', title: 'edhrec', quadrant: 'reference', prev: 'reference/fields/card/banned', next: 'reference/fields/card/identity' },
+  { id: 'card-identity', docParam: 'reference/fields/card/identity', title: 'identity', quadrant: 'reference', prev: 'reference/fields/card/edhrec', next: 'reference/fields/card/legal' },
+  { id: 'card-legal', docParam: 'reference/fields/card/legal', title: 'legal', quadrant: 'reference', prev: 'reference/fields/card/identity', next: 'reference/fields/card/my' },
+  { id: 'card-my', docParam: 'reference/fields/card/my', title: 'my', quadrant: 'reference', prev: 'reference/fields/card/legal', next: 'reference/fields/card/otag' },
+  { id: 'card-otag', docParam: 'reference/fields/card/otag', title: 'otag', quadrant: 'reference', prev: 'reference/fields/card/my', next: 'reference/fields/card/produces' },
+  { id: 'card-produces', docParam: 'reference/fields/card/produces', title: 'produces', quadrant: 'reference', prev: 'reference/fields/card/otag', next: 'reference/fields/card/restricted' },
+  { id: 'card-restricted', docParam: 'reference/fields/card/restricted', title: 'restricted', quadrant: 'reference', prev: 'reference/fields/card/produces', next: 'reference/fields/card/salt' },
+  { id: 'card-salt', docParam: 'reference/fields/card/salt', title: 'salt', quadrant: 'reference', prev: 'reference/fields/card/restricted', next: 'reference/fields/face/color' },
+  // Face fields (alphabetically by slug)
+  { id: 'color', docParam: 'reference/fields/face/color', title: 'color', quadrant: 'reference', prev: 'reference/fields/card/salt', next: 'reference/fields/face/defense' },
+  { id: 'defense', docParam: 'reference/fields/face/defense', title: 'defense', quadrant: 'reference', prev: 'reference/fields/face/color', next: 'reference/fields/face/is' },
+  { id: 'is', docParam: 'reference/fields/face/is', title: 'is', quadrant: 'reference', prev: 'reference/fields/face/defense', next: 'reference/fields/face/kw' },
+  { id: 'kw', docParam: 'reference/fields/face/kw', title: 'kw', quadrant: 'reference', prev: 'reference/fields/face/is', next: 'reference/fields/face/loyalty' },
+  { id: 'loyalty', docParam: 'reference/fields/face/loyalty', title: 'loyalty', quadrant: 'reference', prev: 'reference/fields/face/kw', next: 'reference/fields/face/mana' },
+  { id: 'mana', docParam: 'reference/fields/face/mana', title: 'mana', quadrant: 'reference', prev: 'reference/fields/face/loyalty', next: 'reference/fields/face/mana-value' },
+  { id: 'mana-value', docParam: 'reference/fields/face/mana-value', title: 'mana value', quadrant: 'reference', prev: 'reference/fields/face/mana', next: 'reference/fields/face/name' },
+  { id: 'name', docParam: 'reference/fields/face/name', title: 'name', quadrant: 'reference', prev: 'reference/fields/face/mana-value', next: 'reference/fields/face/oracle' },
+  { id: 'oracle', docParam: 'reference/fields/face/oracle', title: 'oracle', quadrant: 'reference', prev: 'reference/fields/face/name', next: 'reference/fields/face/power' },
+  { id: 'power', docParam: 'reference/fields/face/power', title: 'power', quadrant: 'reference', prev: 'reference/fields/face/oracle', next: 'reference/fields/face/toughness' },
+  { id: 'toughness', docParam: 'reference/fields/face/toughness', title: 'toughness', quadrant: 'reference', prev: 'reference/fields/face/power', next: 'reference/fields/face/type' },
+  { id: 'type', docParam: 'reference/fields/face/type', title: 'type', quadrant: 'reference', prev: 'reference/fields/face/toughness', next: 'reference/fields/printing/artist' },
+  // Printing fields (alphabetically by slug)
+  { id: 'artist', docParam: 'reference/fields/printing/artist', title: 'artist', quadrant: 'reference', prev: 'reference/fields/face/type', next: 'reference/fields/printing/atag' },
+  { id: 'atag', docParam: 'reference/fields/printing/atag', title: 'atag', quadrant: 'reference', prev: 'reference/fields/printing/artist', next: 'reference/fields/printing/collectornumber' },
+  { id: 'collectornumber', docParam: 'reference/fields/printing/collectornumber', title: 'collectornumber', quadrant: 'reference', prev: 'reference/fields/printing/atag', next: 'reference/fields/printing/date' },
   { id: 'date', docParam: 'reference/fields/printing/date', title: 'date', quadrant: 'reference', prev: 'reference/fields/printing/collectornumber', next: 'reference/fields/printing/flavor' },
   { id: 'flavor', docParam: 'reference/fields/printing/flavor', title: 'flavor', quadrant: 'reference', prev: 'reference/fields/printing/date', next: 'reference/fields/printing/frame' },
   { id: 'frame', docParam: 'reference/fields/printing/frame', title: 'frame', quadrant: 'reference', prev: 'reference/fields/printing/flavor', next: 'reference/fields/printing/game' },
-  { id: 'game', docParam: 'reference/fields/printing/game', title: 'game', quadrant: 'reference', prev: 'reference/fields/printing/frame', next: 'reference/fields/printing/in' },
   { id: 'game', docParam: 'reference/fields/printing/game', title: 'game', quadrant: 'reference', prev: 'reference/fields/printing/frame', next: 'reference/fields/printing/in' },
   { id: 'in', docParam: 'reference/fields/printing/in', title: 'in', quadrant: 'reference', prev: 'reference/fields/printing/game', next: 'reference/fields/printing/rarity' },
   { id: 'rarity', docParam: 'reference/fields/printing/rarity', title: 'rarity', quadrant: 'reference', prev: 'reference/fields/printing/in', next: 'reference/fields/printing/set' },

@@ -68,7 +68,7 @@ All of the following must hold:
 - **Label:** The replacement term (e.g. `ci:u`, `ci>=u`).
 - **Explain:** Short teaching copy distinguishing exact vs subset vs includes (see table).
 - **`count` / `printingCount`:** When `evaluateAlternative` reports `cardCount > 0`, set both the same way as **wrong-field** suggestions in `worker-suggestions.ts` (two-line chip counts). Omit when zero (those alts are not emitted).
-- **docRef:** Use the same slugs as Spec 153 for the field being relaxed: **`reference/fields/face/identity`** for identity (`ci`, `id`, `commander`, `cmd`, …) chips; **`reference/fields/face/color`** for color (`c`, …) chips.
+- **docRef:** Use the same slugs as Spec 153 for the field being relaxed: **`reference/fields/card/identity`** for identity (`ci`, `id`, `commander`, `cmd`, …) chips; **`reference/fields/face/color`** for color (`c`, …) chips.
 
 ### Alternatives by canonical field
 
