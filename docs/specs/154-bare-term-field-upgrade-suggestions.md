@@ -299,7 +299,7 @@ Add `'bare-term-upgrade'` to the `Suggestion.id` union in `shared/src/suggestion
 5. `lightning ci:r landfall` with zero results shows `kw:landfall` chip (replacing only "landfall"); tapping produces `lightning ci:r kw:landfall`.
 6. `landfall f:commander` with zero results shows `kw:landfall` chip (non-trailing bare term); tapping produces `kw:landfall f:commander`.
 7. `landfall flying` with zero results shows both `kw:landfall` and `kw:flying` chips (counts may be 0).
-8. Bare-term-upgrade suggestions appear below the Results Summary Bar. **Non-tag** upgrades (priority 16) sort before the oracle hint (20). **`otag:`** / **`atag:`** upgrades (21) sort after the oracle hint when both apply.
+8. Bare-term-upgrade suggestions appear above the Results Summary Bar. **Non-tag** upgrades (priority 16) sort before the oracle hint (20). **`otag:`** / **`atag:`** upgrades (21) sort after the oracle hint when both apply.
 9. When a bare term gets a **non-tag** bare-term-upgrade suggestion, the oracle hint does not also suggest `o:{term}` for that same term. **`otag:`** / **`atag:`** suggestions do not trigger that suppression (Spec 131).
 10. Works in single-pane and Dual Wield layouts.
 11. Each chip shows explain text and "Learn more" link when docRef is set.

@@ -34,7 +34,7 @@ In each case, the value is valid for color-related fields (`ci:`, `c:`, `produce
 
 All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a single chip: label = the new term (e.g. `ci:w`), query = full query with that term spliced in, explain = teaching copy.
 
-- **Placement:** Primarily below the Results Summary Bar in the **empty** state. When the trigger is **unknown `is:`/`not:`** while other clauses still match cards, the same chips may appear as a **rider** below the bar (Spec 151 / `SuggestionList`) so users still see the fix.
+- **Placement:** Primarily above the Results Summary Bar in the **empty** state. When the trigger is **unknown `is:`/`not:`** while other clauses still match cards, the same chips may appear as a **rider** above the bar (Spec 151 / `SuggestionList`) so users still see the fix.
 - **Priority:** 22 (between oracle 20 and unique-prints 30).
 - **Variant:** `rewrite`.
 - **Negation:** Preserved. `-is:white` → suggest `-ci:w`, `-c:w`, `-produces:w` (only those that return results).
@@ -228,7 +228,7 @@ Each would be a new section in this spec (or a separate spec if complex). Artist
 4. `-is:white` suggests -ci:w, -c:w, -produces:w (negation preserved).
 5. `t:creature is:white` suggests for is:white only; tapping ci:w produces `t:creature ci:w`.
 6. Wrong-field suggestions appear when `totalCards === 0`, or when the evaluated breakdown has an `is:`/`not:` **unknown keyword** error (including rider placement when other clauses still match cards).
-7. Wrong-field suggestions appear below the Results Summary Bar alongside oracle and include-extras.
+7. Wrong-field suggestions appear above the Results Summary Bar alongside oracle and include-extras.
 8. Each chip shows explain text and "Learn more" link when docRef is set.
 9. Works in single-pane and Dual Wield layouts.
 10. `type:commander` with zero results shows f:commander and is:commander chips (only those that return results).

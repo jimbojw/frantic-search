@@ -229,14 +229,6 @@ export default function SearchResults() {
                 !!(ctx.hasPrintingConditions() && !ctx.printingDisplay()),
             }}
           >
-            <Show when={ctx.effectiveQuery().trim() !== ''}>
-              <ResultsSummaryBar
-                effectiveQuery={ctx.effectiveQuery()}
-                effectiveBreakdown={ctx.effectiveBreakdown()}
-                cardCount={0}
-                zeroResult
-              />
-            </Show>
             <SuggestionList
               suggestions={() => ctx.suggestions() ?? []}
               mode="empty"
@@ -249,6 +241,14 @@ export default function SearchResults() {
               suppressTopBorder={ctx.effectiveQuery().trim() === ''}
               exampleSearchPanel={ctx.effectiveQuery().trim() === ''}
             />
+            <Show when={ctx.effectiveQuery().trim() !== ''}>
+              <ResultsSummaryBar
+                effectiveQuery={ctx.effectiveQuery()}
+                effectiveBreakdown={ctx.effectiveBreakdown()}
+                cardCount={0}
+                zeroResult
+              />
+            </Show>
           </div>
         }>
           <Show when={ctx.viewMode() === 'images'} fallback={
@@ -886,17 +886,6 @@ export default function SearchResults() {
               </Show>
             </div>
           </Show>
-          <ResultsSummaryBar
-            effectiveQuery={ctx.effectiveQuery()}
-            effectiveBreakdown={ctx.effectiveBreakdown()}
-            cardCount={ctx.totalCards()}
-            printingCount={
-              ctx.totalPrintingItems() > 0 &&
-              (ctx.uniqueMode() === 'prints' || ctx.hasPrintingConditions())
-                ? ctx.totalPrintingItems()
-                : undefined
-            }
-          />
           <Show when={
             ctx.suggestions()?.some((s) =>
               s.id === 'unique-prints' ||
@@ -932,6 +921,17 @@ export default function SearchResults() {
                 }
               />
           </Show>
+          <ResultsSummaryBar
+            effectiveQuery={ctx.effectiveQuery()}
+            effectiveBreakdown={ctx.effectiveBreakdown()}
+            cardCount={ctx.totalCards()}
+            printingCount={
+              ctx.totalPrintingItems() > 0 &&
+              (ctx.uniqueMode() === 'prints' || ctx.hasPrintingConditions())
+                ? ctx.totalPrintingItems()
+                : undefined
+            }
+          />
         </Show>
       </div>
     </Show>

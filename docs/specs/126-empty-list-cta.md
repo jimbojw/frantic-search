@@ -4,7 +4,7 @@
 
 **Unified by:** Spec 151 (Suggestion System)
 
-**Layout (Spec 151, Spec 152):** Empty-list suggestions appear in the unified SuggestionList below the Results Summary Bar. One row per offending term; chip shows the term in amber with "0 cards (0 prints)", description varies by term type (my vs tag). Same placement as other refinement suggestions.
+**Layout (Spec 151, Spec 152):** Empty-list suggestions appear in the unified SuggestionList above the Results Summary Bar when the bar is shown. One row per offending term; chip shows the term in amber with "0 cards (0 prints)", description varies by term type (my vs tag). Same placement as other refinement suggestions.
 
 **Depends on:** Spec 125 (MenuDrawer MY LIST), Spec 077 (Query Engine — my:list), Spec 123 (# Metadata Tag Search), Spec 090 (Lists Page), Spec 083 (MenuDrawer)
 

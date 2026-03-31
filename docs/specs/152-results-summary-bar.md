@@ -45,8 +45,8 @@ The right column uses `ResultsActionsColumn` (shared with UnifiedBreakdown). Syn
 
 ### Placement
 
-- **When totalCards > 0:** The bar appears as the footer of the results box, directly beneath the results list/grid. Rider suggestions (unique:prints, include:extras, empty-list) render below the bar. Users see results first, then the bar, then refinement suggestions.
-- **When totalCards === 0:** The bar replaces "No cards found" and the separate links paragraph. It appears in the same structural position—the top of the empty-state block. SuggestionList (or the empty-list Import deck CTA) renders below the bar.
+- **When totalCards > 0:** Rider suggestions (unique:prints, include:extras, empty-list, etc.) render directly beneath the results list/grid when applicable, then the bar as the bottom footer of the results box. Users see results first, then optional refinement suggestions, then the bar.
+- **When totalCards === 0:** SuggestionList (or the empty-list Import deck CTA) appears at the top of the empty-state block; the bar replaces "No cards found" and the separate links paragraph and follows SuggestionList when the effective query is non-empty (Spec 155 omits the bar when the effective query is empty).
 - **Empty-list case:** Same as all zero-result cases. The bar shows the three-line format with "matched zero cards." The `my:list` term will appear in amber (error styling) when the list is empty. SuggestionList includes the empty-list CTA chip. Uniform treatment—no special-case layout for empty-list.
 
 ### Message copy
@@ -111,7 +111,7 @@ Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-s
 | `app/src/ResultsActionsColumn.tsx` | **New** — Extracted three-link column; used by UnifiedBreakdown and ResultsSummaryBar |
 | `app/src/ResultsSummaryBar.tsx` | **New** — Two-cell bar: left = three-line stacked layout ("Your query," + chip box + "matched …"); right = ResultsActionsColumn |
 | `app/src/UnifiedBreakdown.tsx` | Replace inline links with `ResultsActionsColumn` |
-| `app/src/SearchResults.tsx` | Integrate ResultsSummaryBar: add below results when totalCards > 0; replace "No cards found" + links with ResultsSummaryBar when totalCards === 0; SuggestionList / empty-list CTA below bar |
+| `app/src/SearchResults.tsx` | Integrate ResultsSummaryBar: after optional SuggestionList when totalCards > 0; empty state shows SuggestionList then ResultsSummaryBar when the effective query is non-empty (GitHub #233) |
 
 ## Spec updates
 
@@ -119,22 +119,22 @@ Both UnifiedBreakdown and ResultsSummaryBar use this component. Styling: `text-s
 |------|--------|
 | 151 | Add "Results area footer unified by Spec 152 (Results Summary Bar)" to placement rules |
 | 079 | Note that ResultsActionsColumn is shared with Spec 152 |
-| 126 | Empty-list CTA now appears below Results Summary Bar; bar shows effective query uniformly |
+| 126 | Empty-list CTA appears in SuggestionList above Results Summary Bar when the bar is shown; bar shows effective query uniformly |
 
 ## Acceptance Criteria
 
-1. Results Summary Bar appears beneath results when `totalCards > 0`.
-2. Results Summary Bar appears in empty-state position when `totalCards === 0`.
+1. Results Summary Bar appears after the results list/grid (and after optional rider SuggestionList) when `totalCards > 0`.
+2. Results Summary Bar appears in the empty-state block when `totalCards === 0`, after SuggestionList when the effective query is non-empty.
 3. Bar shows syntax-highlighted effective query (pinned + live) in both cases.
 4. Bar includes Try on Scryfall, Syntax help (when `navigateToDocs` present), and Report a problem.
 5. Message copy: "matched N cards (M prints)" or "matched zero cards" as specified (via `formatDualCount` when printing count present).
-6. Empty-list case uses the same bar; Import deck CTA and SuggestionList render below.
+6. Empty-list case uses the same bar; Import deck CTA and SuggestionList render above the bar.
 7. Single-pane and Dual Wield layouts both work.
-8. Rider suggestions (unique:prints, include-extras, empty-list) remain below the bar when present.
+8. Rider suggestions (unique:prints, include-extras, empty-list) render above the bar when present.
 
 ### Refinements area typography
 
-The SuggestionList (refinement suggestions) below the bar uses `text-base` to match the bar's message copy, keeping the footer area visually cohesive.
+The SuggestionList (refinement suggestions) uses `text-base` to match the bar's message copy, keeping the footer area visually cohesive.
 
 ## Out of scope
 

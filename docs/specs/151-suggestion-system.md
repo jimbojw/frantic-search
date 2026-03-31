@@ -85,16 +85,16 @@ export type Suggestion = {
 2. **Main thread** receives `suggestions` from the worker result and passes through to SearchResults. No merge, no main-thread context, no translation.
 
 3. **SearchResults** consumes `suggestions: Suggestion[]` and renders a single `SuggestionList` component that:
-   - When `totalCards === 0`: Results Summary Bar (Spec 152) at top, then SuggestionList for empty-state suggestions (including empty-list when applicable).
-   - When `totalCards > 0`: Results Summary Bar below the results list, then SuggestionList for rider suggestions (including empty-list when applicable).
+   - When `totalCards === 0`: SuggestionList for empty-state suggestions (including empty-list when applicable), then Results Summary Bar (Spec 152) when the effective query is non-empty (Spec 155 omits the bar when empty).
+   - When `totalCards > 0`: SuggestionList for rider suggestions (including empty-list when applicable) directly beneath the results list when any apply, then Results Summary Bar.
    - Single SuggestionList for both contexts; empty-list can appear in either. All chips use `ChipButton` (Spec 150).
 
 ### Placement rules
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, bare-term-upgrade, nonexistent-field, name-typo, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Below Results Summary Bar (Spec 152); bar shows effective query + actions |
-| Non-empty riders | empty-list, nonexistent-field, wrong-field, unique-prints, include-extras | All that apply | Below Results Summary Bar (Spec 152); bar is directly beneath results list; **fixed order:** empty-list, then nonexistent-field (Spec 158), then wrong-field when present (e.g. Spec 153 unknown `is:`/`not:` while other clauses match), then unique-prints, then include-extras |
+| Empty state | empty-list, include-extras, bare-term-upgrade, nonexistent-field, name-typo, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Above Results Summary Bar (Spec 152) when the bar is shown; bar shows effective query + actions |
+| Non-empty riders | empty-list, nonexistent-field, wrong-field, unique-prints, include-extras | All that apply | Above Results Summary Bar (Spec 152); riders sit directly beneath the results list; **fixed order:** empty-list, then nonexistent-field (Spec 158), then wrong-field when present (e.g. Spec 153 unknown `is:`/`not:` while other clauses match), then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
 
@@ -132,7 +132,7 @@ Deprecate/remove `oracleHint`, `indicesIncludingExtras`, `printingIndicesIncludi
 
 ### UI component: SuggestionList
 
-Unified flex-row layout for all suggestions. Header: "Try a query refinement?" — `text-lg font-semibold` with high-contrast foreground; the section uses a light sky-tinted panel and sky top border so it reads clearly below the Results Summary Bar (Spec 152). Each row: chip (left, shrink-0) | description (right, flex-1). Row copy remains `text-base` with muted body color. Suggestion `ChipButton`s use a neutral gray border (and amber border for empty-list CTAs) so chips separate from the sky panel.
+Unified flex-row layout for all suggestions. Header: "Try a query refinement?" — `text-lg font-semibold` with high-contrast foreground; the section uses a light sky-tinted panel and sky top border so it separates clearly from content above (results list or empty-state shell). Results Summary Bar (Spec 152) follows when shown. Each row: chip (left, shrink-0) | description (right, flex-1). Row copy remains `text-base` with muted body color. Suggestion `ChipButton`s use a neutral gray border (and amber border for empty-list CTAs) so chips separate from the sky panel.
 
 | Suggestion type | Left (chip) | Right (description) |
 |-----------------|--------------|---------------------|

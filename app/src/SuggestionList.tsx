@@ -65,6 +65,7 @@ function getDescription(s: Suggestion, props: { hiddenCardCount?: number; hidden
   return { text: 'Try again with this refinement.', link: s.docRef && props.navigateToDocs ? { label: 'Learn more', href: () => props.navigateToDocs?.(s.docRef) } : undefined }
 }
 
+/** Refinement chips in the sky panel; SearchResults renders this above ResultsSummaryBar (GitHub #233). */
 export function SuggestionList(props: {
   /** Suggestions accessor for reactive updates. */
   suggestions: Accessor<Suggestion[]>
