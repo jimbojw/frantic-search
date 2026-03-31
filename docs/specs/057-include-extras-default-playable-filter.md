@@ -6,6 +6,8 @@
 
 **Unified by:** Spec 151 (Suggestion System)
 
+**UI (accordion counts):** Spec 175 — optional `indicesIncludingExtras` / `printingIndicesIncludingExtras` on the worker `result` are the canonical source for **MATCHES** vs **SHOWING** in the query breakdown footer.
+
 **Depends on:** Spec 002 (Query Engine), Spec 032 (is: Operator), Spec 054 (Pinned Search Criteria), Spec 056 (Printing-Level Format Legality), ADR-009 (Bitmask-per-Node AST)
 
 ## Goal

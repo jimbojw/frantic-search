@@ -167,6 +167,14 @@ function App() {
   const [pinnedIndicesCount2, setPinnedIndicesCount2] = createSignal<number | undefined>(undefined)
   const [pinnedPrintingCount2, setPinnedPrintingCount2] = createSignal<number | undefined>(undefined)
   const [suggestions2, setSuggestions2] = createSignal<import('@frantic-search/shared').Suggestion[]>([])
+  const [indicesIncludingExtras, setIndicesIncludingExtras] = createSignal<number | undefined>(undefined)
+  const [printingIndicesIncludingExtras, setPrintingIndicesIncludingExtras] = createSignal<
+    number | undefined
+  >(undefined)
+  const [indicesIncludingExtras2, setIndicesIncludingExtras2] = createSignal<number | undefined>(undefined)
+  const [printingIndicesIncludingExtras2, setPrintingIndicesIncludingExtras2] = createSignal<
+    number | undefined
+  >(undefined)
   const [visibleCount2, setVisibleCount2] = createSignal(BATCH_SIZES.images)
   const [breakdownExpanded2, setBreakdownExpanded2] = createSignal(
     localStorage.getItem('frantic-breakdown-expanded') !== 'false'
@@ -656,6 +664,8 @@ function App() {
           setIncludeExtras2(msg.includeExtras ?? false)
           setUsedExtension2(msg.usedExtension)
           setSuggestions2(msg.suggestions)
+          setIndicesIncludingExtras2(msg.indicesIncludingExtras)
+          setPrintingIndicesIncludingExtras2(msg.printingIndicesIncludingExtras)
         } else if (matchesLeft || matchesLeftDual) {
           setIndices(msg.indices)
           setBreakdown(msg.breakdown)
@@ -670,6 +680,8 @@ function App() {
           setIncludeExtras(msg.includeExtras ?? false)
           setUsedExtension(msg.usedExtension)
           setSuggestions(msg.suggestions)
+          setIndicesIncludingExtras(msg.indicesIncludingExtras)
+          setPrintingIndicesIncludingExtras(msg.printingIndicesIncludingExtras)
           const eq = effectiveQuery().trim()
           if (eq) {
             const usedExt = msg.usedExtension
@@ -732,6 +744,8 @@ function App() {
         if (q || pq) {
           latestQueryIdLeft++
           setSuggestions([])
+          setIndicesIncludingExtras(undefined)
+          setPrintingIndicesIncludingExtras(undefined)
           worker.postMessage({
             type: 'search', queryId: latestQueryIdLeft, query: query(),
             pinnedQuery: pq || undefined,
@@ -750,10 +764,14 @@ function App() {
           setHasPrintingConditions(false)
           setUniqueMode('cards')
           setSuggestions([])
+          setIndicesIncludingExtras(undefined)
+          setPrintingIndicesIncludingExtras(undefined)
         }
         if (q2 || pq2) {
           latestQueryIdRight++
           setSuggestions2([])
+          setIndicesIncludingExtras2(undefined)
+          setPrintingIndicesIncludingExtras2(undefined)
           const viewMode2 = extractViewMode(
             pq2 ? sealQuery(pq2) + ' ' + sealQuery(q2) : q2
           )
@@ -775,6 +793,8 @@ function App() {
           setHasPrintingConditions2(false)
           setUniqueMode2('cards')
           setSuggestions2([])
+          setIndicesIncludingExtras2(undefined)
+          setPrintingIndicesIncludingExtras2(undefined)
         }
       }
     } else {
@@ -782,6 +802,8 @@ function App() {
       if (workerStatus() === 'ready' && (q || pq || emptyUrlLiveQuery)) {
         latestQueryId++
         setSuggestions([])
+        setIndicesIncludingExtras(undefined)
+        setPrintingIndicesIncludingExtras(undefined)
         worker.postMessage({
           type: 'search',
           queryId: latestQueryId,
@@ -803,6 +825,8 @@ function App() {
         setHasPrintingConditions(false)
         setUniqueMode('cards')
         setSuggestions([])
+        setIndicesIncludingExtras(undefined)
+        setPrintingIndicesIncludingExtras(undefined)
       } else if (!q && pq) {
         setIndices(new Uint32Array(0))
         setBreakdown(null)
@@ -811,6 +835,8 @@ function App() {
         setHasPrintingConditions(false)
         setUniqueMode('cards')
         setSuggestions([])
+        setIndicesIncludingExtras(undefined)
+        setPrintingIndicesIncludingExtras(undefined)
       }
     }
   })
@@ -1259,6 +1285,8 @@ function App() {
     includeExtras,
     usedExtension,
     suggestions,
+    indicesIncludingExtras,
+    printingIndicesIncludingExtras,
     display,
     printingDisplay,
     oracleTagLabels,
@@ -1298,6 +1326,8 @@ function App() {
     includeExtras: includeExtras2,
     usedExtension: usedExtension2,
     suggestions: suggestions2,
+    indicesIncludingExtras: indicesIncludingExtras2,
+    printingIndicesIncludingExtras: printingIndicesIncludingExtras2,
     display,
     printingDisplay,
     oracleTagLabels,
@@ -1332,6 +1362,8 @@ function App() {
     includeExtras,
     usedExtension,
     suggestions,
+    indicesIncludingExtras,
+    printingIndicesIncludingExtras,
     viewMode,
     changeViewMode: (mode: ViewMode) => {
       leftPaneState.changeViewMode(mode)
@@ -1812,6 +1844,8 @@ function App() {
               liveBreakdown={query().trim() !== '' ? breakdown() : null}
               liveCardCount={totalCards()}
               livePrintingCount={showPrintingResults() ? totalPrintingItems() : undefined}
+              indicesIncludingExtras={indicesIncludingExtras()}
+              printingIndicesIncludingExtras={printingIndicesIncludingExtras()}
               expanded={breakdownExpanded()}
               onToggle={leftPaneState.toggleBreakdown}
               onPin={(nodeLabel) => { flushPendingCommit(); leftPaneState.handlePin(nodeLabel) }}

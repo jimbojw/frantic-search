@@ -47,7 +47,7 @@ export function ChipButton(props: {
       type={props.type ?? 'button'}
       {...(props.role !== undefined && { role: props.role })}
       class={classes()}
-      onClick={props.onClick}
+      onClick={() => props.onClick?.()}
       aria-pressed={props['aria-pressed']}
     >
       {props.children}

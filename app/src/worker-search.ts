@@ -375,6 +375,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
+    ...(indicesIncludingExtras !== undefined && { indicesIncludingExtras }),
+    ...(printingIndicesIncludingExtras !== undefined && { printingIndicesIncludingExtras }),
   }
   return result
 }

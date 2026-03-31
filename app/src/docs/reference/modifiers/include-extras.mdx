@@ -27,6 +27,17 @@ The bare word `q=**` desugars to `q=include:extras`. It behaves identically to t
 - When present, the evaluator sets `includeExtras: true` on the output. The worker skips the default playable filter entirely.
 - When absent, the worker applies the playable filter: cards must be legal or restricted in at least one format; printings must be tournament-usable (no gold-bordered, oversized, etc.).
 
+## Query breakdown: MATCHES and SHOWING
+
+The collapsed **query breakdown** footer (under the search box) can show two live rows when the default playability filter hides some results but your query still matches cards you can see:
+
+- **MATCHES** — Card and print counts for everything that matched your query **before** that default filter (the same totals the breakdown chips use for semantic match counts).
+- **SHOWING** — What actually appears in the result list **after** the filter.
+
+You only see **SHOWING** when there is at least one visible result and the filter removed at least one card or printing. If **MATCHES** and **SHOWING** are the same, the footer stays a single **MATCHES** line.
+
+Adding **`include:extras`** (or **`**`**) to your query turns off the default filter, so the list can include non-playable cards and non-tournament printings; **MATCHES** and **SHOWING** then line up again and the extra row goes away.
+
 ## Examples
 
 - `q=t:creature **` — All creatures, including non-playable ones

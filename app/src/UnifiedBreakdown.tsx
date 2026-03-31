@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { For, Show } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
 import type { BreakdownNode } from '@frantic-search/shared'
 import { IconChevronRight, IconPin } from './Icons'
 import ResultsActionsColumn from './ResultsActionsColumn'
+import { useSearchContext } from './SearchContext'
 import {
   getBreakdownCase,
   countErrors,
@@ -11,6 +12,24 @@ import {
   BreakdownChip,
   ChipTreeNode,
 } from './InlineBreakdown'
+
+/** Spec 175: split footer when playable filter hides cards/printings and results are non-empty. */
+export function shouldShowMatchesShowingSplit(opts: {
+  postCards: number
+  postPrints?: number
+  preCards?: number
+  prePrints?: number
+}): boolean {
+  const { postCards, postPrints, preCards, prePrints } = opts
+  if (postCards <= 0) return false
+  const hiddenCards = preCards !== undefined ? preCards - postCards : 0
+  const hiddenPrints =
+    prePrints !== undefined && postPrints !== undefined ? prePrints - postPrints : 0
+  return hiddenCards > 0 || hiddenPrints > 0
+}
+
+/** Doc param for `?doc=` — matches `include-extras` suggestion `docRef`. */
+const INCLUDE_EXTRAS_DOC_PARAM = 'reference/modifiers/include-extras'
 
 // ---------------------------------------------------------------------------
 // Chip section renderer — shared logic for pinned and live
@@ -70,7 +89,7 @@ function ChipSection(props: {
 }
 
 // ---------------------------------------------------------------------------
-// UnifiedBreakdown — single accordion for pinned + live (Spec 079)
+// UnifiedBreakdown — single accordion for pinned + live (Spec 079, Spec 175)
 // ---------------------------------------------------------------------------
 
 export default function UnifiedBreakdown(props: {
@@ -80,6 +99,10 @@ export default function UnifiedBreakdown(props: {
   liveBreakdown: BreakdownNode | null
   liveCardCount: number
   livePrintingCount?: number
+  /** Spec 057 / 175: pre-playable-filter face count when the filter removed matches. */
+  indicesIncludingExtras?: number
+  /** Spec 057 / 175: pre-playable-filter printing count when the filter removed printings. */
+  printingIndicesIncludingExtras?: number
   expanded: boolean
   onToggle: () => void
   onPin: (nodeLabel: string) => void
@@ -87,6 +110,7 @@ export default function UnifiedBreakdown(props: {
   onPinnedRemove: (query: string) => void
   onLiveRemove: (query: string) => void
 }) {
+  const searchCtx = useSearchContext()
   const hasPinned = () => props.pinnedBreakdown !== null
   const hasLive = () => props.liveBreakdown !== null
   const pinnedErrorCount = () =>
@@ -97,6 +121,36 @@ export default function UnifiedBreakdown(props: {
   const formatCount = (cards: number, prints?: number) =>
     `${cards.toLocaleString()} cards` +
     (prints !== undefined ? ` (${prints.toLocaleString()} prints)` : '')
+
+  const showSplit = createMemo(() =>
+    shouldShowMatchesShowingSplit({
+      postCards: props.liveCardCount,
+      postPrints: props.livePrintingCount,
+      preCards: props.indicesIncludingExtras,
+      prePrints: props.printingIndicesIncludingExtras,
+    }),
+  )
+
+  const matchesCardCount = createMemo(() => {
+    if (showSplit()) return props.indicesIncludingExtras ?? props.liveCardCount
+    if (props.liveCardCount === 0 && props.indicesIncludingExtras !== undefined) {
+      return props.indicesIncludingExtras
+    }
+    return props.liveCardCount
+  })
+
+  const matchesPrintCount = createMemo(() => {
+    if (showSplit()) {
+      if (props.printingIndicesIncludingExtras !== undefined) {
+        return props.printingIndicesIncludingExtras
+      }
+      return props.livePrintingCount
+    }
+    if (props.liveCardCount === 0 && props.printingIndicesIncludingExtras !== undefined) {
+      return props.printingIndicesIncludingExtras
+    }
+    return props.livePrintingCount
+  })
 
   return (
     <div class="border-t border-gray-200 dark:border-gray-700">
@@ -167,6 +221,29 @@ export default function UnifiedBreakdown(props: {
                   <span class="text-red-500 dark:text-red-400">
                     {`· ${liveErrorCount()} ignored`}
                   </span>
+                </Show>
+              </span>
+              <span class="tabular-nums shrink-0">
+                {formatCount(matchesCardCount(), matchesPrintCount())}
+              </span>
+            </div>
+          </Show>
+          <Show when={hasLive() && showSplit()}>
+            <div class="flex items-center justify-between gap-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+              <span class="flex items-center flex-wrap gap-x-1.5 min-w-0">
+                <span>SHOWING</span>
+                <Show when={searchCtx.navigateToDocs}>
+                  <button
+                    type="button"
+                    class="font-sans font-normal text-[11px] text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      searchCtx.navigateToDocs!(INCLUDE_EXTRAS_DOC_PARAM)
+                    }}
+                  >
+                    Learn more
+                  </button>
                 </Show>
               </span>
               <span class="tabular-nums shrink-0">

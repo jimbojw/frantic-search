@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**Extended by:** Spec 175 (MATCHES vs SHOWING when the playable filter hides results)
+
 **Depends on:** Spec 021 (Inline Query Breakdown), Spec 054 (Pinned Search Criteria)
 
 **References:** [Issue #88](https://github.com/jimbojw/frantic-search/issues/88)
@@ -32,7 +34,7 @@ Vertical screen real estate is at a premium on mobile devices. Two separate acco
 
 A single collapsible panel replaces both PINNED and MATCHES drawers. One expand toggle controls visibility of all query tokens (pinned and live).
 
-**Collapsed state (summary footer):** A single clickable summary row displays dense information. When both pinned and live content exist, the summary shows two stacked rows. When only one exists, a single row is shown.
+**Collapsed state (summary footer):** A single clickable summary row displays dense information. When both pinned and live content exist, the summary shows two stacked rows (PINNED + live). When only one exists, a single row is shown. When Spec 175 applies, the **live** section may add a third stacked row (**SHOWING**) below **MATCHES**; the chevron remains vertically centered relative to the full footer stack (PINNED + all live rows).
 
 **Expanded state:** Pinned chips first, a visual divider, then live chips. Same chip behavior as today (pin/unpin, remove, syntax highlighting, error states).
 

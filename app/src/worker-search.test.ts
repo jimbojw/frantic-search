@@ -365,6 +365,7 @@ describe('default playable filter (Spec 057)', () => {
     expect(ext).toBeDefined()
     expect(ext!.priority).toBe(90)
     expect(ext!.count).toBe(4)
+    expect(result.indicesIncludingExtras).toBe(4)
   })
 
   it('does not populate include-extras suggestion when filter removes nothing', () => {
@@ -377,6 +378,7 @@ describe('default playable filter (Spec 057)', () => {
       sessionSalt,
     })
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
+    expect(result.indicesIncludingExtras).toBeUndefined()
   })
 
   it('include:extras bypasses the playable filter', () => {
@@ -390,6 +392,7 @@ describe('default playable filter (Spec 057)', () => {
     // Dismember included because include:extras skips filter
     expect(result.indices.length).toBe(4)
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
+    expect(result.indicesIncludingExtras).toBeUndefined()
   })
 
   it('include:extras in pinned query bypasses the filter', () => {
@@ -431,6 +434,7 @@ describe('default playable filter (Spec 057)', () => {
     expect(ext).toBeDefined()
     expect(ext!.priority).toBe(90)
     expect(ext!.printingCount).toBe(8)
+    expect(result.printingIndicesIncludingExtras).toBe(8)
   })
 
   it('include:extras shows non-tournament printings', () => {
@@ -460,6 +464,7 @@ describe('default playable filter (Spec 057)', () => {
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext?.count).toBe(1)
     expect(ext!.priority).toBe(90)
+    expect(result.indicesIncludingExtras).toBe(1)
   })
 
   it('histograms reflect filtered results, not unfiltered', () => {
@@ -495,6 +500,8 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     expect(ext?.count).toBe(1)
     expect(ext?.printingCount).toBe(1)
     expect(ext!.priority).toBe(90)
+    expect(result.indicesIncludingExtras).toBe(1)
+    expect(result.printingIndicesIncludingExtras).toBe(1)
   })
 
   it('set query with include:extras shows non-tournament printings', () => {

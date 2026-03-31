@@ -157,6 +157,8 @@ export type FromWorker =
 
 The `indices` array contains **all** deduplicated canonical card indices, sorted by `seededSort`. When printing conditions are present, `printingIndices` contains printing-row indices sorted by `seededSortPrintings` (Spec 019). Both arrays use `Uint32Array` and are transferred zero-copy via `Transferable`. The main thread uses `hasPrintingConditions` and `uniqueMode` to decide whether to render from `indices` (card-level) or `printingIndices` (printing-level). See Spec 048 for the display logic.
 
+Optional **pre–playable-filter** counts (`indicesIncludingExtras`, `printingIndicesIncludingExtras`, Spec 057 / Spec 175) may be present on `result` for UI that distinguishes semantic matches from default-filtered results.
+
 #### Removed types
 
 `CardResult` and `CardFace` are removed from `worker-protocol.ts` and `shared/src/index.ts`. They are dead code in the new protocol — the main thread performs direct column lookups instead of consuming pre-built objects.
