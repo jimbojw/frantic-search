@@ -653,7 +653,7 @@ export class NodeCache {
             } else {
               error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), undefined, this._tagDataRef.artist);
             }
-          } else if (canonical && ast.value !== "") {
+          } else if (canonical && (ast.value !== "" || canonical === "set")) {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext());
           }
 

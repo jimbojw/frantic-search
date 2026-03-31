@@ -22,11 +22,21 @@ All fields below are **printing-domain**: they evaluate against the `PrintingCol
 
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Printing's set code matches the value (case-insensitive) |
+| `:`, `=` | Printing's set code **prefix-matches** the value after normalization (Spec 103 `normalizeForResolution`) |
 
-Examples: `set:mh2`, `s:znr`, `e:usg`
+Examples: `set:mh2`, `s:znr`, `e:usg`, `set:u` (every printing whose set code starts with `u` after normalization).
 
-The value is matched against the `code` field of `set_lookup[set_indices[i]]`. Exact match only (no substring). Multiple sets can be combined with OR: `set:mh2 OR set:mh3`.
+**Matching:** Normalize the user value and each printing's set code (`set_lookup[set_indices[i]].code`) the same way as Spec 103. A printing matches when `normalize(code).startsWith(normalize(userValue))`.
+
+**Empty value:** `set:` or `set=` with no value (after trim) matches every printing whose normalized set code is **non-empty** (all real printings in normal data; excludes rows with a missing/empty `code`).
+
+**No matching set codes:** If no printing's set code prefix-matches (e.g. `set:xy` when no code starts with `xy`), the leaf matches **no printings** (zero cards / zero printings). There is **no** leaf error such as `unknown set` — same UX as Scryfall's "0 cards" for an impossible set token.
+
+**Scryfall:** Scryfall treats `set:` as an exact set code (or similar); Frantic Search uses prefix matching for **discovery** ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)).
+
+Multiple sets can still be combined with OR: `set:mh2 OR set:mh3`.
+
+**Spec 103:** Unique-prefix auto-resolution for `set` still applies where `resolveForField` is used (e.g. canonical Scryfall outlinks). **Query evaluation** for the `set` field does **not** call `resolveForField`; it always applies prefix-on-printing-rows as above.
 
 ### `r:` / `rarity:` — Rarity
 
@@ -431,7 +441,7 @@ Add printing-field entries once the full dataset is available.
 
 ## Acceptance Criteria
 
-1. `set:mh2` returns cards that have at least one MH2 printing.
+1. `set:` uses prefix matching on normalized set codes (issue #234): `set:mh2` returns cards with at least one MH2 printing; a prefix that matches no code yields zero results with no leaf error; empty `set:` / `set=` matches every printing with a non-empty normalized set code.
 2. `r:mythic` returns cards with at least one mythic printing.
 3. `r>=rare` returns cards with at least one rare or mythic printing.
 4. `is:foil` returns cards that have been printed in foil.
@@ -453,3 +463,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-03-22: Added `is:default` and `is:atypical` for Issue #173. Derived from existing PrintingFlags; no ETL changes.
 - 2026-03-25: Documented principled divergence for `is:alchemy` vs Scryfall default search (seven MB2 printings) in Syntax Reference `app/src/docs/reference/fields/face/is.mdx`, cheat sheet, Scryfall Differences, Spec 098, and `docs/guides/scryfall-comparison.md`. Example in-app query link: `?q=is%3Aalchemy%20set%3Amb2` (issue #191).
 - 2026-03-30: Added printing-domain `is:unset` from `set_type: "funny"` → `PrintingFlag.Unset` (Spec 171 / issue #213). No face fallback when printings are unloaded.
+- 2026-03-31: `set:` / `set=` use **prefix** matching on normalized set codes; empty value matches printings with non-empty normalized set code; non-matching prefix yields zero results with **no** `unknown set` error ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)). Evaluation does not use Spec 103 unique resolution for `set`. Evaluator must call `evalPrintingField` for `set` even when the AST value is empty (printing-domain branch previously skipped empty values).

@@ -6,7 +6,7 @@
 
 ## Goal
 
-Extend syntax highlighting so that terms with **erroneous values** (e.g., unknown set code) or **zero results** are visually distinguished in the search input. Today, only lex-time issues (e.g., unknown field names) are highlighted. Post-evaluation feedback — which the query breakdown already surfaces — should also appear inline in the syntax layer.
+Extend syntax highlighting so that terms with **erroneous values** (e.g., unknown game / format) or **zero results** are visually distinguished in the search input. Today, only lex-time issues (e.g., unknown field names) are highlighted. Post-evaluation feedback — which the query breakdown already surfaces — should also appear inline in the syntax layer.
 
 ## Background
 
@@ -40,12 +40,12 @@ Modern code editors do this: `const foo = "bar";` is legal JavaScript syntax, bu
 
 | Role | When | Styling |
 |------|------|---------|
-| `value-error` | Leaf has `error` set (e.g., unknown set, invalid format) | Same as `field-unknown`: red + wavy underline |
+| `value-error` | Leaf has `error` set (e.g., unknown game, invalid format) | Same as `field-unknown`: red + wavy underline |
 | `value-zero` | Leaf has `matchCount === 0` and no error | Amber/warning (consistent with breakdown zero-match rows) |
 
 ### Span selection
 
-- **Value-specific errors** (e.g., `unknown set "us"`, `unknown format "xyz"`): Use `valueSpan` when present so only the value token is highlighted. This pinpoints the offending part.
+- **Value-specific errors** (e.g., `unknown game "zzz"`, `unknown format "xyz"`): Use `valueSpan` when present so only the value token is highlighted. This pinpoints the offending part.
 - **Other errors** (e.g., `unknown field`, `invalid regex`): Use `span` for the whole term. Lex-time unknown fields are already handled; this covers evaluator errors that span the full term.
 - **Zero results**: Use `span` for the whole term. The entire term contributes to the empty result.
 
@@ -101,7 +101,7 @@ For pinned + live queries, the live breakdown matches the live query in the text
 
 ## Acceptance criteria
 
-1. A term with an erroneous value (e.g., `set:us` — unknown set) shows error styling (red + wavy underline) on the value portion when breakdown is available.
+1. A term with an erroneous value (e.g., `game:zzz` — unknown game) shows error styling (red + wavy underline) on the value portion when breakdown is available.
 2. A term with zero results (e.g., `t:nonexistent`) shows warning styling (amber) on the term when breakdown is available.
 3. Lex-time errors (unknown field) continue to work as today.
 4. When breakdown is null or stale, highlighting falls back to lex-only (no regression).

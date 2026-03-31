@@ -4,7 +4,7 @@ import type { CardIndex } from "./card-index";
 import type { FlavorTagData, ArtistIndexData } from "../data";
 import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
-import { resolveForField, type ResolutionContext } from "./categorical-resolve";
+import { resolveForField, normalizeForResolution, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
 
 export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
@@ -119,11 +119,21 @@ export function evalPrintingField(
 
   switch (canonical) {
     case "set": {
-      const setVal = resolveForField("set", val, context);
-      const setValLower = setVal.toLowerCase();
-      if (!pIdx.knownSetCodes.has(setValLower)) return `unknown set "${val}"`;
-      for (let i = 0; i < n; i++) {
-        if (pIdx.setCodesLower[i] === setValLower) buf[i] = 1;
+      if (op !== ":" && op !== "=") {
+        return `set: does not support operator "${op}"`;
+      }
+      // Spec 047 / issue #234: prefix on normalized set code; no resolveForField (Spec 103 split).
+      const trimmed = val.trim();
+      if (trimmed === "") {
+        for (let i = 0; i < n; i++) {
+          const codeNorm = normalizeForResolution(pIdx.setCodesLower[i]);
+          if (codeNorm.length > 0) buf[i] = 1;
+        }
+      } else {
+        const prefix = normalizeForResolution(val);
+        for (let i = 0; i < n; i++) {
+          if (normalizeForResolution(pIdx.setCodesLower[i]).startsWith(prefix)) buf[i] = 1;
+        }
       }
       break;
     }

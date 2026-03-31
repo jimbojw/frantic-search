@@ -65,6 +65,12 @@ function cardCount(query: string): number {
 // ---------------------------------------------------------------------------
 
 describe("printing-domain leaves", () => {
+  test("set: (empty value) matches every printing with a set code → all cards in fixture", () => {
+    expect(cardCount("set:")).toBe(2);
+    const { result } = evaluate("set:");
+    expect(result.error).toBeUndefined();
+  });
+
   test("set:mh2 matches Lightning Bolt (1 card)", () => {
     expect(cardCount("set:mh2")).toBe(1);
   });
@@ -77,8 +83,10 @@ describe("printing-domain leaves", () => {
     expect(cardCount("set:a25")).toBe(1);
   });
 
-  test("set:xxx matches nothing", () => {
+  test("set:xxx matches nothing without leaf error (issue #234)", () => {
     expect(cardCount("set:xxx")).toBe(0);
+    const { result } = evaluate("set:xxx");
+    expect(result.error).toBeUndefined();
   });
 
   test("rarity:rare matches Lightning Bolt only", () => {
@@ -490,10 +498,16 @@ describe("face indices output", () => {
 // ---------------------------------------------------------------------------
 
 describe("printingIndices output", () => {
-  test("set:m resolves to mh2 (Spec 103)", () => {
+  test("set:m prefix matches only MH2 in fixture (Spec 047)", () => {
     const { printingIndices } = evaluate("set:m lightning");
     expect(printingIndices).toBeDefined();
     expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
+  });
+
+  test("set:c prefix matches C21 and CMR printings", () => {
+    const { printingIndices } = evaluate("set:c");
+    expect(printingIndices).toBeDefined();
+    expect(Array.from(printingIndices!).sort((a, b) => a - b)).toEqual([3, 4, 5]);
   });
 
   test("set:mh2 returns printing rows 0,1,9 (all MH2 printings)", () => {

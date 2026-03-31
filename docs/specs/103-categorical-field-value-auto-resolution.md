@@ -81,7 +81,9 @@ Apply resolution **at each evaluation site** when a categorical field value is l
 - The AST stays as the parser's source of truth; resolution is semantic interpretation in the evaluator layer.
 - No new AST fields or normalization pass to maintain.
 
-**Mechanics:** Each lookup site (eval-leaves, eval-printing, evaluator branches for view/unique/include/sort, extractViewMode, getUniqueModeFromAst, canonicalize) calls `resolveCategoricalValue(field, value, context)` before doing its lookup. If resolution returns a value, use it for the lookup; otherwise use the original value. When resolution context is absent (e.g. before printings load), runtime fields (`set`, `in`, `otag`, `atag`) skip resolution and retain the typed value.
+**Mechanics:** Each lookup site (eval-leaves, eval-printing for fields **other than** `set`, evaluator branches for view/unique/include/sort, extractViewMode, getUniqueModeFromAst, canonicalize) calls `resolveCategoricalValue` / `resolveForField` before doing its lookup where applicable. If resolution returns a value, use it for the lookup; otherwise use the original value. When resolution context is absent (e.g. before printings load), runtime fields (`set`, `in`, `otag`, `atag`) skip resolution and retain the typed value.
+
+**Exception — `set` query evaluation (Spec 047, [issue #234](https://github.com/jimbojw/frantic-search/issues/234)):** The printing-domain **`set`** leaf does **not** use `resolveForField` before matching. It applies **prefix matching** on normalized set codes per printing row. Short or ambiguous tokens (e.g. `set:u`) intentionally match **many** printings for discovery; they are **not** collapsed to a single code when that code would be uniquely resolvable from `knownSetCodes`. **`resolveForField("set", …)`** remains used for **canonicalize** (`toScryfallQuery`) and any other non-eval sites that need unique-prefix resolution to a full code.
 
 ### 6. Resolution helper
 
@@ -102,7 +104,7 @@ Logic: normalize `typed`, iterate candidates, collect those where `normalize(can
 
 ### 7. Error handling
 
-- **No resolution (0 or 2+ matches):** Existing behavior applies. Unknown values produce errors per Spec 039 (e.g. `unknown format "x"`, `unknown set "x"`).
+- **No resolution (0 or 2+ matches):** Existing behavior applies for categorical fields that still validate against a closed set (e.g. `unknown format "x"`). **`set` evaluation** is not in this category: a prefix that matches no set code yields **zero printings**, not `unknown set` (Spec 047).
 - **Resolved value:** The term is evaluated as if the user had typed the full value. No special error handling; resolution is transparent.
 
 ### 8. Display and canonicalization
@@ -119,7 +121,7 @@ Logic: normalize `typed`, iterate candidates, collect those where `normalize(can
 |------|--------|
 | `shared/src/search/categorical-resolve.ts` (new) | `normalizeForResolution`, `resolveCategoricalValue`, `resolveForField(field, value, context)` — registry of field → candidate source + resolution. Export `ResolutionContext` type for runtime data. |
 | `shared/src/search/eval-leaves.ts` | Before format/legal/banned/restricted lookup: `resolveForField(field, value, context)`; use resolved value for lookup. |
-| `shared/src/search/eval-printing.ts` | Before set/rarity/game/frame/in/legal/banned/restricted lookup: resolve; use resolved value. |
+| `shared/src/search/eval-printing.ts` | Before **rarity** / **game** / **frame** / **in** / **legal** / **banned** / **restricted** lookup: resolve; use resolved value. **`set`** uses prefix-on-printing-rows only (no `resolveForField` in the set leaf; Spec 047). |
 | `shared/src/search/evaluator.ts` | Before view/unique/include/sort branches: resolve; use resolved value. |
 | `shared/src/search/canonicalize.ts` | When serializing FIELD nodes, resolve categorical values before emitting. |
 | `app/src/view-query.ts` | In `extractViewMode`, resolve view values before `isValidViewValue` check. |
@@ -130,14 +132,14 @@ Logic: normalize `typed`, iterate candidates, collect those where `normalize(can
 
 1. `view:i` and `v:i` produce the same behavior as `view:images` and `v:images`.
 2. `unique:a` produces the same behavior as `unique:art`.
-3. `set:9` produces the same behavior as `set:9ED` (when 9ED exists and is the only set code starting with "9").
+3. `set:9` matches every printing whose normalized set code starts with `9` (Spec 047). When exactly one set code has that prefix, the **result set** matches that set's printings (same cards as typing the full code), but evaluation is still prefix-based. **`resolveForField("set", …)`** for canonicalize may still resolve `set:9` to the full code when unique.
 4. `f:c` produces the same behavior as `f:commander`.
 5. `f:e` produces the same behavior as `f:edh` (alias for commander).
 6. `rarity:r` produces the same behavior as `rarity:rare` (when `r` is the only rarity prefix match).
 7. `game:a` produces the same behavior as `game:arena`.
 8. `in:a` resolves to `arena` only when `arena` is the sole match across game + set + rarity.
 9. `in:a` does **not** resolve when both `arena` (game) and `a25` (set) match.
-10. `set:xyz` with no matching set code continues to produce `unknown set "xyz"` (no resolution, existing error).
+10. `set:xyz` with no printing whose set code prefix-matches yields **zero results** with **no** leaf error (Spec 047 / [issue #234](https://github.com/jimbojw/frantic-search/issues/234)).
 11. When multiple candidates match (e.g. `f:p` matches `pioneer`, `pauper`, `penny`, `predh`), no resolution occurs; the typed value is passed through and produces an error per existing validation.
 12. Normalization strips punctuation/whitespace: `set:9ED` and `set:9 ed` both match `9ed` when that is the only candidate.
 13. The query breakdown chip displays `v:i` when the user types `v:i`, not `v:images`. Same for all categorical fields — the chip shows the user's typed value.

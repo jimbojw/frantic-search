@@ -104,9 +104,51 @@ describe("set field", () => {
     expect(marked(evalField("set", ":", "c21").buf)).toEqual([3, 4]);
   });
 
-  test("unknown set returns error", () => {
-    const { error } = evalField("set", ":", "xxx");
-    expect(error).toBe('unknown set "xxx"');
+  test("prefix matching no code match yields zero rows, no error (Spec 047 / issue #234)", () => {
+    const { buf, error } = evalField("set", ":", "xxx");
+    expect(error).toBeNull();
+    expect(marked(buf)).toEqual([]);
+  });
+
+  test("prefix sl matches SLD and SLB rows", () => {
+    expect(marked(evalField("set", ":", "sl").buf)).toEqual([5, 6]);
+  });
+
+  test("empty set value matches all printings with non-empty normalized set code", () => {
+    expect(marked(evalField("set", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("empty set value skips rows whose set code normalizes to empty", () => {
+    const dataWithHole: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      canonical_face_ref: [...PRINTING_DATA.canonical_face_ref, 1],
+      scryfall_ids: [...PRINTING_DATA.scryfall_ids, "h"],
+      collector_numbers: [...PRINTING_DATA.collector_numbers, "0"],
+      set_indices: [...PRINTING_DATA.set_indices, 0],
+      rarity: [...PRINTING_DATA.rarity, Rarity.Rare],
+      printing_flags: [...PRINTING_DATA.printing_flags, 0],
+      finish: [...PRINTING_DATA.finish, Finish.Nonfoil],
+      frame: [...PRINTING_DATA.frame, Frame.Y2015],
+      price_usd: [...PRINTING_DATA.price_usd, 100],
+      released_at: [...PRINTING_DATA.released_at, 20210618],
+      games: [...(PRINTING_DATA.games ?? []), Game.Paper | Game.Arena],
+      set_lookup: [
+        ...PRINTING_DATA.set_lookup,
+        { code: "", name: "Bad row", released_at: 20210618 },
+      ],
+    };
+    // New row uses last set_lookup entry (empty code) via set_indices pointing to index 5
+    dataWithHole.set_indices[dataWithHole.set_indices.length - 1] = 5;
+    const pIdxHole = new PrintingIndex(dataWithHole);
+    const buf = new Uint8Array(pIdxHole.printingCount);
+    const err = evalPrintingField("set", ":", "", pIdxHole, buf);
+    expect(err).toBeNull();
+    expect(marked(buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("set does not support != operator", () => {
+    const { error } = evalField("set", "!=", "mh2");
+    expect(error).toBe('set: does not support operator "!="');
   });
 });
 

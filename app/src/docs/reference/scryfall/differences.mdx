@@ -18,6 +18,7 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 | [produces](?doc=reference/fields/face/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
 | [`is:alchemy`](?doc=reference/fields/face/is) | Default search omits a few MB2 playtest printings that still have the alchemy promo tag in bulk | We honor bulk `promo_types` and `set_type: alchemy`. Example: [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2) |
+| [`set:`](?doc=reference/fields/printing/set) | Exact set code (unknown code → 0 cards) | **Prefix** on normalized set code for discovery; empty `set:` matches printings with a set code; no matching prefix → 0 results, no leaf error |
 | [Power / toughness / loyalty / defense](?doc=reference/fields/face/power) | Mostly plain-numeric stat filters on Scryfall | Frantic also supports substring and exact match on oracle stat text, quoted values, and equatable-null prefixes; ranges require plain numbers. **`pow=x`** matches literal oracle **`X`**; use **`pow=0`** for numeric zero. See [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense). |
 
 ## Known missing

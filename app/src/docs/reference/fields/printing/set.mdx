@@ -14,15 +14,23 @@ Set code (e.g. mh2, dmu).
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Substring (contains) | `q=set:mh` |
-| `=` | Exact set code | `q=set:mh2` |
-| `!=` | Not this set | `q=set!=mh2` |
+| `:` | Prefix match on normalized set code | `q=set:mh2`, `q=set:u` |
+| `=` | Same as `:` (prefix) | `q=set=mh2` |
 
-## Allowed values
+Comparison operators (`>`, `<`, `!=`, …) are not supported on `set:`.
 
-Set codes (e.g. `mh2`, `dmu`, `one`). Matching is case-insensitive. Use `q=set:mh2` for exact match, or `q=set:mh` to match any set code containing "mh" (e.g. mh1, mh2, mh3).
+## Matching
+
+Values are normalized the same way as other categorical fields (lowercase, alphanumeric only): `set:9ed` and set codes that normalize the same way prefix-match together.
+
+- **Prefix:** Each printing matches if its set code **starts with** the normalized query (e.g. `set:u` matches printings in `ugin`, `usd`, `usg`, …).
+- **Empty value:** `set:` or `set=` with nothing after the operator matches every printing whose set code is **non-empty** after normalization (in practice, essentially all printings).
+- **No match:** If no set code has that prefix, you get **zero** results—there is no “unknown set” error (similar to Scryfall showing 0 cards for a set token that does not apply).
+
+This is a **discovery** affordance and differs from Scryfall’s set filter, which targets an exact set code. See [Scryfall differences](?doc=reference/scryfall/differences).
 
 ## Notes
 
 - Set codes follow Scryfall's [set list](https://scryfall.com/sets).
 - For "cards printed in set X", combine with face fields: `q=t:creature set:mh2`.
+- Canonical Scryfall links may still expand a uniquely resolvable short `set` value to the full code; in-app search uses prefix matching on printings. See [Scryfall differences](?doc=reference/scryfall/differences).

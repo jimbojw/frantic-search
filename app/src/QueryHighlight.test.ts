@@ -180,19 +180,19 @@ describe('buildSpans', () => {
 
   describe('breakdown overlay (Spec 088)', () => {
     it('overrides value to value-error when breakdown has error on value', () => {
-      const query = 'set:us'
+      const query = 'game:zzz'
       const breakdown: BreakdownNode = {
         type: 'FIELD',
-        label: 'set:us',
+        label: 'game:zzz',
         matchCount: -1,
-        error: 'unknown set "us"',
-        span: { start: 0, end: 6 },
-        valueSpan: { start: 4, end: 6 },
+        error: 'unknown game "zzz"',
+        span: { start: 0, end: 8 },
+        valueSpan: { start: 5, end: 8 },
       }
       expect(roles(query, breakdown)).toEqual([
-        ['set', 'field'],
+        ['game', 'field'],
         [':', 'operator'],
-        ['us', 'value-error'],
+        ['zzz', 'value-error'],
       ])
     })
 
@@ -244,7 +244,7 @@ describe('buildSpans', () => {
     })
 
     it('ignores spans beyond query length', () => {
-      const query = 'set:us'
+      const query = 'game:x'
       const breakdown: BreakdownNode = {
         type: 'AND',
         label: 'AND',
@@ -252,11 +252,11 @@ describe('buildSpans', () => {
         children: [
           {
             type: 'FIELD',
-            label: 'set:us',
+            label: 'game:badvalue',
             matchCount: -1,
-            error: 'unknown set "us"',
-            span: { start: 0, end: 10 },
-            valueSpan: { start: 4, end: 10 },
+            error: 'unknown game "badvalue"',
+            span: { start: 0, end: 20 },
+            valueSpan: { start: 5, end: 20 },
           },
         ],
       }
