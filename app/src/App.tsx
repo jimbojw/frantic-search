@@ -845,15 +845,15 @@ function App() {
     scheduleReplaceState(url)
   })
 
-  window.addEventListener('popstate', () => {
-    cancelPendingCommit()
-    capturePageview()
-
+  /** Sync Solid view/query state from `location.search` (Spec 133 popstate + docs exit). */
+  function applyLocationSearchToState() {
     const params = new URLSearchParams(location.search)
     setDualWieldActive(isDualWield(params))
-    setView(parseView(params))
+    const v = parseView(params)
+    setView(v)
     setListTab(parseListTab(params))
-    if (parseView(params) === 'docs') setDocParam(parseDocParam(params))
+    if (v === 'docs') setDocParam(parseDocParam(params))
+    else setDocParam(null)
     const { left, right } = getPaneQueries(params)
     setQuery(left)
     setQuery2(right)
@@ -862,7 +862,12 @@ function App() {
     setUrlHasQueryParam(
       params.has('q') || (isDualWield(params) && (params.has('q1') || params.has('q2')))
     )
+  }
 
+  window.addEventListener('popstate', () => {
+    cancelPendingCommit()
+    capturePageview()
+    applyLocationSearchToState()
     const scrollY = history.state?.scrollY ?? 0
     requestAnimationFrame(() => window.scrollTo(0, scrollY))
   })
@@ -876,6 +881,8 @@ function App() {
   function navigateToDocs(docParamValue?: string | null) {
     cancelPendingCommit()
     saveScrollPosition()
+    setTermsExpanded(false)
+    localStorage.setItem('frantic-terms-expanded', 'false')
     if (docParamValue === 'reference/syntax') {
       captureUiInteracted({ element_name: 'syntax_help', action: 'clicked' })
     }
@@ -1099,9 +1106,24 @@ function App() {
   }
 
   function navigateHome() {
-    if (termsExpanded()) {
+    if (termsExpanded() && (view() === 'search' || view() === 'card')) {
       setTermsExpanded(false)
       localStorage.setItem('frantic-terms-expanded', 'false')
+      return
+    }
+
+    if (view() === 'docs') {
+      cancelPendingCommit()
+      saveScrollPosition()
+      const params = new URLSearchParams(location.search)
+      stripUtmParams(params)
+      params.delete('doc')
+      params.delete('docs')
+      params.delete('help')
+      const url = params.toString() ? `?${params}` : location.pathname
+      pushStateAndCapturePageview(url)
+      applyLocationSearchToState()
+      window.scrollTo(0, 0)
       return
     }
 

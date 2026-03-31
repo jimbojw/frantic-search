@@ -38,6 +38,10 @@ The toolbar and the terms panel serve related purposes (tools and filters) but l
 - **Label:** "Menu" (replaces "Terms"). Matches the hamburger affordance and reflects the drawer's broader scope.
 - **Close button:** Unchanged. `aria-label="Close filters"` remains appropriate.
 
+### Opening in-app docs from the drawer
+
+Actions that navigate to the docs view (e.g. Documentation hub, Syntax Help) must **close the menu** (`termsExpanded` false and persisted) so a subsequent tap on Home in the docs header is not consumed by stale menu state (see Spec 133).
+
 ### Left rail layout
 
 The left rail (navigation column) lists section labels only. VIEWS is a section like FORMATS, LAYOUTS, etc. — a unified scrollspy menu system:
@@ -189,3 +193,4 @@ Add `v:` as an alias for `view:` in the parser and evaluator. Both `view:slim` a
 
 - **2026-03-29:** Removed the **Lands** TERMS section from MenuDrawer (scrollspy id `lands`, chips `is:dual`, `is:fetchland`, `is:shockland`, etc.). PostHog showed almost no use; users can still type those `is:` keywords. `frantic-terms-tab` values of `lands` fall back to the default section on load because `lands` is no longer in `ALL_SECTIONS`.
 - **2026-03-31:** [#231](https://github.com/jimbojw/frantic-search/issues/231) — Section intros and per-section “Learn more” links to in-app docs (`menu-drawer-section-docs.ts` + `MenuDrawer.tsx`).
+- **2026-03-31:** `navigateToDocs` closes the menu (`termsExpanded` false) when opening docs from the drawer (Spec 133).

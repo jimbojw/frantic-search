@@ -76,6 +76,8 @@ Hero visible when the URL bar is parameterless (no `q`). When there's `q=` in th
 
 ### Home button two-step clear
 
+**Docs view:** When `view === 'docs'`, Home does **not** use the two-step `q` clear or the pathname-only soft reset. It follows [Spec 133](133-docs-navigation.md) (“Exiting docs via app icon”): strip `doc`/`docs`/`help`, preserve other params, sync state from the resulting URL.
+
 When the user taps the Home icon in the search view (single-pane):
 
 - **If `q` has a value** (e.g. `?q=foo`): First tap → `?q=` (empty). Query cleared, hero stays collapsed.
@@ -120,3 +122,4 @@ Remove the `IconAdjustmentsHorizontal` button from inside the search box. The Me
 - 2026-03-18: Home button two-step clear: first tap `q=foo` → `q=`; second tap `q=` → parameterless. Hero returns after second tap.
 - 2026-03-18: `urlHasQueryParam` is now a reactive signal (not a plain function) so the header re-renders when we programmatically change the URL via pushState. The signal is updated in the URL-sync effect, popstate handler, and navigateHome.
 - 2026-03-18: App bar always at top: header always uses `pt-[max(1rem,env(safe-area-inset-top))]`; space (`mt-16`) moved to between app bar and hero when hero is visible.
+- 2026-03-31: Home from docs view strips `doc`/`docs`/`help` and preserves other query params (Spec 133). Menu collapse on first Home tap applies only when `view` is search or card.

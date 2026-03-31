@@ -74,6 +74,16 @@ When `params.has('doc')` is true but `params.get('doc')` is empty string or abse
 - **During transition:** `?help` continues to work. Redirect or treat as `?doc=reference/syntax` (preserve q, q2).
 - **Long term:** `?help` may be deprecated in favor of `?doc=reference/syntax`. Spec 014 entry points are updated to use the new URL.
 
+### Exiting docs via app icon (home)
+
+When the user taps the **app icon** in the docs layout header (same control as Search “Home”; implemented as `navigateHome()`):
+
+- **URL:** Remove every query key that forces the docs view: `doc`, `docs`, and `help` (must match `parseView` in `app-utils.ts`).
+- **Preserve:** All other params (`q`, `q1`/`q2`, `card`, `report`, `list`, etc.).
+- **Resulting view:** Derive from the remaining URL via `parseView`, `parseDocParam`, and `getPaneQueries` (typically `search` if no other view param remains).
+- **State sync:** After `pushState`, update reactive app state the same way as a real history navigation (mirror the `popstate` handler: dual-wield flag, view, list tab, `docParam` cleared when not on docs, pane queries, `card`, `userEngaged`, `urlHasQueryParam`).
+- **Contrast with breadcrumb “Docs”:** The breadcrumb uses in-docs navigation that keeps `?doc=` (empty value) so the user stays on the docs **hub**. The app icon means **leave documentation** and return to the rest of the app, not the docs hub.
+
 ## Docs Layout Component
 
 Create `app/src/docs/DocsLayout.tsx` — the shell for all doc views.
@@ -138,12 +148,11 @@ function navigateToDocs(docParam?: string) {
   // docParam undefined or null → hub (?doc)
   // docParam "reference/syntax" → ?doc=reference/syntax
   // Preserve q, q2 from current URL
+  // Close the menu drawer (termsExpanded false) so a later Home tap is not consumed off-docs.
 }
 
-function navigateToSearch() {
-  // Close docs, return to search. Preserve q, q2.
-  // Use history.back() or explicit URL construction.
-}
+// Exiting docs while preserving non-doc params: implemented as the docs branch of navigateHome()
+// (strip doc/docs/help, pushState, then apply URL → state like popstate). Do not duplicate a separate navigateToSearch unless it shares that logic.
 ```
 
 ## Scope of Changes
@@ -174,3 +183,10 @@ function navigateToSearch() {
 9. Menu drawer has "Documentation" (hub) and "Syntax Help" (syntax) or equivalent.
 10. "Syntax help" in UnifiedBreakdown navigates to `?doc=reference/syntax`.
 11. `?help` continues to work (redirect or alias to `?doc=reference/syntax`).
+12. One tap on the docs header app icon from `?doc=reference/syntax&q=foo` navigates to `?q=foo` (search view); `q` is preserved.
+13. One tap from `?doc=reference/syntax` alone navigates to the parameterless path (search landing); no second tap required.
+14. Breadcrumb “Docs” still navigates to the docs hub (`?doc=`) without leaving the docs view.
+
+## Implementation Notes
+
+- 2026-03-31: Docs header Home strips `doc`/`docs`/`help`, preserves other query params, and syncs state via shared `applyLocationSearchToState` (same as `popstate`). `navigateToDocs` closes the menu drawer. `navigateHome` only consumes the first tap for menu collapse when `view` is search or card (Spec 083, Spec 137).
