@@ -4,27 +4,33 @@ title: defense
 
 # defense
 
-Defense stat for battle cards.
+Defense stat for battle cards (oracle text on the card face).
 
 **Canonical:** `defense`  
 **Aliases:** `def`  
 **Domain:** Face
 
+## How values are interpreted
+
+Same routing as [power](?doc=reference/fields/face/power) (Spec 173): **plain numeric** tokens use numeric equality and ranges; **non–plain-numeric** unquoted values use **`:`** substring vs **`=`** / **`!=`** exact / not-exact on the oracle defense string; **quoted** values use string semantics only.
+
+**Equatable null (unquoted):** `def=null`, `def=n`, `def=nu`, `def=nul` match cards **without** defense; `def!=null` matches cards **with** defense. **`def="null"`** is exact string search.
+
+**`def=x`** matches oracle defense literally **`X`** (case-insensitive); use **`def=0`** for numeric zero.
+
+Only battles have defense; other card types are skipped for numeric comparisons and excluded from `!=` on string paths.
+
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Equals or has value | `q=def:4` |
-| `=` | Equals | `q=defense=4` |
-| `!=` | Not equal | `q=def!=0` |
-| `=null` | No defense | `q=def=null` |
-| `!=null` | Has defense | `q=def!=null` |
-| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=def>3` |
+| `:` | Plain numeric → numeric eq; else substring | `q=def:4`, `q=def:+*` |
+| `=` | Plain numeric → numeric eq; else exact string | `q=defense=4` |
+| `!=` | Plain numeric → numeric neq; else not exact | `q=def!=0` |
+| `=null`, `!=null` | Missing vs present defense | `q=def=null` |
+| `>`, `<`, `>=`, `<=` | Numeric; plain numeric value required | `q=def>3` |
 
-## Allowed values
+## Scryfall
 
-Numeric defense (battle defense, e.g. Siege cards). Only battles have defense; other card types are excluded from numeric comparisons.
+Plain-numeric defense filters are broadly portable. Quoted values, substring oracle fragments, and non-plain exact match are **Frantic extensions** and are stripped from Scryfall outlinks when not portable.
 
-## Notes
-
-- **`null`:** Use `q=def=null` to find non-battles. `q=def!=null` finds battles. Comparison operators with `null` are invalid.

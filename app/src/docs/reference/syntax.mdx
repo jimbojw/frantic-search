@@ -19,10 +19,10 @@ Frantic Search is based on [Scryfall syntax](https://scryfall.com/docs/syntax) w
 | type | t | Type line (substring) | `q=t:creature` |
 | color | c | Card colors | `q=c:rg` |
 | identity | id, ci, cmd | Color identity | `q=id:wubrg` |
-| power | pow | Power (numeric); =null for no power | `q=pow>=4` |
-| toughness | tou | Toughness (numeric); =null for no toughness | `q=tou>5` |
-| loyalty | loy | Loyalty (numeric); =null for no loyalty | `q=loy>=3` |
-| defense | def | Defense (numeric); =null for no defense | `q=def>3` |
+| power | pow | Oracle power: ranges = plain numbers only; plain `:`/`=`/`!=` = numeric eq; non-plain = substring vs exact; quoted = string; `=null` / `n`…`nul`; `pow=0` vs `pow=x` (Spec 173) | `q=pow>=4`, `q=pow:+*`, `q=pow=0` |
+| toughness | tou | Same rules as power (Spec 173) | `q=tou=1`, `q=tou:"1"` |
+| loyalty | loy | Same rules as power; `loy=x` matches oracle X (Spec 173) | `q=loy>=3` |
+| defense | def | Same rules as power for battles (Spec 173) | `q=def>3` |
 | mana value | mv, cmc | Mana value (numeric) | `q=mv>=2` |
 | mana | m | Mana cost (symbols); =null for no cost | `q=m:{b/p}` |
 | produces | — | Mana the card can produce; symbols (wu, c), named (azorius, multicolor), numeric count | `q=produces:wu`, `q=produces=0` |
@@ -113,6 +113,7 @@ Regex is case-insensitive. The trailing `/` is optional. Bare regex is Frantic S
 | Percentile chips in Menu | Popularity and Salt sections offer one-tap chips | Open Menu → Popularity or Salt |
 | usd=null | Find printings with no price data | `q=usd=null` |
 | pow=null, m=null, etc. | Find cards without power, mana cost, EDHREC rank, etc. | `q=pow=null OR tou=null` |
+| Stat oracle text (pow/tou/loy/def) | Substring/exact/quoted on oracle stats (Scryfall does not support) | `q=tou:+*`, `q=tou=1+*` |
 | -sort:field | Reverse sort direction (NOT inverts) | `q=-sort:name` |
 
 ## Differences from Scryfall
@@ -126,6 +127,8 @@ Regex is case-insensitive. The trailing `/` is optional. Bare regex is Frantic S
 | Percentile filters | Not supported | usd>90%, date>10%, name>50%, edhrec>90%, salt>90% |
 | usd=null | Not supported | Matches printings with no price data |
 | pow=null, m=null, etc. | Not supported | Matches cards without power, mana cost, EDHREC rank, etc. |
+| pow=x vs numeric zero | Some clients treat x as 0 | `pow=x` = literal oracle X; `pow=0` = numeric zero (Spec 173). See [power](?doc=reference/fields/face/power). |
+| Quoted / formula stats | Not supported | Frantic substring (`:`) or exact (`=`/`!=`) on oracle text (Spec 173). |
 | $ alias | Uses usd | $ is alias for usd |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
 | is:alchemy | Default search omits a few MB2 printings tagged alchemy in bulk | Honors bulk data; see [is](?doc=reference/fields/face/is) — try [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2) |

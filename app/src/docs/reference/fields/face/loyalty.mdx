@@ -4,27 +4,38 @@ title: loyalty
 
 # loyalty
 
-Planeswalker loyalty number.
+Planeswalker starting loyalty (oracle text on the card face).
 
 **Canonical:** `loyalty`  
 **Aliases:** `loy`  
 **Domain:** Face
 
+## How values are interpreted
+
+Same routing as [power](?doc=reference/fields/face/power) (Spec 173): **plain numeric** tokens use numeric equality and ranges; **non–plain-numeric** unquoted values use **`:`** substring vs **`=`** / **`!=`** exact / not-exact on the oracle loyalty string; **quoted** values use string semantics only.
+
+**`loy=x`** matches oracle loyalty **`X`** (case-insensitive). For numeric zero, use **`loy=0`**.
+
+**Equatable null (unquoted):** `loy=null`, `loy=n`, `loy=nu`, `loy=nul` match non-planeswalkers (no loyalty); `loy!=null` matches planeswalkers. **`loy="null"`** is exact string search.
+
+Only planeswalkers have loyalty; other card types are skipped for numeric comparisons and excluded from `!=` on string paths.
+
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Equals or has value | `q=loy:3` |
-| `=` | Equals | `q=loyalty=3` |
-| `!=` | Not equal | `q=loy!=0` |
-| `=null` | No loyalty | `q=loy=null` |
-| `!=null` | Has loyalty | `q=loy!=null` |
-| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=loy>=3` |
-
-## Allowed values
-
-Numeric loyalty (planeswalker starting loyalty). Only planeswalkers have loyalty; other card types are excluded from numeric comparisons.
+| `:` | Plain numeric → numeric eq; else substring | `q=loy:3`, `q=loy:x` (substring containing `x`) |
+| `=` | Plain numeric → numeric eq; else exact string | `q=loyalty=3`, `q=loy=x` (exact X) |
+| `!=` | Plain numeric → numeric neq; else not exact | `q=loy!=0` |
+| `=null`, `!=null` | Non-planeswalker vs planeswalker | `q=loy=null` |
+| `>`, `<`, `>=`, `<=` | Numeric; plain numeric value required | `q=loy>=3` |
 
 ## Notes
 
-- **`null`:** Use `q=loy=null` to find non-planeswalkers. `q=loy!=null` finds planeswalkers. Comparison operators with `null` are invalid.
+- Comparison operators with the literal **`null`** (not equatable-null) as a range value are invalid.
+- **Negation** uses the same operator-inversion rules as other nullable face stats.
+
+## Scryfall
+
+Plain-numeric loyalty filters are broadly portable. **`loy=x`** for literal **`X`** on the card, quoted loyalty values, and oracle substring/exact forms are **Frantic extensions** relative to typical Scryfall stat syntax and are stripped from Scryfall outlinks when not portable.
+

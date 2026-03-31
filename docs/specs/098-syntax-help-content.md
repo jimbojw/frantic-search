@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search), Spec 147 (Produces Evaluator), Spec 172 (Strict Numeric Literals)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields), Spec 061 (Date Query Semantics), Spec 068 (game:), Spec 072 (in: Query Qualifier), Spec 074 (Dollar Price Alias), Spec 077 (my: List), Spec 080 (USD Null), Spec 092 (Tag Data Model), Spec 093 (Evaluator Tag Queries), Spec 095 (Percentile Filters), Spec 096 (Name Comparison Operators), Spec 099 (EDHREC Rank Support), Spec 101 (EDHREC Salt Support), Spec 105 (Keyword Search), Spec 147 (Produces Evaluator), Spec 172 (Strict Numeric Literals), Spec 173 (Power/Toughness/Loyalty/Defense Query Semantics)
 
 **Referenced by:** Spec 014 (Syntax Help Overlay), Spec 135 (Reference Docs Restructure)
 
@@ -31,10 +31,10 @@ The Fields table must include every queryable field with canonical name, aliases
 | `type` | `t` | Type line (substring) | `t:creature` |
 | `color` | `c` | Card colors | `c:rg` |
 | `identity` | `id`, `ci`, `cmd` | Color identity | `id:wubrg` |
-| `power` | `pow` | Power (numeric) | `pow>=4` |
-| `toughness` | `tou` | Toughness (numeric) | `tou>5` |
-| `loyalty` | `loy` | Loyalty (numeric) | `loy>=3` |
-| `defense` | `def` | Defense (numeric) | `def>3` |
+| `power` | `pow` | Oracle power: ranges only plain numbers; unquoted plain `:`/`=`/`!=` → numeric equality (Spec 034); unquoted non-plain → `:` substring / `=` exact / `!=` not-exact on oracle text; quoted → string semantics; `=null` / equatable-null prefixes; `pow=0` vs `pow=x` (literal X) (Spec 173) | `pow>=4`, `pow:+*`, `pow="1"`, `pow=0` |
+| `toughness` | `tou` | Same routing as power (Spec 173) | `tou=1`, `tou=1+*`, `tou:"1"` |
+| `loyalty` | `loy` | Same routing as power for planeswalker loyalty (Spec 173) | `loy>=3`, `loy=x` (matches oracle `X`) |
+| `defense` | `def` | Same routing as power for battle defense (Spec 173) | `def>3` |
 | `mana value` | `mv`, `cmc` | Mana value (numeric) | `mv<=2` |
 | `mana` | `m` | Mana cost (symbols) | `m:{b/p}` |
 | `produces` | — | Mana the card can produce (lands, rocks, rituals); W,U,B,R,G,C,T; named combos (azorius, multicolor); numeric count; `:` = at least, `=` = exactly | `produces:wu`, `produces=0`, `produces:multicolor` |
@@ -107,6 +107,7 @@ A new section that lists features Scryfall does not support. Each entry has a br
 | Salt percentile | Filter by EDHREC saltiness (higher % = saltier) | `salt>90%`, `salt<10%` |
 | Percentile chips in Menu | Popularity and Salt sections offer one-tap chips (>90%, >95%, >99%) | Open Menu → Popularity or Salt |
 | `usd=null` | Find printings with no price data | `usd=null` |
+| Stat oracle text (`pow`/`tou`/`loy`/`def`) | Substring and exact match on oracle stat strings; quoted values; equatable-null on stats; Scryfall does not support these forms | `tou:+*`, `tou=1+*`, `tou:"1"` |
 | `-sort:field` | Reverse sort direction (NOT inverts) | `-sort:name` |
 
 ### Section 7: Differences from Scryfall
@@ -123,6 +124,8 @@ Behavioral divergences where Frantic Search intentionally differs from Scryfall.
 | `usd=null` | Not supported | Matches printings with no price data |
 | `$` alias | Uses `usd` | `$` is alias for `usd` |
 | Query speed | Server round-trip | Instant (client-side, every keystroke) |
+| Power/toughness/loyalty/defense: query `x`/`y` | Historically some clients treated `pow=x` like numeric zero | Frantic: `pow=x` matches oracle power literally `X`/`x` (exact string); use `pow=0` for numeric zero (`*`, variable P/T as 0 per Spec 034). See [power](?doc=reference/fields/face/power) (Spec 173). |
+| Quoted or formula stat values (`tou:"1"`, `tou=1+*`) | Scryfall does not support | Frantic: quoted forces substring (`:`) or exact (`=`/`!=`) on oracle text; unquoted formulas use substring vs exact per operator (Spec 173). |
 | `is:alchemy` | Default scryfall.com search omits a few Mystery Booster 2 playtest printings that still carry the alchemy promo tag in Scryfall bulk data | Frantic Search honors bulk `promo_types` and `set_type: alchemy`. Users can list the divergent printings with `is:alchemy set:mb2` (in-app link: `?q=is%3Aalchemy%20set%3Amb2`). Documented in [is](?doc=reference/fields/face/is); see [issue #191](https://github.com/jimbojw/frantic-search/issues/191). |
 
 ## Intro Copy

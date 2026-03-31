@@ -4,28 +4,45 @@ title: toughness
 
 # toughness
 
-Toughness stat for creatures and vehicles.
+Toughness stat for creatures and vehicles (oracle text on the card face).
 
 **Canonical:** `toughness`  
 **Aliases:** `tou`  
 **Domain:** Face
 
+## How values are interpreted
+
+Same routing as [power](?doc=reference/fields/face/power) (Spec 173): **plain numeric** unquoted values use **numeric** equality or ranges (Spec 034). **Non–plain-numeric** unquoted values use **`:`** substring vs **`=`** / **`!=`** exact / not-exact on the oracle toughness string. **Quoted** values always use string semantics.
+
+Examples:
+
+- **`tou=1`** and **`tou:1`** — numeric 1 (matches oracle `1` and `1+*`, not `10`).
+- **`tou:+*`** — substring `+*` (matches `1+*`, not a lone `*`).
+- **`tou:"1"`** — substring `1` (matches `1`, `1+*`, `10`, `11`).
+- **`tou="1"`** — exact oracle `1` only.
+
+**Equatable null (unquoted):** `tou=null`, `tou=n`, `tou=nu`, `tou=nul` and `tou!=null` family — same as power. **`tou="null"`** is exact string, not null-semantics.
+
+**`tou=x`** — exact oracle `X`, not numeric zero; use **`tou=0`** for numeric zero.
+
+Cards without toughness are skipped for numeric comparisons and excluded from `!=` on string paths.
+
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Equals or has value | `q=tou:5` |
-| `=` | Equals | `q=toughness=5` |
-| `!=` | Not equal | `q=tou!=1` |
-| `=null` | No toughness | `q=tou=null` |
-| `!=null` | Has toughness | `q=tou!=null` |
-| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=tou>5` |
-
-## Allowed values
-
-Numeric toughness. Use `q=tou:*` to match cards with variable toughness. Non-creatures and cards without toughness are excluded from numeric comparisons.
+| `:` | Plain numeric → numeric eq; else substring | `q=tou:5`, `q=tou:+*` |
+| `=` | Plain numeric → numeric eq; else exact string | `q=toughness=5`, `q=tou=1+*` |
+| `!=` | Plain numeric → numeric neq; else not exact | `q=tou!=1` |
+| `=null`, `!=null` | Missing vs present toughness | `q=tou=null` |
+| `>`, `<`, `>=`, `<=` | Numeric; plain numeric value required | `q=tou>5` |
 
 ## Notes
 
-- **`null`:** Use `q=tou=null` to find cards without toughness. `q=tou!=null` finds cards with toughness. Comparison operators with `null` are invalid.
-- Negation: `q=-tou>5` ⟺ `q=tou<=5` (operator inversion).
+- To exclude a substring, use **`-tou:fragment`**, not `tou!=fragment` ( `!=` follows exact semantics).
+- **Negation:** `q=-tou>5` ⟺ `q=tou<=5` (operator inversion).
+
+## Scryfall
+
+Plain-numeric toughness filters are broadly portable. Quoted values, substring oracle fragments, and formula exact match are **Frantic-only** and stripped from Scryfall outlinks. For numeric zero toughness, use **`tou=0`** rather than **`tou=x`** when translating to Scryfall-style intent.
+

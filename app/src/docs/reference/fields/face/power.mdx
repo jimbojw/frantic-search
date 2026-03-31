@@ -4,28 +4,49 @@ title: power
 
 # power
 
-Power stat for creatures and vehicles.
+Power stat for creatures and vehicles (oracle text on the card face).
 
 **Canonical:** `power`  
 **Aliases:** `pow`  
 **Domain:** Face
 
+## How values are interpreted
+
+Frantic routes your query by **operator**, whether the value is **quoted**, and whether it is a **plain numeric** token (optional `+`/`-`, digits, optional one `.` — e.g. `1`, `3.5`, `+0`). Anything else (`*`, `1+*`, `x`, `n` as a typo toward `null`, etc.) is **not** plain numeric.
+
+| Situation | `:` | `=` / `!=` | `>` `>=` `<` `<=` |
+|-----------|-----|------------|-------------------|
+| Unquoted **plain numeric** | Numeric equality (same as `=`; matches oracle `1` and `1+*` as numeric 1, not `10`) | `=` numeric eq; `!=` numeric neq | Numeric comparison |
+| Unquoted **not** plain numeric | Substring on oracle power (case-insensitive ASCII) | Exact match on oracle string | **Error** (plain number required) |
+| **Quoted** inner text | Substring | `=` exact; `!=` not exact | **Error** unless plain numeric inside quotes |
+
+**`!=` is never “not substring”.** To exclude a substring, negate a colon term: `-pow:+*`.
+
+**Equatable null (unquoted only):** `pow=null`, `pow=n`, `pow=nu`, `pow=nul` match faces with **no** power; `pow!=null` (and the same prefixes with `!=`) match faces **with** power. **`pow="null"`** is an exact string search for the literal text `null`, not null-semantics.
+
+**`pow=x` vs `pow=0`:** `x` is not plain numeric, so `pow=x` matches oracle power literally **`X`** (case-insensitive). For “numeric power zero” (including `*` and variable P/T treated as 0), use **`pow=0`**.
+
+Non-creatures have no power and are skipped for numeric comparisons and for `!=` on string paths.
+
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Equals or has value | `q=pow:4` |
-| `=` | Equals | `q=power=4` |
-| `!=` | Not equal | `q=pow!=0` |
-| `=null` | No power (non-creatures) | `q=pow=null` |
-| `!=null` | Has power | `q=pow!=null` |
-| `>`, `<`, `>=`, `<=` | Numeric comparison | `q=pow>=4` |
-
-## Allowed values
-
-Numeric power. Use `q=pow:*` to match cards with variable power (e.g. "X", "*"). Non-creatures have no power and are excluded from numeric comparisons.
+| `:` | Plain numeric → numeric eq; else substring on oracle power | `q=pow:4`, `q=pow:+*` |
+| `=` | Plain numeric → numeric eq; else exact oracle string | `q=power=4`, `q=pow=1+*` |
+| `!=` | Plain numeric → numeric neq; else not exact (empty power excluded) | `q=pow!=0` |
+| `=null`, `!=null` | Missing vs present power (equatable-null prefixes allowed) | `q=pow=null`, `q=pow!=null` |
+| `>`, `<`, `>=`, `<=` | Numeric comparison; value must be a plain number | `q=pow>=4` |
 
 ## Notes
 
-- **`null`:** Use `q=pow=null` to find non-creatures (e.g. Lightning Bolt). `q=pow!=null` finds creatures. Comparison operators with `null` are invalid.
-- Negation: `q=-pow>=4` ⟺ `q=pow<4` (operator inversion; excludes non-creatures).
+- **Empty field value** (`pow:` with nothing after the colon) matches all cards (mid-typing).
+- **Invalid ranges** (e.g. `pow>1+*`) show a query error; the term is ignored in AND/OR with other terms.
+- **Negation:** `q=-pow>=4` is equivalent to `q=pow<4` (operator inversion; faces without power are still excluded from the numeric comparison).
+
+## Scryfall
+
+- Scryfall supports plain-numeric power filters similar to **`pow=2`**, **`pow>=4`**, etc.
+- Scryfall does **not** support quoted stat values, substring oracle fragments, or formula exact match the way Frantic does. **Outlinks** to Scryfall strip those terms.
+- **`pow=x`:** On Scryfall, behavior may differ; in Frantic, **`pow=0`** is the portable choice for “numeric power zero.”
+

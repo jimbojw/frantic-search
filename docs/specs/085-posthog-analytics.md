@@ -108,6 +108,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 3. **Percentile literals** — a value matching `(\d+(?:\.\d+)?)%` on a field that Frantic treats as percentile-capable (`usd`, `date`, `name`, `edhrec`, `salt`), e.g. `edhrec>99%`, while Scryfall does not support that syntax for those filters.
 4. **Partial `date` / `year` literals** — values that Frantic expands to explicit ranges (Spec 061), e.g. `date=202` for the 2020s; Scryfall does not interpret those partials the same way.
 5. **`null` value queries** — `usd=null` / `usd!=null` (Spec 080), **equatable-null prefixes** on `usd` / `edhrec` for those fields (Spec 172), and `power` / `toughness` / `loyalty` / `defense` / `mana` (and aliases) with `null` (Spec 136); Scryfall does not support these.
+6. **Stat field extensions (Spec 173)** — On `power` / `toughness` / `loyalty` / `defense` (and aliases): **quoted** values; **unquoted non–plain-numeric** values with `:`, `=`, or `!=`; **equatable-null prefixes** on equality operators. Plain-numeric equality/ranges alone do **not** count as extension.
 
 **Derivation:** The WebWorker parses the **effective** query (same `sealQuery` concatenation as the app’s `effectiveQuery()`), walks the AST, and sets boolean `usedExtension`. The `result` message includes `usedExtension`; the main thread passes it through to PostHog and the Scryfall outlink as `used_extension`. Do **not** derive `used_extension` from `includeExtras` or `uniqueMode`.
 
