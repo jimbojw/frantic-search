@@ -456,6 +456,7 @@ Add printing-field entries once the full dataset is available.
 13. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
 14. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
 15. `-is:poster` correctly negates (matches printings without poster promo type).
+16. **`atag:`** / **`art:`** evaluation uses normalized prefix matching and union over illustration tag keys (Spec 174), analogous to **`set:`** prefix discovery.
 
 ## Implementation Notes
 

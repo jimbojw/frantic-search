@@ -7,17 +7,27 @@ title: atag
 Community-tagged artwork from the Scryfall tagger project.
 
 **Canonical:** `atag`  
-**Aliases:** —  
+**Aliases:** `art`  
 **Domain:** Printing
 
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Has tag | `q=atag:bolt` |
-| `=` | Has tag | `q=atag:bolt` |
+| `:` | Prefix match on normalized tag keys | `q=atag:bolt` |
+| `=` | Same as `:` | `q=atag:bolt` |
 | `!=` | Does not have tag | `q=atag!=dragon` |
 
-## Allowed values
+## Matching
 
-Illustration tags are community-curated labels for artwork (e.g. bolt, dragon). Matching is substring-based. Tags are tied to **printings** (art can differ by edition). See [tag-filter](?doc=reference/special/tag-filter) for `#tag` filtering.
+Values are normalized like other categorical fields (lowercase, alphanumeric only).
+
+- **Prefix:** Every illustration tag key whose **normalized** key **starts with** the normalized query contributes its printings; results are the **union** of those tags.
+- **Empty value:** `atag:` or `atag=` with nothing after the operator matches every **printing** that has **at least one** illustration tag in the loaded index.
+- **No match:** If no key has that prefix, **zero** printings—no “unknown tag” error. See [Scryfall differences](?doc=reference/scryfall/differences).
+
+Frantic uses prefix-on-keys for discovery; Scryfall targets an **exact** illustration tag label. **Canonical Scryfall links** may still use unique-prefix resolution. See [otag](?doc=reference/fields/card/otag) and [set](?doc=reference/fields/printing/set) for the same pattern.
+
+## Notes
+
+Illustration tags are tied to **printings** (art can differ by edition). See [tag-filter](?doc=reference/special/tag-filter) for `#tag` filtering.

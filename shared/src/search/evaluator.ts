@@ -634,8 +634,8 @@ export class NodeCache {
             if (ast.operator !== ":" && ast.operator !== "=") {
               error = "atag: requires : or = operator";
             } else {
-              const atagVal = resolveForField("atag", ast.value, this._getResolutionContext());
-              error = evalIllustrationTag(atagVal, this._tagDataRef?.illustration ?? null, buf);
+              // Spec 174: prefix union on tag keys; no resolveForField on eval path (Spec 103).
+              error = evalIllustrationTag(ast.value, this._tagDataRef?.illustration ?? null, buf);
             }
           } else if (canonical === "flavor") {
             if (ast.operator !== ":" && ast.operator !== "=") {
@@ -718,8 +718,8 @@ export class NodeCache {
           if (ast.operator !== ":" && ast.operator !== "=") {
             err = "otag: requires : or = operator";
           } else {
-            const otagVal = resolveForField("otag", ast.value, this._getResolutionContext());
-            err = evalOracleTag(otagVal, this._tagDataRef?.oracle ?? null, buf);
+            // Spec 174: prefix union on tag keys; no resolveForField on eval path (Spec 103).
+            err = evalOracleTag(ast.value, this._tagDataRef?.oracle ?? null, buf);
           }
           const ms = performance.now() - t0;
           if (err) {

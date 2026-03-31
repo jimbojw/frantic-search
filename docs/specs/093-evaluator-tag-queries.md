@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 091 (ETL Tag Download), Spec 092 (Tag Data Model), ADR-017 (Dual-Domain Query Evaluation), Issue #99 (Epic: otag/atag Support)
+**Depends on:** Spec 091 (ETL Tag Download), Spec 092 (Tag Data Model), Spec 174 (prefix union evaluation; supersedes exact-key / `unknown tag` for non-matching prefix below), ADR-017 (Dual-Domain Query Evaluation), Issue #99 (Epic: otag/atag Support)
 
 ## Goal
 
@@ -44,21 +44,21 @@ Tag data loads asynchronously after the worker initializes. The evaluator must r
 
 ## Evaluation Logic
 
+**Superseded for matching semantics by Spec 174.** Summary: normalized prefix on all tag keys, union indices, zero hits without error; empty value matches every face/printing that has ≥1 tag in the loaded index.
+
 ### `otag:label` (face domain)
 
 1. If `tagDataRef?.oracle` is null → error: `"oracle tags not loaded"`.
-2. Look up `label.toLowerCase()` in `tagDataRef.oracle`.
-3. If label not present → error: `"unknown tag \"label\""`.
-4. For each face index in the array, set `buf[faceIndex] = 1`.
-5. Supported operators: `:` and `=` only. Other operators (e.g. `!=`, `>`) are not meaningful for tags; treat as `:` or return error. For simplicity, support `:` and `=` as match; others can produce error or be ignored per existing patterns.
+2. For every key in `tagDataRef.oracle` whose normalized key starts with the normalized user prefix (Spec 103 `normalizeForResolution`), for each face index in that key’s array, set `buf[faceIndex] = 1`.
+3. If no key matches, leave buffer zero — **no** `unknown tag` error (Spec 174).
+4. Supported operators: `:` and `=` only. Other operators (e.g. `!=`, `>`) are not meaningful for tags; treat as `:` or return error. For simplicity, support `:` and `=` as match; others can produce error or be ignored per existing patterns.
 
 ### `atag:label` / `art:label` (printing domain)
 
 1. If `tagDataRef?.illustration` is null → error: `"illustration tags not loaded"`.
-2. Look up `label.toLowerCase()` in `tagDataRef.illustration`.
-3. If label not present → error: `"unknown tag \"label\""`.
-4. For each printing row index in the array, set `buf[printingRow] = 1`.
-5. Supported operators: `:` and `=` only. Same as above.
+2. Same prefix-union rule over illustration tag map keys and printing indices (Spec 174).
+3. If no key matches, zero printings — **no** `unknown tag`.
+4. Supported operators: `:` and `=` only. Same as above.
 
 ### Negation
 
@@ -66,10 +66,10 @@ Tag data loads asynchronously after the worker initializes. The evaluator must r
 
 ### Error vs. Zero Matches
 
-Per Issue #99:
+Per Issue #99 and Spec 174:
 
-- **0-match (value-zero):** Tag exists in the loaded index but has no matching cards. Valid syntax; no error.
-- **Error (value-error):** Tag label not in the loaded dictionary, or tag data not loaded.
+- **0-match (value-zero):** No tag key matches the prefix, or a matching key has an empty index array. Valid syntax; no error.
+- **Error (value-error):** Tag data not loaded only (`oracle tags not loaded` / `illustration tags not loaded`). **Not** an error when the prefix matches no key (Spec 174).
 
 ## Evaluator Integration Points
 
@@ -116,10 +116,10 @@ Implemented in Spec 094. Tag labels are sent with `otags-ready` and `atags-ready
 Per `shared/AGENTS.md`, use TDD for evaluator code:
 
 1. `otag:ramp` with oracle tags loaded → matches expected face indices.
-2. `otag:nonexistent` with oracle tags loaded → error `unknown tag "nonexistent"`.
+2. `otag:nonexistent` with oracle tags loaded → **zero** matches, **no** error (Spec 174).
 3. `otag:ramp` with oracle tags not loaded → error `oracle tags not loaded`.
 4. `atag:chair` with illustration tags loaded → matches expected printing indices.
-5. `atag:nonexistent` with illustration tags loaded → error `unknown tag "nonexistent"`.
+5. `atag:nonexistent` with illustration tags loaded → **zero** matches, **no** error (Spec 174).
 6. `atag:chair` with illustration tags not loaded → error `illustration tags not loaded`.
 7. `-otag:ramp` and `-atag:chair` → negation works correctly.
 8. `otag:ramp set:mh2` → face and printing domains compose correctly.
@@ -130,7 +130,7 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 
 1. `otag:label` evaluates in face domain using `tagDataRef.oracle`.
 2. `atag:label` and `art:label` evaluate in printing domain using `tagDataRef.illustration`.
-3. Unknown tag labels produce an error.
+3. A prefix that matches no tag key produces **zero** results, not `unknown tag` (Spec 174).
 4. Tag data not loaded produces an appropriate error.
 5. Negation (`-otag:`, `-atag:`) works via the existing NOT node.
 6. Tag queries compose with other face- and printing-domain conditions.
@@ -140,3 +140,4 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 ## Implementation Notes
 
 - 2026-03-07: Implemented per spec. Added `eval-tags.ts` with `evalOracleTag` and `evalIllustrationTag`; extended `FIELD_ALIASES` and `PRINTING_FIELDS`; `NodeCache` accepts optional `tagDataRef`; worker passes `tagDataRef` to cache constructor. Tag evaluation branches in `computeTree` handle `otag` (face domain) and `atag` (printing domain) before `evalLeafField` / `evalPrintingField`.
+- 2026-03-31: Prefix union evaluation and removal of `unknown tag` for non-matching prefix (Spec 174). Evaluator no longer calls `resolveForField` for `otag` / `atag` on the eval path.

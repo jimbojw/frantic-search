@@ -64,7 +64,7 @@ This epic requires updates to the following specs:
 - Supported operators: `:` and `=` only (no numeric comparisons)
 - Negation via `-kw:flying` works via the existing NOT node
 - Empty value: fill buffer with 1s (match all) or treat as neutral filter per existing semantics
-- Unknown keyword: error (e.g. `unknown keyword "xyz"`) — same as unknown tag in Spec 093
+- Unknown keyword: error (e.g. `unknown keyword "xyz"`) — contrast `otag:` / `atag:` (Spec 174: no `unknown tag` when prefix matches no key)
 - **Categorical resolution (Spec 103):** Before lookup, call `resolveForField("keyword", value, context)`. Candidate source: keys of loaded keywords.json (runtime, like `otag`/`atag`). When the user's prefix matches exactly one keyword (e.g. `kw:f` → `flying`, `kw:de` → `deathtouch`), resolve to the full value. When 0 or 2+ match, no resolution; existing validation applies.
 
 ### 4. Syntax highlighting and autocomplete

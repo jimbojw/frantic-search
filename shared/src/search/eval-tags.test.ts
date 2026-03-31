@@ -10,14 +10,14 @@ describe("evalOracleTag", () => {
     expect(buf.every((b) => b === 0)).toBe(true);
   });
 
-  test("returns error for unknown tag", () => {
+  test("no error for prefix matching no key (Spec 174)", () => {
     const oracle: OracleTagData = { ramp: [1, 3, 5] };
     const buf = new Uint8Array(10);
-    expect(evalOracleTag("nonexistent", oracle, buf)).toBe('unknown tag "nonexistent"');
+    expect(evalOracleTag("nonexistent", oracle, buf)).toBe(null);
     expect(buf.every((b) => b === 0)).toBe(true);
   });
 
-  test("sets buffer for matching face indices", () => {
+  test("sets buffer for matching face indices (exact key)", () => {
     const oracle: OracleTagData = { ramp: [1, 3, 5] };
     const buf = new Uint8Array(10);
     expect(evalOracleTag("ramp", oracle, buf)).toBe(null);
@@ -28,11 +28,53 @@ describe("evalOracleTag", () => {
     expect(buf[2]).toBe(0);
   });
 
-  test("label is case-insensitive", () => {
+  test("prefix unions multiple keys (Spec 174)", () => {
+    const oracle: OracleTagData = {
+      ramp: [0, 1],
+      "ramp-artifact": [2, 3],
+      removal: [9],
+    };
+    const buf = new Uint8Array(12);
+    expect(evalOracleTag("ramp", oracle, buf)).toBe(null);
+    expect(buf[0]).toBe(1);
+    expect(buf[1]).toBe(1);
+    expect(buf[2]).toBe(1);
+    expect(buf[3]).toBe(1);
+    expect(buf[9]).toBe(0);
+  });
+
+  test("empty value unions all tagged faces (Spec 174)", () => {
+    const oracle: OracleTagData = {
+      ramp: [0, 1],
+      removal: [2],
+    };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag("", oracle, buf)).toBe(null);
+    expect(buf[0]).toBe(1);
+    expect(buf[1]).toBe(1);
+    expect(buf[2]).toBe(1);
+    expect(buf[3]).toBe(0);
+  });
+
+  test("empty value with whitespace-only unions all tagged faces", () => {
+    const oracle: OracleTagData = { a: [4] };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag("   ", oracle, buf)).toBe(null);
+    expect(buf[4]).toBe(1);
+  });
+
+  test("label is case-insensitive via normalization", () => {
     const oracle: OracleTagData = { ramp: [2] };
     const buf = new Uint8Array(10);
     expect(evalOracleTag("RAMP", oracle, buf)).toBe(null);
     expect(buf[2]).toBe(1);
+  });
+
+  test("hyphenated key matches alphanumeric prefix (Spec 103 normalize)", () => {
+    const oracle: OracleTagData = { "mana-rock": [7] };
+    const buf = new Uint8Array(10);
+    expect(evalOracleTag("mana", oracle, buf)).toBe(null);
+    expect(buf[7]).toBe(1);
   });
 
   test("skips indices beyond buffer length", () => {
@@ -58,12 +100,12 @@ describe("evalIllustrationTag", () => {
     expect(buf.every((b) => b === 0)).toBe(true);
   });
 
-  test("returns error for unknown tag", () => {
+  test("no error for prefix matching no key (Spec 174)", () => {
     const illustration = new Map<string, Uint32Array>([
       ["chair", new Uint32Array([2, 4, 6])],
     ]);
     const buf = new Uint8Array(10);
-    expect(evalIllustrationTag("nonexistent", illustration, buf)).toBe('unknown tag "nonexistent"');
+    expect(evalIllustrationTag("nonexistent", illustration, buf)).toBe(null);
     expect(buf.every((b) => b === 0)).toBe(true);
   });
 
@@ -79,7 +121,30 @@ describe("evalIllustrationTag", () => {
     expect(buf[0]).toBe(0);
   });
 
-  test("label is case-insensitive", () => {
+  test("prefix unions multiple illustration keys", () => {
+    const illustration = new Map<string, Uint32Array>([
+      ["bolt", new Uint32Array([0])],
+      ["bolt-storm", new Uint32Array([1, 2])],
+    ]);
+    const buf = new Uint8Array(8);
+    expect(evalIllustrationTag("bolt", illustration, buf)).toBe(null);
+    expect(buf[0]).toBe(1);
+    expect(buf[1]).toBe(1);
+    expect(buf[2]).toBe(1);
+  });
+
+  test("empty value unions all tagged printings", () => {
+    const illustration = new Map<string, Uint32Array>([
+      ["chair", new Uint32Array([0])],
+      ["foot", new Uint32Array([1])],
+    ]);
+    const buf = new Uint8Array(8);
+    expect(evalIllustrationTag("", illustration, buf)).toBe(null);
+    expect(buf[0]).toBe(1);
+    expect(buf[1]).toBe(1);
+  });
+
+  test("label is case-insensitive via normalization", () => {
     const illustration = new Map<string, Uint32Array>([
       ["chair", new Uint32Array([2])],
     ]);

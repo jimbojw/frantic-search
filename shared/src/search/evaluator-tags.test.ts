@@ -43,11 +43,32 @@ describe("otag: evaluator", () => {
     expect(indices).toContain(9);
   });
 
-  test("otag:nonexistent returns error", () => {
+  test("otag:rem prefix matches removal (Spec 174)", () => {
+    const cache = new NodeCache(index, null, null, tagDataRef);
+    const out = cache.evaluate(parse("otag:rem"));
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(3);
+  });
+
+  test("otag:ramp unions all keys with matching prefix", () => {
+    const oracleTagsExtended: OracleTagData = {
+      ...oracleTags,
+      "ramp-artifact": [5],
+    };
+    const cache = new NodeCache(index, null, null, {
+      ...tagDataRef,
+      oracle: oracleTagsExtended,
+    });
+    const out = cache.evaluate(parse("otag:ramp"));
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(4);
+  });
+
+  test("otag:nonexistent yields zero matches, no error (Spec 174)", () => {
     const cache = new NodeCache(index, null, null, tagDataRef);
     const out = cache.evaluate(parse("otag:nonexistent"));
-    expect(out.result.matchCount).toBe(-1);
-    expect(out.result.error).toBe('unknown tag "nonexistent"');
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(0);
   });
 
   test("otag: without oracle tags returns error", () => {
@@ -107,11 +128,11 @@ describe("atag: evaluator", () => {
     expect(out1.result.matchCount).toBe(out2.result.matchCount);
   });
 
-  test("atag:nonexistent returns error", () => {
+  test("atag:nonexistent yields zero matches, no error (Spec 174)", () => {
     const cache = new NodeCache(index, printingIndex, null, tagDataRef);
     const out = cache.evaluate(parse("atag:nonexistent"));
-    expect(out.result.matchCount).toBe(-1);
-    expect(out.result.error).toBe('unknown tag "nonexistent"');
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(0);
   });
 
   test("atag: without illustration tags returns error", () => {
