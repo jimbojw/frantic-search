@@ -212,7 +212,7 @@ These fields map to columns available in the current ETL output.
 | `legal`, `f`, `format` | `legalities_legal`      | Card is legal in the given format      | —                                          |
 | `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
-| `kw`, `keyword`    | `keywords_index`            | Card has the given keyword ability (Scryfall catalog) | `:` and `=` only (Spec 105) |
+| `kw`, `keyword`    | `keywords_index`            | Card has a keyword ability whose normalized name is prefixed by the query (union over all matching keys; Spec 176); non-empty value with no matching key → `unknown keyword` (passthrough, Spec 039); empty value matches all faces (Spec 105) | `:` and `=` only (Spec 105) |
 | `flavor`, `ft`     | `flavor-index` (supplemental) | Flavor text substring; regex via `/pattern/` (printing-domain) | `:` and `=` only (Spec 142) |
 | `artist`, `a`      | `artist-index` (supplemental) | Artist name substring (printing-domain) | `:` and `=` only (Spec 149) |
 | (bare word)        | `names`                     | Case-insensitive substring             | —                                          |

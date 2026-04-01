@@ -14,15 +14,24 @@ Keyword abilities from the Scryfall catalog.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Has keyword | `q=kw:flying` |
-| `=` | Has keyword | `q=keyword:flying` |
-| `!=` | Does not have keyword | `q=kw!=trample` |
+| `:` | Has keyword (prefix match on normalized name; see below) | `q=kw:flying` |
+| `=` | Same as `:` | `q=keyword=flying` |
+
+Other operators (for example `!=`) are not supported; the evaluator reports that `kw:` requires `:` or `=`.
 
 ## Allowed values
 
-Keyword ability names from the Scryfall catalog. Matching is case-insensitive. `q=kw:flying` matches cards with flying; `q=kw:deathtouch` matches deathtouch.
+Values are matched against the **keyword inverted index** (keys from Scryfall’s keyword list). Matching uses **normalized prefix** union (Spec 176): `normalizeForResolution` is applied to your value and to each index key; every key whose normalized form **starts with** the normalized query contributes its face matches. Examples:
+
+- `q=kw:flying` matches cards with the Flying keyword.
+- A short prefix that matches several keyword names matches cards that have **any** of those keywords (discovery), similar to [`set:`](?doc=reference/fields/printing/set) and [`otag:`](?doc=reference/fields/card/otag).
+- A prefix that matches **no** keyword name in the index yields **`unknown keyword "…"`** (Spec 039 passthrough: other terms in the query still apply). This differs from [`set:`](?doc=reference/fields/printing/set) and tag fields, which return zero hits with no error when nothing matches.
+
+Matching is case-insensitive via the same normalization (accents and non-alphanumeric characters are stripped for comparison). Multi-word keywords (e.g. “first strike”) are compared after normalization so spacing and punctuation align with index keys.
+
+**Empty value:** `kw:` or `keyword:` with no value matches **all** faces (neutral filter).
 
 ## Notes
 
-- Keywords are normalized (e.g. "first strike" vs "double strike").
 - For oracle text substring search, use [oracle](?doc=reference/fields/face/oracle).
+- Scryfall’s keyword syntax is effectively exact; Frantic’s prefix union is an intentional extension — see [Scryfall differences](?doc=reference/scryfall/differences).

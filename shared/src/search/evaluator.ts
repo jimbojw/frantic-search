@@ -698,8 +698,8 @@ export class NodeCache {
           if (ast.operator !== ":" && ast.operator !== "=") {
             err = "kw: requires : or = operator";
           } else {
-            const kwVal = resolveForField("keyword", ast.value, this._getResolutionContext());
-            err = evalKeyword(kwVal, this._keywordDataRef?.keywords ?? null, buf);
+            // Spec 176: prefix union on keyword keys; no resolveForField on eval path (Spec 103).
+            err = evalKeyword(ast.value, this._keywordDataRef?.keywords ?? null, buf);
           }
           const ms = performance.now() - t0;
           if (err) {

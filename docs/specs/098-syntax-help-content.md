@@ -42,7 +42,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `banned` | — | Banned in format | `banned:legacy` |
 | `restricted` | — | Restricted in format | `restricted:vintage` |
 | `is` | `not` | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil); `not:` = `-is:` | `is:commander`, `not:dfc` |
-| `kw` | `keyword` | Keyword ability (Scryfall catalog) | `kw:flying` |
+| `kw` | `keyword` | Keyword ability; normalized **prefix** with union over matching names; no match → `unknown keyword` (Spec 176) | `kw:flying`, `kw:first` |
 | `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |
 | `edhrec` | `edhrecrank` | EDHREC Commander popularity rank; integer numeric, percentile, `=null`; invalid text → error (Spec 172) | `edhrec<100`, `edhrec>90%`, `edhrec=n` while typing `null` |

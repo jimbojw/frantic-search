@@ -4,7 +4,7 @@
 
 **GitHub Issue:** [#114](https://github.com/jimbojw/frantic-search/issues/114)
 
-**Depends on:** Spec 002 (Query Engine), Spec 003 (ETL Process), Spec 092 (Tag Data Model — inverted index pattern), Spec 098 (Syntax Help Content), Spec 103 (Categorical Field Value Auto-Resolution), ADR-009 (Bitmask-per-Node AST)
+**Depends on:** Spec 002 (Query Engine), Spec 003 (ETL Process), Spec 092 (Tag Data Model — inverted index pattern), Spec 098 (Syntax Help Content), Spec 103 (Categorical Field Value Auto-Resolution), Spec 176 (`kw` / `keyword` prefix query semantics), ADR-009 (Bitmask-per-Node AST)
 
 ## Goal
 
@@ -57,15 +57,15 @@ This epic requires updates to the following specs:
 
 ### 3. Evaluator: Filtering
 
+Evaluation semantics: **Spec 176** (normalized prefix over all keyword index keys, union of face indices; no matching key → `unknown keyword` + passthrough). Summary:
+
 - Add `kw` and `keyword` to `FIELD_ALIASES` in `shared/src/search/eval-leaves.ts` (both resolve to canonical `keyword`)
 - Branch to keyword evaluation before `evalLeafField` — same pattern as `otag`/`atag` in Spec 093
-- Look up `value.toLowerCase()` in the keyword index; for each index in the array, set `buf[index] = 1`
-- O(1) lookup + O(k) buffer fill, where k = number of matching faces
+- **`evalKeyword`** in `shared/src/search/eval-keywords.ts` applies prefix union (not a single-key lookup); eval path does **not** call `resolveForField` (Spec 103 split; same idea as Spec 174 for tags)
 - Supported operators: `:` and `=` only (no numeric comparisons)
 - Negation via `-kw:flying` works via the existing NOT node
-- Empty value: fill buffer with 1s (match all) or treat as neutral filter per existing semantics
-- Unknown keyword: error (e.g. `unknown keyword "xyz"`) — contrast `otag:` / `atag:` (Spec 174: no `unknown tag` when prefix matches no key)
-- **Categorical resolution (Spec 103):** Before lookup, call `resolveForField("keyword", value, context)`. Candidate source: keys of loaded keywords.json (runtime, like `otag`/`atag`). When the user's prefix matches exactly one keyword (e.g. `kw:f` → `flying`, `kw:de` → `deathtouch`), resolve to the full value. When 0 or 2+ match, no resolution; existing validation applies.
+- Empty value: fill buffer with 1s (match all faces / neutral filter) — Spec 176
+- **`resolveForField("keyword", …)`** remains for **canonicalize** / non-eval consumers when exactly one keyword matches the typed prefix (Spec 103)
 
 ### 4. Syntax highlighting and autocomplete
 
@@ -120,11 +120,11 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 4. `-kw:flying` excludes cards with Flying
 5. Matching is case-insensitive (`kw:FLYING` matches Flying)
 6. `kw:` with empty value → matches all cards (neutral filter)
-7. Unknown keyword `kw:xyz` → error
+7. `kw:zzz` with keywords loaded → `unknown keyword "zzz"` (Spec 176 / Spec 039 passthrough)
 8. Multi-face card: canonical face index appears once per keyword; `kw:flying` matches if the card has Flying
-9. `kw:f` resolves to `kw:flying` when "flying" is the only keyword prefix-match (Spec 103)
-10. `kw:de` resolves to `kw:deathtouch` when "deathtouch" is the only match.
-11. `kw:p` with multiple matches (e.g. prowess, protection) → no resolution; error per existing validation
+9. Prefix union: `kw:pro` matches faces that have **any** keyword whose normalized key starts with `pro` (e.g. prowess and protection both contribute)
+10. `resolveForField("keyword", …)` for canonicalize: `kw:f` still resolves to `flying` when that is the only keyword prefix-match (Spec 103)
+11. Normalization: multi-word keyword keys and spaced user input align per `normalizeForResolution` (Spec 176)
 
 ## Acceptance Criteria
 
@@ -134,4 +134,10 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 4. `-kw:flying` excludes cards with Flying
 5. Matching is case-insensitive
 6. Syntax help and autocomplete include `kw` and `keyword`
-7. Prefix auto-resolution: `kw:f` behaves as `kw:flying` when that is the only matching keyword (Spec 103)
+7. Prefix **evaluation** (Spec 176): shared prefixes union multiple keywords; no matching prefix → `unknown keyword` (passthrough)
+8. Prefix **canonicalize** (Spec 103): `kw:f` serializes as full keyword when that is the only matching keyword in context
+
+## Implementation Notes
+
+- 2026-03-31: Spec 176 — `eval-keywords.ts` uses `normalizeForResolution` prefix union; `evaluator.ts` keyword branch passes `ast.value` through without `resolveForField` on the eval path. Whitespace-only values trim to empty and match all faces.
+- 2026-03-31: No matching keyword key for a non-empty value → `unknown keyword "…"` (passthrough), unlike silent zero-hit for `set:` / `otag:` / `atag:`.

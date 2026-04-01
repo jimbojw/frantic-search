@@ -62,11 +62,22 @@ describe("kw: evaluator", () => {
     expect(out.result.error).toBeUndefined();
   });
 
-  test("unknown keyword returns error", () => {
+  test("non-matching prefix returns unknown keyword error", () => {
     const cache = new NodeCache(index, null, null, null, keywordDataRef);
     const out = cache.evaluate(parse("kw:xyz"));
     expect(out.result.matchCount).toBe(-1);
     expect(out.result.error).toBe('unknown keyword "xyz"');
+  });
+
+  test("prefix unions multiple keywords", () => {
+    const kw: KeywordData = {
+      flying: [0, 4],
+      firststrike: [6, 7],
+    };
+    const cache = new NodeCache(index, null, null, null, { keywords: kw });
+    const out = cache.evaluate(parse("kw:f"));
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(4);
   });
 
   test("kw: without keywords data returns error", () => {
@@ -86,5 +97,12 @@ describe("kw: evaluator", () => {
     const cache = new NodeCache(index, null, null, null, keywordDataRef);
     const out = cache.evaluate(parse("kw:flying t:creature"));
     expect(out.result.matchCount).toBe(2);
+  });
+
+  test("kw:xyz t:creature skips errored kw leaf (Spec 039 passthrough)", () => {
+    const cache = new NodeCache(index, null, null, null, keywordDataRef);
+    const creatureOnly = cache.evaluate(parse("t:creature")).result.matchCount;
+    const combined = cache.evaluate(parse("kw:xyz t:creature")).result.matchCount;
+    expect(combined).toBe(creatureOnly);
   });
 });
