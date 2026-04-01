@@ -18,6 +18,7 @@ export type Suggestion = {
     | 'near-miss'
     | 'relaxed'
     | 'stray-comma'
+    | 'field-value-gap'
     | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string

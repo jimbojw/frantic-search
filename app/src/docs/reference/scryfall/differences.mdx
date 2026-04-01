@@ -8,7 +8,7 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 
 This page has two parts:
 
-1. **Cross-cutting divergences** — behaviors that span many fields or the whole query language. This document is the place we record them (see also Spec 002 in the repo for parsing rules).
+1. **Cross-cutting divergences** — behaviors that span many fields or the whole query language. This document records them.
 2. **Field and feature index** — short pointers to articles where a specific field or modifier is documented, including how it differs from Scryfall.
 
 For features we have not implemented, see [Known Gaps](?doc=reference/scryfall/gaps).
@@ -20,6 +20,8 @@ For features we have not implemented, see [Known Gaps](?doc=reference/scryfall/g
 Whitespace between the field name and `:` or `=` (or between the operator and the value) **breaks** the field clause so a **new term** starts. Frantic matches Scryfall on these clause boundaries (Spec 002: *Whitespace and field clauses*; [GitHub #240](https://github.com/jimbojw/frantic-search/issues/240)).
 
 Example: `kw: otag:ramp` is **two** terms. The second is `otag:ramp`, not `kw` with value `otag`.
+
+If you **did** mean a single field clause (e.g. `ci: blue` intending `ci:blue`) but typed a space after the operator, a zero-result search may show a **Try a query refinement?** chip that removes the gap when that rewrite returns cards.
 
 ### Trailing operator (no adjacent value)
 
@@ -64,7 +66,7 @@ Use these links for **Scryfall vs Frantic** detail on a single field or keyword.
 | [`set:`](?doc=reference/fields/printing/set) | Exact set code on Scryfall vs **prefix** on normalized code in Frantic; empty and unknown-prefix semantics. |
 | [`otag:`](?doc=reference/fields/card/otag) / [`atag:`](?doc=reference/fields/printing/atag) | Effectively exact tag labels on Scryfall vs **prefix** + union over keys in Frantic; empty and unknown-prefix semantics. |
 | [`kw:`](?doc=reference/fields/face/kw) / `keyword:` | Effectively exact keyword names on Scryfall vs **prefix** + union in Frantic; empty `kw:` and **unknown keyword** passthrough vs other tag-like fields. |
-| [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) | Scryfall is mostly plain-numeric stat filters; Frantic adds substring and exact match on oracle stat text, quoted values, equatable-null forms, and Spec 173 rules (e.g. `pow=x` vs `pow=0`). |
+| [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) | Scryfall exhibits mostly plain-numeric stat filters; Frantic adds substring and exact match on oracle stat text, quoted values, and equatable-null forms. |
 
 ## Known missing
 

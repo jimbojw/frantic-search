@@ -123,6 +123,8 @@ export {
 export type { BareTermUpgradeContext, BareTermAlternative } from "./bare-term-upgrade-utils";
 export { buildStrayCommaCleanedQuery, buildStrayCommaCleanup } from "./stray-comma-cleanup";
 export type { StrayCommaCleanupResult } from "./stray-comma-cleanup";
+export { buildFieldOperatorGapCleanup } from "./field-operator-gap-cleanup";
+export type { FieldOperatorGapCleanupResult } from "./field-operator-gap-cleanup";
 export { getNonexistentFieldRewrite, collectNonexistentFieldRewrites } from "./nonexistent-field-registry";
 export type { NonexistentFieldRegistryEntry, NonexistentFieldRewrite } from "./nonexistent-field-registry";
 export { lexDeckList, buildListSpans, ListTokenType } from "./list-lexer";

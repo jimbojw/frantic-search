@@ -98,6 +98,8 @@ Normative parse examples (conceptual AST shape):
 | `kw :flying` | `AND(BARE("kw"), BARE(":flying"))` |
 | `ci> r` | `AND(FIELD("ci", ">", ""), BARE("r"))` |
 
+**Recovery UX (suggestions):** When users type a space between the operator and the value (as in the table above) and the search returns **zero** results, the app may suggest removing that gap so the clause parses as a single `FIELD` with a non-empty value — see **Spec 177** (`field-value-gap`); grammar and parse rules here are unchanged.
+
 ## Token Types
 
 The lexer produces a flat array of tokens. Each token has a `type`, a `value` string, and **`start` / `end`** source offsets. Whitespace is not a token; **adjacency** between tokens is determined from those spans (see § Whitespace and field clauses).
@@ -530,3 +532,4 @@ Parser tests must cover § Whitespace and field clauses: spaced operator/value (
   `WORD` merges to `BARE(":" + word)`. Acceptance criterion 6 (line count)
   marked superseded. Grammar, Error Recovery, Test Strategy, and new §
   Whitespace and field clauses document the behavior.
+- 2026-04-01: Spec 177 (`field-value-gap` suggestion) documents optional empty-state UX when users type a space between operator and value and get zero results; see § Whitespace and field clauses (**Recovery UX**).

@@ -14,6 +14,7 @@ const EMPTY_STATE_IDS = [
   'wrong-field',
   'nonexistent-field',
   'stray-comma',
+  'field-value-gap',
   'relaxed',
   'card-type',
   'keyword',

@@ -50,7 +50,7 @@ A suggestion is a single actionable item the user can tap.
 /** Single suggestion shown to the user. */
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
-  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'nonexistent-field' | 'card-type' | 'artist-atag' | 'name-typo' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
+  id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'nonexistent-field' | 'field-value-gap' | 'card-type' | 'artist-atag' | 'name-typo' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
   /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
@@ -93,7 +93,7 @@ export type Suggestion = {
 
 | Context | Eligible suggestion ids | Max shown | Placement |
 |---------|-------------------------|-----------|-----------|
-| Empty state | empty-list, include-extras, bare-term-upgrade, nonexistent-field, name-typo, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Above Results Summary Bar (Spec 152) when the bar is shown; bar shows effective query + actions |
+| Empty state | empty-list, include-extras, bare-term-upgrade, nonexistent-field, field-value-gap, name-typo, oracle, wrong-field, stray-comma, relaxed, card-type, artist-atag, near-miss, example-query | All that apply, priority-ordered; example-query as fallback when none others apply | Above Results Summary Bar (Spec 152) when the bar is shown; bar shows effective query + actions |
 | Non-empty riders | empty-list, nonexistent-field, wrong-field, unique-prints, include-extras | All that apply | Above Results Summary Bar (Spec 152); riders sit directly beneath the results list; **fixed order:** empty-list, then nonexistent-field (Spec 158), then wrong-field when present (e.g. Spec 153 unknown `is:`/`not:` while other clauses match), then unique-prints, then include-extras |
 
 Results area footer unified by Spec 152 (Results Summary Bar).
@@ -110,8 +110,9 @@ When the empty state has *no* context-specific suggestions (no include-extras, o
 |----|----------|-----------|
 | empty-list | 0 | Highest — user cannot get results without a list |
 | nonexistent-field | 14 | Mistaken field name not in Scryfall; registry maps to a real field (Spec 158). Before bare-term-upgrade — invalid field clause is a hard engine error |
+| field-value-gap | 15 | Space between field operator and value (#240 parse shape); merge removes gap when `evaluateAlternative` &gt; 0 (Spec 177). Before bare-term-upgrade — targeted syntax fix |
 | bare-term-upgrade | 16 | Bare term matches a **non-tag** domain (kw:, t:, set:, f:, is:, game:, frame:, rarity:). Spec 154. |
-| (future) card-type | 15 | Type token reformulation; before oracle (e.g. "creatures" → t:creature) |
+| (future) card-type | TBD | Type token reformulation (e.g. "creatures" → t:creature). Priority to be chosen when specified — must sit relative to Spec 177 **15** and bare-term-upgrade **16** |
 | name-typo | 17 | Misspelled bare name token → Levenshtein correction verified by search (Spec 163). After bare-term-upgrade, before oracle. |
 | oracle | 20 | Reformulates bare tokens to oracle search (Spec 131): **one** chip whose label is either `o:"…"`, `o:/…/` (ordered words), per-word `o:` terms, or (when all primaries fail) a **single-token hybrid** (`o:` on one trailing word only), per Spec 131 selection. **Sorts before** `otag:` / `atag:` bare-term-upgrade chips (priority 21) when both apply. |
 | bare-term-upgrade (otag/atag only) | 21 | Same `id` as other bare-term upgrades; label starts with `otag:` or `atag:` (Spec 154 exact + Spec 159 prefix). Lower priority than oracle so the oracle-text hint appears first. |
@@ -142,6 +143,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | wrong-field (Spec 153) | New term (e.g. ci:w), click → setQuery | From `explain`; [Learn more] if docRef |
 | nonexistent-field (Spec 158) | New term (e.g. t:elf), click → setQuery | From `explain`; no counts in MVP; [Learn more] if docRef |
 | stray-comma (Spec 157) | Fixed clause(s) as typed (e.g. `o=surveil`), space-separated if several; click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
+| field-value-gap (Spec 177) | Merged clause(s) (e.g. `ci:blue`), space-separated if several; click → setQuery | From `explain`; counts when &gt; 0; [Learn more] if docRef |
 | relaxed (Spec 156) | New term (e.g. ci:u, c:u), click → setQuery | From `explain`; optional counts like wrong-field; [Learn more] if docRef |
 | bare-term-upgrade (Spec 154) | New term (e.g. kw:landfall), click → setQuery | From `explain`; [Learn more] if docRef |
 | artist-atag (Spec 153) | New term (e.g. a:frazier or atag:spear), click → setQuery | From `explain`; [Learn more] if docRef |
@@ -166,6 +168,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | Relaxed operator (Spec 156) | One `Suggestion` per (matching term, alternative operator) pair: `{ id: 'relaxed', query, label, explain, count, printingCount, docRef, priority: 24 }`. Trigger: totalCards === 0; positive FIELD on color/identity with `=` and non-count color value; alternative `:` / `>=` returns > 0. Empty state only. |
 | Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
 | Nonexistent field (Spec 158) | One `Suggestion` per offending span (deduped by `query`): `{ id: 'nonexistent-field', query, label, explain, docRef, priority: 14 }`. Trigger: effective query contains a registry-matched mistaken field (e.g. supertype:, subtype:); **no** totalCards gate; **no** alternative evaluation required for MVP (omit counts). Empty state and rider. |
+| Field operator–value gap (Spec 177) | At most one `Suggestion`: `{ id: 'field-value-gap', query: cleanedEffective, label, explain, count, printingCount, docRef: 'reference/syntax', priority: 15 }`. Trigger: `totalCards === 0`; same pinned-empty skip as Spec 131/154; AST has `FIELD` empty value + adjacent `BARE` with whitespace-only gap; `evaluateAlternative` &gt; 0. Empty state only. |
 
 **Invariant:** Same triggers and tap actions as before. Placement and layout may be improved—looking good takes precedence over perfect parity with the status quo. "Learn more" links (docRef) are encouraged as part of the unified UI pattern.
 
@@ -181,6 +184,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 | Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
 | Name-token spellcheck (zero results) | name-typo | Spec 163 | Levenshtein vs card-name word list; one token per suggestion; verify &gt; 0 results; chip shows corrected token, `query` shows full rewrite |
 | Near-miss: unquoted multi-word | near-miss | TBD | Bare term(s) after a field term: `a:Dan Frazer` parsed as `a:Dan` + bare `Frazer`; when `a:"Dan Frazer"` would match → "Did you mean `a:"Dan Frazer"`?" Same for `atag:dan frazier` → `atag:"dan frazier"` |
+| Operator–value whitespace (#240 UX) | field-value-gap | Spec 177 | `ci: blue` → suggest `ci:blue` when merge returns results |
 | Small result set | (id TBD) | future spec | 1–3 results; broader query returns more. **Not** `relaxed` — Spec 156 reserves `relaxed` for **zero-result** color/identity `=` operator relaxation only. |
 | Example query fallback | example-query | TBD | 0 results + no other suggestions → "Find Commander legal cards with `f:commander`?"; rotating lineup |
 
@@ -195,6 +199,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 - **Artist-atag (Spec 153):** In `buildSuggestions`, when totalCards === 0, walk for a:/artist: and atag:/art: nodes; try swapped field; suggest if count > 0.
 - **include-extras rider trigger:** `indicesIncludingExtras` defined and `(indicesIncludingExtras - totalCards) > 0`.
 - **Rider order:** Fixed sequence `['empty-list', 'nonexistent-field', 'unique-prints', 'include-extras']` in `SuggestionList` (`RIDER_ORDER`; Spec 158). That order is unchanged by per-suggestion `priority` values — priority governs **empty-state** sort only (`mode="empty"`).
+- **Field operator–value gap (Spec 177):** After the nonexistent-field block in `buildSuggestions`, when `totalCards === 0`, `hasLive`, and the Spec 131/154 pinned-empty skip passes: `buildFieldOperatorGapCleanup(effectiveQuery, parse(effectiveQuery))` from `shared/src/field-operator-gap-cleanup.ts`; emit `field-value-gap` with priority **15** only when `evaluateAlternative` returns `cardCount > 0` and `query` is not a duplicate rewrite. `SuggestionList` **`EMPTY_STATE_IDS`** must include `field-value-gap`.
 
 ## Scope of Changes
 

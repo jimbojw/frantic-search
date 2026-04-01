@@ -26,6 +26,7 @@ import {
   isUnknownKeywordIsNotError,
   parseIsNotInnerLabel,
   getIsNotKeywordWrongFieldAlternatives,
+  buildFieldOperatorGapCleanup,
 } from '@frantic-search/shared'
 import { hasListSyntaxInQuery, collectListOffendingTerms, appendTerm, spliceQuery, collectFieldNodes } from './query-edit'
 import {
@@ -247,6 +248,45 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         priority: 14,
         variant: 'rewrite',
       })
+    }
+  }
+
+  // Spec 177: FIELD(empty) + BARE gap — omit space between operator and value (#240 UX)
+  if (
+    totalCards === 0 &&
+    hasLive &&
+    !(hasPinned && pinnedIndicesCount === 0) &&
+    effectiveQuery.trim() !== ''
+  ) {
+    const gap = buildFieldOperatorGapCleanup(effectiveQuery, parse(effectiveQuery))
+    if (gap && gap.cleanedQuery !== effectiveQuery) {
+      const dupRewrite = suggestions.some(
+        (s) => s.variant === 'rewrite' && s.query === gap.cleanedQuery,
+      )
+      if (!dupRewrite) {
+        const { cardCount, printingCount } = evaluateAlternative({
+          altQuery: gap.cleanedQuery,
+          cache,
+          index,
+          printingIndex,
+          includeExtras,
+          viewMode,
+        })
+        if (cardCount > 0) {
+          suggestions.push({
+            id: 'field-value-gap',
+            query: gap.cleanedQuery,
+            label: gap.label,
+            explain:
+              'Omit space between operator and value.',
+            docRef: 'reference/syntax',
+            count: cardCount,
+            printingCount,
+            priority: 15,
+            variant: 'rewrite',
+          })
+        }
+      }
     }
   }
 
