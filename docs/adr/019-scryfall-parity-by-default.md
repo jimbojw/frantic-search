@@ -46,6 +46,7 @@ Parity is verified through:
 - **Compliance suite** (`npm run cli -- compliance`) — curated test cases with assertions against real card data, optionally verified against Scryfall's API.
 - **Diff command** (`npm run cli -- diff "<query>"`) — ad-hoc comparison of any query against Scryfall, reporting discrepancies by Scryfall ID with card names, sets, and collector numbers.
 - **Divergence annotations** in compliance YAML — tests for known divergences are annotated so they don't cause false failures.
+- **Default-filtering research** — Scryfall’s full default inclusion logic is not fully documented or stable in observation. Ongoing empirical notes, falsified hypotheses, and a repeatable test matrix live in [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md) ([GitHub #227](https://github.com/jimbojw/frantic-search/issues/227)).
 
 ## Consequences
 

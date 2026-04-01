@@ -10,6 +10,8 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 032 (is: Operator), Spec 054 (Pinned Search Criteria), Spec 056 (Printing-Level Format Legality), ADR-009 (Bitmask-per-Node AST)
 
+**Ongoing research:** Scryfall’s server-side default filtering is not fully reverse-engineered and may depend on query shape (not only bulk legalities). Empirical notes and a repeatable test matrix: [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md); tracking [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227).
+
 ## Goal
 
 Exclude non-playable cards and non-tournament-usable printings from search results by default, matching Scryfall's behavior. Provide an `include:extras` query modifier to bypass the filter and show all matches.

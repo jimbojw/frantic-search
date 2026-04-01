@@ -2,6 +2,14 @@
 
 When our search results differ from Scryfall's, it's important to distinguish bugs from intentional divergences. This guide covers how to use Scryfall's REST API to investigate discrepancies. See ADR-019 for the project's position on search parity.
 
+## Ongoing research: default result filtering
+
+Scryfall’s **default** inclusion rules (what appears without `include:extras`, and how that interacts with query shape, content warnings, funny sets, etc.) are **not fully documented** and are being characterized empirically. Progress, falsified models, open questions, and a **test matrix** live in:
+
+- [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md) — [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227)
+
+When a finding is stable, add it here under **Known Divergences** (or update Spec 057) rather than only in the research note.
+
 ## When to Compare
 
 - You've added or changed evaluation logic and want to verify correctness.
