@@ -124,8 +124,9 @@ function classifyToken(token: Token, prev: Token | undefined, next: Token | unde
       return 'operator'
     case TokenType.WORD:
       if (token.value.startsWith('#')) return 'metadata'
-      if (prev && OPERATORS.has(prev.type)) return 'value'
-      if (next && OPERATORS.has(next.type)) {
+      // Adjacency matches parser field clauses (Spec 002 / #240): whitespace breaks glue.
+      if (prev && OPERATORS.has(prev.type) && prev.end === token.start) return 'value'
+      if (next && OPERATORS.has(next.type) && token.end === next.start) {
         const lower = token.value.toLowerCase()
         return (lower in FIELD_ALIASES || EXTRA_KNOWN_FIELDS.has(lower)) ? 'field' : 'field-unknown'
       }

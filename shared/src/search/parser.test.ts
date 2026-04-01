@@ -35,6 +35,14 @@ function regexField(f: string, op: string, pattern: string): ASTNode {
   return { type: "REGEX_FIELD", field: f, operator: op, pattern };
 }
 
+function bareRegex(pattern: string): ASTNode {
+  return or(
+    regexField("name", ":", pattern),
+    regexField("oracle", ":", pattern),
+    regexField("type", ":", pattern),
+  );
+}
+
 describe("parse", () => {
   test("empty input returns NOP node", () => {
     expect(parse("")).toMatchObject(nop());
@@ -174,14 +182,6 @@ describe("parse", () => {
   });
 
   describe("bare regex desugaring", () => {
-    function bareRegex(pattern: string): ASTNode {
-      return or(
-        regexField("name", ":", pattern),
-        regexField("oracle", ":", pattern),
-        regexField("type", ":", pattern),
-      );
-    }
-
     test("simple bare regex desugars to OR over string fields", () => {
       expect(parse("/bolt/")).toMatchObject(bareRegex("bolt"));
     });
@@ -301,6 +301,75 @@ describe("parse", () => {
       // parseAndGroup produces [bare("a"), nop()]
       // but with children.length === 2, it returns AND([bare("a"), nop()])
       expect(ast).toMatchObject(and(bare("a"), nop()));
+    });
+  });
+
+  describe("whitespace-aware field clauses (Spec 002 / GitHub #240)", () => {
+    test("kw:f is a single FIELD", () => {
+      expect(parse("kw:f")).toMatchObject(field("kw", ":", "f"));
+    });
+
+    test("kw: trailing is FIELD with empty value", () => {
+      expect(parse("kw:")).toMatchObject(field("kw", ":", ""));
+    });
+
+    test("space after colon does not bind value to field", () => {
+      expect(parse("kw: otag")).toMatchObject(and(field("kw", ":", ""), bare("otag")));
+    });
+
+    test("spaced first clause preserves following field clause", () => {
+      expect(parse("kw: otag:ramp")).toMatchObject(
+        and(field("kw", ":", ""), field("otag", ":", "ramp")),
+      );
+    });
+
+    test("space before colon splits into bare kw, bare colon, bare flying", () => {
+      expect(parse("kw : flying")).toMatchObject(
+        and(bare("kw"), bare(":"), bare("flying")),
+      );
+    });
+
+    test("space before colon only: colon merges with adjacent word", () => {
+      expect(parse("kw :flying")).toMatchObject(and(bare("kw"), bare(":flying")));
+    });
+
+    test("space after comparison operator yields empty field value", () => {
+      expect(parse("ci> r")).toMatchObject(and(field("ci", ">", ""), bare("r")));
+    });
+
+    test("space between field name and operator", () => {
+      expect(parse("name :foo")).toMatchObject(and(bare("name"), bare(":foo")));
+    });
+
+    test("space before quoted value is not part of field", () => {
+      expect(parse('o: "enters"')).toMatchObject(
+        and(field("o", ":", ""), bare("enters", true)),
+      );
+    });
+
+    test("field regex value requires adjacency", () => {
+      expect(parse("c: /bolt/")).toMatchObject(
+        and(field("c", ":", ""), bareRegex("bolt")),
+      );
+    });
+
+    test("negation applies to first atom only; spaced clause completes as AND", () => {
+      expect(parse("-kw: otag")).toMatchObject(and(not(field("kw", ":", "")), bare("otag")));
+    });
+
+    test("OR with spaced field clause", () => {
+      expect(parse("a OR kw: otag")).toMatchObject(
+        or(bare("a"), and(field("kw", ":", ""), bare("otag"))),
+      );
+    });
+
+    test("leading colon merges with word (bare :word)", () => {
+      expect(parse(":flying")).toMatchObject(bare(":flying"));
+    });
+
+    test("standalone operator at term start is BARE", () => {
+      expect(parse("=")).toMatchObject(bare("="));
+      expect(parse(">=")).toMatchObject(bare(">="));
     });
   });
 

@@ -61,19 +61,46 @@ or_group  = and_group ("OR" and_group)*
 and_group = term (term)*
 term      = "-" atom | "!" atom | atom
 atom      = "(" expr ")"
-          | WORD operator (WORD | QUOTED | REGEX)
+          | field_clause
+          | bare_colon_word
+          | standalone_operator
           | WORD
           | QUOTED
+          | REGEX
 operator  = ":" | "=" | "!=" | "<" | ">" | "<=" | ">="
 ```
 
+Informally:
+
+- **`field_clause`:** A `WORD` (field name) immediately followed by an `operator` token with **no whitespace between** (`word.end === operator.start` in source spans), then an optional value. A value token (`WORD`, `QUOTED`, or `REGEX`) is consumed only if it is **adjacent** to the operator (`operator.end === value.start`). Otherwise the field has an **empty string** value and the next token stays available for following terms.
+- **`bare_colon_word`:** A `COLON` token parsed as a standalone term (not part of a `field_clause`) immediately followed by an adjacent `WORD` merges into one `BARE` atom with value `":" + word.value` (Scryfall-style bare text starting with `:`). `QUOTED` or `REGEX` after a standalone `COLON` are **not** merged; they parse as separate terms (`BARE(":")` then the quoted/regex atom).
+- **`standalone_operator`:** Any `operator` token at a position where it does not complete a `field_clause` (e.g. leading `:` or `=` at term start, or after a `WORD` that was **not** adjacent to it) is a valid **term** and parses as `BARE` with `value` equal to the operator lexeme (`":"`, `"="`, `"!="`, …).
+
 Precedence, tightest to loosest: parentheses → negation/exact → implicit AND → explicit OR.
 
-Bare words (a `WORD` or `QUOTED` not preceded by a field and operator) are treated as name substring searches. `!` before a word or quoted string is an exact-name match — but only when the `!` is at **term-start** (preceded by whitespace or start of input). An exclamation point that immediately follows a character from a bare value or field value is treated as part of that value, not as the exact-name prefix. For example, `a!b` lexes as a single bare word `a!b`; `name:a!b` lexes as a field with value `a!b`.
+Bare words (a `WORD` or `QUOTED` that is not part of a `field_clause` per the rules above) are treated as name substring searches. `!` before a word or quoted string is an exact-name match — but only when the `!` is at **term-start** (preceded by whitespace or start of input). An exclamation point that immediately follows a character from a bare value or field value is treated as part of that value, not as the exact-name prefix. For example, `a!b` lexes as a single bare word `a!b`; `name:a!b` lexes as a field with value `a!b`.
+
+## Whitespace and field clauses
+
+Whitespace is **not** emitted as a token. The lexer still records each token’s **`start` and `end`** offsets in the original string. **Adjacency** means `previousToken.end === nextToken.start` (no whitespace or other characters between them).
+
+Field syntax matches Scryfall-style tightening: whitespace between the field name and the operator, or between the operator and the value, **breaks** the field clause. Remaining pieces are interpreted as separate terms (bare words, standalone operators, or nested field clauses) so **no tail tokens are silently dropped**.
+
+Normative parse examples (conceptual AST shape):
+
+| Input | Intended structure |
+|-------|-------------------|
+| `kw:f` | `FIELD("kw", ":", "f")` |
+| `kw:` | `FIELD("kw", ":", "")` |
+| `kw: otag` | `AND(FIELD("kw", ":", ""), BARE("otag"))` |
+| `kw: otag:ramp` | `AND(FIELD("kw", ":", ""), FIELD("otag", ":", "ramp"))` |
+| `kw : flying` | `AND(BARE("kw"), BARE(":"), BARE("flying"))` |
+| `kw :flying` | `AND(BARE("kw"), BARE(":flying"))` |
+| `ci> r` | `AND(FIELD("ci", ">", ""), BARE("r"))` |
 
 ## Token Types
 
-The lexer produces a flat array of tokens. Each token has a `type` and a `value` string.
+The lexer produces a flat array of tokens. Each token has a `type`, a `value` string, and **`start` / `end`** source offsets. Whitespace is not a token; **adjacency** between tokens is determined from those spans (see § Whitespace and field clauses).
 
 | Token     | Matches                                           | Examples                |
 |-----------|---------------------------------------------------|-------------------------|
@@ -297,7 +324,8 @@ After evaluation, when the AST is discarded (e.g. user types a new query), all n
 
 The parser must handle incomplete input gracefully, since it runs on every keystroke. Principles:
 
-- **Trailing operator:** `c:` (no value yet) → parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter).
+- **Trailing operator:** When the field name is **adjacent** to the operator (`c:` with no space between) and there is no adjacent value token (end of input or the next token is separated by whitespace), parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter) unless a field-specific spec says otherwise.
+- **Standalone operators:** Leading or isolated operator tokens (`:`, `=`, `!=`, comparators) must parse as `BARE` terms (or `COLON` + adjacent `WORD` per § Grammar), never as silent `NOP` drops.
 - **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
 - **Empty operand:** When `parseAndGroup` finds no term-starting tokens, it produces a `NopNode` instead of an empty AND. This arises from trailing `OR` (`a OR`), leading `OR` (`OR a`), double `OR` (`a OR OR b`), empty parentheses (`()`), and empty input.
 - **Unknown field:** `x:foo` → parse normally. The evaluator detects the unknown field and marks the node as an error (Spec 039). Error nodes are skipped in AND/OR reduction, preventing a single malformed term from zeroing out sibling results.
@@ -398,6 +426,10 @@ test("trailing operator", () => {
 });
 ```
 
+### Whitespace-aware field clauses (parser tests)
+
+Parser tests must cover § Whitespace and field clauses: spaced operator/value (`kw: otag`, `kw: otag:ramp`), spaced name/operator (`kw : flying`, `kw :flying`), comparator spacing (`ci> r`), and regressions with quotes (`name: "a"`), regex (`c:r /x/`), parentheses, `-` negation, and explicit `OR`.
+
 ## Acceptance Criteria
 
 1. `parse("c:wu t:creature")` returns an AND node with two FIELD children. The parser never throws on any string input.
@@ -405,9 +437,11 @@ test("trailing operator", () => {
 3. Internal AST nodes carry correct per-node match counts after evaluation, enabling the query debugger UX.
 4. Buffer pool reuse: running `evaluate` twice on different queries allocates no new `Uint8Array` buffers on the second run (assuming equal or fewer AST nodes).
 5. All supported fields and operators from the table above are exercised by at least one test case.
-6. The lexer + parser together are under 300 lines of code (excluding tests).
+6. ~~The lexer + parser together are under 300 lines of code (excluding tests).~~ **Superseded:** the lexer and parser grew with quoted strings, regex, `OR`, `BANG`, etc.; line count is no longer a hard gate. See Implementation Notes (2026-04-01).
 7. For a multi-face card, a query matching only the back face produces a deduplicated result containing the card's primary face index.
 8. ~~For a multi-face card, a query with conditions that no single face satisfies (but different faces satisfy different conditions) produces no match.~~ Superseded by Spec 033: cross-face conditions now match at card level.
+9. No query string loses trailing tokens because of spaced field syntax; behavior matches § Whitespace and field clauses and the normative examples in that section.
+10. Parser tests include the whitespace / field-clause matrix and related edge cases (§ Test Strategy).
 
 ## Implementation Notes
 
@@ -489,3 +523,10 @@ test("trailing operator", () => {
   `-is:x`; `-not:x` is equivalent to `is:x`. Uses the same keywords as `is:`
   (face-domain and printing-domain). Canonicalizes to `not:` for Scryfall
   outlinks (Scryfall supports both).
+- 2026-04-01: Whitespace-aware field clauses (GitHub #240, Scryfall parity).
+  Parser uses token span adjacency so whitespace between field name and
+  operator or between operator and value does not glue into a single `FIELD`.
+  Standalone operator tokens parse as `BARE`; standalone `COLON` adjacent to
+  `WORD` merges to `BARE(":" + word)`. Acceptance criterion 6 (line count)
+  marked superseded. Grammar, Error Recovery, Test Strategy, and new §
+  Whitespace and field clauses document the behavior.

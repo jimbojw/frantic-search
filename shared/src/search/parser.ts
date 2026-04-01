@@ -14,6 +14,10 @@ const OPERATORS = new Set<string>([
   TokenType.GTE,
 ]);
 
+function isOperatorType(type: string): boolean {
+  return OPERATORS.has(type);
+}
+
 function compoundSpan(children: ASTNode[]): Span | undefined {
   const first = children[0]?.span;
   const last = children[children.length - 1]?.span;
@@ -82,7 +86,8 @@ class Parser {
       t === TokenType.REGEX ||
       t === TokenType.DASH ||
       t === TokenType.BANG ||
-      t === TokenType.LPAREN
+      t === TokenType.LPAREN ||
+      isOperatorType(t)
     );
   }
 
@@ -107,7 +112,13 @@ class Parser {
 
   private isAtomStart(): boolean {
     const t = this.peek().type;
-    return t === TokenType.LPAREN || t === TokenType.WORD || t === TokenType.QUOTED || t === TokenType.REGEX;
+    return (
+      t === TokenType.LPAREN ||
+      t === TokenType.WORD ||
+      t === TokenType.QUOTED ||
+      t === TokenType.REGEX ||
+      isOperatorType(t)
+    );
   }
 
   private parseAtom(): ASTNode {
@@ -120,9 +131,17 @@ class Parser {
 
     if (this.at(TokenType.WORD)) {
       const word = this.advance();
-      if (OPERATORS.has(this.peek().type)) {
+      if (isOperatorType(this.peek().type)) {
+        const opPeek = this.peek();
+        if (word.end !== opPeek.start) {
+          return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
+        }
         const op = this.advance();
-        if (this.at(TokenType.WORD) || this.at(TokenType.QUOTED)) {
+        const next = this.peek();
+        if (
+          (this.at(TokenType.WORD) || this.at(TokenType.QUOTED)) &&
+          op.end === next.start
+        ) {
           const valueTok = this.advance();
           const sourceText =
             valueTok.type === TokenType.QUOTED
@@ -135,7 +154,7 @@ class Parser {
             ...(sourceText !== undefined && { sourceText }),
           };
         }
-        if (this.at(TokenType.REGEX)) {
+        if (this.at(TokenType.REGEX) && op.end === next.start) {
           const regex = this.advance();
           return {
             type: "REGEX_FIELD", field: word.value, operator: op.value, pattern: regex.value,
@@ -175,6 +194,28 @@ class Parser {
         };
       }
       return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
+    }
+
+    if (isOperatorType(this.peek().type)) {
+      const op = this.advance();
+      if (op.type === TokenType.COLON && this.at(TokenType.WORD)) {
+        const w = this.peek();
+        if (op.end === w.start) {
+          const word = this.advance();
+          return {
+            type: "BARE",
+            value: `:${word.value}`,
+            quoted: false,
+            span: { start: op.start, end: word.end },
+          };
+        }
+      }
+      return {
+        type: "BARE",
+        value: op.value,
+        quoted: false,
+        span: { start: op.start, end: op.end },
+      };
     }
 
     if (this.at(TokenType.QUOTED)) {

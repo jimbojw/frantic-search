@@ -10,6 +10,8 @@ Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/synta
 
 | Behavior | Scryfall | Frantic Search |
 |----------|----------|----------------|
+| Field clause whitespace | Whitespace between the field name and `:` / `=` (or between the operator and the value) breaks the field clause so a new term starts | **Same clause boundaries** (Spec 002 § Whitespace and field clauses; GitHub #240). Example: `kw: otag:ramp` is two terms; the second is `otag:ramp`, not `kw` with value `otag`. |
+| `field:` with no adjacent value (trailing operator) | Not documented. In practice, `kw:` without a glued value tends to fall through to **bare** behavior: the query behaves as if the text were a bare name fragment, so normalized names containing those letters can match (e.g. Beanstalk Wurm for `kw:`). | Parsed as a **`FIELD` with an empty string value**; evaluators treat that as a **neutral filter** (matches all) unless a field-specific spec says otherwise. Scryfall does not document this edge case; we chose an interpretation we consider higher-fidelity for **malformed** syntax. |
 | [Bare regex](?doc=reference/special/bare-regex) | Not supported | `/pattern` searches name, oracle text, and type line |
 | Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy). See [name](?doc=reference/fields/face/name). |
 | Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/card/edhrec), [salt](?doc=reference/fields/card/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |

@@ -131,6 +131,27 @@ describe('buildSpans', () => {
     ])
   })
 
+  it('spaced operator/value: second clause field highlights like first (#240)', () => {
+    expect(roles('kw: otag:ramp')).toEqual([
+      ['kw', 'field'],
+      [':', 'operator'],
+      [' ', null],
+      ['otag', 'field'],
+      [':', 'operator'],
+      ['ramp', 'value'],
+    ])
+  })
+
+  it('space before operator: word is bare not field', () => {
+    expect(roles('kw : flying')).toEqual([
+      ['kw', 'bare'],
+      [' ', null],
+      [':', 'operator'],
+      [' ', null],
+      ['flying', 'bare'],
+    ])
+  })
+
   it('handles complex queries', () => {
     expect(roles('-t:instant "bolt" OR xyz:bad')).toEqual([
       ['-', 'not'],
