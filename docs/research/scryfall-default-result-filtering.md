@@ -28,6 +28,7 @@ _Steady observations with reproduction. Keep entries short; link or cite queries
 
 - **`set:`-only queries show the full set.** `set:arn` lists Arabian Nights printings including those with **content warnings**. `set:unk` lists Unknown Event printings even though those cards are **not playable** in any format on bulk legalities—so default “extras”-style hiding does **not** apply the same way as for a bare mechanical search.
 - **`set:` inside a larger query still pulls full set slices.** Example: `e (set:unk OR set:arn)` returns cards with `e` in the name from UNK **or** ARN, including content-warning **Stone-Throwing Devils** (ARN), without `include:extras`. So a positive `set:` disjunct is enough to **include** cards that would be suppressed under other default query shapes (see #227, Pradesh Gypsies).
+- **Astral (`set:past`) vs generic mechanical queries:** `goblin mv=2 pow=1 tou=1 ci=r` does **not** surface **Goblin Polka Band** (Astral, `set:past`) on default Scryfall—so **PAST** can stay hidden in set-agnostic searches even when name + stats + CI match, unlike **UNK** / **ARN** when pulled in via `set:`. _(Re-verify with `include:extras` and with `set:past` alone; see matrix.)_
 
 ## Falsified hypotheses
 
@@ -49,6 +50,7 @@ _Systematic follow-ups from #227._
 4. **Ranking vs hard filter:** e.g. `name:"Black Lotus"` vs funny “Black Lotus Lounge”—ordering vs exclusion?
 5. **Format weighting:** Minor formats (Predh, Old School, Premodern) vs Frantic’s all-format bitmask in practice on Scryfall.
 6. **`unique:`** and printing-level queries vs oracle-unique defaults.
+7. **Astral / `PAST`:** Is exclusion tied to `include:extras`, digital-only product type, or something else? Does **`set:past`** alone show the full Astral list (analogous to `set:unk`), and does `include:extras` restore **Goblin Polka Band** for `goblin mv=2 pow=1 tou=1 ci=r`?
 
 ## Test matrix
 
@@ -66,6 +68,9 @@ _Add rows as you run checks. `In default` / `With extras` = whether the anchor a
 | `set:arn` | `cards` | no | Stone-Throwing Devils, other ARN with content warning | yes | — | 2026-04-01 | Full set visible; not reduced to “playable” subset |
 | `set:unk` | `cards` | no | Unknown Event printings | yes | — | 2026-04-01 | `set_type`/playtest-style set; still shown without `include:extras` |
 | `e (set:unk OR set:arn)` | `cards` | no | Stone-Throwing Devils | yes | — | 2026-04-01 | Bare word + `OR` of sets; content-warning ARN card included |
+| `goblin mv=2 pow=1 tou=1 ci=r` | `cards` | no | Goblin Polka Band (`past`) | no | _(verify)_ | 2026-04-02 | Astral; absent from default results |
+| `set:past` | `cards` | no | Goblin Polka Band | _(verify)_ | — | | Expected: full set if `set:` bypass generalizes to PAST |
+| `goblin mv=2 pow=1 tou=1 ci=r` | `cards` | yes | Goblin Polka Band | _(verify)_ | | | Confirms extras gate if yes |
 
 ## Hypotheses under test
 
@@ -73,6 +78,7 @@ _Short-lived theories; move to Confirmed or Falsified when you have evidence._
 
 - **Content-warning suppression:** On some generic/mechanical default searches, Scryfall may suppress content-warning oracles, with a **bypass** when the query explicitly includes `is:content_warning`. _(Hypothesis—not proven.)_
 - **`set:` bypass / widening:** If the query contains a **positive** `set:` constraint (possibly any expansion that names a set code), Scryfall may **include all matching printings from that set**, ignoring default filters that would hide the same card in a set-agnostic query. **Evidence:** `set:arn`, `set:unk`, and `e (set:unk OR set:arn)` (2026-04-01). **Unknown:** negated `set:`, multiple sets with AND, `s:` alias parity, printing-only modes.
+- **Astral / digital product bucket:** Collateral League Astral (`set:past`) may be treated as **extras-only** (or similar) in default search for **generic** queries, stronger than Unknown Event / Arabian Nights in the same shape. **Evidence:** Goblin Polka Band missing from `goblin mv=2 pow=1 tou=1 ci=r` (2026-04-02). **Falsify if:** `set:past` alone does not list those cards, or they appear without `include:extras` under a narrower query than recorded.
 
 ## Links
 
