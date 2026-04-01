@@ -30,6 +30,7 @@ _Steady observations with reproduction. Keep entries short; link or cite queries
 - **`set:` inside a larger query still pulls full set slices.** Example: `e (set:unk OR set:arn)` returns cards with `e` in the name from UNK **or** ARN, including content-warning **Stone-Throwing Devils** (ARN), without `include:extras`. So a positive `set:` disjunct is enough to **include** cards that would be suppressed under other default query shapes (see #227, Pradesh Gypsies).
 - **Astral (`set:past`) vs generic mechanical queries:** `goblin mv=2 pow=1 tou=1 ci=r` does **not** surface **Goblin Polka Band** (Astral, `set:past`) on default Scryfall—so **PAST** can stay hidden in set-agnostic searches even when name + stats + CI match, unlike **UNK** / **ARN** when pulled in via `set:`. _(Re-verify with `include:extras` and with `set:past` alone; see matrix.)_
 - **Bare `goblin` vs `goblin include:extras`:** Default **249** hits, with extras **283** (**+34**); extras is a **strict superset** (diff by `oracle_id`). Of the **34** extras-only objects, **30** are `token`, `double_faced_token`, `art_series`, or `vanguard`; **4** are layout **`normal`**: **Goblin Polka Band** (`past`, digital), **Goblin Savant** (`unk`, `set_type: funny`), **Goblin Sleigh Ride** (`hho`, funny), **Lazier Goblin** (`cmb2`, funny). Detail in [case study](#case-study-goblin-vs-goblin-includeextras-api-2026-04-02) below.
+- **Bare `amulet` and ante:** Default search **`amulet`** returns **Amulet of Quoz** (`set:ice`, ante-related oracle) without `include:extras`. In Scryfall bulk **every format is `banned` or `not_legal`**—there is **no** `legal` or `restricted` entry—so this oracle would be **dropped by Frantic’s Spec 057** playable filter (legal \| restricted in ≥1 format). Another gap between “legality bitmask only” stories and Scryfall’s default name search.
 
 ## Case study: goblin vs goblin include:extras (API, 2026-04-02)
 
@@ -75,6 +76,7 @@ _Simple models we can rule out with counterexamples._
 | Hypothesis | Counterexample / reason |
 |------------|-------------------------|
 | Default Scryfall = only cards legal or restricted somewhere in bulk `legalities` | **Hurloon Wrangler** (Unglued, all formats `not_legal`) appears for `hurloon` without `include:extras`. |
+| Default Scryfall name search hides oracles that are never `legal`/`restricted` (only `banned`/`not_legal`) | **Amulet of Quoz** appears for bare **`amulet`**; bulk `legalities` are exclusively **`banned`** or **`not_legal`** in every format (API check, 2026-04-03). |
 | All `is:funny` cards are omitted from default search unless `include:extras` or the query explicitly targets them | `hurloon`, `e:unh t:creature` return funny-set cards without `include:extras`. |
 | `include:extras` widening is only user-supplied | Content-warning style suppression on some default queries behaves like an internal “extras” pass when comparing with/without `include:extras`. |
 
@@ -89,6 +91,7 @@ _Systematic follow-ups from #227._
 5. **Format weighting:** Minor formats (Predh, Old School, Premodern) vs Frantic’s all-format bitmask in practice on Scryfall.
 6. **`unique:`** and printing-level queries vs oracle-unique defaults.
 7. **Astral / `PAST`:** Is exclusion tied to `include:extras`, digital-only product type, or something else? Does **`set:past`** alone show the full Astral list (analogous to `set:unk`)? **Partial (2026-04-02):** **Goblin Polka Band** appears in **`goblin include:extras`** but not default **`goblin`** (case study below). Still verify **`set:past`** alone and **`goblin mv=2 pow=1 tou=1 ci=r` include:extras**.
+8. **Ante / `banned`-only oracles:** Are other ante cards always visible on bare-word search like **Amulet of Quoz**, or is this name-fragment / set-specific? Interaction with `game:paper` and Commander banlist philosophy on Scryfall’s side vs Frantic’s Spec 057.
 
 ## Test matrix
 
@@ -99,6 +102,7 @@ _Add rows as you run checks. `In default` / `With extras` = whether the anchor a
 | `m=2g pow=1 tou=1 date<1997` | `cards` | no | Pradesh Gypsies | no (7 hits, not in list) | _(re-verify)_ | | Content warning; legal in some casual formats in bulk |
 | `is:content_warning` | `cards` | no | Pradesh Gypsies | yes | — | | Bypass when query targets `is:content_warning`? |
 | `hurloon` | `cards` | no | Hurloon Wrangler | yes | — | | Unglued; all `not_legal` |
+| `amulet` | `cards` | no | Amulet of Quoz (`ice`) | yes | — | 2026-04-03 | Ante; every format `banned` or `not_legal` in bulk—never `legal`/`restricted` |
 | `name:"Black Lotus"` | `cards` | no | Black Lotus vs Black Lotus Lounge | real Lotus; not Lounge without narrowing | | | Funny name collision |
 | `is:funny name:"Black Lotus"` | `cards` | no | Black Lotus Lounge | _(fill in)_ | | | |
 | `e:unh t:creature` | `cards` | no | _(Unhinged creatures)_ | yes | — | | |
