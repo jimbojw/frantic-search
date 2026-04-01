@@ -4,27 +4,68 @@ title: Scryfall Differences
 
 # Scryfall Differences
 
-Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/syntax) with additional features and some behavioral differences. This page summarizes the main divergences. Per-field articles include Scryfall notes where relevant.
+Frantic Search extends [Scryfall's query syntax](https://scryfall.com/docs/syntax) with additional features and some behavioral differences.
 
-## Behavioral divergences
+This page has two parts:
 
-| Behavior | Scryfall | Frantic Search |
-|----------|----------|----------------|
-| Field clause whitespace | Whitespace between the field name and `:` / `=` (or between the operator and the value) breaks the field clause so a new term starts | **Same clause boundaries** (Spec 002 § Whitespace and field clauses; GitHub #240). Example: `kw: otag:ramp` is two terms; the second is `otag:ramp`, not `kw` with value `otag`. |
-| `field:` with no adjacent value (trailing operator) | Not documented. In practice, `kw:` without a glued value tends to fall through to **bare** behavior: the query behaves as if the text were a bare name fragment, so normalized names containing those letters can match (e.g. Beanstalk Wurm for `kw:`). | Parsed as a **`FIELD` with an empty string value**; evaluators treat that as a **neutral filter** (matches all) unless a field-specific spec says otherwise. Scryfall does not document this edge case; we chose an interpretation we consider higher-fidelity for **malformed** syntax. |
-| [Bare regex](?doc=reference/special/bare-regex) | Not supported | `/pattern` searches name, oracle text, and type line |
-| Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy). See [name](?doc=reference/fields/face/name). |
-| Percentile filters | Not supported | [usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/card/edhrec), [salt](?doc=reference/fields/card/salt): `usd>90%`, `date<10%`, `name>50%`, etc. |
-| =null | Not supported | Nullable numeric fields support `=null` to match faces and printings with no data |
-| $ alias | Uses usd | [usd](?doc=reference/fields/printing/usd): `$` is alias for usd |
-| [produces](?doc=reference/fields/card/produces):t | Returns "Unknown color t" | Matches Sole Performer (T supported) |
-| Query speed | Server round-trip | Instant (client-side, every keystroke) |
-| [`is:alchemy`](?doc=reference/fields/face/is) | Default search omits a few MB2 playtest printings that still have the alchemy promo tag in bulk | We honor bulk `promo_types` and `set_type: alchemy`. Example: [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2) |
-| [`set:`](?doc=reference/fields/printing/set) | Exact set code (unknown code → 0 cards) | **Prefix** on normalized set code for discovery; empty `set:` matches printings with a set code; no matching prefix → 0 results, no leaf error |
-| [`otag:`](?doc=reference/fields/card/otag) / [`atag:`](?doc=reference/fields/printing/atag) | Effectively exact tag labels | **Prefix** on normalized tag keys with **union** over all matching keys; empty `otag:` / `atag:` matches faces/printings that have any tag; no matching prefix → 0 results, no leaf error |
-| [`kw:`](?doc=reference/fields/face/kw) / `keyword:` | Effectively exact keyword names | **Prefix** on normalized keyword index keys with **union** over all matching keys; empty `kw:` matches all faces; no matching prefix → **`unknown keyword`** (passthrough), unlike `set:` / `otag:` / `atag:` |
-| [Power / toughness / loyalty / defense](?doc=reference/fields/face/power) | Mostly plain-numeric stat filters on Scryfall | Frantic also supports substring and exact match on oracle stat text, quoted values, and equatable-null prefixes; ranges require plain numbers. **`pow=x`** matches literal oracle **`X`**; use **`pow=0`** for numeric zero. See [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense). |
+1. **Cross-cutting divergences** — behaviors that span many fields or the whole query language. This document is the place we record them (see also Spec 002 in the repo for parsing rules).
+2. **Field and feature index** — short pointers to articles where a specific field or modifier is documented, including how it differs from Scryfall.
+
+For features we have not implemented, see [Known Gaps](?doc=reference/scryfall/gaps).
+
+## Cross-cutting divergences
+
+### Field clause whitespace
+
+Whitespace between the field name and `:` or `=` (or between the operator and the value) **breaks** the field clause so a **new term** starts. Frantic matches Scryfall on these clause boundaries (Spec 002: *Whitespace and field clauses*; [GitHub #240](https://github.com/jimbojw/frantic-search/issues/240)).
+
+Example: `kw: otag:ramp` is **two** terms. The second is `otag:ramp`, not `kw` with value `otag`.
+
+### Trailing operator (no adjacent value)
+
+When `field:` has **no value token glued** to the operator (whitespace or end of input), Scryfall does **not** document the behavior. In practice, something like `kw:` often **falls through** to **bare** behavior: the query behaves like a bare name fragment, so normalized names containing those characters can match (e.g. Beanstalk Wurm for a lone `kw:`).
+
+Frantic parses that shape as a **`FIELD` with an empty string value**. Evaluators treat that as a **neutral filter** (matches all) unless a field-specific spec says otherwise. We treat this as a clearer reading of **malformed** syntax where Scryfall leaves behavior implicit.
+
+### Bare words (name matching)
+
+Scryfall uses **fuzzy** name matching for bare words. Frantic uses **substring** search on the normalized name (no fuzzy). See [name](?doc=reference/fields/face/name).
+
+### Bare regex
+
+Scryfall does not support a bare `/pattern/` term. Frantic searches **name**, **oracle text**, and **type line** with one regex. See [Bare regex](?doc=reference/special/bare-regex).
+
+### Percentile filters
+
+Scryfall does not support percentile syntax. Frantic supports it on several fields, for example `usd>90%`, `date<10%`, `name>50%`. Each field’s article describes operators and behavior:
+
+[usd](?doc=reference/fields/printing/usd), [date](?doc=reference/fields/printing/date), [name](?doc=reference/fields/face/name), [edhrec](?doc=reference/fields/card/edhrec), [salt](?doc=reference/fields/card/salt).
+
+### `=null` on nullable fields
+
+Scryfall does not document `=null` for query values. Frantic supports `=null` (and related null-literal forms where specified) on nullable numeric and other fields so you can match faces or printings with no data. See individual field docs (e.g. mana, stats, printing price fields).
+
+### `$` as `usd`
+
+Scryfall uses `$` as an alias for USD price. Frantic does the same. See [usd](?doc=reference/fields/printing/usd).
+
+### Query speed and architecture
+
+Scryfall evaluates queries on the server. Frantic runs the full pipeline **in the browser** (Web Worker + card index) so search updates on every keystroke without a round-trip.
+
+## Field and feature index
+
+Use these links for **Scryfall vs Frantic** detail on a single field or keyword.
+
+| Topic | Documentation |
+|-------|----------------|
+| [`produces:`](?doc=reference/fields/card/produces) | Mana-production filter; Frantic supports **T** where Scryfall may report an unknown color. |
+| [`is:alchemy`](?doc=reference/fields/face/is) and alchemy tagging | Bulk `promo_types` / set type behavior vs Scryfall’s default search omissions; example query [is:alchemy set:mb2](?q=is%3Aalchemy%20set%3Amb2). |
+| [`set:`](?doc=reference/fields/printing/set) | Exact set code on Scryfall vs **prefix** on normalized code in Frantic; empty and unknown-prefix semantics. |
+| [`otag:`](?doc=reference/fields/card/otag) / [`atag:`](?doc=reference/fields/printing/atag) | Effectively exact tag labels on Scryfall vs **prefix** + union over keys in Frantic; empty and unknown-prefix semantics. |
+| [`kw:`](?doc=reference/fields/face/kw) / `keyword:` | Effectively exact keyword names on Scryfall vs **prefix** + union in Frantic; empty `kw:` and **unknown keyword** passthrough vs other tag-like fields. |
+| [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) | Scryfall is mostly plain-numeric stat filters; Frantic adds substring and exact match on oracle stat text, quoted values, equatable-null forms, and Spec 173 rules (e.g. `pow=x` vs `pow=0`). |
 
 ## Known missing
 
-Some Scryfall features are not yet implemented. See [Known Gaps](?doc=reference/scryfall/gaps) for details. Examples: `new:rarity` (first printed at new rarity); partial `is:` keyword support. See [is](?doc=reference/fields/face/is).
+Some Scryfall features are not yet implemented. See [Known Gaps](?doc=reference/scryfall/gaps). Examples: `new:rarity`; partial `is:` keyword coverage — see [is](?doc=reference/fields/face/is).
