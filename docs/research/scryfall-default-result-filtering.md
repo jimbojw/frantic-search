@@ -29,8 +29,23 @@ _Steady observations with reproduction. Keep entries short; link or cite queries
 - **`set:`-only queries show the full set.** `set:arn` lists Arabian Nights printings including those with **content warnings**. `set:unk` lists Unknown Event printings even though those cards are **not playable** in any format on bulk legalities—so default “extras”-style hiding does **not** apply the same way as for a bare mechanical search.
 - **`set:` inside a larger query still pulls full set slices.** Example: `e (set:unk OR set:arn)` returns cards with `e` in the name from UNK **or** ARN, including content-warning **Stone-Throwing Devils** (ARN), without `include:extras`. So a positive `set:` disjunct is enough to **include** cards that would be suppressed under other default query shapes (see #227, Pradesh Gypsies).
 - **Astral (`set:past`) vs generic mechanical queries:** `goblin mv=2 pow=1 tou=1 ci=r` does **not** surface **Goblin Polka Band** (Astral, `set:past`) on default Scryfall—so **PAST** can stay hidden in set-agnostic searches even when name + stats + CI match, unlike **UNK** / **ARN** when pulled in via `set:`. _(Re-verify with `include:extras` and with `set:past` alone; see matrix.)_
-- **Bare `goblin` vs `goblin include:extras`:** Default **249** hits, with extras **283** (**+34**); extras is a **strict superset** (diff by `oracle_id`). Of the **34** extras-only objects, **30** are `token`, `double_faced_token`, `art_series`, or `vanguard`; **4** are layout **`normal`**: **Goblin Polka Band** (`past`, digital), **Goblin Savant** (`unk`, `set_type: funny`), **Goblin Sleigh Ride** (`hho`, funny), **Lazier Goblin** (`cmb2`, funny). Detail in [case study](#case-study-goblin-vs-goblin-includeextras-api-2026-04-02) below.
+- **Bare `goblin` vs `goblin include:extras`:** Default **249** hits, with extras **283** (**+34**); extras is a **strict superset** (diff by `oracle_id`). Of the **34** extras-only objects, **30** are `token`, `double_faced_token`, `art_series`, or `vanguard`; **4** are layout **`normal`**—each explained by the [working model](#working-model-scryfall-default-search-hypothesis-v03) below (**`past`**, **`promo_types: playtest`** ×2, **`hho`**), not by a global “omit funny” rule. Detail in [case study](#case-study-goblin-vs-goblin-includeextras-api-2026-04-02).
 - **Bare `amulet` and ante:** Default search **`amulet`** returns **Amulet of Quoz** (`set:ice`, ante-related oracle) without `include:extras`. In Scryfall bulk **every format is `banned` or `not_legal`**—there is **no** `legal` or `restricted` entry—so this oracle would be **dropped by Frantic’s Spec 057** playable filter (legal \| restricted in ≥1 format). Another gap between “legality bitmask only” stories and Scryfall’s default name search.
+- **Happy Holidays (`hho`) wholesale omission:** **`gifts`** (default search) returns **3** results and **does not** include **Gifts Given** (`set:hho`, `promo_types: datestamped + event`). **`set:hho`** alone returns **21** cards including **Gifts Given** (API, 2026-04-03)—same **`set:`** bypass class as ARN/UNK. **Goblin Sleigh Ride** is also **`set:hho`** (not `playtest`).
+
+## Working model: Scryfall default search (hypothesis v0.3)
+
+**Scope:** Empirical model of **Scryfall’s** default result shaping. **Frantic Spec 057** remains **legality + NON_TOURNAMENT_MASK** until intentionally changed; it is **not** superseded in code by this document—see ADR-019 for parity vs divergence.
+
+Scryfall’s default inclusion is **not** “legal or restricted somewhere.” A workable **hypothesis** that fits **known** observations (goblin diff, `past`/`hho`, playtest, content-warning stories, `set:` bypass, Amulet of Quoz, Hurloon):
+
+1. **Layout / object kind:** Omit **`token`**, **`double_faced_token`**, **`art_series`**, **`vanguard`**, and analogous “extras” layouts unless widened (matches **`include:extras`** documentation and the bulk of the **`goblin`** delta).
+2. **`promo_types`:** Omit printings that include **`playtest`** in default, set-agnostic search. **Bypass:** **`is:playtest`**, **`include:extras`**, and likely positive **`set:`** when the printing’s set is named. **Verified (API, 2026-04-03):** **Goblin Savant** (`unk`) has `promo_types: ["playtest"]`; **Lazier Goblin** (`cmb2`) has `promo_types: ["playtest"]`. Playtest is **not** a `layout` or `frame` value on Scryfall—it lives on **`promo_types`** (see Spec 046 / 047 in-repo).
+3. **Content-warning pass:** On **some** query shapes (e.g. purely mechanical defaults), suppress certain content-warning oracles. **Bypass:** **`is:content_warning`**, and **positive `set:`** for the printing’s set (e.g. Stone-Throwing Devils under **`set:arn`** / `e (set:unk OR set:arn)`).
+4. **Wholesale omitted set codes:** Omit **all** printings from selected **`set`** codes in default search when the query does **not** name that set. **Confirmed codes:** **`past`** (Astral—e.g. **Goblin Polka Band** missing from bare **`goblin`** and from **`goblin mv=2…`** default), **`hho`** (Happy Holidays—**Goblin Sleigh Ride**, **Gifts Given** / **`gifts`** probe). **Open:** additional codes (discover by “card exists + generic query omits it” + **`set:<code>`** restores).
+5. **Explicit wideners (non-exhaustive):** **`include:extras`** (full widening), **positive `set:`** on the relevant code, **`is:playtest`**, **`is:content_warning`**, and other targeted **`is:`** terms as discovered.
+
+**Hurloon Wrangler** still fits: **`unh`** is not in the **known** wholesale list, that printing is not **`playtest`** in the API sense we checked for Savant/Lazier, and **`layout`** is **`normal`**—so it remains in default **`hurloon`** without contradicting steps 1–4.
 
 ## Case study: goblin vs goblin include:extras (API, 2026-04-02)
 
@@ -57,17 +72,17 @@ Fetched with `GET https://api.scryfall.com/cards/search?q=…`, default paramete
 
 All other extras-only rows are tokens, art-series cards, or vanguard avatars.
 
-| Name | `set` | `set_type` | Notes |
-|------|-------|------------|--------|
-| Goblin Polka Band | `past` | `box` | Digital; Astral |
-| Goblin Savant | `unk` | `funny` | Unknown Event |
-| Goblin Sleigh Ride | `hho` | `funny` | Holiday / funny product |
-| Lazier Goblin | `cmb2` | `funny` | Unfinity commander–adjacent |
+| Name | `set` | `promo_types` (API) | Explained by (v0.3 model) |
+|------|-------|---------------------|---------------------------|
+| Goblin Polka Band | `past` | _(none on sample)_ | Wholesale omit **`past`** |
+| Goblin Savant | `unk` | `playtest` | Omit **`playtest`** |
+| Goblin Sleigh Ride | `hho` | `datestamped`, `event` | Wholesale omit **`hho`** (not playtest) |
+| Lazier Goblin | `cmb2` | `playtest` | Omit **`playtest`** |
 
 ### Interpretation
 
-- The bulk of **+34** matches expectations for **extras**: named Goblin **tokens**, **art_series** / memorabilia entries, and **vanguard** avatars.
-- The **oracle-level** signal is small but clear: **one Astral (`past`)** card plus **three funny-set** cards are excluded from bare **`goblin`** without extras. That differs from **`hurloon`**, where an Unglued card can appear without extras—more evidence that **funny** (and extras) behavior is **query-shape dependent**, not a single global rule.
+- The bulk of **+34** matches documented **extras** layouts (tokens, art_series, vanguard).
+- The **four** `normal` oracles are fully explained by **`past`**, **`hho`**, and **`promo_types: playtest`**—no separate global “omit **`set_type: funny`**” rule is required for this slice. **`hurloon`** (Unglued) remains compatible: **`unh`** is not in the **known** wholesale-omit set list, and the anchor printing is not **`playtest`** in the API sense used above.
 
 ## Falsified hypotheses
 
@@ -85,12 +100,12 @@ _Simple models we can rule out with counterexamples._
 _Systematic follow-ups from #227._
 
 1. **Decision tree:** Which query AST shapes trigger which suppressions (bare words vs `o:` / `m:` / `pow:` / `date:` / `f:` / `e:` / `name:` / `is:`, combinations, `OR`, negation)? **Partial answer:** positive **`set:`** (including under `OR`) appears to **disable** (or bypass) at least some default exclusions for printings in those sets—contrast with purely mechanical queries like `m=2g pow=1 tou=1 date<1997` that hide some content-warning cards.
-2. **Categories:** How do funny / `set_type: funny` / silver border / acorn / `is:content_warning` interact with each pass?
+2. **Categories:** How do funny / `set_type: funny` / silver border / acorn / `is:content_warning` interact with each pass? **Partial:** for the **`goblin`** extras-only `normal` rows, **`set_type: funny`** on UNK is **not** the primary lever—**`playtest`** and wholesale **`hho`** / **`past`** carry the weight. Global funny behavior is still **query-dependent** (`hurloon` vs narrow mechanical queries).
 3. **API vs website:** Same `q=` and default UI toggles—parity?
 4. **Ranking vs hard filter:** e.g. `name:"Black Lotus"` vs funny “Black Lotus Lounge”—ordering vs exclusion?
 5. **Format weighting:** Minor formats (Predh, Old School, Premodern) vs Frantic’s all-format bitmask in practice on Scryfall.
 6. **`unique:`** and printing-level queries vs oracle-unique defaults.
-7. **Astral / `PAST`:** Is exclusion tied to `include:extras`, digital-only product type, or something else? Does **`set:past`** alone show the full Astral list (analogous to `set:unk`)? **Partial (2026-04-02):** **Goblin Polka Band** appears in **`goblin include:extras`** but not default **`goblin`** (case study below). Still verify **`set:past`** alone and **`goblin mv=2 pow=1 tou=1 ci=r` include:extras**.
+7. **Wholesale omitted sets (`past`, `hho`, …):** What is the **full** set-code list? Same treatment for digital-only vs paper? **Partial:** **`set:past`** and **`set:hho`** behave like “omit entire set from default unless named.” **`set:hho`** returns 21 cards including **Gifts Given**; **`gifts`** omits **Gifts Given** (2026-04-03). Still verify **`goblin mv=2 pow=1 tou=1 ci=r` include:extras** for Polka Band.
 8. **Ante / `banned`-only oracles:** Are other ante cards always visible on bare-word search like **Amulet of Quoz**, or is this name-fragment / set-specific? Interaction with `game:paper` and Commander banlist philosophy on Scryfall’s side vs Frantic’s Spec 057.
 
 ## Test matrix
@@ -112,8 +127,12 @@ _Add rows as you run checks. `In default` / `With extras` = whether the anchor a
 | `e (set:unk OR set:arn)` | `cards` | no | Stone-Throwing Devils | yes | — | 2026-04-01 | Bare word + `OR` of sets; content-warning ARN card included |
 | `goblin mv=2 pow=1 tou=1 ci=r` | `cards` | no | Goblin Polka Band (`past`) | no | _(verify)_ | 2026-04-02 | Astral; absent from default results |
 | `goblin` | `cards` | no | Goblin Polka Band | no | yes | 2026-04-02 | 249 vs 283 with extras; [case study](#case-study-goblin-vs-goblin-includeextras-api-2026-04-02) |
-| `goblin` | `cards` | no | Lazier Goblin (`cmb2`) | no | yes | 2026-04-02 | Funny oracle; extras-only vs bare `goblin` |
-| `set:past` | `cards` | no | Goblin Polka Band | _(verify)_ | — | | Expected: full set if `set:` bypass generalizes to PAST |
+| `goblin` | `cards` | no | Lazier Goblin (`cmb2`) | no | yes | 2026-04-02 | `promo_types: playtest`; see [model](#working-model-scryfall-default-search-hypothesis-v03) |
+| `goblin` | `cards` | no | Goblin Savant (`unk`) | no | yes | 2026-04-03 | `promo_types: playtest` |
+| `goblin` | `cards` | no | Goblin Sleigh Ride (`hho`) | no | yes | 2026-04-03 | Wholesale omit **`hho`**; not playtest |
+| `gifts` | `cards` | no | Gifts Given (`hho`) | no | — | 2026-04-03 | 3 hits; Gifts Given absent—supports **`hho`** list |
+| `set:hho` | `cards` | no | Gifts Given | yes | — | 2026-04-03 | 21 hits; **`set:`** restores wholesale-omitted set |
+| `set:past` | `cards` | no | Goblin Polka Band | _(verify)_ | — | | Expected: full Astral slice when set named |
 | `goblin mv=2 pow=1 tou=1 ci=r` | `cards` | yes | Goblin Polka Band | _(verify)_ | | | Confirms extras gate for mechanical + name shape |
 
 ## Hypotheses under test
@@ -121,8 +140,8 @@ _Add rows as you run checks. `In default` / `With extras` = whether the anchor a
 _Short-lived theories; move to Confirmed or Falsified when you have evidence._
 
 - **Content-warning suppression:** On some generic/mechanical default searches, Scryfall may suppress content-warning oracles, with a **bypass** when the query explicitly includes `is:content_warning`. _(Hypothesis—not proven.)_
-- **`set:` bypass / widening:** If the query contains a **positive** `set:` constraint (possibly any expansion that names a set code), Scryfall may **include all matching printings from that set**, ignoring default filters that would hide the same card in a set-agnostic query. **Evidence:** `set:arn`, `set:unk`, and `e (set:unk OR set:arn)` (2026-04-01). **Unknown:** negated `set:`, multiple sets with AND, `s:` alias parity, printing-only modes.
-- **Astral / digital product bucket:** Astral (`set:past`) may be treated as **extras-only** (or similar) in default search for **generic** queries, stronger than Unknown Event / Arabian Nights in the same shape. **Evidence:** Goblin Polka Band missing from `goblin mv=2 pow=1 tou=1 ci=r` (2026-04-02); present in **`goblin include:extras`** but not default **`goblin`** (2026-04-02 case study). **Falsify if:** `set:past` alone does not list those cards, or they appear without `include:extras` under a narrower query than recorded.
+- **`set:` bypass / widening:** If the query contains a **positive** `set:` constraint (possibly any expansion that names a set code), Scryfall may **include all matching printings from that set**, ignoring default filters that would hide the same card in a set-agnostic query. **Evidence:** `set:arn`, `set:unk`, `e (set:unk OR set:arn)` (2026-04-01), **`set:hho`** + **Gifts Given** (2026-04-03). **Unknown:** negated `set:`, multiple sets with AND, `s:` alias parity, printing-only modes.
+- **Default pipeline (v0.3):** Layout extras + **`promo_types: playtest`** + content-warning pass + **wholesale set list** `{ past, hho, … }` + explicit wideners—see [Working model](#working-model-scryfall-default-search-hypothesis-v03). **Falsify if:** a counterexample card slips through or is blocked in a way the model cannot express without new rules.
 
 ## Links
 
