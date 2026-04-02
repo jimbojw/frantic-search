@@ -4,6 +4,7 @@ import {
   normalizeForResolution,
   resolveCategoricalValue,
   resolveForField,
+  expandIsKeywordsFromPrefix,
   type ResolutionContext,
 } from "./categorical-resolve";
 
@@ -19,6 +20,41 @@ describe("normalizeForResolution", () => {
 
   it("preserves alphanumeric", () => {
     expect(normalizeForResolution("a1b2c3")).toBe("a1b2c3");
+  });
+});
+
+describe("expandIsKeywordsFromPrefix (Spec 032)", () => {
+  it("returns null when trimmed empty", () => {
+    expect(expandIsKeywordsFromPrefix("")).toBe(null);
+    expect(expandIsKeywordsFromPrefix("  \t ")).toBe(null);
+  });
+
+  it("returns empty array when no keyword matches", () => {
+    expect(expandIsKeywordsFromPrefix("zzznotakeyword")).toEqual([]);
+  });
+
+  it("returns sorted list of all prefix matches", () => {
+    const u = expandIsKeywordsFromPrefix("art");
+    expect(u).toContain("art_series");
+    expect(u!.length).toBeGreaterThanOrEqual(1);
+    const sorted = [...u!].sort();
+    expect(u).toEqual(sorted);
+  });
+
+  it("resolves unique single match as one element", () => {
+    expect(expandIsKeywordsFromPrefix("commander")).toEqual(["commander"]);
+  });
+
+  it("uses exact normalized match so meld does not absorb meldpart", () => {
+    expect(expandIsKeywordsFromPrefix("meld")).toEqual(["meld"]);
+    const mel = expandIsKeywordsFromPrefix("mel");
+    expect(mel!.length).toBeGreaterThan(1);
+    expect(mel).toContain("meld");
+    expect(mel).toContain("meldpart");
+  });
+
+  it("does not map type-line false positives to longer is tokens (creature vs creatureland)", () => {
+    expect(expandIsKeywordsFromPrefix("creature")).toEqual([]);
   });
 });
 

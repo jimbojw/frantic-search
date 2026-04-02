@@ -2,7 +2,18 @@
 import { FORMAT_NAMES, GAME_NAMES, RARITY_FROM_STRING, FRAME_NAMES } from "../bits";
 import { normalizeAlphanumeric } from "../normalize";
 import { SORT_FIELDS } from "./sort-fields";
-import { IS_KEYWORDS } from "./eval-is";
+import { IS_KEYWORDS, IS_PREFIX_VOCABULARY } from "./eval-is";
+
+/**
+ * Type-line words users often put after `is:` by mistake (`not:creature`, `is:instant`).
+ * If there is no exact `is:` keyword for the normalized query, do not treat these as a
+ * prefix of longer `is:` tokens (e.g. `creature` → `creatureland`).
+ */
+const IS_VALUE_TYPE_LINE_FALSE_POSITIVE = new Set([
+  "creature", "instant", "sorcery", "artifact", "enchantment", "planeswalker",
+  "battle", "tribal", "legendary", "world", "snow", "dungeon", "vehicle",
+  "background", "kindred",
+]);
 
 /** Build-time view modes (Spec 058). */
 const VIEW_MODES = ["slim", "detail", "images", "full"] as const;
@@ -53,6 +64,34 @@ export function resolveCategoricalValue(
     if (normalize(c).startsWith(normTyped)) matches.push(c);
   }
   return matches.length === 1 ? matches[0]! : null;
+}
+
+/**
+ * Spec 032: expand `is:` / `not:` value to all matching vocabulary keywords.
+ * @returns `null` if trimmed value is empty (match all in domain).
+ * @returns `[]` if non-empty but no keyword matches (`unknown keyword`).
+ */
+export function expandIsKeywordsFromPrefix(value: string): string[] | null {
+  const t = value.trim();
+  if (t === "") return null;
+  const normTyped = normalizeForResolution(t);
+  const exact: string[] = [];
+  for (const kw of IS_PREFIX_VOCABULARY) {
+    if (normalizeForResolution(kw) === normTyped) exact.push(kw);
+  }
+  if (exact.length > 0) {
+    exact.sort();
+    return exact;
+  }
+  if (IS_VALUE_TYPE_LINE_FALSE_POSITIVE.has(normTyped)) {
+    return [];
+  }
+  const matches: string[] = [];
+  for (const kw of IS_PREFIX_VOCABULARY) {
+    if (normalizeForResolution(kw).startsWith(normTyped)) matches.push(kw);
+  }
+  matches.sort();
+  return matches;
 }
 
 const CATEGORICAL_FIELDS = new Set([

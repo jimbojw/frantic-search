@@ -286,6 +286,17 @@ export const IS_KEYWORDS = [
   ]),
 ];
 
+/**
+ * Closed vocabulary for Spec 032 prefix expansion: autocomplete set, land-cycle names/aliases,
+ * and face-unsupported stubs (evalIsKeyword may still return `unsupported` for those).
+ */
+export const IS_PREFIX_VOCABULARY: readonly string[] = (() => {
+  const s = new Set<string>(IS_KEYWORDS);
+  for (const k of Object.keys(LAND_CYCLES)) s.add(k);
+  for (const k of UNSUPPORTED_IS_KEYWORDS) s.add(k);
+  return [...s].sort();
+})();
+
 export function evalIsKeyword(
   keyword: string,
   index: CardIndex,

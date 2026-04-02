@@ -26,6 +26,15 @@ The `not:` field is a Scryfall convenience for `-is:`. It uses the same keywords
 | `q=not:dfc` | `q=-is:dfc` |
 | `q=-not:dfc` | `q=is:dfc` |
 
+## Prefix discovery and union
+
+Frantic resolves your value as a **prefix** over the **closed list** of supported `is:` keywords (face-level and printing-level names, including aliases such as `ub` for `universesbeyond`). **Every** keyword whose normalized form starts with your prefix contributes matches; results are **OR**’d. So one term can combine several keywords at once—printing-only keywords (e.g. foil, atypical) still run in the **printing** domain when printings are loaded, and face-only keywords run on oracle faces; mixed prefixes combine after promotion.
+
+- **Empty** `is:` / `not:` (nothing after the operator, after trim) matches **all** rows in that leaf’s domain—same idea as empty [`kw:`](?doc=reference/fields/face/kw).
+- A **non-empty** prefix that matches **no** keyword produces an **`unknown keyword`** leaf error; other query terms can still apply (**passthrough**).
+
+On Scryfall, `is:` values behave like **exact** (or near-exact) tokens. Prefix union here is intentional for discovery; see [Scryfall Differences](?doc=reference/scryfall/differences).
+
 ## Allowed values
 
 Keywords for mechanics, layouts, roles, and finish. Examples:
@@ -56,4 +65,4 @@ For a small edge case, **seven** [Mystery Booster 2](?q=set%3Amb2+unique%3Aprint
 
 ## Scryfall
 
-Frantic Search supports a subset of Scryfall's `q=is:` keywords. Some values (e.g. `q=new:rarity` for "first printed at new rarity") are not yet implemented. See [Scryfall Differences](?doc=reference/scryfall/differences) for known gaps.
+Frantic Search supports a subset of Scryfall's `q=is:` keywords. Some values (e.g. `q=new:rarity` for "first printed at new rarity") are not yet implemented. Prefix + union behavior (above) also differs from Scryfall’s effectively exact `is:` tokens—see [Scryfall Differences](?doc=reference/scryfall/differences).

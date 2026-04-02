@@ -312,9 +312,13 @@ if (isPrintingField(canonical)) {
 
 Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, `unset`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
 
+**Query evaluation** does **not** use Spec 103 **`resolveForField("is", …)`** for semantic matching. It uses **prefix expansion and union** over the closed `is:` vocabulary (**[Spec 032](032-is-operator.md)** § Value resolution), same discovery model as **`kw:`** (Spec 176). **`resolveForField("is", …)`** remains for **canonicalize** and other non-eval paths that need unique-prefix collapse.
+
+**Routing:** For each keyword in the expanded set **L**: members of **`PRINTING_IS_KEYWORDS`** contribute via **`evalPrintingIsKeyword`** on the printing buffer (when printings are loaded); other members contribute via **`evalIsKeyword`** on the face buffer. **Mixed** **L** ORs printing results (promoted to face) with face results (**Spec 032**). Scryfall treats `is:` tokens as effectively exact; Frantic’s **prefix-on-closed-vocabulary** behavior is a deliberate UX divergence (see app **Scryfall differences** for `kw:` — same class of difference for `is:`).
+
 `alchemy`, `rebalanced`, and `glossy` are removed from `UNSUPPORTED_IS_KEYWORDS` when they become supported via `promo_types_flags_0`/`promo_types_flags_1`.
 
-**Face-fallback for dual-domain keywords:** Add `FACE_FALLBACK_IS_KEYWORDS = new Set(["universesbeyond", "ub"])`. When `is:universesbeyond` or `is:ub` is evaluated and printing data is not yet loaded, the evaluator falls through to face-domain `evalIsKeyword()` instead of returning `"printing data not loaded"`. Same pattern as `FACE_FALLBACK_PRINTING_FIELDS` for `legal`/`banned`/`restricted` (Spec 056).
+**Face-fallback for dual-domain keywords:** `FACE_FALLBACK_IS_KEYWORDS = new Set(["universesbeyond", "ub"])`. When printing data is not yet loaded, the evaluator falls through to face-domain `evalIsKeyword()` for those keywords **if** the expanded set **L** is compatible with fallback (e.g. **L** ⊆ `FACE_FALLBACK_IS_KEYWORDS` or implementation-defined subset that does not require printing-only keywords). If **L** contains any printing-only keyword (e.g. `foil`, `atypical`) and printings are missing, the leaf errors **`printing data not loaded`** (**Spec 032**). Same pattern as `FACE_FALLBACK_PRINTING_FIELDS` for `legal`/`banned`/`restricted` (Spec 056).
 
 ### Dual-domain buffer management in `NodeCache` (`shared/src/search/evaluator.ts`)
 

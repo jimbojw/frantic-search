@@ -10,7 +10,12 @@ import {
 import { EXTRAS_LAYOUT_IS_KEYWORDS } from "./default-filter";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
+import {
+  PRINTING_IS_KEYWORDS,
+  FACE_FALLBACK_IS_KEYWORDS,
+  evalPrintingIsKeyword,
+  evalIsKeyword,
+} from "./eval-is";
 import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToFace, promoteFaceToPrinting } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
 import type { GetMetadataIndex } from "./eval-leaves";
@@ -27,7 +32,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
 }
 import { parse } from "./parser";
 import type { OracleTagData, FlavorTagData, ArtistIndexData, KeywordData } from "../data";
-import { resolveForField, normalizeForResolution } from "./categorical-resolve";
+import { resolveForField, normalizeForResolution, expandIsKeywordsFromPrefix } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
 
@@ -204,9 +209,11 @@ export class NodeCache {
     return Object.keys(ctx).length > 0 ? ctx : undefined;
   }
 
-  /** Spec 103: resolve is:/not: value before routing printing vs face (printing keywords need full form). */
-  private _resolvedIsKeyword(value: string): string {
-    return resolveForField("is", value, this._getResolutionContext()).toLowerCase();
+  /** Spec 032 / 178: non-empty prefix expansion; empty or unknown does not widen. */
+  private _expandedIsKeywordsMatch(value: string, pred: (kw: string) => boolean): boolean {
+    const exp = expandIsKeywordsFromPrefix(value);
+    if (exp === null || exp.length === 0) return false;
+    return exp.some(pred);
   }
 
   setPrintingIndex(pIdx: PrintingIndex): void {
@@ -249,22 +256,22 @@ export class NodeCache {
     const widenExtrasLayout = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return EXTRAS_LAYOUT_IS_KEYWORDS.has(resolveForField("is", n.value, this._getResolutionContext()).toLowerCase());
+      return this._expandedIsKeywordsMatch(n.value, (kw) => EXTRAS_LAYOUT_IS_KEYWORDS.has(kw));
     });
     const widenContentWarning = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "content_warning";
+      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "content_warning");
     });
     const widenPlaytest = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "playtest";
+      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "playtest");
     });
     const widenOversized = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "oversized";
+      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "oversized");
     });
     const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
     const positiveSetTypePrefixes = this._collectPositiveSetTypePrefixes(ast);
@@ -394,14 +401,13 @@ export class NodeCache {
           return masks.printingIndices !== undefined;
         }
         if (canonical === "is" || canonical === "not") {
-          const kw = this._resolvedIsKeyword(ast.value);
-          if (!PRINTING_IS_KEYWORDS.has(kw)) return false;
-          // Face-fallback is: keywords only count as printing leaves when
-          // printing data is available; otherwise they evaluate in face domain.
-          if (FACE_FALLBACK_IS_KEYWORDS.has(kw)) {
-            return this._printingIndex !== null;
-          }
-          return true;
+          const exp = expandIsKeywordsFromPrefix(ast.value);
+          if (exp === null || exp.length === 0) return false;
+          const printKws = exp.filter((k) => PRINTING_IS_KEYWORDS.has(k));
+          if (printKws.length === 0) return false;
+          const needsStrictPrinting = printKws.some((k) => !FACE_FALLBACK_IS_KEYWORDS.has(k));
+          if (needsStrictPrinting) return true;
+          return this._printingIndex !== null;
         }
         if (canonical !== undefined && isPrintingField(canonical)) {
           return true;
@@ -505,10 +511,13 @@ export class NodeCache {
     switch (ast.type) {
       case "FIELD": {
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
-        const resolvedIsKw = (canonical === "is" || canonical === "not")
-          ? this._resolvedIsKeyword(ast.value)
-          : "";
-        const isPrinting = ((canonical === "is" || canonical === "not") && PRINTING_IS_KEYWORDS.has(resolvedIsKw))
+        const expForIntersect = (canonical === "is" || canonical === "not")
+          ? expandIsKeywordsFromPrefix(ast.value)
+          : null;
+        const isPrinting = ((canonical === "is" || canonical === "not")
+          && expForIntersect !== null
+          && expForIntersect.length > 0
+          && expForIntersect.some((k) => PRINTING_IS_KEYWORDS.has(k)))
           || (canonical !== undefined && isPrintingField(canonical))
           || (canonical === "my");
         if (isPrinting) {
@@ -705,15 +714,164 @@ export class NodeCache {
 
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
 
-        const resolvedIsKw = (canonical === "is" || canonical === "not")
-          ? this._resolvedIsKeyword(ast.value)
-          : "";
+        if (canonical === "is" || canonical === "not") {
+          const t0 = performance.now();
+          const cf = this.index.canonicalFace;
+          if (ast.operator !== ":" && ast.operator !== "=") {
+            const z = new Uint8Array(n);
+            const ms = performance.now() - t0;
+            interned.computed = { buf: z, domain: "face", matchCount: 0, productionMs: ms };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          const exp = expandIsKeywordsFromPrefix(ast.value);
+          if (exp === null) {
+            const buf = new Uint8Array(n);
+            for (let i = 0; i < n; i++) buf[i] = 1;
+            if (canonical === "not") {
+              for (let i = 0; i < n; i++) if (cf[i] === i) buf[i] ^= 1;
+            }
+            const ms = performance.now() - t0;
+            interned.computed = {
+              buf, domain: "face", matchCount: popcount(buf, n), productionMs: ms,
+            };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+          if (exp.length === 0) {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: `unknown keyword "${ast.value}"`,
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+          const pIdx = this._printingIndex;
+          const printKws = exp.filter((k) => PRINTING_IS_KEYWORDS.has(k));
+          const needsPrintingOnly = printKws.some((k) => !FACE_FALLBACK_IS_KEYWORDS.has(k));
 
-        // Check if this is a printing-domain field or is:/not: keyword
-        const isPrintingIs = (canonical === "is" || canonical === "not")
-          && PRINTING_IS_KEYWORDS.has(resolvedIsKw);
-        const isPrintingDomain = isPrintingIs
-          || (canonical !== undefined && isPrintingField(canonical));
+          if (!pIdx && needsPrintingOnly) {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: "printing data not loaded",
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+
+          const faceKws = pIdx
+            ? exp.filter((k) => !PRINTING_IS_KEYWORDS.has(k))
+            : exp.filter((k) => !PRINTING_IS_KEYWORDS.has(k) || FACE_FALLBACK_IS_KEYWORDS.has(k));
+
+          const faceBuf = new Uint8Array(n);
+          let isLeafErr = false;
+          for (const kw of faceKws) {
+            const st = evalIsKeyword(kw, this.index, faceBuf, n);
+            if (st === "unsupported") {
+              interned.computed = {
+                buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+                error: `unsupported keyword "${ast.value}"`,
+              };
+              isLeafErr = true;
+              break;
+            }
+            if (st === "unknown") {
+              interned.computed = {
+                buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+                error: `unknown keyword "${ast.value}"`,
+              };
+              isLeafErr = true;
+              break;
+            }
+          }
+          if (isLeafErr) {
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+
+          if (!pIdx) {
+            if (canonical === "not") {
+              for (let i = 0; i < n; i++) if (cf[i] === i) faceBuf[i] ^= 1;
+            }
+            const ms = performance.now() - t0;
+            interned.computed = {
+              buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms,
+            };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+
+          const pn = pIdx.printingCount;
+          const printBuf = new Uint8Array(pn);
+          isLeafErr = false;
+          for (const kw of printKws) {
+            const st = evalPrintingIsKeyword(kw, pIdx, printBuf, pn);
+            if (st === "unknown") {
+              interned.computed = {
+                buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+                error: `unknown keyword "${ast.value}"`,
+              };
+              isLeafErr = true;
+              break;
+            }
+            if (st === "unsupported") {
+              interned.computed = {
+                buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+                error: `unsupported keyword "${ast.value}"`,
+              };
+              isLeafErr = true;
+              break;
+            }
+          }
+          if (isLeafErr) {
+            timings.set(interned.key, { cached: false, evalMs: 0 });
+            break;
+          }
+
+          if (printKws.length === 0) {
+            if (canonical === "not") {
+              for (let i = 0; i < n; i++) if (cf[i] === i) faceBuf[i] ^= 1;
+            }
+            const ms = performance.now() - t0;
+            interned.computed = {
+              buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms,
+            };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+
+          if (faceKws.length === 0) {
+            if (canonical === "not") {
+              for (let i = 0; i < pn; i++) printBuf[i] ^= 1;
+            }
+            const ms = performance.now() - t0;
+            interned.computed = {
+              buf: printBuf, domain: "printing", matchCount: popcount(printBuf, pn), productionMs: ms,
+            };
+            timings.set(interned.key, { cached: false, evalMs: ms });
+            break;
+          }
+
+          const combinedPrint = new Uint8Array(pn);
+          for (let p = 0; p < pn; p++) {
+            const f = pIdx.canonicalFaceRef[p]!;
+            combinedPrint[p] = (printBuf[p]! | faceBuf[f]!) ? 1 : 0;
+          }
+          if (canonical === "not") {
+            for (let i = 0; i < pn; i++) combinedPrint[i] ^= 1;
+          }
+          const ms = performance.now() - t0;
+          interned.computed = {
+            buf: combinedPrint,
+            domain: "printing",
+            matchCount: popcount(combinedPrint, pn),
+            productionMs: ms,
+          };
+          timings.set(interned.key, { cached: false, evalMs: ms });
+          break;
+        }
+
+        const isPrintingDomain = canonical !== undefined && isPrintingField(canonical);
 
         if (isPrintingDomain && this._printingIndex) {
           const pIdx = this._printingIndex;
@@ -722,19 +880,7 @@ export class NodeCache {
           const t0 = performance.now();
           let error: string | null = null;
 
-          if (isPrintingIs) {
-            if (ast.operator !== ":" && ast.operator !== "=") {
-              error = null; // silently ignore non-colon operators on is:
-            } else {
-              const status = evalPrintingIsKeyword(
-                resolvedIsKw, pIdx, buf, pn,
-              );
-              if (status === "unknown") error = `unknown keyword "${ast.value}"`;
-              else if (canonical === "not") {
-                for (let i = 0; i < pn; i++) buf[i] ^= 1;
-              }
-            }
-          } else if (canonical === "atag") {
+          if (canonical === "atag") {
             if (ast.operator !== ":" && ast.operator !== "=") {
               error = "atag: requires : or = operator";
             } else {
@@ -781,19 +927,12 @@ export class NodeCache {
         }
 
         if (isPrintingDomain && !this._printingIndex) {
-          // Face-fallback is: keywords (universesbeyond/ub) fall through to
-          // face-domain evaluation when printing data is not yet loaded.
-          const isFaceFallbackIs = isPrintingIs && FACE_FALLBACK_IS_KEYWORDS.has(resolvedIsKw);
-          if (isFaceFallbackIs) {
-            // Fall through to face-domain evaluation below.
-          } else {
-            interned.computed = {
-              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
-              error: `printing data not loaded`,
-            };
-            timings.set(interned.key, { cached: false, evalMs: 0 });
-            break;
-          }
+          interned.computed = {
+            buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+            error: `printing data not loaded`,
+          };
+          timings.set(interned.key, { cached: false, evalMs: 0 });
+          break;
         }
 
         if (canonical === "keyword") {

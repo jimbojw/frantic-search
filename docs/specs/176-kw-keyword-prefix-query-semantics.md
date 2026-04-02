@@ -10,6 +10,8 @@
 
 **Unlike** tags and set codes: when the trimmed value is **non-empty** and **no** index key’s normalized form has the query as a prefix, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039) — the term does not silently match zero faces.
 
+**Related:** **`is:`** / **`not:`** use the same **closed-vocabulary prefix union** evaluation model over the `is:` keyword list — **[Spec 032](032-is-operator.md)** § Value resolution.
+
 ## Background
 
 Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. Spec 174 uses prefix union for tags with **zero hits, no error** when nothing matches. Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.

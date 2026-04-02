@@ -89,7 +89,7 @@ export { formatSlackCardReference } from "./slack-card-reference";
 export { singleExactNameFromAst } from "./search/exact-name-from-ast";
 export { toScryfallQuery } from "./search/canonicalize";
 export { astUsesFranticExtensionSyntax } from "./search/query-extension-syntax";
-export { resolveForField } from "./search/categorical-resolve";
+export { resolveForField, expandIsKeywordsFromPrefix } from "./search/categorical-resolve";
 export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";
 export { getSortByFromQuery } from "./search/query-sort";

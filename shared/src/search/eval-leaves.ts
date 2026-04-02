@@ -7,7 +7,6 @@ import {
 } from "../bits";
 import { parseManaSymbols, manaContains, manaEquals } from "./mana";
 import { parseStatValue, isPlainNumericStatQueryToken } from "./stats";
-import { evalIsKeyword } from "./eval-is";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 import { resolveForField, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
@@ -658,23 +657,6 @@ export function evalLeafField(
       for (let i = 0; i < n; i++) {
         if ((col[i] & formatBit) !== 0) buf[cf[i]] = 1;
       }
-      break;
-    }
-    case "is": {
-      if (op !== ":" && op !== "=") break;
-      const isVal = resolveForField("is", val, context);
-      const status = evalIsKeyword(isVal.toLowerCase(), index, buf, n);
-      if (status === "unsupported") return `unsupported keyword "${node.value}"`;
-      if (status === "unknown") return `unknown keyword "${node.value}"`;
-      break;
-    }
-    case "not": {
-      if (op !== ":" && op !== "=") break;
-      const isVal = resolveForField("is", val, context);
-      const status = evalIsKeyword(isVal.toLowerCase(), index, buf, n);
-      if (status === "unsupported") return `unsupported keyword "${node.value}"`;
-      if (status === "unknown") return `unknown keyword "${node.value}"`;
-      for (let i = 0; i < n; i++) if (cf[i] === i) buf[i] ^= 1;
       break;
     }
     case "produces": {

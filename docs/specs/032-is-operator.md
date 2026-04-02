@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine)
+**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search — empty-value parity), Spec 176 (`kw:` prefix semantics — parallel evaluation model), Spec 178 (Default inclusion / widen flags)
 
 ## Goal
 
@@ -21,6 +21,66 @@ The query `is:spell` already lexes and parses correctly under the existing gramm
 ### Only `:` is meaningful
 
 Unlike color or numeric fields, the `is:` operator only supports `:` (and `=` as a synonym). Comparison operators (`<`, `>`, `<=`, `>=`, `!=`) are not meaningful. Negation is handled at the AST level: `-is:spell` wraps the `FieldNode` in a `NotNode`.
+
+The convenience field **`not:`** uses the same keyword vocabulary and the same prefix-union rules as **`is:`**; `not:x` is equivalent to `-is:x` (Spec 002).
+
+## Value resolution: prefix union (evaluation)
+
+Query **evaluation** for **`is:`** and **`not:`** follows the same **closed-vocabulary prefix union** model as **`kw:`** / **`keyword:`** (Spec 176), not Spec 103 unique-prefix collapse.
+
+### Vocabulary
+
+The candidate set is the **union of all supported `is:` keywords** (face-level + printing-level + aliases such as `ub`, `gc`, `dfctoken`), as enumerated in implementation (`IS_KEYWORDS` in `eval-is.ts`). This is the same set used for autocomplete and categorical **`resolveForField("is", …)`** candidates.
+
+### Normalization
+
+Use Spec 103 **`normalizeForResolution`** on the user value (trimmed for non-empty matching) and on each keyword string. A keyword **matches** the query prefix when:
+
+`normalizeForResolution(keyword).startsWith(normalizeForResolution(userValue))`
+
+### Matching semantics (union)
+
+For a **non-empty** trimmed user value:
+
+1. **Expand** to the list **L** of vocabulary keywords:
+   - If **any** keyword’s normalized form **equals** the normalized user value (**exact match**), **L** is exactly the set of keywords with that normalized form (usually one). This prevents `is:meld` from also pulling in `meldpart` / `meldresult`, which are longer tokens that merely share a prefix with `meld`.
+   - Otherwise **L** is all vocabulary keywords whose normalized form **starts with** the normalized user value (**prefix discovery**), **except** when the normalized query is a common **type-line** token users mistakenly use with **`is:`** (e.g. `creature`, `instant`, `artifact`) and there is no exact keyword with that normalized form — then **L** is empty so the leaf errors **`unknown keyword`** and wrong-field suggestions can offer **`t:`** (see implementation `IS_VALUE_TYPE_LINE_FALSE_POSITIVE` in `categorical-resolve.ts`).
+2. If **L** is empty → leaf error **`unknown keyword "<trimmed value>"`** with Spec 039 **passthrough** (same message shape as invalid **`kw:`**; the term does not silently match zero rows).
+3. If **L** is non-empty → evaluate **each** keyword in **L** and **OR** results into the leaf buffer (only ever write `1` where a keyword matches; repeated indices are idempotent), subject to **unsupported** and **domain** rules below.
+
+**Query evaluation does not call `resolveForField("is", …)`** for this OR semantics. **`resolveForField("is", …)`** remains for **canonicalize** / other non-eval consumers that collapse a **unique** prefix to one string (Spec 103).
+
+### Empty value
+
+When the value is empty after trim, **`is:`** and **`not:`** behave like empty **`kw:`** (Spec 105 / Spec 176): fill the leaf’s domain buffer with **all ones** (match every face index, or every printing index in a printing-only leaf). This is a neutral filter for that domain.
+
+### Unsupported keywords
+
+If **any** keyword in **L** is in the implementation’s **unsupported** set (`UNSUPPORTED_IS_KEYWORDS`, e.g. `spotlight`, `booster`, `masterpiece`, …), the leaf errors with **`unsupported keyword "<user value as in AST>"`** (same pattern as today for a single unsupported token). No partial union: the whole term fails.
+
+### Dual domain (face vs printing)
+
+Keywords are partitioned for evaluation (see Spec 047):
+
+- **Printing-evaluable:** Keywords in **`PRINTING_IS_KEYWORDS`** are evaluated with **`evalPrintingIsKeyword`** on a **printing** buffer when **`PrintingIndex`** is loaded.
+- **Face-evaluable:** Keywords **not** in **`PRINTING_IS_KEYWORDS`** are evaluated with **`evalIsKeyword`** on a **face** buffer.
+- **Dual-listed keywords** (e.g. `universesbeyond`, `ub`): when printings are loaded, use **printing** evaluation only for those tokens; when printings are **not** loaded, use **`FACE_FALLBACK_IS_KEYWORDS`** face evaluation instead of erroring, if the expanded set is compatible with fallback (existing Spec 047 behavior, generalized from a single resolved string to the **expanded set**).
+
+**Mixed expansion** (e.g. prefix matches both a printing-only and a face-only keyword):
+
+1. Evaluate all **printing-evaluable** members of **L** into a printing buffer (OR).
+2. Evaluate all **face-evaluable** members of **L** into a face buffer (OR). Do **not** evaluate a dual-listed keyword on both domains when printings are loaded.
+3. **Combine** at card level: promote the printing buffer to face indices (same promotion as other printing-domain leaves), then **OR** with the face buffer so a card matches if **either** branch matches.
+
+If **any** expanded keyword **requires** printing data (printing-evaluable and not satisfiable by face fallback) and **`PrintingIndex`** is missing, the leaf errors with **`printing data not loaded`** (existing behavior).
+
+### Structural widen flags (Spec 178)
+
+**`widenExtrasLayout`**, **`widenContentWarning`**, **`widenPlaytest`**, and **`widenOversized`** are set when a **positive** `is:` / `not:` node’s expanded set **L** contains **any** keyword in the corresponding widener category (extras-layout keywords, `content_warning`, `playtest`, `oversized`), not only when Spec 103 unique-prefix resolution would collapse to one keyword.
+
+### `not:` negation
+
+**`not:`** uses the **same expansion and union** as **`is:`** on the face-domain **`evalLeafField`** path, then applies the existing **`not:`** negation step (invert on canonical front faces). At the AST level, `-is:x` remains **`NotNode`** wrapping **`is:`**; semantics match **`not:x`** for the same **`x`**.
 
 ## Supported Keywords
 
@@ -62,7 +122,7 @@ These compare the face's layout string directly.
 | `is:scheme` | `scheme` |
 | `is:vanguard` | `vanguard` |
 
-Positive **`is:`** keywords for **`token`**, **`double_faced_token`** / **`dfctoken`**, **`art_series`**, and **`vanguard`** also set **`widenExtrasLayout`** in **`EvalOutput`** (Spec 002). Under the default inclusion filter ([Spec 178](178-default-search-inclusion-filter.md)), that flag **fully re-includes** printings whose canonical face layout is in the extras-layout set for all omission passes on that row (not only the layout pass)—see Spec 178 **Per-printing omission gate** and **`is:<extras-layout>`** widening row.
+Positive **`is:`** / **`not:`** terms whose **expanded** keyword set (§ Value resolution) includes **`token`**, **`double_faced_token`** / **`dfctoken`**, **`art_series`**, or **`vanguard`** set **`widenExtrasLayout`** in **`EvalOutput`** (Spec 002). Under the default inclusion filter ([Spec 178](178-default-search-inclusion-filter.md)), that flag **fully re-includes** printings whose canonical face layout is in the extras-layout set for all omission passes on that row—see Spec 178 **Per-printing omission gate** and **`is:<extras-layout>`** widening row.
 
 ### Oracle text checks
 
@@ -116,7 +176,7 @@ These are hardcoded sets of oracle card names. The evaluator checks `namesLower[
 
 **Tier 3 (curated name lists):** `dual`, `shockland`, `fetchland`, `checkland`, `fastland`, `painland`, `slowland`, `bounceland`.
 
-Unknown `is:` values match zero cards (consistent with how the evaluator handles unknown fields).
+A **non-empty** prefix that matches **no** vocabulary keyword yields **`unknown keyword "…"`** with passthrough (§ Value resolution), not a silent zero-hit leaf.
 
 ## French Vanilla
 
@@ -219,9 +279,11 @@ is: "is",
 
 ### Evaluation
 
-Add a `case "is"` branch in `evalLeafField`. The branch switches on `valLower` (the lowercased value) and fills the buffer using the appropriate logic for each keyword. Unknown values fill with 0.
+Add a `case "is"` branch in `evalLeafField`. For `:` and `=`, **expand** the user value to keyword list **L** per § Value resolution, then OR **`evalIsKeyword(k, …)`** for each **k** in **L** that is evaluated on the face domain (printing-only and dual-listed-when-printings-loaded keywords are handled in the evaluator’s printing path). For any other operator, leave the buffer zero.
 
-For `:` and `=` operators, the logic is identical. For any other operator, fill with 0 (no match).
+**Unknown** (empty **L**), **unsupported** (any member of **L** unsupported), and **printing required but missing** follow § Value resolution and Spec 047.
+
+The dual-domain **`NodeCache`** path uses the same **L** for routing, printing OR, face OR, promotion, and widen-flag detection (Spec 178).
 
 ### Pseudocode for type-check keywords
 
@@ -277,24 +339,29 @@ Extend the existing synthetic card pool in `evaluator.test.ts` or create a dedic
 | `is:bear` | (none in current pool — Thalia is 2/1, not 2/2) | Need to add a bear |
 | `-is:spell` | Everything except the instants | Negation via NOT node |
 | `is:party` | (none — no cleric/rogue/warrior/wizard subtypes) | Verify zero matches on missing subtypes |
-| `is:nonsense` | 0 | Unknown keyword matches nothing |
+| `is:nonsense` | (leaf error) | Unknown prefix → `unknown keyword` passthrough |
 
 Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add synthetic cards to exercise those paths.
 
 ## Acceptance Criteria
 
-1. All 32 keywords listed in § Supported Keywords produce correct results against the synthetic card pool.
-2. Unknown `is:` values match zero cards without throwing.
-3. `is:` with operators other than `:` and `=` matches zero cards.
-4. Negation (`-is:spell`) works correctly via the existing `NOT` node mechanism.
-5. `is:commander` correctly matches: front-face Legendary Creature/Vehicle/Background, oracle text "can be your commander", and hardcoded exceptions (e.g. Grist). Back-face-only creature types (e.g. Nicol Bolas modal DFC) do not match. Planeswalkers without the clause do not match.
-6. `is:frenchvanilla` matches creatures whose oracle text (after reminder text stripping) contains only recognized keyword ability lines, and does not match `is:vanilla` cards or non-creatures.
-7. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
-8. `is:partner` follows the § Oracle text checks row for `is:partner` (keyword index, oracle lines, templates, saga exclusion, legendary+creature rule). It does not match cards that only contain the substring `partner` in unrelated text without satisfying those rules.
-9. Layout-based keywords correctly match across both faces of multi-face cards.
-10. `is:reserved`, `is:funny`, `is:universesbeyond`, `is:gamechanger` / `is:gc`, `is:content_warning`, and related flag-backed keywords correctly check flag bits from the `flags` column (see Spec 170 for `content_warning`).
-11. Land cycle keywords match exactly the curated card name lists.
-12. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, `border_color`, `set_type`, `promo_types`, and `legalities` fields.
+1. All 32 keywords listed in § Supported Keywords produce correct results against the synthetic card pool (plus printing-level keywords per Spec 047).
+2. A **non-empty** `is:` / `not:` value that prefix-matches **no** vocabulary keyword yields **`unknown keyword "…"`** with Spec 039 passthrough (not a silent zero-hit leaf).
+3. A prefix that matches **multiple** keywords matches the **union** of their per-keyword results (face and/or printing domains per § Value resolution).
+4. **Empty** `is:` / `not:` (after trim) fills the leaf buffer with all matches in that leaf’s domain (neutral filter), same idea as empty **`kw:`** (Spec 105).
+5. If the expanded set contains **any** unsupported keyword, the leaf errors with **`unsupported keyword`** (user’s AST value in the message).
+6. `is:` with operators other than `:` and `=` matches zero cards on the face `evalLeafField` path (printing path unchanged for invalid operators).
+7. Negation (`-is:spell`) and **`not:`** work correctly, including **`not:`** after prefix union (NOT of the OR).
+8. `is:commander` correctly matches: front-face Legendary Creature/Vehicle/Background, oracle text "can be your commander", and hardcoded exceptions (e.g. Grist). Back-face-only creature types (e.g. Nicol Bolas modal DFC) do not match. Planeswalkers without the clause do not match.
+9. `is:frenchvanilla` matches creatures whose oracle text (after reminder text stripping) contains only recognized keyword ability lines, and does not match `is:vanilla` cards or non-creatures.
+10. `is:bear` requires all four conditions (creature, power 2, toughness 2, mana value 2).
+11. `is:partner` follows the § Oracle text checks row for `is:partner` (keyword index, oracle lines, templates, saga exclusion, legendary+creature rule). It does not match cards that only contain the substring `partner` in unrelated text without satisfying those rules.
+12. Layout-based keywords correctly match across both faces of multi-face cards.
+13. `is:reserved`, `is:funny`, `is:universesbeyond`, `is:gamechanger` / `is:gc`, `is:content_warning`, and related flag-backed keywords correctly check flag bits from the `flags` column (see Spec 170 for `content_warning`).
+14. Land cycle keywords match exactly the curated card name lists.
+15. The `flags` column is populated correctly by the ETL pipeline from `reserved`, `security_stamp`, `border_color`, `set_type`, `promo_types`, and `legalities` fields.
+16. **Spec 178** widen flags trigger when **any** expanded `is:` / `not:` keyword is in the corresponding widener set.
+17. At least one **mixed-domain** prefix (face + printing keywords in **L**) ORs correctly after promotion.
 
 ## Out of Scope
 
@@ -304,6 +371,7 @@ Tests for `is:vanilla`, `is:bear`, `is:party`, and `is:frenchvanilla` will add s
 
 ## Implementation Notes
 
+- 2026-04-02: **Prefix union** for `is:` / `not:` query evaluation (aligned with Spec 176 `kw:`): expand over `IS_KEYWORDS` with `normalizeForResolution`; OR per keyword; `unknown keyword` / `unsupported keyword` / empty-value rules; mixed face+printing domain; Spec 103 `resolveForField` only for non-eval consumers; Spec 178 widen detection uses expanded set.
 - 2026-03-29: Added `is:content_warning` via `CardFlag.ContentWarning` and oracle `content_warning` in ETL (Spec 170, Issue #224).
 - 2026-03-03: Spec 047 adds printing-domain `is:` keywords for Scryfall `promo_types` (51 values: `rainbowfoil`, `poster`, `alchemy`, `rebalanced`, etc.). `is:universesbeyond`/`is:ub` become dual-domain: printing domain when printings loaded, face-domain fallback when not.
 - 2026-03-04: Added layout keywords for Issue #80: `is:token`, `is:double_faced_token`, `is:dfctoken`, `is:art_series`, `is:emblem`, `is:planar`, `is:scheme`, `is:vanguard`. These match cards indexed after ETL-level layout filtering was removed.

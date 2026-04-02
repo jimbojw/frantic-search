@@ -242,6 +242,7 @@ These fields map to columns available in the current ETL output.
 | `banned`           | `legalities_banned`         | Card is banned in the given format     | —                                          |
 | `restricted`       | `legalities_restricted`     | Card is restricted in the given format | —                                          |
 | `kw`, `keyword`    | `keywords_index`            | Card has a keyword ability whose normalized name is prefixed by the query (union over all matching keys; Spec 176); non-empty value with no matching key → `unknown keyword` (passthrough, Spec 039); empty value matches all faces (Spec 105) | `:` and `=` only (Spec 105) |
+| `is`, `not`        | Derived (type line, layout, flags, printing columns — Specs 032, 047) | **Prefix union** over the closed `is:` vocabulary (Spec 032); face and/or printing domain with promotion when needed (Spec 047); non-empty value with no matching keyword → `unknown keyword` (passthrough, Spec 039); empty matches all rows in the leaf’s domain (Spec 032). **`not:`** uses the same keywords as **`is:`** (Spec 002 changelog). | `:` and `=` only |
 | `flavor`, `ft`     | `flavor-index` (supplemental) | Flavor text substring; regex via `/pattern/` (printing-domain) | `:` and `=` only (Spec 142) |
 | `artist`, `a`      | `artist-index` (supplemental) | Artist name substring (printing-domain) | `:` and `=` only (Spec 149) |
 | (bare word)        | `combined_names` (Spec 018) | Unquoted: normalized substring on combined name; quoted: literal lowercased substring | — |

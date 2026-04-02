@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 058 (View Mode Query Term), Spec 072 (in: Query Qualifier), Spec 104 (Bonus Rarity Tier), Spec 174 (`otag` / `atag` prefix evaluation exception), Spec 176 (`kw` / `keyword` prefix evaluation exception)
+**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix evaluation exception — Spec 032 § Value resolution), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 058 (View Mode Query Term), Spec 072 (in: Query Qualifier), Spec 104 (Bonus Rarity Tier), Spec 174 (`otag` / `atag` prefix evaluation exception), Spec 176 (`kw` / `keyword` prefix evaluation exception)
 
 **GitHub Issue:** [#111](https://github.com/jimbojw/frantic-search/issues/111)
 
@@ -81,13 +81,15 @@ Apply resolution **at each evaluation site** when a categorical field value is l
 - The AST stays as the parser's source of truth; resolution is semantic interpretation in the evaluator layer.
 - No new AST fields or normalization pass to maintain.
 
-**Mechanics:** Each lookup site (eval-leaves, eval-printing for fields **other than** `set`, evaluator branches for view/unique/include/sort, extractViewMode, getUniqueModeFromAst, canonicalize) calls `resolveCategoricalValue` / `resolveForField` before doing its lookup where applicable. If resolution returns a value, use it for the lookup; otherwise use the original value. When resolution context is absent (e.g. before printings load), runtime fields (`set`, `in`, `otag`, `atag`, `kw`, `keyword`) skip resolution and retain the typed value — **except** that **`otag` / `atag` query evaluation** does not use `resolveForField` at all (Spec 174), and **`kw` / `keyword` query evaluation** does not use `resolveForField` at all (Spec 176); only non-eval sites such as **canonicalize** call `resolveForField` for those fields.
+**Mechanics:** Each lookup site (eval-leaves, eval-printing for fields **other than** `set`, evaluator branches for view/unique/include/sort, extractViewMode, getUniqueModeFromAst, canonicalize) calls `resolveCategoricalValue` / `resolveForField` before doing its lookup where applicable. If resolution returns a value, use it for the lookup; otherwise use the original value. When resolution context is absent (e.g. before printings load), runtime fields (`set`, `in`, `otag`, `atag`, `kw`, `keyword`) skip resolution and retain the typed value — **except** that **`otag` / `atag` query evaluation** does not use `resolveForField` at all (Spec 174), **`kw` / `keyword` query evaluation** does not use `resolveForField` at all (Spec 176), and **`is` / `not` query evaluation** does not use `resolveForField` for semantic matching (Spec 032); only non-eval sites such as **canonicalize** call `resolveForField` for those fields.
 
 **Exception — `set` query evaluation (Spec 047, [issue #234](https://github.com/jimbojw/frantic-search/issues/234)):** The printing-domain **`set`** leaf does **not** use `resolveForField` before matching. It applies **prefix matching** on normalized set codes per printing row. Short or ambiguous tokens (e.g. `set:u`) intentionally match **many** printings for discovery; they are **not** collapsed to a single code when that code would be uniquely resolvable from `knownSetCodes`. **`resolveForField("set", …)`** remains used for **canonicalize** (`toScryfallQuery`) and any other non-eval sites that need unique-prefix resolution to a full code.
 
 **Exception — `otag` / `atag` query evaluation (Spec 174):** Face-domain **`otag:`** and printing-domain **`atag:`** / **`art:`** leaves do **not** use `resolveForField` before matching. They apply **normalized prefix** matching over **all** tag keys in the loaded index and **union** matching face or printing indices. A prefix that matches no key yields **zero** results with **no** leaf error (no `unknown tag`). **`resolveForField("otag", …)`** and **`resolveForField("atag", …)`** remain for **canonicalize** and other non-eval consumers that need unique-prefix resolution to a single label.
 
 **Exception — `kw` / `keyword` query evaluation (Spec 176):** Face-domain **`kw:`** and **`keyword:`** leaves do **not** use `resolveForField` before matching. They apply **normalized prefix** matching over **all** keyword index keys and **union** matching face indices. A **non-empty** value that matches **no** key yields **`unknown keyword "…"`** with **passthrough** (Spec 039), unlike **`set:`** / **`otag:`** / **`atag:`**. **`resolveForField("kw", …)`** and **`resolveForField("keyword", …)`** remain for **canonicalize** and other non-eval consumers that need unique-prefix resolution to a single keyword string.
+
+**Exception — `is` / `not` query evaluation (Spec 032):** **`is:`** and **`not:`** leaves do **not** use `resolveForField` for **semantic** matching. They apply **normalized prefix** matching over the closed **`is:`** vocabulary (`IS_KEYWORDS`) and **union** per Spec 032 (face and/or printing domain). A **non-empty** value that matches **no** vocabulary keyword yields **`unknown keyword "…"`** with **passthrough** (Spec 039). **`resolveForField("is", …)`** remains for **canonicalize** and other non-eval consumers that need unique-prefix resolution to a single keyword string when exactly one candidate matches.
 
 ### 6. Resolution helper
 
@@ -108,7 +110,7 @@ Logic: normalize `typed`, iterate candidates, collect those where `normalize(can
 
 ### 7. Error handling
 
-- **No resolution (0 or 2+ matches):** Existing behavior applies for categorical fields that still validate against a closed set (e.g. `unknown format "x"`). **`set` evaluation** is not in this category: a prefix that matches no set code yields **zero printings**, not `unknown set` (Spec 047). **`otag` / `atag` evaluation** (Spec 174) is not in this category either: a prefix that matches no tag key yields **zero** faces or printings, not `unknown tag`. **`kw` / `keyword` evaluation** (Spec 176): when **no** keyword key matches the normalized prefix (non-empty value), the leaf errors with **`unknown keyword "…"`** (passthrough, Spec 039).
+- **No resolution (0 or 2+ matches):** Existing behavior applies for categorical fields that still validate against a closed set (e.g. `unknown format "x"`). **`set` evaluation** is not in this category: a prefix that matches no set code yields **zero printings**, not `unknown set` (Spec 047). **`otag` / `atag` evaluation** (Spec 174) is not in this category either: a prefix that matches no tag key yields **zero** faces or printings, not `unknown tag`. **`kw` / `keyword` evaluation** (Spec 176): when **no** keyword key matches the normalized prefix (non-empty value), the leaf errors with **`unknown keyword "…"`** (passthrough, Spec 039). **`is` / `not` evaluation** (Spec 032): when **no** `is:` vocabulary keyword matches the normalized prefix (non-empty value), the leaf errors with **`unknown keyword "…"`** (passthrough, Spec 039).
 - **Resolved value:** The term is evaluated as if the user had typed the full value. No special error handling; resolution is transparent.
 
 ### 8. Display and canonicalization
@@ -149,6 +151,7 @@ Logic: normalize `typed`, iterate candidates, collect those where `normalize(can
 13. The query breakdown chip displays `v:i` when the user types `v:i`, not `v:images`. Same for all categorical fields — the chip shows the user's typed value.
 14. **`otag:`** / **`atag:`** evaluation uses prefix union per Spec 174; no `unknown tag` when the prefix matches no key (zero results).
 15. **`kw:`** / **`keyword:`** evaluation uses prefix union per Spec 176; when no key matches a non-empty prefix, **`unknown keyword`** with passthrough (Spec 039).
+16. **`is:`** / **`not:`** evaluation uses prefix union per Spec 032; when no vocabulary keyword matches a non-empty prefix, **`unknown keyword`** with passthrough (Spec 039).
 
 ## Out of scope
 
