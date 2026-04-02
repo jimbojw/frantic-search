@@ -206,6 +206,15 @@ describe('buildScryfallSearchUrl', () => {
     expect(buildScryfallSearchUrl('t:creature', 't:creature sort:ci'))
       .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=color&dir=asc')
   })
+
+  it('adds order=set when sort:set is active (issue #175)', () => {
+    expect(buildScryfallSearchUrl('t:creature', 't:creature sort:set'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=set&dir=asc')
+    expect(buildScryfallSearchUrl('t:creature', 't:creature order:set'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=set&dir=asc')
+    expect(buildScryfallSearchUrl('t:creature', 't:creature -sort:set'))
+      .toBe('https://scryfall.com/search?q=t%3Acreature&as=grid&order=set&dir=desc')
+  })
 })
 
 // ---------------------------------------------------------------------------

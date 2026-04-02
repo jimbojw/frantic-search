@@ -266,6 +266,16 @@ function comparePrintingFieldRaw(a: number, b: number, field: string, pIdx: Prin
       return { cmp: da - db, applyDir: true };
     }
     case "rarity": return { cmp: comparePrintingRarity(a, b, pIdx), applyDir: true };
+    case "set": {
+      const sa = pIdx.setCodesLower[a] ?? "";
+      const sb = pIdx.setCodesLower[b] ?? "";
+      const emptyA = sa.length === 0;
+      const emptyB = sb.length === 0;
+      if (emptyA && emptyB) return { cmp: 0, applyDir: false };
+      if (emptyA) return { cmp: 1, applyDir: false };
+      if (emptyB) return { cmp: -1, applyDir: false };
+      return { cmp: sa.localeCompare(sb), applyDir: true };
+    }
     default: return { cmp: 0, applyDir: true };
   }
 }

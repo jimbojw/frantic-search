@@ -15,6 +15,7 @@ const SCRYFALL_ORDER: Record<string, string> = {
   date: 'released',
   rarity: 'rarity',
   edhrec: 'edhrec',
+  set: 'set',
 }
 
 /** Frantic view mode → Scryfall as= param (Spec 107). Omit when slim (Scryfall default). */

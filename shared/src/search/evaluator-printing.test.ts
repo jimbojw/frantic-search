@@ -1645,6 +1645,21 @@ describe("sort: sortBy extraction", () => {
     expect(sortBy!.field).toBe("date");
   });
 
+  test("sort:set → asc printing-domain (issue #175)", () => {
+    const { sortBy } = evaluate("sort:set");
+    expect(sortBy).toEqual({ field: "set", direction: "asc", isPrintingDomain: true });
+  });
+
+  test("order:set → same as sort:set (Spec 107)", () => {
+    const { sortBy } = evaluate("order:set");
+    expect(sortBy).toEqual({ field: "set", direction: "asc", isPrintingDomain: true });
+  });
+
+  test("-sort:set → desc (reversed)", () => {
+    const { sortBy } = evaluate("-sort:set");
+    expect(sortBy).toEqual({ field: "set", direction: "desc", isPrintingDomain: true });
+  });
+
   test("sort:identity → asc face-domain", () => {
     const { sortBy } = evaluate("t:creature sort:identity");
     expect(sortBy).toEqual({ field: "identity", direction: "asc", isPrintingDomain: false });

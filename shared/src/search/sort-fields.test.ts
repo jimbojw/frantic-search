@@ -26,7 +26,7 @@ describe("SORT_FIELDS", () => {
   });
 
   test("printing-domain fields are printing domain", () => {
-    for (const key of ["usd", "$", "date", "released", "rarity"]) {
+    for (const key of ["usd", "$", "date", "released", "rarity", "set"]) {
       expect(SORT_FIELDS[key].isPrintingDomain).toBe(true);
     }
   });
@@ -41,6 +41,7 @@ describe("SORT_FIELDS", () => {
     expect(SORT_FIELDS["usd"].defaultDir).toBe("asc");
     expect(SORT_FIELDS["date"].defaultDir).toBe("desc");
     expect(SORT_FIELDS["rarity"].defaultDir).toBe("desc");
+    expect(SORT_FIELDS["set"].defaultDir).toBe("asc");
   });
 
   test("unknown field is undefined", () => {

@@ -66,6 +66,7 @@ Use these links for **Scryfall vs Frantic** detail on a single field or keyword.
 | [`kw:`](?doc=reference/fields/face/kw) / `keyword:` | Effectively exact keyword names on Scryfall vs **prefix** + union in Frantic; empty `kw:` matches all faces; **unknown non-empty prefix** → **`unknown keyword`** passthrough—aligned with `set:` / `set_type:`, not with tag fields. |
 | [`is:`](?doc=reference/fields/face/is) / [`not:`](?doc=reference/fields/face/is) | Scryfall treats `is:` values as effectively **exact** tokens; Frantic matches a **normalized prefix** against the closed keyword vocabulary and **unions** all matches (e.g. a short prefix can match both a face-level and a printing-level keyword). A non-empty prefix that matches **no** keyword yields **`unknown keyword`** with query **passthrough** (like `kw:`), not a silent empty result. |
 | [power](?doc=reference/fields/face/power), [toughness](?doc=reference/fields/face/toughness), [loyalty](?doc=reference/fields/face/loyalty), [defense](?doc=reference/fields/face/defense) | Scryfall exhibits mostly plain-numeric stat filters; Frantic adds substring and exact match on oracle stat text, quoted values, and equatable-null forms. |
+| [Sort by set](?doc=reference/sorting/sort-fields) (`sort:set`) | Frantic sorts by lexicographic set code and maps Scryfall outlinks to `order=set` / `dir=`. |
 
 ## Known missing
 

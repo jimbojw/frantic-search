@@ -30,6 +30,7 @@ These fields sort over individual printings. When `unique:cards` is active, the 
 | `usd` | `$` | asc | No price data last |
 | `date` | `released`, `year` | desc | Unknown date last |
 | `rarity` | — | desc | — |
+| `set` | — | asc | Missing set code last; lexicographic by set code ([issue #175](https://github.com/jimbojw/frantic-search/issues/175)) |
 
 ## Null handling
 
@@ -38,6 +39,7 @@ Across all fields, null or missing values sort **last** regardless of sort direc
 - Non-creature with `q=sort:power` → sorts after all creatures
 - Printing with no price data → sorts after all priced printings
 - Printing with unknown date → sorts after all dated printings
+- Printing with empty set code → sorts after all printings with a code
 - Non-numeric power/toughness (`q=*`, `q=1+*`, `q=X`) → sorts after numeric values
 - Card with no EDHREC rank → sorts after all ranked cards
 

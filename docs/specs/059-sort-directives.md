@@ -38,6 +38,8 @@ sort:power          # highest-first (descending is power's default)
 sort:identity       # color identity ascending (Gray code)
 -sort:identity      # color identity descending
 sort:ci             # same
+sort:set            # set code A–Z (ascending; Scryfall-style lexicographic by code, issue #175)
+-sort:set           # set code Z–A
 ```
 
 ### Grammar
@@ -56,6 +58,7 @@ sort_field = "name" | "mv" | "cmc" | "manavalue"
            | "toughness" | "tou"
            | "edhrec" | "edhrecrank"
            | "salt" | "edhrecsalt" | "saltiness"
+           | "set"
 ```
 
 Direction is controlled entirely by the NOT operator:
@@ -106,6 +109,7 @@ These fields sort over individual printings, then project that ordering onto car
 | `usd` | `$` | `priceUsd` | asc | Numeric (cheapest first). Zero-price printings (no price data) sort last. |
 | `date` | `released`, `year` | `releasedAt` | desc | Newest-first. Stored as YYYYMMDD integers. Zero (unknown date) sorts last. |
 | `rarity` | — | `rarity` | desc | Mythic-first. Uses the Rarity bitmask's numeric values (Mythic > Special > Rare > Uncommon > Common). |
+| `set` | — | `setCodesLower` (Scryfall set `code`, lowercased) | asc | Lexicographic by set code (e.g. `10e` before `2ed`). Matches Scryfall `order:set` behavior ([issue #175](https://github.com/jimbojw/frantic-search/issues/175)). Empty/missing code sorts last. |
 
 ### Null/missing value handling
 
@@ -116,6 +120,7 @@ Across all fields, null or missing values sort **last** regardless of sort direc
 - Printing with `releasedAt === 0` (unknown date) → sorts after all dated printings
 - Non-numeric stat values (`*`, `1+*`, `X`) in power/toughness → sort after all numeric values
 - Card with no EDHREC rank (`edhrecRank === null`) → sorts after all ranked cards
+- Printing with empty set code (`setCodesLower === ""`) → sorts after all printings with a code
 
 ## Architecture
 
@@ -401,7 +406,7 @@ Sort chips use the existing `cycleChip` infrastructure with the standard tri-sta
 
 The arrow indicator always reflects the actual sort direction:
 
-- For default-asc fields (name, mv, color): positive = `↑`, negative = `↓`
+- For default-asc fields (name, mv, color, set): positive = `↑`, negative = `↓`
 - For default-desc fields (power, toughness, price, date, rarity): positive = `↓`, negative = `↑`
 
 The red/strikethrough negative state reads as "sort by this field, but reversed." The arrow removes any ambiguity about which direction is active.
@@ -424,6 +429,7 @@ const SORT_CHIPS: ChipDef[] = [
   { label: 'sort:$', field: SORT_FIELDS, operator: ':', value: '$', term: 'sort:$' },
   { label: 'sort:date', field: SORT_FIELDS, operator: ':', value: 'date', term: 'sort:date' },
   { label: 'sort:rarity', field: SORT_FIELDS, operator: ':', value: 'rarity', term: 'sort:rarity' },
+  { label: 'sort:set', field: SORT_FIELDS, operator: ':', value: 'set', term: 'sort:set' },
 ]
 ```
 
@@ -457,6 +463,7 @@ The field name mapping from Frantic Search to Scryfall:
 | `date` | `released` | `asc` / `desc` |
 | `rarity` | `rarity` | `asc` / `desc` |
 | `edhrec` | `edhrec` | `asc` / `desc` |
+| `set` | `set` | `asc` / `desc` |
 
 ## Error Handling
 
@@ -486,6 +493,7 @@ Add `sortByField()` and printing-group helpers (including per-card `sortPrinting
 - `comparePrintingPrice(a, b, pIdx)` — numeric with zero-sorts-last.
 - `comparePrintingDate(a, b, pIdx)` — numeric with zero-sorts-last.
 - `comparePrintingRarity(a, b, pIdx)` — numeric on rarity value.
+- `comparePrintingSetCode(a, b, pIdx)` — `localeCompare` on `setCodesLower`; empty code sorts last (same null-last pattern as price/date).
 
 ### `shared/src/search/canonicalize.ts`
 
@@ -592,6 +600,9 @@ test("non-numeric power sorts last regardless of direction", ...);
 test("sort:usd sorts printings by price ascending", ...);
 test("zero-price printings sort last", ...);
 test("sort:date sorts printings by release date descending (default)", ...);
+test("sort:set / order:set extract sortBy with field set, printing domain, default asc", ...);
+test("-sort:set reverses to desc", ...);
+test("sort:set orders printings lexicographically by set code with empty code last", ...);
 test("printing-domain sort keeps card printings contiguous (no interleaving)", ...);
 test("sort:usd asc groups cards by cheapest printing, then printings asc within card", ...);
 test("sort:usd desc groups cards by priciest printing, then printings desc within card", ...);
@@ -629,6 +640,7 @@ test("exclusive selection: activating sort:$ removes existing sort:name", ...);
 3. `sort:usd` sorts by printing price low-to-high. With default `unique:cards`, card order is projected from grouped sorted printings (first-seen printing per card). With `unique:prints`, printings are shown as grouped card runs ordered by price semantics (per Spec 048 view rules).
 4. `sort:date` sorts printings by release date newest-first (default desc). `-sort:date` sorts oldest-first.
 5. `sort:rarity` sorts printings by rarity mythic-first (default desc).
+5a. `sort:set` sorts printings by set code ascending (lexicographic). `-sort:set` sorts descending. Empty/missing set code sorts last. `order:set` behaves like `sort:set` (Spec 107).
 6. `sort:power` sorts by power highest-first (default desc). Non-numeric power sorts last.
 7. `sort:` and `-sort:` terms appear in the query breakdown and are pinnable/unpinnable.
 8. `sort:` and `-sort:` terms do not affect which cards match (match-all buffer preserved through NOT).
@@ -661,3 +673,5 @@ This spec follows ADR-019 (Scryfall parity by default) with one explicit, princi
 - 2026-03-08: Spec 107 adds `order:` as Scryfall alias for `sort:`. `findSortDirective`, evaluator, and `clearSortTerms` recognize `order:`; `SORT_CHIP_FIELDS` includes `order` for chip matching.
 - 2026-03-18: sort:color changed from popcount + bitmask to Gray code rank (issue #146). Uses Gray decode (inverse) as sort key so consecutive identities differ by exactly one bit. Sequence: c→W→WU→U→UB→WUB→WB→B→BR→…→G.
 - 2026-03-18: Added sort:identity (aliases id, ci, cmd). Uses Gray code rank of colorIdentity bitmask, same as sort:color.
+- 2026-04-02: Added `sort:set` / `order:set` (printing-domain, default asc, lexicographic set code). Scryfall outlink `order=set`. [Issue #175](https://github.com/jimbojw/frantic-search/issues/175).
+- 2026-04-02: No `al0` alias — [#175](https://github.com/jimbojw/frantic-search/issues/175) guessed at that token; nothing supports it as a real Scryfall sort value, so only `sort:set` / `order:set` are registered.

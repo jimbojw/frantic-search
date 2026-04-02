@@ -213,6 +213,7 @@ const SECTION_CHIPS: Record<TermsSectionId, (ChipDef | PercentileChipDef)[]> = {
     sortChip('$'),
     sortChip('date'),
     sortChip('rarity'),
+    sortChip('set'),
   ],
 }
 

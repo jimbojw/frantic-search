@@ -611,6 +611,29 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     expect(cardOrder[0]).toBe(1); // Bolt
   });
 
+  test("sort:set sorts by lexicographic set code asc (Bolt a25 before Sol c21)", () => {
+    const deduped = [1, 3];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
+    const d: SortDirective = { field: "set", direction: "asc", isPrintingDomain: true };
+    const { cardOrder, groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    expect(cardOrder[0]).toBe(1); // Bolt (cheapest set code a25)
+    expect(cardOrder[1]).toBe(3); // Sol Ring (c21)
+    // First Bolt printing in output is earliest set code (a25)
+    const boltFirst = groupedPrintings[0];
+    expect(printingIndex.setCodesLower[boltFirst]).toBe("a25");
+  });
+
+  test("sort:set desc orders printings by set code descending within card", () => {
+    const deduped = [1];
+    const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);
+    const d: SortDirective = { field: "set", direction: "desc", isPrintingDomain: true };
+    const { groupedPrintings } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
+    const sets = Array.from(groupedPrintings).map(p => printingIndex.setCodesLower[p]);
+    for (let i = 1; i < sets.length; i++) {
+      expect(sets[i - 1]!.localeCompare(sets[i]!)).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   test("intra-card printing order follows direction for printing-domain sorts", () => {
     const deduped = [1];
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10]);

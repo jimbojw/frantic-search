@@ -43,4 +43,5 @@ export const SORT_FIELDS: Record<string, SortFieldEntry> = {
   released: { canonical: "date", defaultDir: "desc", isPrintingDomain: true },
   year: { canonical: "date", defaultDir: "desc", isPrintingDomain: true },
   rarity: { canonical: "rarity", defaultDir: "desc", isPrintingDomain: true },
+  set: { canonical: "set", defaultDir: "asc", isPrintingDomain: true },
 };
