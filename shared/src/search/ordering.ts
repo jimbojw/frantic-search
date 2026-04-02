@@ -216,6 +216,25 @@ function comparePrintingRarity(a: number, b: number, pIdx: PrintingIndex): numbe
   return ra - rb;
 }
 
+/** Empty collector number sorts last; else numeric-aware localeCompare (Scryfall-style cn ordering). */
+function comparePrintingCollectorRaw(
+  a: number,
+  b: number,
+  pIdx: PrintingIndex,
+): { cmp: number; applyDir: boolean } {
+  const ca = pIdx.collectorNumbersLower[a] ?? "";
+  const cb = pIdx.collectorNumbersLower[b] ?? "";
+  const emptyA = ca.length === 0;
+  const emptyB = cb.length === 0;
+  if (emptyA && emptyB) return { cmp: 0, applyDir: false };
+  if (emptyA) return { cmp: 1, applyDir: false };
+  if (emptyB) return { cmp: -1, applyDir: false };
+  return {
+    cmp: ca.localeCompare(cb, undefined, { numeric: true, sensitivity: "base" }),
+    applyDir: true,
+  };
+}
+
 /** Null-aware field comparison: returns [cmp, bothPresent] where cmp is the
  *  null-aware ordering (null sorts last regardless of direction) and bothPresent
  *  indicates whether both values are present (so the caller can apply direction). */
@@ -343,11 +362,14 @@ export function sortPrintingDomain(
     prints.sort((a, b) => {
       const { cmp, applyDir } = comparePrintingFieldRaw(a, b, field, pIdx);
       if (cmp !== 0) return applyDir ? dir * cmp : cmp;
+      if (field === "set") {
+        const cn = comparePrintingCollectorRaw(a, b, pIdx);
+        if (cn.cmp !== 0) return cn.applyDir ? dir * cn.cmp : cn.cmp;
+      }
       const dateCmp = pIdx.releasedAt[b] - pIdx.releasedAt[a];
       if (dateCmp !== 0) return dateCmp;
-      const cnCmp = pIdx.collectorNumbersLower[a]
-        .localeCompare(pIdx.collectorNumbersLower[b]);
-      if (cnCmp !== 0) return cnCmp;
+      const cnT = comparePrintingCollectorRaw(a, b, pIdx);
+      if (cnT.cmp !== 0) return cnT.cmp;
       return seededRank(seedHash, a) - seededRank(seedHash, b);
     });
   }
@@ -359,6 +381,10 @@ export function sortPrintingDomain(
     const repB = cardPrintings.get(cfB)![0];
     const { cmp, applyDir } = comparePrintingFieldRaw(repA, repB, field, pIdx);
     if (cmp !== 0) return applyDir ? dir * cmp : cmp;
+    if (field === "set") {
+      const cn = comparePrintingCollectorRaw(repA, repB, pIdx);
+      if (cn.cmp !== 0) return cn.applyDir ? dir * cn.cmp : cn.cmp;
+    }
     const nameCmp = compareName(cfA, cfB, idx);
     if (nameCmp !== 0) return nameCmp;
     return seededRank(seedHash, cfA) - seededRank(seedHash, cfB);

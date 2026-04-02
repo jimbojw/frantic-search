@@ -385,6 +385,26 @@ describe("seededSortPrintings", () => {
 import { sortByField, sortPrintingDomain, reorderPrintingsByCardOrder } from "./ordering";
 import type { SortDirective } from "./ast";
 import { index, printingIndex, saltIndex } from "./evaluator.test-fixtures";
+import { PrintingIndex } from "./printing-index";
+import type { PrintingColumnarData } from "../data";
+import { Rarity, Finish, Frame, Game } from "../bits";
+
+/** Same set, two cards: Birds cn 7 vs Azorius cn 999 (name would put Azorius first). */
+const SET_SORT_PAIR_DATA: PrintingColumnarData = {
+  canonical_face_ref: [0, 5],
+  scryfall_ids: ["ss-a", "ss-b"],
+  collector_numbers: ["7", "999"],
+  set_indices: [0, 0],
+  rarity: [Rarity.Common, Rarity.Common],
+  printing_flags: [0, 0],
+  finish: [Finish.Nonfoil, Finish.Nonfoil],
+  frame: [Frame.Y2015, Frame.Y2015],
+  price_usd: [50, 50],
+  released_at: [20070713, 20070713],
+  games: [Game.Paper, Game.Paper],
+  set_lookup: [{ code: "10E", name: "Tenth Edition", released_at: 20070713, set_type: "core" }],
+};
+const setSortPairPrintingIndex = new PrintingIndex(SET_SORT_PAIR_DATA);
 
 describe("sortByField — face-domain sort", () => {
   // Canonical faces: 0=Birds, 1=Bolt, 2=Counterspell, 3=Sol Ring,
@@ -621,6 +641,22 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     // First Bolt printing in output is earliest set code (a25)
     const boltFirst = groupedPrintings[0];
     expect(printingIndex.setCodesLower[boltFirst]).toBe("a25");
+  });
+
+  test("sort:set same set ties by collector number (numeric) before card name (Scryfall)", () => {
+    const deduped = [0, 5];
+    const printings = new Uint32Array([0, 1]);
+    const d: SortDirective = { field: "set", direction: "asc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, setSortPairPrintingIndex, 0);
+    expect(cardOrder).toEqual([0, 5]);
+  });
+
+  test("sort:set desc reverses collector tiebreak within same set", () => {
+    const deduped = [0, 5];
+    const printings = new Uint32Array([0, 1]);
+    const d: SortDirective = { field: "set", direction: "desc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, setSortPairPrintingIndex, 0);
+    expect(cardOrder).toEqual([5, 0]);
   });
 
   test("sort:set desc orders printings by set code descending within card", () => {

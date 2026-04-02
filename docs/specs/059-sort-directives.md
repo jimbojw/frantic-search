@@ -109,7 +109,7 @@ These fields sort over individual printings, then project that ordering onto car
 | `usd` | `$` | `priceUsd` | asc | Numeric (cheapest first). Zero-price printings (no price data) sort last. |
 | `date` | `released`, `year` | `releasedAt` | desc | Newest-first. Stored as YYYYMMDD integers. Zero (unknown date) sorts last. |
 | `rarity` | — | `rarity` | desc | Mythic-first. Uses the Rarity bitmask's numeric values (Mythic > Special > Rare > Uncommon > Common). |
-| `set` | — | `setCodesLower` (Scryfall set `code`, lowercased) | asc | Lexicographic by set code (e.g. `10e` before `2ed`). Matches Scryfall `order:set` behavior ([issue #175](https://github.com/jimbojw/frantic-search/issues/175)). Empty/missing code sorts last. |
+| `set` | — | `setCodesLower` (Scryfall set `code`, lowercased) | asc | Lexicographic by set code (e.g. `10e` before `2ed`). Within the same set, **collector number** next (numeric-aware `localeCompare`), then release date, then seeded row fallback — **not** card name between cards (matches Scryfall; [issue #175](https://github.com/jimbojw/frantic-search/issues/175)). Empty/missing set code sorts last; empty collector sorts last. |
 
 ### Null/missing value handling
 
@@ -675,3 +675,4 @@ This spec follows ADR-019 (Scryfall parity by default) with one explicit, princi
 - 2026-03-18: Added sort:identity (aliases id, ci, cmd). Uses Gray code rank of colorIdentity bitmask, same as sort:color.
 - 2026-04-02: Added `sort:set` / `order:set` (printing-domain, default asc, lexicographic set code). Scryfall outlink `order=set`. [Issue #175](https://github.com/jimbojw/frantic-search/issues/175).
 - 2026-04-02: No `al0` alias — [#175](https://github.com/jimbojw/frantic-search/issues/175) guessed at that token; nothing supports it as a real Scryfall sort value, so only `sort:set` / `order:set` are registered.
+- 2026-04-02: `sort:set` tiebreak within the same set uses collector number (numeric-aware) before card name, matching Scryfall.
