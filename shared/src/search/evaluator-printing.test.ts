@@ -516,6 +516,17 @@ describe("printingIndices output", () => {
     expect(Array.from(printingIndices!)).toEqual([0, 1, 9]);
   });
 
+  test("st:m matches same printings as set_type:m (Spec 179)", () => {
+    const a = evaluate("set_type:m");
+    const b = evaluate("st:m");
+    expect(a.result.matchCount).toBe(b.result.matchCount);
+    expect(a.printingIndices && b.printingIndices).toBeTruthy();
+    expect(Array.from(a.printingIndices!).sort((x, y) => x - y)).toEqual(
+      Array.from(b.printingIndices!).sort((x, y) => x - y),
+    );
+    expect(Array.from(a.printingIndices!).sort((x, y) => x - y)).toEqual([2, 6, 10]);
+  });
+
   test("set:a25 returns printing rows 2,10", () => {
     const { printingIndices } = evaluate("set:a25");
     expect(printingIndices).toBeDefined();

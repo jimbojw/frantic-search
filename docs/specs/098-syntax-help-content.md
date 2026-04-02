@@ -54,6 +54,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | Field | Aliases | Description | Example |
 |-------|---------|-------------|---------|
 | `set` | `s`, `e`, `edition` | Set code **prefix** on normalized code (Spec 047); empty `set:` matches printings with a set code; differs from Scryfall exact set token ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)) | `set:mh2`, `set:u` |
+| `set_type` | `st` | Scryfall set type **prefix** on normalized string (Spec 179); empty matches printings with a non-empty type; differs from Scryfall exact `set_type` token | `set_type:expansion`, `st:mem` |
 | `rarity` | `r` | Rarity (exact or comparison) | `r:mythic` |
 | `usd` | `$` | Price in USD; `=null` (or `n`/`nu`/`nul` while typing) for no price data; percentile (`>90%`); invalid price text → error (Spec 172) | `usd<5`, `usd=null`, `usd>90%` |
 | `collectornumber` | `cn`, `number` | Collector number | `cn:261` |

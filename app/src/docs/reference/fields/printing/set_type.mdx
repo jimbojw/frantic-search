@@ -1,0 +1,36 @@
+---
+title: set_type
+---
+
+# set_type
+
+Scryfall **set type** for the printing’s set. Common values include `expansion`, `core`, `draft_innovation`, `masters`, `memorabilia`, `commander`, and `funny` (see Scryfall’s set object docs). Data comes from bulk `set_type` on each printing, stored once per set in `set_lookup` (Spec 179).
+
+**Canonical:** `set_type`  
+**Aliases:** `st`  
+**Domain:** Printing
+
+## Operators
+
+| Operator | Behavior | Example |
+|----------|----------|---------|
+| `:` | Prefix match on normalized set type | `q=set_type:expansion`, `q=st:mem` |
+| `=` | Same as `:` (prefix) | `q=set_type=commander` |
+
+Comparison operators (`>`, `<`, `!=`, …) are not supported on `set_type:`.
+
+## Matching
+
+Values use the same normalization as other categorical fields (lowercase, alphanumeric only): underscores and punctuation are stripped for comparison, so tokens align with how types appear in Scryfall bulk data.
+
+- **Prefix:** Each printing matches if its set’s type string **starts with** the normalized query (e.g. `st:m` matches `masters` and `memorabilia`).
+- **Empty value:** `set_type:` or `set_type=` with nothing after the operator matches every printing whose normalized set type is **non-empty** (printings whose set has a recorded type in data).
+- **No match:** If no type has that prefix, you get **zero** results—there is no “unknown set type” error.
+
+This **prefix discovery** behavior matches Frantic’s [`set:`](?doc=reference/fields/printing/set) field and differs from Scryfall’s documented `set_type:` filter, which targets an **exact** type token. See [Scryfall differences](?doc=reference/scryfall/differences).
+
+## Notes
+
+- Set types follow Scryfall’s set taxonomy (see their API docs for `set_type` on [set objects](https://scryfall.com/docs/api/sets)).
+- Combine with other printing or face filters as usual, e.g. `q=t:creature set_type:expansion`.
+- Canonical Scryfall links may still resolve a uniquely short `set_type` value where Spec 103 applies; in-app search uses prefix matching on printings.

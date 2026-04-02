@@ -21,6 +21,8 @@ const INCLUDE_VALUES = ["extras"] as const;
 /** Runtime data needed for set, in, otag, atag, kw/keyword resolution. */
 export interface ResolutionContext {
   knownSetCodes?: Set<string>;
+  /** Distinct non-empty lowercase set types from printings `set_lookup` (Spec 179). */
+  knownSetTypes?: Set<string>;
   oracleTagLabels?: string[];
   illustrationTagLabels?: string[];
   keywordLabels?: string[];
@@ -57,7 +59,7 @@ const CATEGORICAL_FIELDS = new Set([
   "view", "display", "unique", "sort", "order", "include",
   "legal", "f", "format", "banned", "restricted",
   "rarity", "r", "game", "frame", "is", "not",
-  "set", "in", "otag", "atag", "kw", "keyword",
+  "set", "set_type", "st", "in", "otag", "atag", "kw", "keyword",
 ]);
 
 function getCandidatesForField(
@@ -94,6 +96,8 @@ function getCandidatesForField(
       return IS_KEYWORDS;
     case "set":
       return context?.knownSetCodes ?? null;
+    case "set_type":
+      return context?.knownSetTypes ?? null;
     case "in": {
       if (!context?.knownSetCodes) return null;
       const games = Object.keys(GAME_NAMES);
@@ -132,6 +136,7 @@ export function resolveForField(
     return resolveForField("view", mapped, context);
   }
   if (canonical === "order") return resolveForField("sort", value, context);
+  if (canonical === "st") return resolveForField("set_type", value, context);
 
   if (!CATEGORICAL_FIELDS.has(canonical)) return value;
 

@@ -42,6 +42,8 @@ export interface SetLookupEntry {
   code: string;
   name: string;
   released_at: number;
+  /** Lowercase Scryfall `set_type` on the printing; optional in legacy `printings.json` (Spec 179). */
+  set_type?: string;
 }
 
 export interface PrintingColumnarData {

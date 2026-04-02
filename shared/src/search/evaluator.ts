@@ -178,6 +178,7 @@ export class NodeCache {
 
   private _getResolutionContext(): {
     knownSetCodes?: Set<string>;
+    knownSetTypes?: Set<string>;
     oracleTagLabels?: string[];
     illustrationTagLabels?: string[];
     keywordLabels?: string[];
@@ -186,8 +187,17 @@ export class NodeCache {
     const tagRef = this._tagDataRef;
     const kwRef = this._keywordDataRef;
     if (!pIdx && !tagRef && !kwRef) return undefined;
-    const ctx: { knownSetCodes?: Set<string>; oracleTagLabels?: string[]; illustrationTagLabels?: string[]; keywordLabels?: string[] } = {};
-    if (pIdx) ctx.knownSetCodes = pIdx.knownSetCodes;
+    const ctx: {
+      knownSetCodes?: Set<string>;
+      knownSetTypes?: Set<string>;
+      oracleTagLabels?: string[];
+      illustrationTagLabels?: string[];
+      keywordLabels?: string[];
+    } = {};
+    if (pIdx) {
+      ctx.knownSetCodes = pIdx.knownSetCodes;
+      ctx.knownSetTypes = pIdx.knownSetTypes;
+    }
     if (tagRef?.oracle) ctx.oracleTagLabels = Object.keys(tagRef.oracle);
     if (tagRef?.illustration) ctx.illustrationTagLabels = Array.from(tagRef.illustration.keys());
     if (kwRef?.keywords) ctx.keywordLabels = Object.keys(kwRef.keywords);
@@ -715,7 +725,10 @@ export class NodeCache {
             } else {
               error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext(), undefined, this._tagDataRef.artist);
             }
-          } else if (canonical && (ast.value !== "" || canonical === "set")) {
+          } else if (
+            canonical &&
+            (ast.value !== "" || canonical === "set" || canonical === "set_type")
+          ) {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext());
           }
 

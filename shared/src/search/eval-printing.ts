@@ -70,7 +70,7 @@ const KNOWN_LANGUAGES = new Set([
 ]);
 
 export const PRINTING_FIELDS = new Set([
-  "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
+  "set", "set_type", "rarity", "usd", "collectornumber", "frame", "year", "date",
   "game", "in", "atag", "flavor", "artist",
 ]);
 
@@ -125,6 +125,24 @@ export function evalPrintingField(
         const prefix = normalizeForResolution(val);
         for (let i = 0; i < n; i++) {
           if (normalizeForResolution(pIdx.setCodesLower[i]).startsWith(prefix)) buf[i] = 1;
+        }
+      }
+      break;
+    }
+    case "set_type": {
+      if (op !== ":" && op !== "=") {
+        return `set_type: does not support operator "${op}"`;
+      }
+      const trimmedSt = val.trim();
+      if (trimmedSt === "") {
+        for (let i = 0; i < n; i++) {
+          const typeNorm = normalizeForResolution(pIdx.setTypesLower[i]);
+          if (typeNorm.length > 0) buf[i] = 1;
+        }
+      } else {
+        const prefixSt = normalizeForResolution(val);
+        for (let i = 0; i < n; i++) {
+          if (normalizeForResolution(pIdx.setTypesLower[i]).startsWith(prefixSt)) buf[i] = 1;
         }
       }
       break;

@@ -31,6 +31,7 @@ export const FIELD_ALIASES: Record<string, string> = {
   is: "is",
   not: "not",
   set: "set", s: "set", e: "set", edition: "set",
+  set_type: "set_type", st: "set_type",
   rarity: "rarity", r: "rarity",
   usd: "usd", $: "usd",
   cn: "collectornumber", number: "collectornumber", collectornumber: "collectornumber",

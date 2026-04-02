@@ -130,6 +130,21 @@ describe("resolveForField", () => {
       expect(resolveForField("set", "9ed")).toBe("9ed");
     });
 
+    it("resolves set_type when context has knownSetTypes (Spec 179)", () => {
+      const ctx: ResolutionContext = {
+        knownSetTypes: new Set(["expansion", "masters", "memorabilia"]),
+      };
+      expect(resolveForField("set_type", "mas", ctx)).toBe("masters");
+      expect(resolveForField("st", "mem", ctx)).toBe("memorabilia");
+    });
+
+    it("passes through set_type when multiple prefix matches", () => {
+      const ctx: ResolutionContext = {
+        knownSetTypes: new Set(["masters", "memorabilia"]),
+      };
+      expect(resolveForField("set_type", "m", ctx)).toBe("m");
+    });
+
     it("resolves in: when exactly one match across game+set+rarity union", () => {
       const ctx: ResolutionContext = {
         knownSetCodes: new Set(["lea", "m15"]),

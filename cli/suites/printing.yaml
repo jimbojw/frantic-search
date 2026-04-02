@@ -28,6 +28,25 @@
     count: 0
 
 # ---------------------------------------------------------------------------
+# set_type: / st: (Spec 179)
+# ---------------------------------------------------------------------------
+
+- name: "set_type:expansion matches many cards (Spec 179)"
+  query: "set_type:expansion"
+  assertions:
+    count_min: 8000
+
+- name: "st:memorabilia matches cards from memorabilia-type sets"
+  query: "st:memorabilia"
+  assertions:
+    count_min: 50
+
+- name: "set_type:nonexistentprefixxyz returns no cards"
+  query: "set_type:nonexistentprefixxyz"
+  assertions:
+    count: 0
+
+# ---------------------------------------------------------------------------
 # rarity:
 # ---------------------------------------------------------------------------
 

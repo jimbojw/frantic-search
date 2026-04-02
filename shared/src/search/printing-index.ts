@@ -46,6 +46,8 @@ export class PrintingIndex {
   readonly collectorNumbersLower: string[];
   readonly setIndices: number[];
   readonly setCodesLower: string[];
+  /** Lowercase set type per printing row via `set_lookup[set_indices[i]].set_type` (Spec 179). */
+  readonly setTypesLower: string[];
   readonly rarity: number[];
   readonly printingFlags: number[];
   readonly finish: number[];
@@ -57,6 +59,8 @@ export class PrintingIndex {
   readonly promoTypesFlags1: number[];
   readonly setReleasedAt: number[];
   readonly knownSetCodes: Set<string>;
+  /** Distinct non-empty lowercase set types from `set_lookup` (Spec 179). */
+  readonly knownSetTypes: Set<string>;
 
   /** Sorted printing indices for percentile queries (non-null only). Ascending by value. */
   readonly sortedUsdIndices: Uint32Array;
@@ -76,6 +80,9 @@ export class PrintingIndex {
     this.setCodesLower = data.set_indices.map(
       idx => data.set_lookup[idx]?.code?.toLowerCase() ?? "",
     );
+    this.setTypesLower = data.set_indices.map(
+      idx => data.set_lookup[idx]?.set_type?.toLowerCase() ?? "",
+    );
     this.rarity = data.rarity;
     this.printingFlags = data.printing_flags;
     this.finish = data.finish;
@@ -87,6 +94,12 @@ export class PrintingIndex {
     this.promoTypesFlags1 = data.promo_types_flags_1 ?? [];
     this.setReleasedAt = data.set_lookup.map(e => e.released_at);
     this.knownSetCodes = new Set(data.set_lookup.map(e => e.code.toLowerCase()));
+    const knownSetTypes = new Set<string>();
+    for (const e of data.set_lookup) {
+      const t = e.set_type?.toLowerCase() ?? "";
+      if (t.length > 0) knownSetTypes.add(t);
+    }
+    this.knownSetTypes = knownSetTypes;
 
     const { sortedUsdIndices, sortedUsdCount, sortedDateIndices, sortedDateCount } =
       buildPercentileArrays(data.price_usd, data.released_at, data.canonical_face_ref.length);

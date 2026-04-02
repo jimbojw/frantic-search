@@ -155,13 +155,13 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
   // Face 1 (Bolt): p-a,p-b same art(0), p-c(1), p-f(2), p-g(3), p-i(4), p-j(5), p-k(6). Face 3 (Sol): p-d,p-e same(0), p-h(1)
   illustration_id_index: [0, 0, 1, 0, 0, 2, 3, 1, 4, 5, 6],
   set_lookup: [
-    { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
-    { code: "A25", name: "Masters 25", released_at: 20180316 },
-    { code: "C21", name: "Commander 2021", released_at: 20210618 },
-    { code: "CMR", name: "Commander Legends", released_at: 20201120 },
-    { code: "WC01", name: "World Championship Decks 2001", released_at: 20011212 },
-    { code: "OC21", name: "Commander 2021 Oversized", released_at: 20210618 },
-    { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106 },
+    { code: "MH2", name: "Modern Horizons 2", released_at: 20210618, set_type: "expansion" },
+    { code: "A25", name: "Masters 25", released_at: 20180316, set_type: "masters" },
+    { code: "C21", name: "Commander 2021", released_at: 20210618, set_type: "commander" },
+    { code: "CMR", name: "Commander Legends", released_at: 20201120, set_type: "commander" },
+    { code: "WC01", name: "World Championship Decks 2001", released_at: 20011212, set_type: "memorabilia" },
+    { code: "OC21", name: "Commander 2021 Oversized", released_at: 20210618, set_type: "commander" },
+    { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106, set_type: "funny" },
   ],
 };
 

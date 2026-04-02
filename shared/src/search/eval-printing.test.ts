@@ -46,11 +46,11 @@ const PRINTING_DATA: PrintingColumnarData = {
     Game.Paper | Game.Arena,  // 6 SLB bonus
   ],
   set_lookup: [
-    { code: "MH2", name: "Modern Horizons 2", released_at: 20210618 },
-    { code: "A25", name: "Masters 25", released_at: 20180316 },
-    { code: "C21", name: "Commander 2021", released_at: 20210618 },
-    { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106 },
-    { code: "SLB", name: "Secret Lair Bonus", released_at: 20210515 },
+    { code: "MH2", name: "Modern Horizons 2", released_at: 20210618, set_type: "expansion" },
+    { code: "A25", name: "Masters 25", released_at: 20180316, set_type: "masters" },
+    { code: "C21", name: "Commander 2021", released_at: 20210618, set_type: "commander" },
+    { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106, set_type: "box" },
+    { code: "SLB", name: "Secret Lair Bonus", released_at: 20210515, set_type: "memorabilia" },
   ],
 };
 
@@ -74,7 +74,10 @@ function marked(buf: Uint8Array): number[] {
 
 describe("isPrintingField", () => {
   test("returns true for printing-domain fields", () => {
-    for (const f of ["set", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in", "flavor", "artist"]) {
+    for (const f of [
+      "set", "set_type", "rarity", "usd", "collectornumber", "frame", "year", "date", "game", "in",
+      "atag", "flavor", "artist",
+    ]) {
       expect(isPrintingField(f)).toBe(true);
     }
   });
@@ -149,6 +152,35 @@ describe("set field", () => {
   test("set does not support != operator", () => {
     const { error } = evalField("set", "!=", "mh2");
     expect(error).toBe('set: does not support operator "!="');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// set_type (Spec 179)
+// ---------------------------------------------------------------------------
+
+describe("set_type field", () => {
+  test("prefix matches masters and memorabilia (set_type:m)", () => {
+    expect(marked(evalField("set_type", ":", "m").buf)).toEqual([2, 6]);
+  });
+
+  test("expansion prefix matches MH2 rows only", () => {
+    expect(marked(evalField("set_type", ":", "exp").buf)).toEqual([0, 1]);
+  });
+
+  test("unknown prefix yields zero rows, no error", () => {
+    const { buf, error } = evalField("set_type", ":", "zzzunused");
+    expect(error).toBeNull();
+    expect(marked(buf)).toEqual([]);
+  });
+
+  test("empty value matches rows with non-empty normalized set type", () => {
+    expect(marked(evalField("set_type", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("unsupported operator returns error", () => {
+    const { error } = evalField("set_type", "!=", "masters");
+    expect(error).toBe(`set_type: does not support operator "!="`);
   });
 });
 

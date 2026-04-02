@@ -70,7 +70,7 @@ All arrays are aligned by printing-row index. Defined in `shared/src/data.ts`.
 ### Dictionary-encoded columns
 
 - `set_indices: number[]` — uint16 index into `set_lookup`. There are ~700+ sets, exceeding uint8 range.
-- `set_lookup: { code: string, name: string }[]` — Dictionary mapping set index to set code and display name.
+- `set_lookup: { code: string, name: string, released_at: number, set_type?: string }[]` — Dictionary mapping set index to set code, display name, release date (YYYYMMDD), and optional **lowercase** Scryfall `set_type` for query and flags (Spec 179). Legacy files may omit `set_type`.
 
 ### Bitmask columns
 
@@ -280,3 +280,4 @@ The `process` command calls both `processCards()` (existing) and `processPrintin
   (e.g. Krark's Thumb SLD) are no longer dropped (Issue #98).
 - 2026-03-25: `promo_types_flags_0` bit 0 (`alchemy`) is OR'd when `set_type` is `alchemy` on the default-cards printing, not only when `promo_types` contains `alchemy`, matching Scryfall `is:alchemy` for Alchemy-set printings (issue #191).
 - 2026-03-30: `printing_flags` bit 17 (`unset`) is OR'd when `set_type` is `funny` on the default-cards printing, matching Scryfall `is:unset` (Spec 171 / issue #213). This is not oracle `is:funny`.
+- 2026-04-02: Optional lowercase `set_type` on each `set_lookup` row from the first-seen printing’s Scryfall `set_type` (Spec 179 / `set_type:` queries).

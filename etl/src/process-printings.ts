@@ -133,11 +133,13 @@ class SetEncoder {
   private table: SetLookupEntry[] = [];
   private index = new Map<string, number>();
 
-  encode(code: string, name: string, releasedAt: number): number {
+  encode(code: string, name: string, releasedAt: number, setTypeLower: string): number {
     let idx = this.index.get(code);
     if (idx === undefined) {
       idx = this.table.length;
-      this.table.push({ code, name, released_at: releasedAt });
+      const entry: SetLookupEntry = { code, name, released_at: releasedAt };
+      if (setTypeLower.length > 0) entry.set_type = setTypeLower;
+      this.table.push(entry);
       this.index.set(code, idx);
     }
     return idx;
@@ -361,7 +363,13 @@ export function processPrintings(verbose: boolean): void {
     const scryfallId = card.id ?? "";
     const collectorNumber = card.collector_number ?? "";
     const releasedAtYmd = encodeDateYmd(card.released_at);
-    const setIdx = setEncoder.encode(card.set ?? "", card.set_name ?? "", releasedAtYmd);
+    const setTypeLower = (card.set_type ?? "").toLowerCase();
+    const setIdx = setEncoder.encode(
+      card.set ?? "",
+      card.set_name ?? "",
+      releasedAtYmd,
+      setTypeLower,
+    );
     const rarityBits = encodeRarity(card.rarity);
     const flagBits = encodePrintingFlags(card);
     const frameBits = encodeFrame(card.frame);

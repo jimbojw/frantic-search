@@ -178,8 +178,9 @@ const REFERENCE_ENTRIES: DocEntry[] = [
   { id: 'game', docParam: 'reference/fields/printing/game', title: 'game', quadrant: 'reference', prev: 'reference/fields/printing/frame', next: 'reference/fields/printing/in' },
   { id: 'in', docParam: 'reference/fields/printing/in', title: 'in', quadrant: 'reference', prev: 'reference/fields/printing/game', next: 'reference/fields/printing/rarity' },
   { id: 'rarity', docParam: 'reference/fields/printing/rarity', title: 'rarity', quadrant: 'reference', prev: 'reference/fields/printing/in', next: 'reference/fields/printing/set' },
-  { id: 'set', docParam: 'reference/fields/printing/set', title: 'set', quadrant: 'reference', prev: 'reference/fields/printing/rarity', next: 'reference/fields/printing/usd' },
-  { id: 'usd', docParam: 'reference/fields/printing/usd', title: 'usd', quadrant: 'reference', prev: 'reference/fields/printing/set', next: 'reference/fields/printing/year' },
+  { id: 'set', docParam: 'reference/fields/printing/set', title: 'set', quadrant: 'reference', prev: 'reference/fields/printing/rarity', next: 'reference/fields/printing/set_type' },
+  { id: 'set_type', docParam: 'reference/fields/printing/set_type', title: 'set_type', quadrant: 'reference', prev: 'reference/fields/printing/set', next: 'reference/fields/printing/usd' },
+  { id: 'usd', docParam: 'reference/fields/printing/usd', title: 'usd', quadrant: 'reference', prev: 'reference/fields/printing/set_type', next: 'reference/fields/printing/year' },
   { id: 'year', docParam: 'reference/fields/printing/year', title: 'year', quadrant: 'reference', prev: 'reference/fields/printing/usd', next: 'reference/modifiers/include-extras' },
   // Modifiers
   { id: 'include-extras', docParam: 'reference/modifiers/include-extras', title: 'include:extras', quadrant: 'reference', prev: 'reference/fields/printing/year', next: 'reference/modifiers/unique' },

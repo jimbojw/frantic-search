@@ -38,6 +38,10 @@ Multiple sets can still be combined with OR: `set:mh2 OR set:mh3`.
 
 **Spec 103:** Unique-prefix auto-resolution for `set` still applies where `resolveForField` is used (e.g. canonical Scryfall outlinks). **Query evaluation** for the `set` field does **not** call `resolveForField`; it always applies prefix-on-printing-rows as above.
 
+### `set_type:` / `st:` — Scryfall set type
+
+See **[Spec 179](179-set-type-query-field.md)**. Summary: printing’s set taxonomy string (from `set_lookup[].set_type`, lowercase at ETL). Same operators and prefix / empty / no-error semantics as `set:` above; Scryfall documents exact `set_type` tokens — Frantic uses normalized prefix for discovery.
+
 ### `r:` / `rarity:` — Rarity
 
 | Operator | Semantics |
