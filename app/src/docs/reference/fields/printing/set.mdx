@@ -25,7 +25,7 @@ Values are normalized the same way as other categorical fields (lowercase, alpha
 
 - **Prefix:** Each printing matches if its set code **starts with** the normalized query (e.g. `set:u` matches printings in `ugin`, `usd`, `usg`, …).
 - **Empty value:** `set:` or `set=` with nothing after the operator matches every printing whose set code is **non-empty** after normalization (in practice, essentially all printings).
-- **No match:** If no set code has that prefix, you get **zero** results—there is no “unknown set” error (similar to Scryfall showing 0 cards for a set token that does not apply).
+- **No match:** If no set code has that prefix, the leaf returns **`unknown set "…"`** (trimmed value). Scryfall may show 0 cards for an impossible set token instead of a named error.
 
 This is a **discovery** affordance and differs from Scryfall’s set filter, which targets an exact set code. See [Scryfall differences](?doc=reference/scryfall/differences).
 

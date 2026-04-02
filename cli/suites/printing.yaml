@@ -22,7 +22,7 @@
     count_min: 280
     count_max: 310
 
-- name: "set:xxx returns no cards"
+- name: "set:xxx returns no cards (query error; count still zero)"
   query: "set:xxx"
   assertions:
     count: 0
@@ -41,7 +41,7 @@
   assertions:
     count_min: 50
 
-- name: "set_type:nonexistentprefixxyz returns no cards"
+- name: "set_type:nonexistentprefixxyz returns no cards (query error; count still zero)"
   query: "set_type:nonexistentprefixxyz"
   assertions:
     count: 0

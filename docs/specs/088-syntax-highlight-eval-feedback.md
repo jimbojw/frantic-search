@@ -107,3 +107,7 @@ For pinned + live queries, the live breakdown matches the live query in the text
 4. When breakdown is null or stale, highlighting falls back to lex-only (no regression).
 5. Call sites that use `buildSpans` without breakdown (MenuDrawer, InlineBreakdown) continue to work unchanged.
 6. Both single-pane and dual-wield layouts receive the correct breakdown and display eval feedback.
+
+## Implementation Notes
+
+- 2026-04-02: **`set:`** / **`set_type:`** unknown non-empty prefixes are evaluator **errors** (Spec 047 / 179); breakdown treats them as **`value-error`** (red), not **`value-zero`** (amber). Previously they appeared as zero-match leaves without `error`.

@@ -6,7 +6,7 @@
 
 ## Goal
 
-Expose Scryfall’s printing-level **`set_type`** string as a searchable field: **`set_type:`** with alias **`st:`**. Semantics mirror **`set:`** (prefix on normalized value, `:` and `=` only, zero hits with no error for unknown prefix) so users can discover printings by set taxonomy (e.g. `st:memorabilia`, `set_type:exp`).
+Expose Scryfall’s printing-level **`set_type`** string as a searchable field: **`set_type:`** with alias **`st:`**. Semantics mirror **`set:`** (Spec 047): prefix on normalized value, `:` and `=` only, and **non-empty unknown prefix** → **`unknown set_type "…"`** with Spec 039 passthrough (same as **`unknown set`** for `set:`).
 
 ## Background
 
@@ -28,7 +28,7 @@ Legacy `printings.json` without `set_type` on lookup rows: treat as empty string
 - **Operators:** `:` and `=` only (same as `set:`); other operators return a field error string.
 - **Matching:** `normalizeForResolution(userValue)` and `normalizeForResolution(setTypesLower[i])`; printing matches when `normalize(type).startsWith(normalize(userValue))`.
 - **Empty value** (after trim): match every printing whose normalized `set_type` is **non-empty** (parallel to empty `set:`).
-- **Unknown prefix:** zero matching printings, **no** leaf error (parallel to `set:`).
+- **Unknown prefix:** If the trimmed value is **non-empty** and **no** printing’s normalized `set_type` prefix-matches, the leaf returns **`unknown set_type "<trimmed value>"`** with Spec 039 passthrough; **`NOT`** propagates the error (Spec 047).
 
 **Query evaluation** does **not** call `resolveForField` for matching (same split as `set:` in Spec 047). **`resolveForField` / enumerated candidates** use **`knownSetTypes`** (unique non-empty types from `set_lookup`) where Spec 103 applies (e.g. canonical outlinks).
 
@@ -55,3 +55,4 @@ Positive **`set_type:`** / **`st:`** terms participate in **printing-wide wideni
 
 - **2026-04-02:** Initial spec.
 - **2026-04-02:** Spec 178 integration — `st:` / `set_type:` contribute to default-inclusion widening (`positiveSetTypePrefixes`).
+- **2026-04-02:** Unknown non-empty prefix → **`unknown set_type "…"`** (aligned with Spec 047 `set:`); supersedes silent zero-hit wording in the initial spec.

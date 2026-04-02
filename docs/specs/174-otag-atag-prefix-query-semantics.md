@@ -6,11 +6,11 @@
 
 ## Goal
 
-Align **`otag:`** (face domain) and **`atag:`** / **`art:`** (printing domain) **query evaluation** with **`set:`**: normalized **prefix** matching over the loaded tag vocabulary, **union** of all matching tag keys, and **no leaf error** when the prefix matches no key (zero results). Optionally treat **empty** values like **`set:`** (match every entity that has at least one tag in the loaded index).
+Align **`otag:`** (face domain) and **`atag:`** / **`art:`** (printing domain) **query evaluation** with **`set:`**-style **prefix** discovery: normalized **prefix** matching over the loaded tag vocabulary, **union** of all matching tag keys, and **no leaf error** when the prefix matches no key (zero results). Optionally treat **empty** values like **`set:`** (match every entity that has at least one tag in the loaded index). **Unlike** Spec 047 **`set:`** / Spec 179 **`set_type:`**, tags keep **silent** zero-hit for unknown non-empty prefixes.
 
 ## Background
 
-Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup made `otag:ram` resolve to a single tag when unambiguous, and `otag:nonexistent` an error. Spec 047 and [issue #234](https://github.com/jimbo/checkout/public/frantic-search/issues/234) moved **`set:`** evaluation off that path: prefix-on-rows, zero hits without `unknown set`.
+Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup made `otag:ram` resolve to a single tag when unambiguous, and `otag:nonexistent` an error. Spec 047 and [issue #234](https://github.com/jimbo/checkout/public/frantic-search/issues/234) moved **`set:`** evaluation to prefix-on-rows. **Historically** a non-matching **`set:`** prefix yielded zero hits without `unknown set`; **current** Spec 047 (changelog 2026-04-02) uses **`unknown set "…"`** for that case. **`otag:`** / **`atag:`** evaluation intentionally remains silent zero-hit for unknown prefixes.
 
 Tag discovery should behave the same: short or shared prefixes intentionally match **many** tags; impossible prefixes yield **zero** faces or printings, not `unknown tag`.
 
@@ -36,7 +36,7 @@ When the trimmed user value is **empty**, treat **`normalizeForResolution(userVa
 - **`otag:`** — For **every** oracle tag key whose normalized key **starts with** the normalized user prefix, OR the face indices from that key’s array into the face buffer (`buf[face] = 1`). Duplicate indices across keys are idempotent.
 - **`atag:`** / **`art:`** — Same for illustration tags over printing indices.
 
-If **no** key matches (non-empty prefix with no hits), the leaf buffer stays all zeros — **no error** (same UX as `set:xyz` with no code prefix).
+If **no** key matches (non-empty prefix with no hits), the leaf buffer stays all zeros — **no error** (differs from **`set:`** / **`set_type:`**, which error per Spec 047 / 179).
 
 ## Tag data not loaded
 
@@ -69,3 +69,4 @@ Scryfall tag filters target **exact** (or effectively exact) labels. Frantic add
 ## Implementation Notes
 
 - 2026-03-31: Implemented prefix union evaluation in `eval-tags.ts`; evaluator passes trimmed AST values without `resolveForField` on the eval path. Spec 093 superseded for “unknown tag on missing label” by this spec’s zero-hit rule; Spec 103 amended for `otag`/`atag` exception alongside `set`.
+- 2026-04-02: Clarified contrast with Spec 047 / 179: **`set:`** / **`set_type:`** error on unknown non-empty prefix; tags remain silent zero-hit.

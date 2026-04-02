@@ -83,10 +83,10 @@ describe("printing-domain leaves", () => {
     expect(cardCount("set:a25")).toBe(1);
   });
 
-  test("set:xxx matches nothing without leaf error (issue #234)", () => {
+  test("set:xxx yields unknown set error and zero indices (Spec 047)", () => {
     expect(cardCount("set:xxx")).toBe(0);
     const { result } = evaluate("set:xxx");
-    expect(result.error).toBeUndefined();
+    expect(result.error).toBe('unknown set "xxx"');
   });
 
   test("rarity:rare matches Lightning Bolt only", () => {

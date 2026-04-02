@@ -122,10 +122,15 @@ export function evalPrintingField(
           if (codeNorm.length > 0) buf[i] = 1;
         }
       } else {
-        const prefix = normalizeForResolution(val);
+        const prefix = normalizeForResolution(trimmed);
+        let matchedAny = false;
         for (let i = 0; i < n; i++) {
-          if (normalizeForResolution(pIdx.setCodesLower[i]).startsWith(prefix)) buf[i] = 1;
+          if (normalizeForResolution(pIdx.setCodesLower[i]).startsWith(prefix)) {
+            buf[i] = 1;
+            matchedAny = true;
+          }
         }
+        if (!matchedAny) return `unknown set "${trimmed}"`;
       }
       break;
     }
@@ -140,10 +145,15 @@ export function evalPrintingField(
           if (typeNorm.length > 0) buf[i] = 1;
         }
       } else {
-        const prefixSt = normalizeForResolution(val);
+        const prefixSt = normalizeForResolution(trimmedSt);
+        let matchedAnySt = false;
         for (let i = 0; i < n; i++) {
-          if (normalizeForResolution(pIdx.setTypesLower[i]).startsWith(prefixSt)) buf[i] = 1;
+          if (normalizeForResolution(pIdx.setTypesLower[i]).startsWith(prefixSt)) {
+            buf[i] = 1;
+            matchedAnySt = true;
+          }
         }
+        if (!matchedAnySt) return `unknown set_type "${trimmedSt}"`;
       }
       break;
     }

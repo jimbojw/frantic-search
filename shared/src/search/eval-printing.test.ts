@@ -107,9 +107,9 @@ describe("set field", () => {
     expect(marked(evalField("set", ":", "c21").buf)).toEqual([3, 4]);
   });
 
-  test("prefix matching no code match yields zero rows, no error (Spec 047 / issue #234)", () => {
+  test("prefix matching no code match yields unknown set error (Spec 047)", () => {
     const { buf, error } = evalField("set", ":", "xxx");
-    expect(error).toBeNull();
+    expect(error).toBe('unknown set "xxx"');
     expect(marked(buf)).toEqual([]);
   });
 
@@ -168,9 +168,9 @@ describe("set_type field", () => {
     expect(marked(evalField("set_type", ":", "exp").buf)).toEqual([0, 1]);
   });
 
-  test("unknown prefix yields zero rows, no error", () => {
+  test("unknown prefix yields unknown set_type error (Spec 179)", () => {
     const { buf, error } = evalField("set_type", ":", "zzzunused");
-    expect(error).toBeNull();
+    expect(error).toBe('unknown set_type "zzzunused"');
     expect(marked(buf)).toEqual([]);
   });
 

@@ -25,7 +25,7 @@ Values are matched against the **keyword inverted index** (keys from Scryfall’
 
 - `q=kw:flying` matches cards with the Flying keyword.
 - A short prefix that matches several keyword names matches cards that have **any** of those keywords (discovery), similar to [`set:`](?doc=reference/fields/printing/set) and [`otag:`](?doc=reference/fields/card/otag).
-- A prefix that matches **no** keyword name in the index yields **`unknown keyword "…"`** (Spec 039 passthrough: other terms in the query still apply). This differs from [`set:`](?doc=reference/fields/printing/set) and tag fields, which return zero hits with no error when nothing matches.
+- A prefix that matches **no** keyword name in the index yields **`unknown keyword "…"`**. Same error pattern as [`set:`](?doc=reference/fields/printing/set) and [`set_type:`](?doc=reference/fields/printing/set_type) for unknown non-empty prefixes; [`otag:`](?doc=reference/fields/card/otag) and [`atag:`](?doc=reference/fields/printing/atag) still return zero hits with no error when nothing matches.
 
 Matching is case-insensitive via the same normalization (accents and non-alphanumeric characters are stripped for comparison). Multi-word keywords (e.g. “first strike”) are compared after normalization so spacing and punctuation align with index keys.
 

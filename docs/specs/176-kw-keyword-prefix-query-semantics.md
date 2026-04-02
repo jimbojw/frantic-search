@@ -6,15 +6,15 @@
 
 ## Goal
 
-**Prefix union** for keyword discovery (like **`set:`** / **`otag:`** / **`atag:`**): normalized **prefix** over loaded keyword index keys; **union** all matching keys’ face indices so e.g. **`kw:first`** matches **first strike** without quotes.
+**Prefix union** for keyword discovery (like **`set:`** / **`set_type:`** / **`otag:`** / **`atag:`**): normalized **prefix** over loaded keyword index keys; **union** all matching keys’ face indices so e.g. **`kw:first`** matches **first strike** without quotes.
 
-**Unlike** tags and set codes: when the trimmed value is **non-empty** and **no** index key’s normalized form has the query as a prefix, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039) — the term does not silently match zero faces.
+**Unlike** **`otag:`** / **`atag:`** (Spec 174): when the trimmed value is **non-empty** and **no** index key’s normalized form has the query as a prefix, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039) — the term does not silently match zero faces. **`set:`** / **`set_type:`** use the same **unknown-prefix error** model (Spec 047 / 179).
 
 **Related:** **`is:`** / **`not:`** use the same **closed-vocabulary prefix union** evaluation model over the `is:` keyword list — **[Spec 032](032-is-operator.md)** § Value resolution.
 
 ## Background
 
-Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. Spec 174 uses prefix union for tags with **zero hits, no error** when nothing matches. Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.
+Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. Spec 174 uses prefix union for tags with **zero hits, no error** when nothing matches. **`set:`** / **`set_type:`** now error on a non-empty non-matching prefix (Spec 047 / 179). Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set — aligned with set / set_type discovery fields.
 
 ## Operators
 
@@ -69,4 +69,5 @@ Scryfall keyword filters target **effectively exact** names. Frantic adds **pref
 
 ## Implementation Notes
 
-- 2026-03-31: Prefix union in `eval-keywords.ts`; evaluator passes `ast.value` without `resolveForField` on the eval path. No matching key for a non-empty value → `unknown keyword "…"` (passthrough, Spec 039); differs from `otag:` / `atag:` / `set:` silent zero-hit behavior.
+- 2026-03-31: Prefix union in `eval-keywords.ts`; evaluator passes `ast.value` without `resolveForField` on the eval path. No matching key for a non-empty value → `unknown keyword "…"` (passthrough, Spec 039); differs from `otag:` / `atag:` silent zero-hit behavior.
+- 2026-04-02: Unknown-prefix behavior **aligns** with **`set:`** / **`set_type:`** (Spec 047 / 179); tags remain silent zero-hit (Spec 174).
