@@ -62,6 +62,8 @@ These compare the face's layout string directly.
 | `is:scheme` | `scheme` |
 | `is:vanguard` | `vanguard` |
 
+Positive **`is:`** keywords for **`token`**, **`double_faced_token`** / **`dfctoken`**, **`art_series`**, and **`vanguard`** also set **`widenExtrasLayout`** in **`EvalOutput`** (Spec 002). Under the default inclusion filter ([Spec 178](178-default-search-inclusion-filter.md)), that flag **fully re-includes** printings whose canonical face layout is in the extras-layout set for all omission passes on that row (not only the layout pass)—see Spec 178 **Per-printing omission gate** and **`is:<extras-layout>`** widening row.
+
 ### Oracle text checks
 
 | Keyword | Logic |

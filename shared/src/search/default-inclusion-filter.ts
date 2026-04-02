@@ -25,15 +25,17 @@ export interface DefaultInclusionPrintingRow {
 
 /** Whether a candidate printing survives all default omission passes (Spec 178). */
 export function printingPassesDefaultInclusionFilter(row: DefaultInclusionPrintingRow): boolean {
-  const w = row.wide;
-  if (!w && !row.widenExtrasLayout && EXTRAS_LAYOUT_SET.has(row.layout)) return false;
-  if (!w && !row.widenPlaytest && (row.promoTypesFlags1 & 1) !== 0) return false;
-  if (!w && isMemorabiliaDefaultOmit(row.setType)) return false;
-  if (!w && DEFAULT_OMIT_SET_CODES.has(row.setCode)) return false;
-  if (!w && !row.widenContentWarning && (row.faceFlags & CardFlag.ContentWarning) !== 0) {
+  const effectiveWide =
+    row.wide || (row.widenExtrasLayout && EXTRAS_LAYOUT_SET.has(row.layout));
+  if (effectiveWide) return true;
+  if (EXTRAS_LAYOUT_SET.has(row.layout)) return false;
+  if (!row.widenPlaytest && (row.promoTypesFlags1 & 1) !== 0) return false;
+  if (isMemorabiliaDefaultOmit(row.setType)) return false;
+  if (DEFAULT_OMIT_SET_CODES.has(row.setCode)) return false;
+  if (!row.widenContentWarning && (row.faceFlags & CardFlag.ContentWarning) !== 0) {
     return false;
   }
-  if (!w && !row.widenOversized && (row.printingFlags & PrintingFlag.Oversized) !== 0) {
+  if (!row.widenOversized && (row.printingFlags & PrintingFlag.Oversized) !== 0) {
     return false;
   }
   return true;
