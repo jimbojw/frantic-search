@@ -346,7 +346,7 @@ describe("NOT with printing domain", () => {
   test("-set:mh2 lightning printingIndices excludes MH2 rows", () => {
     const { printingIndices } = evaluate("-set:mh2 lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt's non-MH2 printings: A25 (rows 2,10), CMR etched (row 5), WCD (row 6), SLD (row 8)
+    // Bolt's non-MH2 printings: A25 (rows 2,10), CMR etched (row 5), WC01 (row 6), SLD (row 8)
     expect(Array.from(printingIndices!)).toEqual([2, 5, 6, 8, 10]);
   });
 });
@@ -445,7 +445,7 @@ describe("OR printing intersection (printingIndices)", () => {
   test("(set:sld OR set:mh2) lightning — only SLD + MH2 printings", () => {
     const { printingIndices } = evaluate("(set:sld OR set:mh2) lightning");
     expect(printingIndices).toBeDefined();
-    // MH2 rows 0,1,9 + SLD row 8 — not A25(2,10), CMR(5), WCD(6)
+    // MH2 rows 0,1,9 + SLD row 8 — not A25(2,10), CMR(5), WC01(6)
     expect(Array.from(printingIndices!)).toEqual([0, 1, 8, 9]);
   });
 
@@ -877,47 +877,43 @@ describe("promo types is: keywords", () => {
 // Printing-level format legality (Spec 056)
 // ---------------------------------------------------------------------------
 
-describe("printing-level format legality", () => {
-  test("f:commander with printing data produces printing-domain result", () => {
-    const { result } = evaluate("f:commander");
-    // All 9 cards are commander-legal, but matchCount is printing-row count
-    // for printing-domain results. Tournament-usable rows: 0,1,2,3,4,5,8,9,10 (9 rows).
-    // Rows 6 (GoldBorder) and 7 (Oversized) are excluded.
-    expect(result.matchCount).toBe(9);
+// Spec 178 update: format/legality is now oracle-level (face-domain only).
+// f:commander matches cards, not printings. Gold-bordered and oversized printings
+// are handled by the default inclusion filter, not by format evaluation.
+describe("oracle-level format legality", () => {
+  test("f:commander is face-domain — matches all commander-legal cards", () => {
+    const output = evaluate("f:commander");
+    // All 9 cards are commander-legal at oracle level.
+    expect(output.indices.length).toBe(9);
   });
 
-  test("f:commander excludes gold-bordered printings", () => {
+  test("f:commander unique:prints includes gold-bordered and oversized printings", () => {
     const { printingIndices } = evaluate("f:commander unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt has 8 printings: rows 0,1,2,5,8,9,10 (normal) + row 6 (GoldBorder).
-    // f:commander should exclude row 6.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8, 9, 10]);
+    // Bolt has 8 printings: rows 0,1,2,5,6,8,9,10. ALL included — format is
+    // oracle-level, gold-bordered row 6 is not excluded by format eval.
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 9, 10]);
   });
 
-  test("f:commander excludes oversized printings", () => {
+  test("f:commander unique:prints sol includes oversized printing", () => {
     const output = evaluate("f:commander unique:prints sol");
     expect(output.printingIndices).toBeDefined();
-    // Sol Ring has 3 printings: rows 3,4 (normal) + row 7 (Oversized).
-    // f:commander should exclude row 7.
-    expect(Array.from(output.printingIndices!)).toEqual([3, 4]);
+    // Sol Ring has 3 printings: rows 3,4,7. ALL included — oversized row 7
+    // is not excluded by format eval.
+    expect(Array.from(output.printingIndices!)).toEqual([3, 4, 7]);
   });
 
-  test("-f:commander finds non-tournament-usable printings of legal cards", () => {
-    // Bolt IS legal in commander, so -f:commander inverts the printing buffer.
-    // For Bolt: rows 0,1,2,5 pass f:commander. Row 6 (GoldBorder) does NOT.
-    // -f:commander matches row 6 for Bolt.
-    // Sol Ring IS legal in commander. Rows 3,4 pass. Row 7 (Oversized) does NOT.
-    // -f:commander matches row 7 for Sol Ring.
-    const { printingIndices } = evaluate("-f:commander unique:prints (lightning OR sol)");
-    expect(printingIndices).toBeDefined();
-    expect(Array.from(printingIndices!)).toEqual([6, 7]);
+  test("-f:commander returns no cards (all are commander-legal)", () => {
+    const output = evaluate("-f:commander unique:prints (lightning OR sol)");
+    // All test cards are commander-legal, so negation yields 0 matches.
+    expect(output.indices.length).toBe(0);
   });
 
-  test("f:modern with printing data — Bolt has modern-legal non-gold printings", () => {
+  test("f:modern unique:prints includes all Bolt printings", () => {
     const { printingIndices } = evaluate("f:modern unique:prints lightning");
     expect(printingIndices).toBeDefined();
-    // Bolt is modern-legal. Normal printings: rows 0,1,2,5,8,9,10. Row 6 (gold) excluded.
-    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 8, 9, 10]);
+    // Bolt is modern-legal. All 8 printings included (oracle-level).
+    expect(Array.from(printingIndices!)).toEqual([0, 1, 2, 5, 6, 8, 9, 10]);
   });
 
   test("f:pioneer filters at card level — Bolt is not pioneer-legal", () => {
@@ -925,38 +921,22 @@ describe("printing-level format legality", () => {
     expect(output.indices.length).toBe(0);
   });
 
-  test("banned:legacy matches Sol Ring (banned in legacy) excluding non-tournament", () => {
+  test("banned:legacy matches Sol Ring including all printings", () => {
     const { printingIndices } = evaluate("banned:legacy unique:prints");
     expect(printingIndices).toBeDefined();
-    // Sol Ring is banned in legacy. Tournament-usable printings: rows 3,4.
-    // Row 7 (Oversized) is excluded.
-    expect(Array.from(printingIndices!)).toEqual([3, 4]);
+    // Sol Ring is banned in legacy. All 3 printings included (oracle-level).
+    expect(Array.from(printingIndices!)).toEqual([3, 4, 7]);
   });
 
-  test("restricted:vintage matches Sol Ring excluding non-tournament", () => {
+  test("restricted:vintage matches Sol Ring including all printings", () => {
     const { printingIndices } = evaluate("restricted:vintage unique:prints");
     expect(printingIndices).toBeDefined();
-    // Sol Ring is restricted in vintage. Tournament-usable printings: rows 3,4.
-    expect(Array.from(printingIndices!)).toEqual([3, 4]);
+    expect(Array.from(printingIndices!)).toEqual([3, 4, 7]);
   });
 
-  test("f:commander without unique:prints still returns correct card set", () => {
-    // Without unique:prints, result is face indices only (no printingIndices).
+  test("hasPrintingConditions is false for f:commander (face-domain)", () => {
     const output = evaluate("f:commander");
-    // All 9 cards are commander-legal; promoted to face = 9 cards with printings
-    // that pass (Bolt + Sol Ring). But other cards have no printings, so
-    // promotion only marks face indices 1 and 3.
-    // Wait — promotePrintingToFace marks faces for which ANY printing passed.
-    // Bolt (face 1): rows 0,1,2,5 pass → face 1 marked.
-    // Sol Ring (face 3): rows 3,4 pass → face 3 marked.
-    // Cards without printings (faces 0,2,4,5,6,7,9) have no printing rows, so
-    // they are NOT marked. Only 2 cards survive promotion.
-    expect(output.indices.length).toBe(2);
-  });
-
-  test("hasPrintingConditions is true for f:commander with printing data", () => {
-    const output = evaluate("f:commander");
-    expect(output.hasPrintingConditions).toBe(true);
+    expect(output.hasPrintingConditions).toBe(false);
   });
 });
 
@@ -964,15 +944,15 @@ describe("printing-level format legality", () => {
 // Face-domain fallback for legality (printing data not loaded)
 // ---------------------------------------------------------------------------
 
-describe("legality face-domain fallback", () => {
+// Format/legality is always face-domain, so no fallback needed.
+describe("format is always face-domain", () => {
   function evaluateNoPI(query: string) {
     const cache = new NodeCache(index);
     return cache.evaluate(parse(query));
   }
 
-  test("f:commander without printing data falls back to face-domain", () => {
+  test("f:commander without printing data — face-domain", () => {
     const output = evaluateNoPI("f:commander");
-    // Face-domain: all 9 cards are commander-legal.
     expect(output.indices.length).toBe(9);
   });
 
@@ -988,20 +968,19 @@ describe("legality face-domain fallback", () => {
 
   test("-f:commander without printing data uses face-domain NOT", () => {
     const output = evaluateNoPI("-f:commander");
-    // Face-domain NOT: all 9 cards are commander-legal, so 0 cards match.
     expect(output.indices.length).toBe(0);
   });
 
-  test("f:commander re-evaluates after setPrintingIndex", () => {
+  test("f:commander result unchanged after setPrintingIndex (always face-domain)", () => {
     const cache = new NodeCache(index);
     const before = cache.evaluate(parse("f:commander"));
     expect(before.indices.length).toBe(9);
 
     cache.setPrintingIndex(printingIndex);
     const after = cache.evaluate(parse("f:commander"));
-    // Now printing-domain: only cards with tournament-usable printings.
-    expect(after.indices.length).toBe(2);
-    expect(after.hasPrintingConditions).toBe(true);
+    // Still face-domain: all 9 commander-legal cards.
+    expect(after.indices.length).toBe(9);
+    expect(after.hasPrintingConditions).toBe(false);
   });
 });
 
@@ -1391,6 +1370,24 @@ describe("widenPlaytest (Spec 178)", () => {
 
   test("normal query has widenPlaytest false", () => {
     expect(evaluate("t:creature").widenPlaytest).toBe(false);
+  });
+});
+
+describe("widenOversized (Spec 178)", () => {
+  test("is:oversized sets widenOversized", () => {
+    expect(evaluate("is:oversized").widenOversized).toBe(true);
+  });
+
+  test("-is:oversized does NOT set widenOversized", () => {
+    expect(evaluate("-is:oversized t:creature").widenOversized).toBe(false);
+  });
+
+  test("-(-is:oversized) sets widenOversized", () => {
+    expect(evaluate("-(-is:oversized)").widenOversized).toBe(true);
+  });
+
+  test("normal query has widenOversized false", () => {
+    expect(evaluate("t:creature").widenOversized).toBe(false);
   });
 });
 

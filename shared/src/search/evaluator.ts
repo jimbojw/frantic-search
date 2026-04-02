@@ -11,7 +11,7 @@ import { EXTRAS_LAYOUT_IS_KEYWORDS } from "./default-filter";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
-import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToFace, promoteFaceToPrinting, FACE_FALLBACK_PRINTING_FIELDS } from "./eval-printing";
+import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToFace, promoteFaceToPrinting } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
 import type { GetMetadataIndex } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
@@ -202,8 +202,8 @@ export class NodeCache {
   setPrintingIndex(pIdx: PrintingIndex): void {
     this._printingIndex = pIdx;
     // Invalidate all cached results: printing-domain nodes need new data,
-    // and face-fallback fields (legal/banned/restricted) must re-evaluate
-    // in the printing domain now that printing data is available.
+    // and face-fallback is: keywords must re-evaluate now that printing data
+    // is available.
     this.clearAllComputed();
   }
 
@@ -251,6 +251,11 @@ export class NodeCache {
       if (canonical !== "is" && canonical !== "not") return false;
       return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "playtest";
     });
+    const widenOversized = this._isPositiveInAst(ast, (n) => {
+      const canonical = FIELD_ALIASES[n.field.toLowerCase()];
+      if (canonical !== "is" && canonical !== "not") return false;
+      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "oversized";
+    });
     const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
     const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
@@ -261,7 +266,7 @@ export class NodeCache {
     const artistUnavailable = hasArtistLeaves && this._printingIndex != null && !this._tagDataRef?.artist;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, positiveSetPrefixes, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -323,7 +328,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, positiveSetPrefixes, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, sortBy };
   }
 
   private _hasArtistLeaves(ast: ASTNode): boolean {
@@ -388,12 +393,6 @@ export class NodeCache {
           return true;
         }
         if (canonical !== undefined && isPrintingField(canonical)) {
-          // Face-fallback fields only count as printing leaves when
-          // printing data is actually available; otherwise they evaluate
-          // in the face domain and should not trigger hasPrintingConditions.
-          if (FACE_FALLBACK_PRINTING_FIELDS.has(canonical)) {
-            return this._printingIndex !== null;
-          }
           return true;
         }
         return false;
@@ -706,7 +705,7 @@ export class NodeCache {
             } else if (!this._tagDataRef?.flavor) {
               error = null; // all-zero buf; flavorUnavailable set at evaluate() level
             } else {
-              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), this._tagDataRef.flavor, undefined);
+              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext(), this._tagDataRef.flavor, undefined);
             }
           } else if (canonical === "artist") {
             if (ast.operator !== ":" && ast.operator !== "=") {
@@ -714,10 +713,10 @@ export class NodeCache {
             } else if (!this._tagDataRef?.artist) {
               error = null; // all-zero buf; artistUnavailable set at evaluate() level
             } else {
-              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext(), undefined, this._tagDataRef.artist);
+              error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext(), undefined, this._tagDataRef.artist);
             }
           } else if (canonical && (ast.value !== "" || canonical === "set")) {
-            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this.index, this._getResolutionContext());
+            error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext());
           }
 
           const ms = performance.now() - t0;
@@ -737,12 +736,10 @@ export class NodeCache {
         }
 
         if (isPrintingDomain && !this._printingIndex) {
-          // Face-fallback fields (legal/banned/restricted) and is: keywords
-          // (universesbeyond/ub) fall through to face-domain evaluation when
-          // printing data is not yet loaded.
-          const isFaceFallbackField = canonical && FACE_FALLBACK_PRINTING_FIELDS.has(canonical);
+          // Face-fallback is: keywords (universesbeyond/ub) fall through to
+          // face-domain evaluation when printing data is not yet loaded.
           const isFaceFallbackIs = isPrintingIs && FACE_FALLBACK_IS_KEYWORDS.has(resolvedIsKw);
-          if (isFaceFallbackField || isFaceFallbackIs) {
+          if (isFaceFallbackIs) {
             // Fall through to face-domain evaluation below.
           } else {
             interned.computed = {
@@ -939,7 +936,7 @@ export class NodeCache {
             const pn = this._printingIndex.printingCount;
             const buf = new Uint8Array(pn);
             const t0 = performance.now();
-            const err = evalPrintingField(fieldCanonical, invertedOp, childField.value, this._printingIndex, buf, this.index, this._getResolutionContext());
+            const err = evalPrintingField(fieldCanonical, invertedOp, childField.value, this._printingIndex, buf, this._getResolutionContext());
             const ms = performance.now() - t0;
             if (err) {
               interned.computed = { buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0, error: err };

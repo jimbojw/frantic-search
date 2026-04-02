@@ -359,12 +359,17 @@ export function runListDiff(
   );
   const evalOut = cache.evaluate(ast);
 
-  const normalized = normalizeLocalParity(data, printingData, printingIndex, {
+  const normalized = normalizeLocalParity(data, printingData, printingIndex, index, {
     indices: evalOut.indices,
     printingIndices: evalOut.printingIndices,
     uniqueMode: evalOut.uniqueMode,
     hasPrintingConditions: evalOut.hasPrintingConditions,
     includeExtras: evalOut.includeExtras,
+    widenExtrasLayout: evalOut.widenExtrasLayout,
+    widenContentWarning: evalOut.widenContentWarning,
+    widenPlaytest: evalOut.widenPlaytest,
+    widenOversized: evalOut.widenOversized,
+    positiveSetPrefixes: evalOut.positiveSetPrefixes,
   });
 
   let rawOracleCards: RawOracleCard[] | undefined;

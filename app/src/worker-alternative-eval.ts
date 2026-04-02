@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CardIndex, PrintingIndex, NodeCache } from '@frantic-search/shared'
-import { NON_TOURNAMENT_MASK, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, parse } from '@frantic-search/shared'
+import { EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, PrintingFlag, parse } from '@frantic-search/shared'
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 
@@ -30,7 +30,7 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
   let altPrintingIndices = altEval.printingIndices
 
   if (!includeExtras) {
-    const { widenExtrasLayout, widenContentWarning, widenPlaytest, positiveSetPrefixes } = altEval
+    const { widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes } = altEval
 
     const isSetWidened = (setCode: string): boolean => {
       for (let i = 0; i < positiveSetPrefixes.length; i++) {
@@ -51,7 +51,7 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
         if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
         if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
         if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-        if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+        if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
         filtered.push(p)
       }
@@ -81,7 +81,7 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
 
           if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
           if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
-          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
           hasSurvivor = true
           break
@@ -102,7 +102,7 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
           if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
           if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
           if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
           filtered.push(p)
         }

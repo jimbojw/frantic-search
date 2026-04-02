@@ -839,7 +839,7 @@ const FLAVOR_INDEX: FlavorTagData = {
 
 function evalFlavorField(op: string, val: string): { buf: Uint8Array; error: string | null } {
   const buf = new Uint8Array(pIdx.printingCount);
-  const error = evalPrintingField("flavor", op, val, pIdx, buf, undefined, undefined, FLAVOR_INDEX);
+  const error = evalPrintingField("flavor", op, val, pIdx, buf, undefined, FLAVOR_INDEX);
   return { buf, error };
 }
 
@@ -862,7 +862,7 @@ describe("flavor field", () => {
 
   test("returns error when flavor index null", () => {
     const buf = new Uint8Array(pIdx.printingCount);
-    const error = evalPrintingField("flavor", ":", "x", pIdx, buf, undefined, undefined, null);
+    const error = evalPrintingField("flavor", ":", "x", pIdx, buf, undefined, null);
     expect(error).toBe("flavor index not loaded");
   });
 
@@ -884,7 +884,7 @@ const ARTIST_INDEX: ArtistIndexData = {
 
 function evalArtistField(op: string, val: string): { buf: Uint8Array; error: string | null } {
   const buf = new Uint8Array(pIdx.printingCount);
-  const error = evalPrintingField("artist", op, val, pIdx, buf, undefined, undefined, undefined, ARTIST_INDEX);
+  const error = evalPrintingField("artist", op, val, pIdx, buf, undefined, undefined, ARTIST_INDEX);
   return { buf, error };
 }
 
@@ -907,7 +907,7 @@ describe("artist field", () => {
 
   test("returns error when artist index null", () => {
     const buf = new Uint8Array(pIdx.printingCount);
-    const error = evalPrintingField("artist", ":", "x", pIdx, buf, undefined, undefined, undefined, null);
+    const error = evalPrintingField("artist", ":", "x", pIdx, buf, undefined, undefined, null);
     expect(error).toBe("artist index not loaded");
   });
 

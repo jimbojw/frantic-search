@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, PrintingFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
@@ -105,6 +105,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let widenExtrasLayout = liveEval.widenExtrasLayout
   let widenContentWarning = liveEval.widenContentWarning
   let widenPlaytest = liveEval.widenPlaytest
+  let widenOversized = liveEval.widenOversized
   let positiveSetPrefixes = liveEval.positiveSetPrefixes
   let flavorUnavailable = liveEval.flavorUnavailable
   let artistUnavailable = liveEval.artistUnavailable
@@ -145,6 +146,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     widenExtrasLayout = widenExtrasLayout || pinnedEval.widenExtrasLayout
     widenContentWarning = widenContentWarning || pinnedEval.widenContentWarning
     widenPlaytest = widenPlaytest || pinnedEval.widenPlaytest
+    widenOversized = widenOversized || pinnedEval.widenOversized
     positiveSetPrefixes = positiveSetPrefixes.length > 0
       ? (pinnedEval.positiveSetPrefixes.length > 0
         ? [...positiveSetPrefixes, ...pinnedEval.positiveSetPrefixes]
@@ -157,8 +159,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     deduped = Array.from(liveEval.indices)
   }
 
-  // Spec 178: Default inclusion filter — five omission passes with wideners.
-  // Replaces the Spec 057 legality-based "playable" filter.
+  // Spec 178: Default inclusion filter — omission passes with wideners.
   let indicesBeforeDefaultFilter: number | undefined
   let printingIndicesBeforeDefaultFilter: number | undefined
 
@@ -189,8 +190,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
         if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
         // Pass 4: Content-warning oracles
         if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-        // Pass 5: Non-tournament mask
-        if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+        // Pass 5: Oversized printings
+        if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
         filtered.push(p)
       }
@@ -233,7 +234,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
           if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
           if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
-          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
           hasSurvivor = true
           break
@@ -258,7 +259,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
           if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
           if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
           if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
 
           filtered.push(p)
         }

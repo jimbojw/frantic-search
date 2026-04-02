@@ -34,12 +34,12 @@ My List is represented by a single `printingIndices` (sparse inverted index). No
 
 **Canonical printing resolution:** For each canonical face, pick a canonical printing using this priority order:
 
-1. First tournament-legal nonfoil (`!(printingFlags[i] & NON_TOURNAMENT_MASK)` and `finish[i] === 0`)
-2. First tournament-legal printing (any finish)
-3. First nonfoil (fallback when all printings are non-tournament-legal)
+1. First standard nonfoil (`!(printingFlags[i] & (PrintingFlag.GoldBorder | PrintingFlag.Oversized))` and `finish[i] === 0`)
+2. First standard printing (any finish)
+3. First nonfoil (fallback when all printings are gold-bordered/oversized)
 4. First printing in the face's group
 
-Tournament-legal means the printing is usable in sanctioned play (Spec 056): not gold-bordered, oversized, or 30A. When `printing_flags` is absent, treat all printings as tournament-legal.
+Standard means not gold-bordered, oversized, or 30A-style (checked via `PrintingFlag.GoldBorder | PrintingFlag.Oversized`). When `printing_flags` is absent, treat all printings as standard. This is a display heuristic for canonical printing selection, independent of search default filtering ([Spec 178](178-default-search-inclusion-filter.md)).
 
 ### New Helper: buildCanonicalPrintingPerFace
 

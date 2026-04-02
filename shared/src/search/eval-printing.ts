@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingIndex } from "./printing-index";
-import type { CardIndex } from "./card-index";
 import type { FlavorTagData, ArtistIndexData } from "../data";
-import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, FORMAT_NAMES, GAME_NAMES, PrintingFlag, Finish } from "../bits";
+import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, GAME_NAMES, Finish } from "../bits";
 import { parseDateRange } from "./date-range";
 import { resolveForField, normalizeForResolution, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
@@ -72,14 +71,8 @@ const KNOWN_LANGUAGES = new Set([
 
 export const PRINTING_FIELDS = new Set([
   "set", "rarity", "usd", "collectornumber", "frame", "year", "date",
-  "game", "legal", "banned", "restricted", "in", "atag", "flavor", "artist",
+  "game", "in", "atag", "flavor", "artist",
 ]);
-
-export const FACE_FALLBACK_PRINTING_FIELDS = new Set([
-  "legal", "banned", "restricted",
-]);
-
-export const NON_TOURNAMENT_MASK = PrintingFlag.GoldBorder | PrintingFlag.Oversized;
 
 export function isPrintingField(canonical: string): boolean {
   return PRINTING_FIELDS.has(canonical);
@@ -109,7 +102,6 @@ export function evalPrintingField(
   val: string,
   pIdx: PrintingIndex,
   buf: Uint8Array,
-  cardIndex?: CardIndex,
   context?: ResolutionContext,
   flavorIndex?: FlavorTagData | null,
   artistIndex?: ArtistIndexData | null,
@@ -317,23 +309,6 @@ export function evalPrintingField(
       }
       if (KNOWN_LANGUAGES.has(inValLower)) return `unsupported in value "${val}"`;
       return `unknown in value "${val}"`;
-    }
-    case "legal":
-    case "banned":
-    case "restricted": {
-      if (!cardIndex) return `card index unavailable for legality check`;
-      const formatVal = resolveForField(canonical, val, context);
-      const formatBit = FORMAT_NAMES[formatVal.toLowerCase()];
-      if (formatBit === undefined) return `unknown format "${val}"`;
-      const col = canonical === "legal" ? cardIndex.legalitiesLegal
-        : canonical === "banned" ? cardIndex.legalitiesBanned
-        : cardIndex.legalitiesRestricted;
-      const cfRef = pIdx.canonicalFaceRef;
-      const flags = pIdx.printingFlags;
-      for (let i = 0; i < n; i++) {
-        if ((col[cfRef[i]] & formatBit) && !(flags[i] & NON_TOURNAMENT_MASK)) buf[i] = 1;
-      }
-      break;
     }
     case "flavor": {
       if (op !== ":" && op !== "=") {

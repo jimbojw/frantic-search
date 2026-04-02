@@ -112,7 +112,7 @@ export const index = new CardIndex(TEST_DATA);
 // Printing #3  Sol Ring       (face 3) | C21  | uncommon | nonfoil | $0.75 | 2015 | 2021-06-18
 // Printing #4  Sol Ring       (face 3) | C21  | uncommon | foil    | $5.00 | 2015 | 2021-06-18
 // Printing #5  Lightning Bolt (face 1) | CMR  | uncommon | etched  | $2.00 | 2015 | 2020-11-20
-// Printing #6  Lightning Bolt (face 1) | WCD  | rare     | nonfoil | $0.10 | 2015 | 1998-08-12 | GoldBorder
+// Printing #6  Lightning Bolt (face 1) | WC01 | rare     | nonfoil | $0.10 | 2015 | 2001-12-12 | GoldBorder
 // Printing #7  Sol Ring       (face 3) | OC21 | uncommon | nonfoil | $0.50 | 2015 | 2021-06-18 | Oversized
 // Printing #8  Lightning Bolt (face 1) | SLD  | special  | nonfoil | $2.00 | 2015 | 2020-11-06 | Unset (test synthetic; real data uses set_type funny → bit in ETL)
 // Printing #9  Lightning Bolt (face 1) | MH2  | rare     | nonfoil | $1.50 | 2015 | 2021-06-18 | Spotlight
@@ -135,7 +135,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
   finish: [Finish.Nonfoil, Finish.Foil, Finish.Nonfoil, Finish.Nonfoil, Finish.Foil, Finish.Etched, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil, Finish.Nonfoil],
   frame: [Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015, Frame.Y2015],
   price_usd: [100, 300, 50, 75, 500, 200, 10, 50, 200, 150, 60],
-  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 19980812, 20210618, 20201106, 20210618, 20180316],
+  released_at: [20210618, 20210618, 20180316, 20210618, 20210618, 20201120, 20011212, 20210618, 20201106, 20210618, 20180316],
   games: [
     Game.Paper | Game.Arena,   // 0,1 MH2
     Game.Paper | Game.Arena,
@@ -143,7 +143,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     Game.Paper | Game.Mtgo,    // 3,4 C21
     Game.Paper | Game.Mtgo,
     Game.Paper | Game.Arena,   // 5 CMR
-    Game.Paper,                // 6 WCD
+    Game.Paper,                // 6 WC01
     Game.Paper,                // 7 OC21
     Game.Paper | Game.Arena,   // 8 SLD
     Game.Paper | Game.Arena,   // 9 Spotlight
@@ -159,7 +159,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
     { code: "A25", name: "Masters 25", released_at: 20180316 },
     { code: "C21", name: "Commander 2021", released_at: 20210618 },
     { code: "CMR", name: "Commander Legends", released_at: 20201120 },
-    { code: "WCD", name: "World Championship Decks", released_at: 19980812 },
+    { code: "WC01", name: "World Championship Decks 2001", released_at: 20011212 },
     { code: "OC21", name: "Commander 2021 Oversized", released_at: 20210618 },
     { code: "SLD", name: "Secret Lair Drop Series", released_at: 20201106 },
   ],

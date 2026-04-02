@@ -3,7 +3,7 @@ import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 import type { MaterializedView, InstanceState } from "./card-list";
 import type { ParsedEntry } from "./list-lexer";
 import { FINISH_FROM_STRING } from "./bits";
-import { NON_TOURNAMENT_MASK } from "./search/eval-printing";
+import { PrintingFlag } from "./bits";
 import { TRASH_LIST_ID } from "./card-list";
 import { normalizeAlphanumeric } from "./normalize";
 
@@ -38,8 +38,9 @@ export function buildCanonicalPrintingPerFace(
   const flags = pd.printing_flags;
   const n = cfRef.length;
 
-  const isTournamentLegal = (i: number) =>
-    !flags || !(flags[i] & NON_TOURNAMENT_MASK);
+  const ATYPICAL_MASK = PrintingFlag.GoldBorder | PrintingFlag.Oversized;
+  const isStandardPrinting = (i: number) =>
+    !flags || !(flags[i] & ATYPICAL_MASK);
 
   // Group by cf: collect indices for each cf
   const byCf = new Map<number, number[]>();
@@ -53,12 +54,12 @@ export function buildCanonicalPrintingPerFace(
     arr.push(i);
   }
 
-  // For each cf, pick canonical printing (tournament-legal nonfoil > tournament-legal any > nonfoil > first)
+  // For each cf, pick canonical printing (standard nonfoil > standard any > nonfoil > first)
   for (const [cf, indices] of byCf) {
-    const legalNonfoil = indices.find((i) => isTournamentLegal(i) && finish[i] === 0);
-    const legalAny = indices.find((i) => isTournamentLegal(i));
+    const stdNonfoil = indices.find((i) => isStandardPrinting(i) && finish[i] === 0);
+    const stdAny = indices.find((i) => isStandardPrinting(i));
     const nonfoil = indices.find((i) => finish[i] === 0);
-    map.set(cf, legalNonfoil ?? legalAny ?? nonfoil ?? indices[0]);
+    map.set(cf, stdNonfoil ?? stdAny ?? nonfoil ?? indices[0]);
   }
   return map;
 }

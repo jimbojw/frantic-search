@@ -97,7 +97,7 @@ const GAMMA_DELTA_PHRASE_DATA: ColumnarData = {
 }
 
 describe('runSearch pinned lip counts (issue #52)', () => {
-  it('pinned-only format query returns pinnedIndicesCount with printing-level filtering', () => {
+  it('pinned-only format query returns pinnedIndicesCount (oracle-level)', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: '', pinnedQuery: 'f:commander' },
       cache,
@@ -106,11 +106,9 @@ describe('runSearch pinned lip counts (issue #52)', () => {
       sessionSalt,
     })
     expect(result.pinnedBreakdown).toBeDefined()
-    // f:commander is now a printing-domain field: only cards with tournament-usable
-    // printings match. Only Bolt and Sol Ring have printings in the fixture.
-    expect(result.pinnedIndicesCount).toBe(2)
-    expect(result.pinnedPrintingCount).toBe(9) // 9 tournament-usable printing rows (Bolt: 7, Sol: 2)
-    expect(result.hasPrintingConditions).toBe(true)
+    // f:commander is face-domain (oracle-level): all 9 cards are commander-legal.
+    expect(result.pinnedIndicesCount).toBe(9)
+    expect(result.hasPrintingConditions).toBe(false)
     expect(result.uniqueMode).toBe('cards')
   })
 
@@ -158,7 +156,7 @@ describe('runSearch pinned lip counts (issue #52)', () => {
     expect(result.printingIndices?.length).toBe(3) // intersection of printings
   })
 
-  it('both non-empty pinned format query filters by printing legality', () => {
+  it('both non-empty pinned format query is oracle-level', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:creature', pinnedQuery: 'f:commander' },
       cache,
@@ -167,11 +165,10 @@ describe('runSearch pinned lip counts (issue #52)', () => {
       sessionSalt,
     })
     expect(result.pinnedBreakdown).toBeDefined()
-    // f:commander is printing-domain: only Bolt and Sol Ring have tournament-usable printings.
-    expect(result.pinnedIndicesCount).toBe(2)
-    expect(result.pinnedPrintingCount).toBe(9) // 9 tournament-usable printing rows (Bolt: 7, Sol: 2)
-    // Intersection: creatures ∩ cards-with-commander-printings = 0 (Bolt/Sol Ring aren't creatures)
-    expect(result.indices.length).toBe(0)
+    // f:commander is face-domain (oracle-level): all 9 cards are commander-legal.
+    expect(result.pinnedIndicesCount).toBe(9)
+    // Intersection: creatures ∩ commander-legal = creatures (4 creatures, all commander-legal)
+    expect(result.indices.length).toBe(4)
   })
 
   it('pinned-only view:images returns pinnedPrintingCount when viewMode is images', () => {
@@ -445,8 +442,8 @@ describe('default inclusion filter (Spec 178)', () => {
     expect(result.indicesBeforeDefaultFilter).toBeUndefined()
   })
 
-  it('excludes non-tournament printings by default (NON_TOURNAMENT_MASK)', () => {
-    // Bolt has 8 printings (0,1,2,5,6,8,9,10). #6 GoldBorder excluded.
+  it('excludes gold-bordered set printings by default (wholesale omit)', () => {
+    // Bolt has 8 printings (0,1,2,5,6,8,9,10). #6 in WC01 (DEFAULT_OMIT_SET_CODES) excluded.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
       cache,
@@ -542,11 +539,11 @@ describe('default inclusion filter (Spec 178)', () => {
     expect(result.indices.length).toBe(1) // Bolt face survives via widened printing
   })
 
-  it('set: widening restores non-tournament printings', () => {
-    // set:wcd matches printing #6 (GoldBorder). The positive set: prefix "wcd"
-    // widens that printing, so it passes NON_TOURNAMENT_MASK.
+  it('set: widening restores gold-bordered set printings', () => {
+    // set:wc01 matches printing #6 (WC01, in DEFAULT_OMIT_SET_CODES). The positive
+    // set: prefix "wc01" widens that printing through the wholesale-omit pass.
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 'set:wcd' },
+      msg: { type: 'search', queryId: 1, query: 'set:wc01' },
       cache,
       index,
       printingIndex,
@@ -647,28 +644,27 @@ describe('default inclusion filter (Spec 178)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Issue #58 / Spec 178: set: widening restores non-tournament printings
+// Issue #58 / Spec 178: set: widening restores gold-bordered set printings
 // ---------------------------------------------------------------------------
-// Fixture: set:wcd matches only printing #6 (Bolt in World Championship Decks),
-// which has GoldBorder. Under Spec 178, positive set:wcd widens it.
-describe('set query with non-tournament printings (Issue #58 + Spec 178)', () => {
-  it('set:wcd self-widens non-tournament printing (Spec 178)', () => {
+// Fixture: set:wc01 matches only printing #6 (Bolt in World Championship Decks 2001),
+// which is in DEFAULT_OMIT_SET_CODES. Positive set:wc01 widens it.
+describe('set query with gold-bordered set printings (Issue #58 + Spec 178)', () => {
+  it('set:wc01 self-widens gold-bordered set printing (Spec 178)', () => {
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 'set:wcd' },
+      msg: { type: 'search', queryId: 1, query: 'set:wc01' },
       cache,
       index,
       printingIndex,
       sessionSalt,
     })
-    // Under Spec 178, positive set: widens NON_TOURNAMENT_MASK for that set.
     expect(result.indices.length).toBe(1)
     expect(result.printingIndices?.length).toBe(1)
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
-  it('set query with include:extras also shows non-tournament printings', () => {
+  it('set query with include:extras also shows gold-bordered set printings', () => {
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 'set:wcd include:extras' },
+      msg: { type: 'search', queryId: 1, query: 'set:wc01 include:extras' },
       cache,
       index,
       printingIndex,
@@ -693,7 +689,7 @@ describe('set query with non-tournament printings (Issue #58 + Spec 178)', () =>
 
   it('set + face condition with no matching face returns 0 results', () => {
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 'set:wcd t:creature' },
+      msg: { type: 'search', queryId: 1, query: 'set:wc01 t:creature' },
       cache,
       index,
       printingIndex,

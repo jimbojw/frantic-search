@@ -144,6 +144,8 @@ export interface EvalOutput {
   widenContentWarning: boolean;
   /** Spec 178: positive `is:playtest` disables playtest default omission. */
   widenPlaytest: boolean;
+  /** Spec 178: positive `is:oversized` disables oversized default omission. */
+  widenOversized: boolean;
   /** Spec 178: normalized prefixes from positive `set:`/`s:` FIELD nodes for per-printing set widening. */
   positiveSetPrefixes: string[];
   sortBy: SortDirective | null;

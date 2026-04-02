@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
 import path from "node:path";
-import { parse, toScryfallQuery, NON_TOURNAMENT_MASK } from "@frantic-search/shared";
+import { parse, toScryfallQuery, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, PrintingFlag } from "@frantic-search/shared";
 import type { UniqueMode } from "@frantic-search/shared";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
 import { CardIndex } from "@frantic-search/shared/src/search/card-index";
@@ -226,15 +226,21 @@ function dedupeArtPrintingIndices(printingIndices: number[], pData: PrintingColu
 }
 
 export function normalizeLocalParity(
-  data: ColumnarData,
+  _data: ColumnarData,
   printingData: PrintingColumnarData | null,
   printingIndex: PrintingIndex | null,
+  index: CardIndex,
   evalOut: {
     indices: Uint32Array;
     printingIndices?: Uint32Array;
     uniqueMode: UniqueMode;
     hasPrintingConditions: boolean;
     includeExtras: boolean;
+    widenExtrasLayout: boolean;
+    widenContentWarning: boolean;
+    widenPlaytest: boolean;
+    widenOversized: boolean;
+    positiveSetPrefixes: string[];
   },
 ): NormalizedLocalResult {
   let deduped = Array.from(evalOut.indices);
@@ -243,16 +249,28 @@ export function normalizeLocalParity(
     : undefined;
 
   if (!evalOut.includeExtras) {
+    const { widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes } = evalOut;
+    const isSetWidened = (setCode: string): boolean => {
+      for (let i = 0; i < positiveSetPrefixes.length; i++) {
+        if (setCode.startsWith(positiveSetPrefixes[i])) return true;
+      }
+      return false;
+    };
+
     if (evalOut.hasPrintingConditions && rawPrintingIndices && printingIndex && printingData) {
       const filtered: number[] = [];
       for (const p of rawPrintingIndices) {
-        if (
-          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
-          (data.legalities_legal[printingIndex.canonicalFaceRef[p]] |
-            data.legalities_restricted[printingIndex.canonicalFaceRef[p]]) !== 0
-        ) {
-          filtered.push(p);
-        }
+        const cf = printingIndex.canonicalFaceRef[p];
+        const setCode = printingIndex.setCodesLower[p];
+        const setWide = isSetWidened(setCode);
+
+        if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue;
+        if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue;
+        if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue;
+        if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue;
+        if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue;
+
+        filtered.push(p);
       }
       rawPrintingIndices = filtered;
       const seen = new Set<number>();
@@ -265,17 +283,48 @@ export function normalizeLocalParity(
         }
       }
       deduped = derived;
-    } else {
-      deduped = deduped.filter((fi) =>
-        (data.legalities_legal[fi] | data.legalities_restricted[fi]) !== 0
-      );
-      if (rawPrintingIndices && printingIndex) {
-        rawPrintingIndices = rawPrintingIndices.filter((p) =>
-          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
-          (data.legalities_legal[printingIndex.canonicalFaceRef[p]] |
-            data.legalities_restricted[printingIndex.canonicalFaceRef[p]]) !== 0
-        );
+    } else if (printingIndex) {
+      const survivingFaces: number[] = [];
+      for (const fi of deduped) {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) continue;
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) continue;
+
+        const printings = printingIndex.printingsOf(fi);
+        let hasSurvivor = printings.length === 0;
+        for (const p of printings) {
+          const setCode = printingIndex.setCodesLower[p];
+          const setWide = isSetWidened(setCode);
+          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue;
+          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue;
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue;
+          hasSurvivor = true;
+          break;
+        }
+        if (hasSurvivor) survivingFaces.push(fi);
       }
+      deduped = survivingFaces;
+
+      if (rawPrintingIndices) {
+        const filtered: number[] = [];
+        for (const p of rawPrintingIndices) {
+          const cf = printingIndex.canonicalFaceRef[p];
+          const setCode = printingIndex.setCodesLower[p];
+          const setWide = isSetWidened(setCode);
+          if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue;
+          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue;
+          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue;
+          if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue;
+          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue;
+          filtered.push(p);
+        }
+        rawPrintingIndices = filtered;
+      }
+    } else {
+      deduped = deduped.filter((fi) => {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false;
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false;
+        return true;
+      });
     }
   }
 
@@ -452,12 +501,17 @@ export async function runDiff(
   const cache = new NodeCache(index, printingIndex, null, tagDataRef, keywordDataRef);
   const ast = parse(query);
   const evalOut = cache.evaluate(ast);
-  const normalized = normalizeLocalParity(data, printingData, printingIndex, {
+  const normalized = normalizeLocalParity(data, printingData, printingIndex, index, {
     indices: evalOut.indices,
     printingIndices: evalOut.printingIndices,
     uniqueMode: evalOut.uniqueMode,
     hasPrintingConditions: evalOut.hasPrintingConditions,
     includeExtras: evalOut.includeExtras,
+    widenExtrasLayout: evalOut.widenExtrasLayout,
+    widenContentWarning: evalOut.widenContentWarning,
+    widenPlaytest: evalOut.widenPlaytest,
+    widenOversized: evalOut.widenOversized,
+    positiveSetPrefixes: evalOut.positiveSetPrefixes,
   });
 
   const localCards = collectLocalCards(

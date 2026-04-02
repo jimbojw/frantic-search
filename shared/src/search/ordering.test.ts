@@ -557,7 +557,7 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     const printings = new Uint32Array([0, 1, 2, 5, 6, 8, 9, 10, 3, 4, 7]);
     const d: SortDirective = { field: "usd", direction: "asc", isPrintingDomain: true };
     const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, printingIndex, 0);
-    // Bolt cheapest=10 ($0.10 via WCD), Sol Ring cheapest=50 ($0.50)
+    // Bolt cheapest=10 ($0.10 via WC01), Sol Ring cheapest=50 ($0.50)
     // asc: Bolt (cheapest $0.10) before Sol Ring (cheapest $0.50)
     expect(cardOrder[0]).toBe(1); // Bolt
     expect(cardOrder[1]).toBe(3); // Sol Ring

@@ -1,6 +1,6 @@
 # Spec 056: Printing-Level Format Legality
 
-**Status:** Implemented
+**Status:** Superseded by [Spec 178](178-default-search-inclusion-filter.md) (updated)
 
 **Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), ADR-017 (Dual-Domain Query Evaluation)
 
@@ -119,3 +119,11 @@ Add `GoldBorder: 1 << 8` and `Oversized: 1 << 9` to `PrintingFlag`.
 - `border:gold` / `is:goldbordered` printing query keyword (separate spec).
 - Silver-border printing-level filtering (already handled at card level via `not_legal` status).
 - Digital-only printing filtering.
+
+## Supersession Notes
+
+This spec's core rationale — that format/legality evaluation should operate in the printing domain gated by `NON_TOURNAMENT_MASK` — has been invalidated by empirical observation of Scryfall behavior. Scryfall's `f:` / `legal:` / `banned:` / `restricted:` are oracle-level (card-level) properties; printing-level hiding of gold-bordered and oversized printings is performed by Scryfall's default result filter, not by format evaluation. Evidence: `!"Static Orb" unique:prints` excludes the WC01 gold-bordered printing from default results but `!"Static Orb" unique:prints set:wc01` recovers it — behavior consistent with a default-filter pass, not format gating.
+
+**Reversed:** Format/legality returns to face-domain-only evaluation. `NON_TOURNAMENT_MASK` is deleted. Default-search hiding of gold-bordered and oversized printings is now handled by [Spec 178](178-default-search-inclusion-filter.md)'s updated default inclusion passes (expanded wholesale omit-set list for gold-bordered product lines; new oversized omission pass with `is:oversized` widening).
+
+**Surviving contributions:** `PrintingFlag.GoldBorder` (1 << 8) and `PrintingFlag.Oversized` (1 << 9) in `shared/src/bits.ts` remain for ETL encoding, `is:oversized` queries, and display heuristics (e.g. canonical printing selection in `list-mask-builder.ts`).
