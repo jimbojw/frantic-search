@@ -22,7 +22,7 @@ Card name.
 
 ## Allowed values
 
-- **Substring:** Any text. Matching is case-insensitive. `q=n:bolt` matches "Lightning Bolt", "Bolt Bend", etc.
+- **Substring:** Any text. **Unquoted** values (`q=n:bolt`, `q=name:skel`) use the same rules as an **unquoted bare** name term: the query is normalized (lowercase, strip accents, keep only letters and digits) and matched as a substring of the **normalized** combined card name (and alternate printed/flavor names). **Quoted** values (`q=name:" // "`) use a case-insensitive substring on the **literal** combined name, punctuation and spaces preserved. `q=n:bolt` matches "Lightning Bolt", "Bolt Bend", etc.
 - **Range:** A string for lexicographic comparison. Uses the same normalization as `q=sort:name` (lowercase, alphanumeric only).
 - **Percentile:** Integer 1–99. `q=name>50%` matches cards in the top half of the alphabet; `q=name<10%` matches the first 10%.
 
@@ -35,6 +35,6 @@ Regex is supported with a field prefix: `q=name:/bolt/`. For bare regex (no fiel
 
 ## Scryfall
 
-- **Bare words:** Scryfall uses fuzzy matching on name; Frantic Search uses substring (no fuzzy).
+- **Bare words:** Default Scryfall search uses substring matching on a normalized name, not typo-tolerant fuzzy matching (e.g. a missing letter does not auto-correct). Frantic Search uses the same substring-on-normalized-name model for unquoted bare and unquoted `name:` terms.
 - **Name range:** Not supported on Scryfall. `q=name>M` is Frantic Search–exclusive.
 - **Name percentile:** Not supported on Scryfall. `q=name>50%` is Frantic Search–exclusive.

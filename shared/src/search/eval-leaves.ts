@@ -128,6 +128,41 @@ const NAME_CMP_OPS = new Set([">", "<", ">=", "<="]);
 
 const STAT_RANGE_OPS = new Set([">", ">=", "<", "<="]);
 
+/**
+ * Spec 018: unquoted bare / unquoted `name:` substring on normalized combined name + alternates.
+ * @param negate false for `:`, `=`; true for `!=` (match faces that do not contain).
+ */
+function applyUnquotedNameSubstring(
+  val: string,
+  index: CardIndex,
+  buf: Uint8Array,
+  negate: boolean,
+): void {
+  const cf = index.canonicalFace;
+  const n = index.faceCount;
+  const valNorm = normalizeAlphanumeric(val);
+  const altIndex = index.alternateNamesIndex;
+  if (!negate) {
+    for (let i = 0; i < n; i++) {
+      if (index.combinedNamesNormalized[i].includes(valNorm)) buf[cf[i]] = 1;
+    }
+    for (const altName in altIndex) {
+      if (altName.includes(valNorm)) buf[altIndex[altName]] = 1;
+    }
+  } else {
+    const has = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      if (index.combinedNamesNormalized[i].includes(valNorm)) has[cf[i]] = 1;
+    }
+    for (const altName in altIndex) {
+      if (altName.includes(valNorm)) has[altIndex[altName]] = 1;
+    }
+    for (let i = 0; i < n; i++) {
+      if (!has[cf[i]]) buf[cf[i]] = 1;
+    }
+  }
+}
+
 /** Spec 173 §3.6: trim + ASCII-oriented fold for oracle stat string compare. */
 function statStringFold(s: string): string {
   return s.trim().toLowerCase();
@@ -212,10 +247,25 @@ export function evalLeafField(
           if (match) buf[cf[i]] = 1;
         }
       } else {
-        // Substring match (:, =, !=)
-        const col = index.combinedNamesLower;
-        for (let i = 0; i < n; i++) {
-          if (col[cf[i]].includes(valLower)) buf[cf[i]] = 1;
+        // Substring match (:, =, !=) — Spec 018: unquoted field value matches unquoted bare; quoted matches literal combined name
+        const negate = op === "!=";
+        if (node.sourceText !== undefined) {
+          const col = index.combinedNamesLower;
+          if (!negate) {
+            for (let i = 0; i < n; i++) {
+              if (col[i].includes(valLower)) buf[cf[i]] = 1;
+            }
+          } else {
+            const has = new Uint8Array(n);
+            for (let i = 0; i < n; i++) {
+              if (col[i].includes(valLower)) has[cf[i]] = 1;
+            }
+            for (let i = 0; i < n; i++) {
+              if (!has[cf[i]]) buf[cf[i]] = 1;
+            }
+          }
+        } else {
+          applyUnquotedNameSubstring(val, index, buf, negate);
         }
       }
       break;
@@ -761,13 +811,7 @@ export function evalLeafBareWord(value: string, quoted: boolean, index: CardInde
       if (altName.includes(valNorm)) buf[altIndex[altName]] = 1;
     }
   } else {
-    const valNormalized = normalizeAlphanumeric(value);
-    for (let i = 0; i < index.faceCount; i++) {
-      if (index.combinedNamesNormalized[i].includes(valNormalized)) buf[cf[i]] = 1;
-    }
-    for (const altName in altIndex) {
-      if (altName.includes(valNormalized)) buf[altIndex[altName]] = 1;
-    }
+    applyUnquotedNameSubstring(value, index, buf, false);
   }
 }
 

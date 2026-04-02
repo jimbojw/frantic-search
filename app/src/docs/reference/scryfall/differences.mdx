@@ -29,9 +29,6 @@ When `field:` has **no value token glued** to the operator (whitespace or end of
 
 Frantic parses that shape as a **`FIELD` with an empty string value**. Evaluators treat that as a **neutral filter** (matches all) unless a field-specific spec says otherwise. We treat this as a clearer reading of **malformed** syntax where Scryfall leaves behavior implicit.
 
-### Bare words (name matching)
-
-Scryfall uses **fuzzy** name matching for bare words. Frantic uses **substring** search on the normalized name (no fuzzy). See [name](?doc=reference/fields/face/name).
 
 ### Bare regex
 

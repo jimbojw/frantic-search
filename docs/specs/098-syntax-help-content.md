@@ -118,7 +118,6 @@ Behavioral divergences where Frantic Search intentionally differs from Scryfall.
 |----------|----------|----------------|
 | Default format filter | Excludes cards not legal in any format | Shows all cards. Use `f:standard` (etc.) to filter. |
 | Bare regex | Not supported | `/pattern` searches name, oracle text, and type line |
-| Bare words | Searches name (fuzzy matching) | Searches name (substring, no fuzzy) |
 | Name comparison | Not supported | `name>M`, `name<=X` (alphabetical) |
 | Percentile filters | Not supported | `usd>90%`, `date<10%`, `name>50%`, `edhrec>90%`, `salt>90%` |
 | `usd=null` | Not supported | Matches printings with no price data |

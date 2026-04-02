@@ -227,7 +227,7 @@ These fields map to columns available in the current ETL output.
 
 | Field aliases      | Column(s)                   | `:` semantics                          | Comparison semantics (`=`, `<`, `>`, etc.) |
 |--------------------|-----------------------------|----------------------------------------|--------------------------------------------|
-| `name`, `n`        | `names`                     | Case-insensitive substring             | Substring (`:`, `=`); lexicographic comparison (`>`, `<`, `>=`, `<=`) |
+| `name`, `n`        | `combined_names` (see Spec 018) | Substring on **normalized** combined name when the value is an unquoted word; **literal** (lowercased) substring when the value is quoted; `!=` inverts contains | Substring (`:`, `=`, `!=`); lexicographic comparison (`>`, `<`, `>=`, `<=`) |
 | `oracle`, `o`      | `oracle_texts`              | Case-insensitive substring             | —                                          |
 | `color`, `c`       | `colors`                    | Card has at least these colors (⊇)     | `=` exact, `<=` subset, `>=` superset      |
 | `identity`, `id`   | `color_identity`            | Same as `color`                        | Same as `color`                            |
@@ -244,7 +244,7 @@ These fields map to columns available in the current ETL output.
 | `kw`, `keyword`    | `keywords_index`            | Card has a keyword ability whose normalized name is prefixed by the query (union over all matching keys; Spec 176); non-empty value with no matching key → `unknown keyword` (passthrough, Spec 039); empty value matches all faces (Spec 105) | `:` and `=` only (Spec 105) |
 | `flavor`, `ft`     | `flavor-index` (supplemental) | Flavor text substring; regex via `/pattern/` (printing-domain) | `:` and `=` only (Spec 142) |
 | `artist`, `a`      | `artist-index` (supplemental) | Artist name substring (printing-domain) | `:` and `=` only (Spec 149) |
-| (bare word)        | `names`                     | Case-insensitive substring             | —                                          |
+| (bare word)        | `combined_names` (Spec 018) | Unquoted: normalized substring on combined name; quoted: literal lowercased substring | — |
 
 ### Color value parsing
 
@@ -284,7 +284,7 @@ Iterate over all face rows by index (`0..N-1`). For each face, evaluate every le
 
 Within the loop, leaf evaluation uses the field type to select the right column and comparison:
 - Bitmask fields: bitwise operations on the column value.
-- String fields: case-insensitive `indexOf` on the column value.
+- String fields: generally case-insensitive `indexOf` on the column value; **`name` is special** — unquoted vs quoted substring rules per Spec 018 (normalized combined name vs literal).
 - Dict-encoded numeric fields: lookup + numeric comparison.
 
 ### 4. Reduce (bottom-up)

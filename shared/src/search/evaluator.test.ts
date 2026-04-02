@@ -678,6 +678,65 @@ describe("evaluate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 018: unquoted name: substring matches unquoted bare (normalized combined name)
+// ---------------------------------------------------------------------------
+
+/** Single-face card with punctuation in name; `skel` spans hyphen boundary when normalized. */
+const NAME_SUBSTRING_ALIGN_DATA: ColumnarData = {
+  names: ["Iron-Tusk Elephant"],
+  mana_costs: [""],
+  oracle_texts: [""],
+  colors: [Color.Green],
+  color_identity: [Color.Green],
+  type_lines: ["Creature — Elephant"],
+  powers: [1],
+  toughnesses: [1],
+  loyalties: [0],
+  defenses: [0],
+  legalities_legal: [Format.Commander],
+  legalities_banned: [0],
+  legalities_restricted: [0],
+  card_index: [0],
+  canonical_face: [0],
+  scryfall_ids: [""],
+  oracle_ids: ["oidSkel"],
+  layouts: ["normal"],
+  flags: [0],
+  edhrec_ranks: [null],
+  edhrec_salts: [null],
+  power_lookup: ["", "0"],
+  toughness_lookup: ["", "1"],
+  loyalty_lookup: [""],
+  defense_lookup: [""],
+  keywords_index: {},
+  produces: {},
+};
+
+const skelIndex = new CardIndex(NAME_SUBSTRING_ALIGN_DATA);
+
+function skelMatchCount(query: string): number {
+  const cache = new NodeCache(skelIndex);
+  return cache.evaluate(parse(query)).result.matchCount;
+}
+
+describe("unquoted name field substring vs bare (Spec 018)", () => {
+  test("bare skel and name:skel both match normalized substring across punctuation", () => {
+    expect(skelMatchCount("skel")).toBe(1);
+    expect(skelMatchCount("name:skel")).toBe(1);
+    expect(skelMatchCount("name=skel")).toBe(1);
+  });
+
+  test("quoted name does not match literal combined name without contiguous skel", () => {
+    expect(skelMatchCount('name:"skel"')).toBe(0);
+  });
+
+  test("name!=skel excludes card; name!=xyz matches all", () => {
+    expect(skelMatchCount("name!=skel")).toBe(0);
+    expect(skelMatchCount("name!=notfound")).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Spec 096: Name comparison operators
 // ---------------------------------------------------------------------------
 

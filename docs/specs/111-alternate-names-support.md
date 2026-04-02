@@ -69,6 +69,7 @@ Two indexes serve different purposes:
 **Module:** `shared/src/search/eval-leaves.ts`
 
 - `evalLeafBareWord`: After primary name check (combinedNamesLower, combinedNamesNormalized), if no match, look up normalized value in `alternate_names_index`; for each canonical face in the result, set `buf[cf] = 1`
+- Unquoted `name:` / `name=` substring (and their `!=` inversion): same normalized substring scan over `combinedNamesNormalized` and alternate-name keys as unquoted bare words (Spec 018)
 - `evalLeafExact`: Same fallback — after primary name check, consult alternate names
 - Face-domain index: `Record<string, number>` (single canonical face per alternate name)
 - Worker loads index from columns.json; passes to evaluator via CardIndex or a ref

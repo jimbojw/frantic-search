@@ -17,6 +17,8 @@ Scryfall stores each card's name as a single combined string: `"Beck // Call"`, 
 | `imfa` (unquoted) | Claim // Fame | Normalized combined name `"claimfame"` contains `"imfa"` |
 | `"imfa"` (quoted) | No English match | Literal combined name `"Claim // Fame"` does not contain `"imfa"` |
 | `" // "` (quoted) | Split/DFC cards | Literal combined name contains `" // "` |
+| `skel` (unquoted bare or `name:skel`) | Iron-Tusk Elephant | Normalized combined name `irontuskelephant` contains `skel` |
+| `name:"skel"` (quoted) | No match on that card | Literal combined name `iron-tusk elephant` has no contiguous `skel` |
 
 Unquoted bare words appear to strip whitespace and punctuation before matching, while quoted strings preserve them.
 
@@ -88,11 +90,20 @@ return { type: "BARE", value: this.advance().value, quoted: true };
 | Unquoted (`quoted: false`) | `combinedNamesNormalized[i]` | Strip non-`[a-z0-9]`, lowercase |
 | Quoted (`quoted: true`) | `combinedNamesLower[i]` | Lowercase only |
 
-**`name:` field (`getStringColumn`):** Return `combinedNamesLower` instead of `namesLower`. This makes `name:value` search the combined name, so `name:" // "` finds split cards.
+**`name:` / `name=` / `name!=` substring (not comparison operators, not percentile, not regex):**
+
+Discriminator: **`FieldNode.sourceText`** is set only when the parser consumed a **`QUOTED`** value token; a **`WORD`** value has no `sourceText`.
+
+| Variant | Search target | Query normalization | `!=` |
+|---|---|---|---|
+| Unquoted value (no `sourceText`) | Same as unquoted bare: `combinedNamesNormalized` + `alternateNamesIndex` keys | `normalizeAlphanumeric(value)` | Faces whose canonical name does **not** match the contains semantics (primary or alternate) |
+| Quoted value (`sourceText` set) | `combinedNamesLower` | Lowercase only | Faces that do **not** contain the literal substring |
+
+**`getStringColumn("name")`:** Still returns `combinedNamesLower` for **regex** on `name` (`evalLeafRegex`) and other call sites that need the literal combined string.
 
 **Exact name (`evalLeafExact`):** Match against both `combinedNamesLower[i]` and `namesLower[i]`. `!"Beck // Call"` matches the combined name exactly; `!"Call"` matches the individual face name. This matches Scryfall's behavior where `!` finds cards by either their combined name or any individual face name.
 
-**Regex name (`evalLeafRegex`):** Inherits the change from `getStringColumn` — regex on `name` also searches the combined name.
+**Regex name (`evalLeafRegex`):** Uses `getStringColumn` — regex on `name` searches the **literal** combined name (`combinedNamesLower`).
 
 ### 6. Node key: Include quoted flag
 
@@ -198,3 +209,8 @@ This aligns with Scryfall's behavior: a card's name is a card-level property, no
   finds the card even though the combined name is
   "Ayara, Widow of the Realm // Ayara, Furnace Queen"). The design section above
   has been updated to reflect this.
+- 2026-04-02: Unquoted `name:` / `name=` / `name!=` substring evaluation uses the
+  same normalized combined name + alternate-name logic as unquoted bare words
+  (`FieldNode.sourceText` absent). Quoted field values keep literal substring on
+  `combinedNamesLower`. Substring `!=` is implemented as logical negation of the
+  corresponding contains test.
