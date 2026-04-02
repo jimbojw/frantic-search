@@ -138,5 +138,13 @@ export interface EvalOutput {
   artistUnavailable?: boolean;
   uniqueMode: UniqueMode;
   includeExtras: boolean;
+  /** Spec 178: positive `is:<extras-layout>` disables extras-layout default omission. */
+  widenExtrasLayout: boolean;
+  /** Spec 178: positive `is:content_warning` disables content-warning default omission. */
+  widenContentWarning: boolean;
+  /** Spec 178: positive `is:playtest` disables playtest default omission. */
+  widenPlaytest: boolean;
+  /** Spec 178: normalized prefixes from positive `set:`/`s:` FIELD nodes for per-printing set widening. */
+  positiveSetPrefixes: string[];
   sortBy: SortDirective | null;
 }

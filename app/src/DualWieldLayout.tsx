@@ -57,8 +57,8 @@ export type PaneState = {
   includeExtras: () => boolean
   usedExtension: () => boolean
   suggestions: () => Suggestion[]
-  indicesIncludingExtras: () => number | undefined
-  printingIndicesIncludingExtras: () => number | undefined
+  indicesBeforeDefaultFilter: () => number | undefined
+  printingIndicesBeforeDefaultFilter: () => number | undefined
   display: () => DisplayColumns | null
   printingDisplay: () => PrintingDisplayColumns | null
   oracleTagLabels: () => string[]
@@ -241,8 +241,8 @@ function buildPaneContext(state: PaneState, opts?: BuildPaneContextOpts): Search
     includeExtras: state.includeExtras,
     usedExtension: state.usedExtension,
     suggestions: state.suggestions,
-    indicesIncludingExtras: state.indicesIncludingExtras,
-    printingIndicesIncludingExtras: state.printingIndicesIncludingExtras,
+    indicesBeforeDefaultFilter: state.indicesBeforeDefaultFilter,
+    printingIndicesBeforeDefaultFilter: state.printingIndicesBeforeDefaultFilter,
     viewMode,
     changeViewMode: state.changeViewMode,
     changeUniqueMode: state.changeUniqueMode,
@@ -466,8 +466,8 @@ export function SearchPane(props: {
               liveBreakdown={props.state.query().trim() !== '' ? props.state.breakdown() : null}
               liveCardCount={props.state.indices().length}
               livePrintingCount={(props.state.printingIndices()?.length ?? 0) > 0 ? props.state.printingIndices()!.length : undefined}
-              indicesIncludingExtras={props.state.indicesIncludingExtras()}
-              printingIndicesIncludingExtras={props.state.printingIndicesIncludingExtras()}
+              indicesBeforeDefaultFilter={props.state.indicesBeforeDefaultFilter()}
+              printingIndicesBeforeDefaultFilter={props.state.printingIndicesBeforeDefaultFilter()}
               expanded={props.state.breakdownExpanded()}
               onToggle={props.state.toggleBreakdown}
               onPin={(nodeLabel) => { props.state.flushPendingCommit(); props.state.handlePin(nodeLabel) }}

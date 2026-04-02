@@ -1,6 +1,6 @@
 # Spec 057: Default Playable Filter & `include:extras`
 
-**Status:** Superseded by [Spec 178](178-default-search-inclusion-filter.md) (default inclusion model). This document remains the historical specification for the **legality + `NON_TOURNAMENT_MASK`** implementation and for **`include:extras` / `**`** parser behavior until Spec 178 is implemented; after implementation, treat Spec 178 as canonical for default filtering.
+**Status:** Superseded by [Spec 178](178-default-search-inclusion-filter.md) (default inclusion model). Spec 178 is now implemented; treat it as canonical for default filtering. This document remains the historical reference for the original legality-based design and **`include:extras` / `**`** parser behavior.
 
 **Status (historical):** Implemented (pre–Spec 178)
 

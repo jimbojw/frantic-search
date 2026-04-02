@@ -150,8 +150,8 @@ export type BuildSuggestionsParams = {
   totalCards: number
   pinnedIndicesCount: number | undefined
   includeExtras: boolean
-  indicesIncludingExtras: number | undefined
-  printingIndicesIncludingExtras: number | undefined
+  indicesBeforeDefaultFilter: number | undefined
+  printingIndicesBeforeDefaultFilter: number | undefined
   printingIndices: Uint32Array | null | undefined
   uniqueMode: 'cards' | 'prints' | 'art'
   totalPrintingItems: number
@@ -185,8 +185,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     totalCards,
     pinnedIndicesCount,
     includeExtras,
-    indicesIncludingExtras,
-    printingIndicesIncludingExtras,
+    indicesBeforeDefaultFilter,
+    printingIndicesBeforeDefaultFilter,
     printingIndices,
     uniqueMode,
     totalPrintingItems,
@@ -217,15 +217,15 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
   }
 
   // include:extras - empty state
-  if (indicesIncludingExtras !== undefined && totalCards === 0) {
+  if (indicesBeforeDefaultFilter !== undefined && totalCards === 0) {
     const query = appendTerm(msg.query, 'include:extras', liveBd)
     suggestions.push({
       id: 'include-extras',
       query,
       label: 'include:extras',
       explain: 'Include promos and non-tournament-legal printings.',
-      count: indicesIncludingExtras,
-      printingCount: printingIndicesIncludingExtras,
+      count: indicesBeforeDefaultFilter,
+      printingCount: printingIndicesBeforeDefaultFilter,
       docRef: 'reference/modifiers/include-extras',
       priority: 90,
       variant: 'rewrite',
@@ -290,22 +290,22 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     }
   }
 
-  // include:extras - rider (totalCards > 0 and hidden playable-filtered results)
-  const hiddenCards = indicesIncludingExtras !== undefined ? indicesIncludingExtras - totalCards : 0
+  // include:extras - rider (totalCards > 0 and hidden default-filtered results)
+  const hiddenCards = indicesBeforeDefaultFilter !== undefined ? indicesBeforeDefaultFilter - totalCards : 0
   const hiddenPrintings =
-    printingIndicesIncludingExtras !== undefined && printingIndices != null
-      ? printingIndicesIncludingExtras - printingIndices.length
+    printingIndicesBeforeDefaultFilter !== undefined && printingIndices != null
+      ? printingIndicesBeforeDefaultFilter - printingIndices.length
       : 0
   if (totalCards > 0 && (hiddenCards > 0 || hiddenPrintings > 0)) {
     const query = appendTerm(msg.query, 'include:extras', liveBd)
-    const count = indicesIncludingExtras ?? totalCards
+    const count = indicesBeforeDefaultFilter ?? totalCards
     suggestions.push({
       id: 'include-extras',
       query,
       label: 'include:extras',
       explain: 'Include promos and non-tournament-legal printings.',
       count,
-      printingCount: printingIndicesIncludingExtras,
+      printingCount: printingIndicesBeforeDefaultFilter,
       docRef: 'reference/modifiers/include-extras',
       priority: 90,
       variant: 'rewrite',

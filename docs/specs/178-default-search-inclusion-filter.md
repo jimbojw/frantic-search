@@ -1,6 +1,6 @@
 # Spec 178: Default Search Inclusion Filter & `include:extras`
 
-**Status:** Draft
+**Status:** Implemented
 
 **Supersedes:** [Spec 057](057-include-extras-default-playable-filter.md) (default "playable somewhere" filter). Spec 057 remains the historical reference for the original legality-based design and implementation notes.
 
@@ -109,4 +109,8 @@ Mirror Spec 057 **structure**:
 
 ## Implementation Notes
 
-- (none yet — append when implementation deviates from the above.)
+- Playtest promo type is checked via `promoTypesFlags1[p] & 1` (column 1, bit 0 per `PROMO_TYPE_FLAGS`).
+- `worker-alternative-eval.ts` (suggestion count estimation) updated to use the same five-pass logic with wideners from the alternative query's own `EvalOutput`.
+- `_hasIncludeExtras` replaced by generic `_isPositiveInAst` helper in `evaluator.ts`; the same helper computes all widener booleans.
+- Positive set prefixes are collected via `_collectPositiveSetPrefixes` using `normalizeForResolution` (matching `evalPrintingField` set: prefix semantics).
+- Constants (`EXTRAS_LAYOUT_SET`, `DEFAULT_OMIT_SET_CODES`, `EXTRAS_LAYOUT_IS_KEYWORDS`) live in `shared/src/search/default-filter.ts`.

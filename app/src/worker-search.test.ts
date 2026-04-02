@@ -292,131 +292,168 @@ describe('usedExtension (Spec 085)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Default playable filter (Spec 057)
+// Default inclusion filter (Spec 178)
 // ---------------------------------------------------------------------------
 
-// Fixture with a "funny" card: Dismember (face 9) has legalities_legal=0
-const funnyData = {
+// Fixture: face 9 (Dismember) has ContentWarning flag.
+// All legalities are kept from TEST_DATA (Dismember is legal in formats).
+// Spec 178: legality no longer gates default inclusion.
+const contentWarningData = {
   ...TEST_DATA,
-  legalities_legal: [
-    ...TEST_DATA.legalities_legal.slice(0, 9),
-    0, // face 9 (Dismember): not legal in any format
-  ],
   flags: [
     ...TEST_DATA.flags.slice(0, 9),
-    CardFlag.Funny, // face 9 (Dismember): funny
+    CardFlag.ContentWarning, // face 9: content warning
   ],
 }
-const funnyIndex = new CardIndex(funnyData)
-const funnyPrintingIndex = new PrintingIndex(TEST_PRINTING_DATA)
-const funnyCache = new NodeCache(funnyIndex, funnyPrintingIndex)
+const contentWarningIndex = new CardIndex(contentWarningData)
+const contentWarningCache = new NodeCache(contentWarningIndex, printingIndex)
 
-// Fixture with a restricted-only card (Balance-like): face 9 has legal=0, restricted=Vintage
-const restrictedOnlyData = {
+// Fixture: face 9 (Dismember) is a token layout (extras-layout omission).
+const tokenLayoutData = {
   ...TEST_DATA,
-  legalities_legal: [
-    ...TEST_DATA.legalities_legal.slice(0, 9),
-    0, // face 9: not legal anywhere
-  ],
-  legalities_restricted: [
-    ...TEST_DATA.legalities_restricted.slice(0, 9),
-    Format.Vintage, // face 9: restricted in Vintage (playable)
+  layouts: [
+    ...TEST_DATA.layouts.slice(0, 9),
+    'token', // face 9: token layout
   ],
 }
-const restrictedOnlyIndex = new CardIndex(restrictedOnlyData)
-const restrictedOnlyCache = new NodeCache(restrictedOnlyIndex, funnyPrintingIndex)
+const tokenLayoutIndex = new CardIndex(tokenLayoutData)
+const tokenLayoutCache = new NodeCache(tokenLayoutIndex, printingIndex)
 
-describe('default playable filter (Spec 057)', () => {
-  it('excludes cards not legal or restricted in any format by default', () => {
-    // t:instant matches 4 cards: Bolt, Counterspell, Azorius Charm, Dismember.
-    // Dismember has legalities_legal=0, so the playable filter excludes it.
+// Fixture: printing data with playtest promo type on printing #8 (SLD Bolt).
+// promo_types_flags_1 bit 0 = playtest.
+const playtestPrintingData = {
+  ...TEST_PRINTING_DATA,
+  promo_types_flags_1: [
+    ...TEST_PRINTING_DATA.promo_types_flags_1!.slice(0, 8),
+    (TEST_PRINTING_DATA.promo_types_flags_1![8]) | 1, // printing #8: add playtest
+    ...TEST_PRINTING_DATA.promo_types_flags_1!.slice(9),
+  ],
+}
+const playtestPrintingIndex = new PrintingIndex(playtestPrintingData)
+const playtestCache = new NodeCache(index, playtestPrintingIndex)
+
+// Fixture: printing data with a printing in wholesale-omit set "past".
+const wholesaleOmitPrintingData = {
+  ...TEST_PRINTING_DATA,
+  set_lookup: [
+    ...TEST_PRINTING_DATA.set_lookup,
+    { code: "PAST", name: "Astral", released_at: 19980101 },
+  ],
+  set_indices: [
+    ...TEST_PRINTING_DATA.set_indices.slice(0, 8),
+    7, // printing #8: set "PAST" (wholesale omit)
+    ...TEST_PRINTING_DATA.set_indices.slice(9),
+  ],
+}
+const wholesaleOmitPrintingIndex = new PrintingIndex(wholesaleOmitPrintingData)
+const wholesaleOmitCache = new NodeCache(index, wholesaleOmitPrintingIndex)
+
+describe('default inclusion filter (Spec 178)', () => {
+  it('content-warning faces excluded by default (card-only path)', () => {
+    // t:instant matches 4 faces. Face 9 has ContentWarning → excluded.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:instant' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
       sessionSalt,
     })
     expect(result.indices.length).toBe(3)
   })
 
-  it('includes cards that are restricted-only (e.g. Balance in Vintage) by default', () => {
-    // t:instant matches 4 cards. Face 9 is restricted in Vintage, so playable.
+  it('is:content_warning widens content-warning omission', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant is:content_warning' },
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(1) // only face 9 matches both t:instant AND is:content_warning
+  })
+
+  it('token-layout faces excluded by default (card-only path)', () => {
+    // Face 9 has layout=token. t:instant matches 4 faces; after default filter, 3 remain.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:instant' },
-      cache: restrictedOnlyCache,
-      index: restrictedOnlyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache: tokenLayoutCache,
+      index: tokenLayoutIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(3)
+  })
+
+  it('is:token widens extras-layout omission', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:token' },
+      cache: tokenLayoutCache,
+      index: tokenLayoutIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(1) // face 9 (token)
+  })
+
+  it('include:extras bypasses all default omission passes', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant include:extras' },
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
       sessionSalt,
     })
     expect(result.indices.length).toBe(4)
-    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
+    expect(result.indicesBeforeDefaultFilter).toBeUndefined()
+  })
+
+  it('include:extras in pinned query bypasses the filter', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant', pinnedQuery: 'include:extras' },
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(4)
   })
 
   it('populates include-extras suggestion when filter removes results', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:instant' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
       sessionSalt,
     })
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext).toBeDefined()
     expect(ext!.priority).toBe(90)
     expect(ext!.count).toBe(4)
-    expect(result.indicesIncludingExtras).toBe(4)
+    expect(result.indicesBeforeDefaultFilter).toBe(4)
   })
 
   it('does not populate include-extras suggestion when filter removes nothing', () => {
-    // t:creature matches cards all legal somewhere
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 't:creature' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
       sessionSalt,
     })
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
-    expect(result.indicesIncludingExtras).toBeUndefined()
+    expect(result.indicesBeforeDefaultFilter).toBeUndefined()
   })
 
-  it('include:extras bypasses the playable filter', () => {
-    const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 't:instant include:extras' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
-      sessionSalt,
-    })
-    // Dismember included because include:extras skips filter
-    expect(result.indices.length).toBe(4)
-    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
-    expect(result.indicesIncludingExtras).toBeUndefined()
-  })
-
-  it('include:extras in pinned query bypasses the filter', () => {
-    const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 't:instant', pinnedQuery: 'include:extras' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
-      sessionSalt,
-    })
-    expect(result.indices.length).toBe(4)
-    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
-  })
-
-  it('excludes non-tournament printings by default with unique:prints', () => {
-    // Bolt has printings 0,1,2,5,6,8,9,10 (row 6 GoldBorder). Sol Ring has 3-7 (row 7 Oversized).
+  it('excludes non-tournament printings by default (NON_TOURNAMENT_MASK)', () => {
+    // Bolt has 8 printings (0,1,2,5,6,8,9,10). #6 GoldBorder excluded.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache,
+      index,
+      printingIndex,
       sessionSalt,
     })
-    // Bolt has 8 printings (0,1,2,5,6,8,9,10). Filter removes #6 (GoldBorder) → 7 remain.
     expect(result.printingIndices).toBeDefined()
     expect(Array.from(result.printingIndices!)).not.toContain(6)
     expect(result.printingIndices!.length).toBe(7)
@@ -425,69 +462,89 @@ describe('default playable filter (Spec 057)', () => {
   it('populates include-extras suggestion when filter removes printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache,
+      index,
+      printingIndex,
       sessionSalt,
     })
     const ext = result.suggestions.find((s) => s.id === 'include-extras')
     expect(ext).toBeDefined()
     expect(ext!.priority).toBe(90)
     expect(ext!.printingCount).toBe(8)
-    expect(result.printingIndicesIncludingExtras).toBe(8)
+    expect(result.printingIndicesBeforeDefaultFilter).toBe(8)
   })
 
   it('include:extras shows non-tournament printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning include:extras' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      cache,
+      index,
+      printingIndex,
       sessionSalt,
     })
-    // All 8 Bolt printings including #6 (GoldBorder)
     expect(result.printingIndices!.length).toBe(8)
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
-  it('filters printings of not-legal-anywhere cards too', () => {
-    // is:funny matches Dismember (face 9). It has no printings in the fixture,
-    // but the card-level filter should still exclude it.
+  it('playtest printing excluded by default', () => {
+    // Bolt has printings 0,1,2,5,6,8,9,10. Printing #8 has playtest, #6 has GoldBorder.
+    // Both should be excluded from unique:prints lightning.
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 'is:funny' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
+      cache: playtestCache,
+      index,
+      printingIndex: playtestPrintingIndex,
       sessionSalt,
     })
-    expect(result.indices.length).toBe(0)
-    const ext = result.suggestions.find((s) => s.id === 'include-extras')
-    expect(ext?.count).toBe(1)
-    expect(ext!.priority).toBe(90)
-    expect(result.indicesIncludingExtras).toBe(1)
+    expect(result.printingIndices).toBeDefined()
+    expect(Array.from(result.printingIndices!)).not.toContain(8) // playtest excluded
+    expect(Array.from(result.printingIndices!)).not.toContain(6) // GoldBorder excluded
+    expect(result.printingIndices!.length).toBe(6) // 8 total - #6 - #8
   })
 
-  it('histograms reflect filtered results, not unfiltered', () => {
+  it('is:playtest widens playtest omission', () => {
     const result = runSearch({
-      msg: { type: 'search', queryId: 1, query: 't:instant' },
-      cache: funnyCache,
-      index: funnyIndex,
-      printingIndex: funnyPrintingIndex,
+      msg: { type: 'search', queryId: 1, query: 'is:playtest' },
+      cache: playtestCache,
+      index,
+      printingIndex: playtestPrintingIndex,
       sessionSalt,
     })
-    // 3 instants after filtering (Bolt=R, Counterspell=U, Azorius Charm=WU)
-    const totalFromHistogram = result.histograms.cardType[2] // instant bucket
-    expect(totalFromHistogram).toBe(3)
+    expect(result.indices.length).toBe(1) // face 1 (Bolt via printing #8)
   })
-})
 
-// ---------------------------------------------------------------------------
-// Issue #58: Set query zero results when no playable printings match
-// ---------------------------------------------------------------------------
-// Fixture: set:wcd matches only printing #6 (Bolt in World Championship Decks),
-// which has GoldBorder and is filtered out by the playable filter.
-describe('set query zero results when no playable printings (Issue #58)', () => {
-  it('set query with all printings filtered returns 0 results and populates extras hint', () => {
+  it('wholesale-omit set printing excluded by default', () => {
+    // Printing #8 is in set PAST. unique:prints lightning includes it in
+    // raw results, but the default filter wholesale-omits it.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
+      cache: wholesaleOmitCache,
+      index,
+      printingIndex: wholesaleOmitPrintingIndex,
+      sessionSalt,
+    })
+    expect(result.printingIndices).toBeDefined()
+    expect(Array.from(result.printingIndices!)).not.toContain(8) // PAST excluded
+    expect(Array.from(result.printingIndices!)).not.toContain(6) // GoldBorder excluded
+    expect(result.printingIndices!.length).toBe(6) // 8 total - #6 - #8
+  })
+
+  it('positive set: widens wholesale-omit set', () => {
+    // set:past is both the filter AND the widener. The positive prefix "past"
+    // set-widens printing #8 through the wholesale-omit check.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:past' },
+      cache: wholesaleOmitCache,
+      index,
+      printingIndex: wholesaleOmitPrintingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(1) // Bolt face survives via widened printing
+  })
+
+  it('set: widening restores non-tournament printings', () => {
+    // set:wcd matches printing #6 (GoldBorder). The positive set: prefix "wcd"
+    // widens that printing, so it passes NON_TOURNAMENT_MASK.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'set:wcd' },
       cache,
@@ -495,16 +552,63 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
       printingIndex,
       sessionSalt,
     })
-    expect(result.indices.length).toBe(0)
-    const ext = result.suggestions.find((s) => s.id === 'include-extras')
-    expect(ext?.count).toBe(1)
-    expect(ext?.printingCount).toBe(1)
-    expect(ext!.priority).toBe(90)
-    expect(result.indicesIncludingExtras).toBe(1)
-    expect(result.printingIndicesIncludingExtras).toBe(1)
+    expect(result.indices.length).toBe(1)
+    expect(result.printingIndices?.length).toBe(1)
   })
 
-  it('set query with include:extras shows non-tournament printings', () => {
+  it('legality no longer gates default inclusion', () => {
+    // Face 9 has legalities_legal=0 but no omission-pass flags.
+    // Under Spec 178 it passes the default filter (no layout/playtest/set/CW/mask).
+    const neverLegalData = {
+      ...TEST_DATA,
+      legalities_legal: [...TEST_DATA.legalities_legal.slice(0, 9), 0],
+    }
+    const neverLegalIndex = new CardIndex(neverLegalData)
+    const neverLegalCache = new NodeCache(neverLegalIndex, printingIndex)
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant' },
+      cache: neverLegalCache,
+      index: neverLegalIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(4) // all 4 instants survive
+  })
+
+  it('histograms reflect filtered results, not unfiltered', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 't:instant' },
+      cache: contentWarningCache,
+      index: contentWarningIndex,
+      printingIndex,
+      sessionSalt,
+    })
+    const totalFromHistogram = result.histograms.cardType[2] // instant bucket
+    expect(totalFromHistogram).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #58 / Spec 178: set: widening restores non-tournament printings
+// ---------------------------------------------------------------------------
+// Fixture: set:wcd matches only printing #6 (Bolt in World Championship Decks),
+// which has GoldBorder. Under Spec 178, positive set:wcd widens it.
+describe('set query with non-tournament printings (Issue #58 + Spec 178)', () => {
+  it('set:wcd self-widens non-tournament printing (Spec 178)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'set:wcd' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    // Under Spec 178, positive set: widens NON_TOURNAMENT_MASK for that set.
+    expect(result.indices.length).toBe(1)
+    expect(result.printingIndices?.length).toBe(1)
+    expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
+  })
+
+  it('set query with include:extras also shows non-tournament printings', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'set:wcd include:extras' },
       cache,
@@ -529,7 +633,7 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
     expect(result.suggestions.find((s) => s.id === 'include-extras')).toBeUndefined()
   })
 
-  it('set + face condition with all printings filtered returns 0 results', () => {
+  it('set + face condition with no matching face returns 0 results', () => {
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'set:wcd t:creature' },
       cache,
@@ -537,7 +641,6 @@ describe('set query zero results when no playable printings (Issue #58)', () => 
       printingIndex,
       sessionSalt,
     })
-    // Bolt is instant, not creature; intersection is empty before playable filter
     expect(result.indices.length).toBe(0)
   })
 

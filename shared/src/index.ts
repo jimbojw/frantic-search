@@ -69,6 +69,7 @@ export {
   resolveIllustrationTagsToPrintingRows,
 } from "./supplemental-index-build";
 export { NON_TOURNAMENT_MASK } from "./search/eval-printing";
+export { EXTRAS_LAYOUT_SET, EXTRAS_LAYOUT_IS_KEYWORDS, DEFAULT_OMIT_SET_CODES } from "./search/default-filter";
 export { levenshteinDistance } from "./levenshtein";
 export { normalizeAlphanumeric } from "./normalize";
 export { IS_KEYWORDS, typeLineIsPermanent } from "./search/eval-is";

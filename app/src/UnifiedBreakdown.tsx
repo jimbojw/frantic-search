@@ -13,7 +13,7 @@ import {
   ChipTreeNode,
 } from './InlineBreakdown'
 
-/** Spec 175: split footer when playable filter hides cards/printings and results are non-empty. */
+/** Spec 175: split footer when default inclusion filter hides cards/printings and results are non-empty. */
 export function shouldShowMatchesShowingSplit(opts: {
   postCards: number
   postPrints?: number
@@ -99,10 +99,10 @@ export default function UnifiedBreakdown(props: {
   liveBreakdown: BreakdownNode | null
   liveCardCount: number
   livePrintingCount?: number
-  /** Spec 057 / 175: pre-playable-filter face count when the filter removed matches. */
-  indicesIncludingExtras?: number
-  /** Spec 057 / 175: pre-playable-filter printing count when the filter removed printings. */
-  printingIndicesIncludingExtras?: number
+  /** Spec 178 / 175: pre-default-filter face count when the filter removed matches. */
+  indicesBeforeDefaultFilter?: number
+  /** Spec 178 / 175: pre-default-filter printing count when the filter removed printings. */
+  printingIndicesBeforeDefaultFilter?: number
   expanded: boolean
   onToggle: () => void
   onPin: (nodeLabel: string) => void
@@ -126,28 +126,28 @@ export default function UnifiedBreakdown(props: {
     shouldShowMatchesShowingSplit({
       postCards: props.liveCardCount,
       postPrints: props.livePrintingCount,
-      preCards: props.indicesIncludingExtras,
-      prePrints: props.printingIndicesIncludingExtras,
+      preCards: props.indicesBeforeDefaultFilter,
+      prePrints: props.printingIndicesBeforeDefaultFilter,
     }),
   )
 
   const matchesCardCount = createMemo(() => {
-    if (showSplit()) return props.indicesIncludingExtras ?? props.liveCardCount
-    if (props.liveCardCount === 0 && props.indicesIncludingExtras !== undefined) {
-      return props.indicesIncludingExtras
+    if (showSplit()) return props.indicesBeforeDefaultFilter ?? props.liveCardCount
+    if (props.liveCardCount === 0 && props.indicesBeforeDefaultFilter !== undefined) {
+      return props.indicesBeforeDefaultFilter
     }
     return props.liveCardCount
   })
 
   const matchesPrintCount = createMemo(() => {
     if (showSplit()) {
-      if (props.printingIndicesIncludingExtras !== undefined) {
-        return props.printingIndicesIncludingExtras
+      if (props.printingIndicesBeforeDefaultFilter !== undefined) {
+        return props.printingIndicesBeforeDefaultFilter
       }
       return props.livePrintingCount
     }
-    if (props.liveCardCount === 0 && props.printingIndicesIncludingExtras !== undefined) {
-      return props.printingIndicesIncludingExtras
+    if (props.liveCardCount === 0 && props.printingIndicesBeforeDefaultFilter !== undefined) {
+      return props.printingIndicesBeforeDefaultFilter
     }
     return props.livePrintingCount
   })

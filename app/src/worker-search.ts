@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, NON_TOURNAMENT_MASK, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
@@ -102,6 +102,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let hasPrintingConditions = liveEval.hasPrintingConditions
   let uniqueMode = liveEval.uniqueMode
   let includeExtras = liveEval.includeExtras
+  let widenExtrasLayout = liveEval.widenExtrasLayout
+  let widenContentWarning = liveEval.widenContentWarning
+  let widenPlaytest = liveEval.widenPlaytest
+  let positiveSetPrefixes = liveEval.positiveSetPrefixes
   let flavorUnavailable = liveEval.flavorUnavailable
   let artistUnavailable = liveEval.artistUnavailable
   let liveSortBy = liveEval.sortBy
@@ -138,6 +142,14 @@ export function runSearch(params: RunSearchParams): SearchResult {
     hasPrintingConditions = hasPrintingConditions || pinnedEval.hasPrintingConditions
     uniqueMode = getUniqueModeFromQuery(`${msg.pinnedQuery} ${msg.query}`)
     includeExtras = includeExtras || pinnedEval.includeExtras
+    widenExtrasLayout = widenExtrasLayout || pinnedEval.widenExtrasLayout
+    widenContentWarning = widenContentWarning || pinnedEval.widenContentWarning
+    widenPlaytest = widenPlaytest || pinnedEval.widenPlaytest
+    positiveSetPrefixes = positiveSetPrefixes.length > 0
+      ? (pinnedEval.positiveSetPrefixes.length > 0
+        ? [...positiveSetPrefixes, ...pinnedEval.positiveSetPrefixes]
+        : positiveSetPrefixes)
+      : pinnedEval.positiveSetPrefixes
     flavorUnavailable = flavorUnavailable || pinnedEval.flavorUnavailable || false
     artistUnavailable = artistUnavailable || pinnedEval.artistUnavailable || false
     if (!liveSortBy) liveSortBy = pinnedEval.sortBy
@@ -145,12 +157,19 @@ export function runSearch(params: RunSearchParams): SearchResult {
     deduped = Array.from(liveEval.indices)
   }
 
-  // Default playable filter (Spec 057): exclude non-playable cards and
-  // non-tournament printings unless include:extras is in the query.
-  let indicesIncludingExtras: number | undefined
-  let printingIndicesIncludingExtras: number | undefined
+  // Spec 178: Default inclusion filter — five omission passes with wideners.
+  // Replaces the Spec 057 legality-based "playable" filter.
+  let indicesBeforeDefaultFilter: number | undefined
+  let printingIndicesBeforeDefaultFilter: number | undefined
 
   if (!includeExtras) {
+    const isSetWidened = (setCode: string): boolean => {
+      for (let i = 0; i < positiveSetPrefixes.length; i++) {
+        if (setCode.startsWith(positiveSetPrefixes[i])) return true
+      }
+      return false
+    }
+
     if (hasPrintingConditions && rawPrintingIndices && printingIndex) {
       // Printing-derived path (Issue #58): filter printings first, then derive
       // deduped from them. Cards with no surviving printings are excluded.
@@ -158,16 +177,25 @@ export function runSearch(params: RunSearchParams): SearchResult {
       const filtered: number[] = []
       for (let i = 0; i < preLen; i++) {
         const p = rawPrintingIndices[i]
-        if (
-          !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
-          (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
-            index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
-        ) {
-          filtered.push(p)
-        }
+        const cf = printingIndex.canonicalFaceRef[p]
+        const setCode = printingIndex.setCodesLower[p]
+        const setWide = isSetWidened(setCode)
+
+        // Pass 1: Extras layouts
+        if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue
+        // Pass 2: Playtest promo type (column 1, bit 0)
+        if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
+        // Pass 3: Wholesale omit sets
+        if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
+        // Pass 4: Content-warning oracles
+        if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
+        // Pass 5: Non-tournament mask
+        if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+
+        filtered.push(p)
       }
       if (filtered.length < preLen) {
-        printingIndicesIncludingExtras = preLen
+        printingIndicesBeforeDefaultFilter = preLen
       }
       // Derive deduped from filtered printings (unique canonical faces, first-occurrence order)
       const seen = new Set<number>()
@@ -180,23 +208,25 @@ export function runSearch(params: RunSearchParams): SearchResult {
         }
       }
       deduped = derived
-      // When derived is empty but unfiltered had results, populate indicesIncludingExtras for hint
       if (deduped.length === 0 && preLen > 0) {
         const unfilteredFaces = new Set<number>()
         for (let i = 0; i < preLen; i++) {
           unfilteredFaces.add(printingIndex.canonicalFaceRef[rawPrintingIndices[i]])
         }
-        indicesIncludingExtras = unfilteredFaces.size
+        indicesBeforeDefaultFilter = unfilteredFaces.size
       }
       rawPrintingIndices = new Uint32Array(filtered)
     } else {
-      // Card-only path: filter deduped by card playability; filter printings when present
+      // Card-only path: apply face-level omission passes only (printing-level
+      // passes like playtest, wholesale-set, and non-tournament require printing data).
       const preFaceCount = deduped.length
-      deduped = deduped.filter(fi =>
-        (index.legalitiesLegal[fi] | index.legalitiesRestricted[fi]) !== 0
-      )
+      deduped = deduped.filter(fi => {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false
+        return true
+      })
       if (deduped.length < preFaceCount) {
-        indicesIncludingExtras = preFaceCount
+        indicesBeforeDefaultFilter = preFaceCount
       }
 
       if (rawPrintingIndices && printingIndex) {
@@ -204,16 +234,20 @@ export function runSearch(params: RunSearchParams): SearchResult {
         const filtered: number[] = []
         for (let i = 0; i < preLen; i++) {
           const p = rawPrintingIndices[i]
-          if (
-            !(printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) &&
-            (index.legalitiesLegal[printingIndex.canonicalFaceRef[p]] |
-              index.legalitiesRestricted[printingIndex.canonicalFaceRef[p]]) !== 0
-          ) {
-            filtered.push(p)
-          }
+          const cf = printingIndex.canonicalFaceRef[p]
+          const setCode = printingIndex.setCodesLower[p]
+          const setWide = isSetWidened(setCode)
+
+          if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue
+          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
+          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
+          if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
+          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+
+          filtered.push(p)
         }
         if (filtered.length < preLen) {
-          printingIndicesIncludingExtras = preLen
+          printingIndicesBeforeDefaultFilter = preLen
           rawPrintingIndices = new Uint32Array(filtered)
         }
       }
@@ -343,8 +377,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
     totalCards,
     pinnedIndicesCount,
     includeExtras,
-    indicesIncludingExtras,
-    printingIndicesIncludingExtras,
+    indicesBeforeDefaultFilter,
+    printingIndicesBeforeDefaultFilter,
     printingIndices,
     uniqueMode,
     totalPrintingItems,
@@ -375,8 +409,8 @@ export function runSearch(params: RunSearchParams): SearchResult {
     ...(pinnedBreakdown && { pinnedBreakdown }),
     ...(pinnedIndicesCount !== undefined && { pinnedIndicesCount }),
     ...(pinnedPrintingCount !== undefined && { pinnedPrintingCount }),
-    ...(indicesIncludingExtras !== undefined && { indicesIncludingExtras }),
-    ...(printingIndicesIncludingExtras !== undefined && { printingIndicesIncludingExtras }),
+    ...(indicesBeforeDefaultFilter !== undefined && { indicesBeforeDefaultFilter }),
+    ...(printingIndicesBeforeDefaultFilter !== undefined && { printingIndicesBeforeDefaultFilter }),
   }
   return result
 }

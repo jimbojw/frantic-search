@@ -1280,8 +1280,13 @@ describe("include:extras", () => {
     expect(output.hasPrintingConditions).toBe(false);
   });
 
-  test("include:extras inside NOT still sets the flag", () => {
+  test("include:extras inside NOT does NOT set the flag (Spec 178 even-NOT-ancestors)", () => {
     const output = evaluate("-include:extras t:creature");
+    expect(output.includeExtras).toBe(false);
+  });
+
+  test("include:extras inside double NOT sets the flag (Spec 178 even-NOT-ancestors)", () => {
+    const output = evaluate("-(-include:extras) t:creature");
     expect(output.includeExtras).toBe(true);
   });
 
@@ -1308,6 +1313,122 @@ describe("include:extras", () => {
     const without = evaluate("t:instant");
     const with_ = evaluate("t:instant **");
     expect(with_.indices.length).toBe(without.indices.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 178: default inclusion filter wideners
+// ---------------------------------------------------------------------------
+
+describe("widenExtrasLayout (Spec 178)", () => {
+  test("is:token sets widenExtrasLayout", () => {
+    expect(evaluate("is:token").widenExtrasLayout).toBe(true);
+  });
+
+  test("is:vanguard sets widenExtrasLayout", () => {
+    expect(evaluate("is:vanguard").widenExtrasLayout).toBe(true);
+  });
+
+  test("is:art_series sets widenExtrasLayout", () => {
+    expect(evaluate("is:art_series").widenExtrasLayout).toBe(true);
+  });
+
+  test("is:dfctoken sets widenExtrasLayout", () => {
+    expect(evaluate("is:dfctoken").widenExtrasLayout).toBe(true);
+  });
+
+  test("is:double_faced_token sets widenExtrasLayout", () => {
+    expect(evaluate("is:double_faced_token").widenExtrasLayout).toBe(true);
+  });
+
+  test("-is:token does NOT set widenExtrasLayout (odd NOT depth)", () => {
+    expect(evaluate("-is:token t:creature").widenExtrasLayout).toBe(false);
+  });
+
+  test("-(-is:token) sets widenExtrasLayout (even NOT depth)", () => {
+    expect(evaluate("-(-is:token)").widenExtrasLayout).toBe(true);
+  });
+
+  test("normal query has widenExtrasLayout false", () => {
+    expect(evaluate("t:creature").widenExtrasLayout).toBe(false);
+  });
+
+  test("is:creature does NOT set widenExtrasLayout", () => {
+    expect(evaluate("is:creature").widenExtrasLayout).toBe(false);
+  });
+});
+
+describe("widenContentWarning (Spec 178)", () => {
+  test("is:content_warning sets widenContentWarning", () => {
+    expect(evaluate("is:content_warning").widenContentWarning).toBe(true);
+  });
+
+  test("-is:content_warning does NOT set widenContentWarning", () => {
+    expect(evaluate("-is:content_warning t:creature").widenContentWarning).toBe(false);
+  });
+
+  test("-(-is:content_warning) sets widenContentWarning", () => {
+    expect(evaluate("-(-is:content_warning)").widenContentWarning).toBe(true);
+  });
+
+  test("normal query has widenContentWarning false", () => {
+    expect(evaluate("t:creature").widenContentWarning).toBe(false);
+  });
+});
+
+describe("widenPlaytest (Spec 178)", () => {
+  test("is:playtest sets widenPlaytest", () => {
+    expect(evaluate("is:playtest").widenPlaytest).toBe(true);
+  });
+
+  test("-is:playtest does NOT set widenPlaytest", () => {
+    expect(evaluate("-is:playtest t:creature").widenPlaytest).toBe(false);
+  });
+
+  test("-(-is:playtest) sets widenPlaytest", () => {
+    expect(evaluate("-(-is:playtest)").widenPlaytest).toBe(true);
+  });
+
+  test("normal query has widenPlaytest false", () => {
+    expect(evaluate("t:creature").widenPlaytest).toBe(false);
+  });
+});
+
+describe("positiveSetPrefixes (Spec 178)", () => {
+  test("set:arn extracts positive prefix", () => {
+    expect(evaluate("set:arn").positiveSetPrefixes).toEqual(["arn"]);
+  });
+
+  test("-set:arn extracts no prefix (odd NOT depth)", () => {
+    expect(evaluate("-set:arn t:creature").positiveSetPrefixes).toEqual([]);
+  });
+
+  test("-(-set:arn) extracts prefix (even NOT depth)", () => {
+    expect(evaluate("-(-set:arn)").positiveSetPrefixes).toEqual(["arn"]);
+  });
+
+  test("set:wc0 OR set:hho extracts both prefixes", () => {
+    const prefixes = evaluate("set:wc0 OR set:hho").positiveSetPrefixes;
+    expect(prefixes).toContain("wc0");
+    expect(prefixes).toContain("hho");
+    expect(prefixes).toHaveLength(2);
+  });
+
+  test("s: alias extracts prefix", () => {
+    expect(evaluate("s:unk").positiveSetPrefixes).toEqual(["unk"]);
+  });
+
+  test("e: alias extracts prefix", () => {
+    expect(evaluate("e:past").positiveSetPrefixes).toEqual(["past"]);
+  });
+
+  test("normal query has empty positiveSetPrefixes", () => {
+    expect(evaluate("t:creature").positiveSetPrefixes).toEqual([]);
+  });
+
+  test("mixed: positive and negated set: only extracts positive", () => {
+    const prefixes = evaluate("set:arn -set:lea").positiveSetPrefixes;
+    expect(prefixes).toEqual(["arn"]);
   });
 });
 

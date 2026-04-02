@@ -25,9 +25,9 @@ export interface SearchContextValue {
   uniqueMode: Accessor<UniqueMode>
   /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
   suggestions: Accessor<Suggestion[]>
-  /** Spec 057 / 175: pre-playable-filter counts when worker populated them. */
-  indicesIncludingExtras: () => number | undefined
-  printingIndicesIncludingExtras: () => number | undefined
+  /** Spec 178 / 175: pre-default-filter counts when worker populated them. */
+  indicesBeforeDefaultFilter: () => number | undefined
+  printingIndicesBeforeDefaultFilter: () => number | undefined
   includeExtras: Accessor<boolean>
   /** Spec 085: Frantic-vs-Scryfall syntax; from worker `usedExtension`, not includeExtras/uniqueMode. */
   usedExtension: Accessor<boolean>

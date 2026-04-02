@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   type ASTNode,
+  type FieldNode,
   type QueryNodeResult,
   type EvalOutput,
   type SortDirective,
   type UniqueMode,
 } from "./ast";
+import { EXTRAS_LAYOUT_IS_KEYWORDS } from "./default-filter";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
 import { PRINTING_IS_KEYWORDS, FACE_FALLBACK_IS_KEYWORDS, evalPrintingIsKeyword } from "./eval-is";
@@ -25,7 +27,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
 }
 import { parse } from "./parser";
 import type { OracleTagData, FlavorTagData, ArtistIndexData, KeywordData } from "../data";
-import { resolveForField } from "./categorical-resolve";
+import { resolveForField, normalizeForResolution } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
 
@@ -231,7 +233,25 @@ export class NodeCache {
     const result = this.buildResult(root, timings);
 
     const uniqueMode = this._getUniqueMode(ast);
-    const includeExtras = this._hasIncludeExtras(ast);
+    const includeExtras = this._isPositiveInAst(
+      ast, (n) => n.field.toLowerCase() === "include" && n.value.toLowerCase() === "extras",
+    );
+    const widenExtrasLayout = this._isPositiveInAst(ast, (n) => {
+      const canonical = FIELD_ALIASES[n.field.toLowerCase()];
+      if (canonical !== "is" && canonical !== "not") return false;
+      return EXTRAS_LAYOUT_IS_KEYWORDS.has(resolveForField("is", n.value, this._getResolutionContext()).toLowerCase());
+    });
+    const widenContentWarning = this._isPositiveInAst(ast, (n) => {
+      const canonical = FIELD_ALIASES[n.field.toLowerCase()];
+      if (canonical !== "is" && canonical !== "not") return false;
+      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "content_warning";
+    });
+    const widenPlaytest = this._isPositiveInAst(ast, (n) => {
+      const canonical = FIELD_ALIASES[n.field.toLowerCase()];
+      if (canonical !== "is" && canonical !== "not") return false;
+      return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "playtest";
+    });
+    const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
     const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
@@ -241,7 +261,7 @@ export class NodeCache {
     const artistUnavailable = hasArtistLeaves && this._printingIndex != null && !this._tagDataRef?.artist;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, positiveSetPrefixes, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -303,7 +323,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, positiveSetPrefixes, sortBy };
   }
 
   private _hasArtistLeaves(ast: ASTNode): boolean {
@@ -386,13 +406,56 @@ export class NodeCache {
     }
   }
 
-  private _hasIncludeExtras(ast: ASTNode): boolean {
+  /**
+   * Spec 178: walk the AST checking whether any FIELD node matching `predicate`
+   * has an even number of NOT ancestors (0, 2, 4, …), meaning it is "positive."
+   */
+  private _isPositiveInAst(
+    ast: ASTNode,
+    predicate: (node: FieldNode) => boolean,
+    notDepth = 0,
+  ): boolean {
     switch (ast.type) {
       case "FIELD":
-        return ast.field.toLowerCase() === "include" && ast.value.toLowerCase() === "extras";
-      case "NOT": return this._hasIncludeExtras(ast.child);
-      case "AND": case "OR": return ast.children.some(c => this._hasIncludeExtras(c));
-      default: return false;
+        return predicate(ast as FieldNode) && notDepth % 2 === 0;
+      case "NOT":
+        return this._isPositiveInAst(ast.child, predicate, notDepth + 1);
+      case "AND":
+      case "OR":
+        return ast.children.some(c => this._isPositiveInAst(c, predicate, notDepth));
+      default:
+        return false;
+    }
+  }
+
+  /** Spec 178: collect normalized prefix values from positive set:/s:/e: FIELD nodes. */
+  private _collectPositiveSetPrefixes(ast: ASTNode, notDepth = 0): string[] {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (
+          canonical === "set" &&
+          ast.operator === ":" &&
+          notDepth % 2 === 0
+        ) {
+          const prefix = normalizeForResolution(ast.value);
+          return prefix.length > 0 ? [prefix] : [];
+        }
+        return [];
+      }
+      case "NOT":
+        return this._collectPositiveSetPrefixes(ast.child, notDepth + 1);
+      case "AND":
+      case "OR": {
+        const result: string[] = [];
+        for (const c of ast.children) {
+          const sub = this._collectPositiveSetPrefixes(c, notDepth);
+          for (const s of sub) result.push(s);
+        }
+        return result;
+      }
+      default:
+        return [];
     }
   }
 

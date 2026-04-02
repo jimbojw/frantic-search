@@ -58,9 +58,9 @@ export interface CreatePaneStateOpts {
   usedExtension: Accessor<boolean>
   /** Spec 151: Unified suggestions (include:extras, oracle, empty-list, unique:prints). */
   suggestions: Accessor<Suggestion[]>
-  /** Spec 175: pre-playable-filter counts from worker `result`. */
-  indicesIncludingExtras: Accessor<number | undefined>
-  printingIndicesIncludingExtras: Accessor<number | undefined>
+  /** Spec 178 / 175: pre-default-filter counts from worker `result`. */
+  indicesBeforeDefaultFilter: Accessor<number | undefined>
+  printingIndicesBeforeDefaultFilter: Accessor<number | undefined>
   display: Accessor<DisplayColumns | null>
   printingDisplay: Accessor<PrintingDisplayColumns | null>
   oracleTagLabels: Accessor<string[]>
@@ -169,8 +169,8 @@ export function createPaneState(opts: CreatePaneStateOpts): PaneState {
     includeExtras: opts.includeExtras,
     usedExtension: opts.usedExtension,
     suggestions: opts.suggestions,
-    indicesIncludingExtras: opts.indicesIncludingExtras,
-    printingIndicesIncludingExtras: opts.printingIndicesIncludingExtras,
+    indicesBeforeDefaultFilter: opts.indicesBeforeDefaultFilter,
+    printingIndicesBeforeDefaultFilter: opts.printingIndicesBeforeDefaultFilter,
     display: opts.display,
     printingDisplay: opts.printingDisplay,
     oracleTagLabels: opts.oracleTagLabels,
