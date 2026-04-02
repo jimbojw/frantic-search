@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, DEFAULT_OMIT_SET_CODES, CardFlag, PrintingFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax, printingPassesDefaultInclusionFilter, isSetTypeWidenedByPrefixes } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
@@ -107,6 +107,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let widenPlaytest = liveEval.widenPlaytest
   let widenOversized = liveEval.widenOversized
   let positiveSetPrefixes = liveEval.positiveSetPrefixes
+  let positiveSetTypePrefixes = liveEval.positiveSetTypePrefixes
   let flavorUnavailable = liveEval.flavorUnavailable
   let artistUnavailable = liveEval.artistUnavailable
   let liveSortBy = liveEval.sortBy
@@ -152,6 +153,11 @@ export function runSearch(params: RunSearchParams): SearchResult {
         ? [...positiveSetPrefixes, ...pinnedEval.positiveSetPrefixes]
         : positiveSetPrefixes)
       : pinnedEval.positiveSetPrefixes
+    positiveSetTypePrefixes = positiveSetTypePrefixes.length > 0
+      ? (pinnedEval.positiveSetTypePrefixes.length > 0
+        ? [...positiveSetTypePrefixes, ...pinnedEval.positiveSetTypePrefixes]
+        : positiveSetTypePrefixes)
+      : pinnedEval.positiveSetTypePrefixes
     flavorUnavailable = flavorUnavailable || pinnedEval.flavorUnavailable || false
     artistUnavailable = artistUnavailable || pinnedEval.artistUnavailable || false
     if (!liveSortBy) liveSortBy = pinnedEval.sortBy
@@ -164,11 +170,11 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let printingIndicesBeforeDefaultFilter: number | undefined
 
   if (!includeExtras) {
-    const isSetWidened = (setCode: string): boolean => {
+    const isPrintingWide = (setCode: string, setType: string): boolean => {
       for (let i = 0; i < positiveSetPrefixes.length; i++) {
         if (setCode.startsWith(positiveSetPrefixes[i])) return true
       }
-      return false
+      return isSetTypeWidenedByPrefixes(setType, positiveSetTypePrefixes)
     }
 
     if (hasPrintingConditions && rawPrintingIndices && printingIndex) {
@@ -180,18 +186,21 @@ export function runSearch(params: RunSearchParams): SearchResult {
         const p = rawPrintingIndices[i]
         const cf = printingIndex.canonicalFaceRef[p]
         const setCode = printingIndex.setCodesLower[p]
-        const setWide = isSetWidened(setCode)
-
-        // Pass 1: Extras layouts
-        if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue
-        // Pass 2: Playtest promo type (column 1, bit 0)
-        if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
-        // Pass 3: Wholesale omit sets
-        if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
-        // Pass 4: Content-warning oracles
-        if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-        // Pass 5: Oversized printings
-        if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
+        const setType = printingIndex.setTypesLower[p]
+        const wide = isPrintingWide(setCode, setType)
+        if (!printingPassesDefaultInclusionFilter({
+          wide,
+          widenExtrasLayout,
+          widenContentWarning,
+          widenPlaytest,
+          widenOversized,
+          layout: index.layouts[cf],
+          faceFlags: index.flags[cf],
+          printingFlags: printingIndex.printingFlags[p],
+          promoTypesFlags1: printingIndex.promoTypesFlags1[p],
+          setCode,
+          setType,
+        })) continue
 
         filtered.push(p)
       }
@@ -230,14 +239,24 @@ export function runSearch(params: RunSearchParams): SearchResult {
         let hasSurvivor = printings.length === 0
         for (const p of printings) {
           const setCode = printingIndex.setCodesLower[p]
-          const setWide = isSetWidened(setCode)
-
-          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
-          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
-          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
-
-          hasSurvivor = true
-          break
+          const setType = printingIndex.setTypesLower[p]
+          const wide = isPrintingWide(setCode, setType)
+          if (printingPassesDefaultInclusionFilter({
+            wide,
+            widenExtrasLayout,
+            widenContentWarning,
+            widenPlaytest,
+            widenOversized,
+            layout: index.layouts[fi],
+            faceFlags: index.flags[fi],
+            printingFlags: printingIndex.printingFlags[p],
+            promoTypesFlags1: printingIndex.promoTypesFlags1[p],
+            setCode,
+            setType,
+          })) {
+            hasSurvivor = true
+            break
+          }
         }
         if (hasSurvivor) survivingFaces.push(fi)
       }
@@ -253,13 +272,21 @@ export function runSearch(params: RunSearchParams): SearchResult {
           const p = rawPrintingIndices[i]
           const cf = printingIndex.canonicalFaceRef[p]
           const setCode = printingIndex.setCodesLower[p]
-          const setWide = isSetWidened(setCode)
-
-          if (!setWide && !widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[cf])) continue
-          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
-          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
-          if (!setWide && !widenContentWarning && (index.flags[cf] & CardFlag.ContentWarning) !== 0) continue
-          if (!setWide && !widenOversized && (printingIndex.printingFlags[p] & PrintingFlag.Oversized) !== 0) continue
+          const setType = printingIndex.setTypesLower[p]
+          const wide = isPrintingWide(setCode, setType)
+          if (!printingPassesDefaultInclusionFilter({
+            wide,
+            widenExtrasLayout,
+            widenContentWarning,
+            widenPlaytest,
+            widenOversized,
+            layout: index.layouts[cf],
+            faceFlags: index.flags[cf],
+            printingFlags: printingIndex.printingFlags[p],
+            promoTypesFlags1: printingIndex.promoTypesFlags1[p],
+            setCode,
+            setType,
+          })) continue
 
           filtered.push(p)
         }

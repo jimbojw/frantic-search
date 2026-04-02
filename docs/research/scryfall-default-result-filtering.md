@@ -22,6 +22,22 @@ This file records **incremental progress**: confirmed observations, falsified hy
 3. Add a row to the **Test matrix** (or update cells) and summarize the implication under **Confirmed**, **Falsified hypotheses**, or **Open questions**.
 4. When something is **stable** and actionable, **graduate** it: update `docs/guides/scryfall-comparison.md`, Spec 178 (or product behavior), or ADR-019 as appropriate—then link back here from the guide instead of duplicating long prose.
 
+## Wholesale omit codes vs Scryfall `set_type` (Frantic Spec 178)
+
+Used to split **structural** default omission (`set_type: memorabilia`) from a **short explicit set-code list** for codes Scryfall still omits by default but whose `set_type` is not `memorabilia`. Source: Scryfall `GET /sets/{code}` (`set_type` field), checked 2026-04-02.
+
+| Set code | Scryfall `set_type` | Frantic default omit |
+|----------|---------------------|----------------------|
+| `past` | `box` | Explicit list (not memorabilia) |
+| `hho` | `funny` | Explicit list (not memorabilia) |
+| `xana` | `memorabilia` | Structural pass only |
+| `30a` | `memorabilia` | Structural pass only |
+| `ced` | `memorabilia` | Structural pass only |
+| `cei` | `memorabilia` | Structural pass only |
+| `ptc` | `memorabilia` | Structural pass only |
+| `pssc` | `memorabilia` | Structural pass only |
+| `wc97`–`wc04` | `memorabilia` | Structural pass only |
+
 ## Confirmed (empirical)
 
 _Steady observations with reproduction. Keep entries short; link or cite queries._

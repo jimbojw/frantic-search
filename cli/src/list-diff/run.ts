@@ -370,6 +370,7 @@ export function runListDiff(
     widenPlaytest: evalOut.widenPlaytest,
     widenOversized: evalOut.widenOversized,
     positiveSetPrefixes: evalOut.positiveSetPrefixes,
+    positiveSetTypePrefixes: evalOut.positiveSetTypePrefixes,
   });
 
   let rawOracleCards: RawOracleCard[] | undefined;

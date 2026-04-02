@@ -68,7 +68,18 @@ export {
   normalizeArtistIndexForSearch,
   resolveIllustrationTagsToPrintingRows,
 } from "./supplemental-index-build";
-export { EXTRAS_LAYOUT_SET, EXTRAS_LAYOUT_IS_KEYWORDS, DEFAULT_OMIT_SET_CODES } from "./search/default-filter";
+export {
+  EXTRAS_LAYOUT_SET,
+  EXTRAS_LAYOUT_IS_KEYWORDS,
+  DEFAULT_OMIT_SET_CODES,
+  DEFAULT_OMIT_SET_TYPE_MEMORABILIA,
+  isMemorabiliaDefaultOmit,
+  isSetTypeWidenedByPrefixes,
+} from "./search/default-filter";
+export {
+  printingPassesDefaultInclusionFilter,
+  type DefaultInclusionPrintingRow,
+} from "./search/default-inclusion-filter";
 export { levenshteinDistance } from "./levenshtein";
 export { normalizeAlphanumeric } from "./normalize";
 export { IS_KEYWORDS, typeLineIsPermanent } from "./search/eval-is";

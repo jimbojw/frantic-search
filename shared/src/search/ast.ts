@@ -148,5 +148,7 @@ export interface EvalOutput {
   widenOversized: boolean;
   /** Spec 178: normalized prefixes from positive `set:`/`s:` FIELD nodes for per-printing set widening. */
   positiveSetPrefixes: string[];
+  /** Spec 178: normalized prefixes from positive `set_type:`/`st:` FIELD nodes (`:` or `=`). */
+  positiveSetTypePrefixes: string[];
   sortBy: SortDirective | null;
 }

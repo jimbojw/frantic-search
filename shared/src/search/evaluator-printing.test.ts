@@ -1440,6 +1440,43 @@ describe("positiveSetPrefixes (Spec 178)", () => {
   });
 });
 
+describe("positiveSetTypePrefixes (Spec 178 + 179)", () => {
+  test("set_type:mem extracts normalized prefix", () => {
+    expect(evaluate("set_type:mem").positiveSetTypePrefixes).toEqual(["mem"]);
+  });
+
+  test("st: alias extracts prefix", () => {
+    expect(evaluate("st:m").positiveSetTypePrefixes).toEqual(["m"]);
+  });
+
+  test("set_type=m extracts prefix (equals operator)", () => {
+    expect(evaluate("set_type=masters").positiveSetTypePrefixes).toEqual(["masters"]);
+  });
+
+  test("-st:m extracts no prefix (odd NOT depth)", () => {
+    expect(evaluate("-st:m t:creature").positiveSetTypePrefixes).toEqual([]);
+  });
+
+  test("-(-st:mem) extracts prefix (even NOT depth)", () => {
+    expect(evaluate("-(-st:mem)").positiveSetTypePrefixes).toEqual(["mem"]);
+  });
+
+  test("st:exp OR set_type:master collects both", () => {
+    const prefixes = evaluate("st:exp OR set_type:master").positiveSetTypePrefixes;
+    expect(prefixes).toContain("exp");
+    expect(prefixes).toContain("master");
+    expect(prefixes).toHaveLength(2);
+  });
+
+  test("empty set_type value does not widen", () => {
+    expect(evaluate("set_type:").positiveSetTypePrefixes).toEqual([]);
+  });
+
+  test("normal query has empty positiveSetTypePrefixes", () => {
+    expect(evaluate("t:creature").positiveSetTypePrefixes).toEqual([]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // view: (Spec 058 — display modifier, does not filter)
 // ---------------------------------------------------------------------------

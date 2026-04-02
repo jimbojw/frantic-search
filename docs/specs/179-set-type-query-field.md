@@ -41,7 +41,7 @@ Legacy `printings.json` without `set_type` on lookup rows: treat as empty string
 
 ## Spec 178 (default inclusion filter)
 
-**Non-goal:** Positive `set_type:` / `st:` terms do **not** participate in `positiveSetPrefixes`-style wholesale-omit widening (Spec 178). Only `set:` / `s:` / `e:` prefixes widen. A follow-up could extend widening if product requires it.
+Positive **`set_type:`** / **`st:`** terms participate in **printing-wide widening** alongside **`set:`**: see Spec 178 (**Widening** table and **`positiveSetTypePrefixes`**). Prefix semantics match **`set_type`** field evaluation (`normalizeForResolution` + `startsWith`).
 
 ## Acceptance
 
@@ -54,3 +54,4 @@ Legacy `printings.json` without `set_type` on lookup rows: treat as empty string
 ## Changelog
 
 - **2026-04-02:** Initial spec.
+- **2026-04-02:** Spec 178 integration — `st:` / `set_type:` contribute to default-inclusion widening (`positiveSetTypePrefixes`).

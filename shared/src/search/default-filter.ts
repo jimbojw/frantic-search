@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { normalizeForResolution } from "./categorical-resolve";
+
 /**
  * Spec 178: Default Search Inclusion Filter constants.
  *
@@ -25,15 +27,38 @@ export const EXTRAS_LAYOUT_IS_KEYWORDS = new Set([
 ]);
 
 /**
- * Set codes wholesale-omitted from default search results.
- * A printing in one of these sets is excluded unless set-widened.
- *
- * Includes gold-bordered product lines (WCD, CE/IE, 30A, PTC, PSSC),
- * wholesale omissions (past, hho), and xana (Arena NPE Extras; Scryfall
- * memorabilia — listed explicitly until a structural set-type pass).
+ * Scryfall `set_type` token omitted by default pass 3a (structural memorabilia).
+ * Compared with `normalizeForResolution` on `PrintingIndex.setTypesLower`.
  */
-export const DEFAULT_OMIT_SET_CODES = new Set([
-  "past", "hho", "xana",
-  "30a", "ced", "cei", "ptc", "pssc",
-  "wc97", "wc98", "wc99", "wc00", "wc01", "wc02", "wc03", "wc04",
-]);
+export const DEFAULT_OMIT_SET_TYPE_MEMORABILIA = "memorabilia";
+
+/**
+ * Set codes wholesale-omitted from default search (pass 3b) when not already
+ * caught by memorabilia pass 3a. Codes here have non-`memorabilia` Scryfall
+ * `set_type` but are still hidden on generic Scryfall search — see research doc.
+ */
+export const DEFAULT_OMIT_SET_CODES = new Set(["past", "hho"]);
+
+/** True if this printing's set type is memorabilia (Spec 178 pass 3a). */
+export function isMemorabiliaDefaultOmit(setType: string): boolean {
+  const t = normalizeForResolution(setType);
+  const m = normalizeForResolution(DEFAULT_OMIT_SET_TYPE_MEMORABILIA);
+  return t.length > 0 && t === m;
+}
+
+/**
+ * Spec 178: printing is set-type-widened when its normalized type starts with
+ * any positive `st:` / `set_type:` prefix (same rule as `evalPrintingField` set_type).
+ */
+export function isSetTypeWidenedByPrefixes(
+  setType: string,
+  prefixes: readonly string[],
+): boolean {
+  if (prefixes.length === 0) return false;
+  const t = normalizeForResolution(setType);
+  if (t.length === 0) return false;
+  for (let i = 0; i < prefixes.length; i++) {
+    if (t.startsWith(prefixes[i])) return true;
+  }
+  return false;
+}

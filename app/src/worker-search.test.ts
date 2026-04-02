@@ -442,8 +442,8 @@ describe('default inclusion filter (Spec 178)', () => {
     expect(result.indicesBeforeDefaultFilter).toBeUndefined()
   })
 
-  it('excludes gold-bordered set printings by default (wholesale omit)', () => {
-    // Bolt has 8 printings (0,1,2,5,6,8,9,10). #6 in WC01 (DEFAULT_OMIT_SET_CODES) excluded.
+  it('excludes gold-bordered set printings by default (memorabilia set_type)', () => {
+    // Bolt has 8 printings (0,1,2,5,6,8,9,10). #6 in WC01 (memorabilia) excluded.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'unique:prints lightning' },
       cache,
@@ -540,8 +540,8 @@ describe('default inclusion filter (Spec 178)', () => {
   })
 
   it('set: widening restores gold-bordered set printings', () => {
-    // set:wc01 matches printing #6 (WC01, in DEFAULT_OMIT_SET_CODES). The positive
-    // set: prefix "wc01" widens that printing through the wholesale-omit pass.
+    // set:wc01 matches printing #6 (WC01, memorabilia). The positive set: prefix
+    // "wc01" widens that printing through the default memorabilia / wide pass.
     const result = runSearch({
       msg: { type: 'search', queryId: 1, query: 'set:wc01' },
       cache,
@@ -551,6 +551,19 @@ describe('default inclusion filter (Spec 178)', () => {
     })
     expect(result.indices.length).toBe(1)
     expect(result.printingIndices?.length).toBe(1)
+  })
+
+  it('positive st: prefix widens memorabilia printings like set:', () => {
+    // Printing #6 is WC01 (memorabilia). `st:mem` matches masters+memorabilia; only the
+    // WC01 Bolt printing is both name-lightning and that slice in this fixture.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'unique:prints lightning st:mem' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    expect(Array.from(result.printingIndices!)).toEqual([6])
   })
 
   it('wholesale-omit set excludes face when all printings in omit set (card-only query)', () => {
@@ -647,7 +660,7 @@ describe('default inclusion filter (Spec 178)', () => {
 // Issue #58 / Spec 178: set: widening restores gold-bordered set printings
 // ---------------------------------------------------------------------------
 // Fixture: set:wc01 matches only printing #6 (Bolt in World Championship Decks 2001),
-// which is in DEFAULT_OMIT_SET_CODES. Positive set:wc01 widens it.
+// memorabilia set_type. Positive set:wc01 widens it.
 describe('set query with gold-bordered set printings (Issue #58 + Spec 178)', () => {
   it('set:wc01 self-widens gold-bordered set printing (Spec 178)', () => {
     const result = runSearch({

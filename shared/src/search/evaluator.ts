@@ -267,6 +267,7 @@ export class NodeCache {
       return resolveForField("is", n.value, this._getResolutionContext()).toLowerCase() === "oversized";
     });
     const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
+    const positiveSetTypePrefixes = this._collectPositiveSetTypePrefixes(ast);
     const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
@@ -276,7 +277,7 @@ export class NodeCache {
     const artistUnavailable = hasArtistLeaves && this._printingIndex != null && !this._tagDataRef?.artist;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetTypePrefixes, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -338,7 +339,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetTypePrefixes, sortBy };
   }
 
   private _hasArtistLeaves(ast: ASTNode): boolean {
@@ -459,6 +460,37 @@ export class NodeCache {
         const result: string[] = [];
         for (const c of ast.children) {
           const sub = this._collectPositiveSetPrefixes(c, notDepth);
+          for (const s of sub) result.push(s);
+        }
+        return result;
+      }
+      default:
+        return [];
+    }
+  }
+
+  /** Spec 178: collect normalized prefix values from positive set_type:/st: FIELD nodes. */
+  private _collectPositiveSetTypePrefixes(ast: ASTNode, notDepth = 0): string[] {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (
+          canonical === "set_type" &&
+          (ast.operator === ":" || ast.operator === "=") &&
+          notDepth % 2 === 0
+        ) {
+          const prefix = normalizeForResolution(ast.value);
+          return prefix.length > 0 ? [prefix] : [];
+        }
+        return [];
+      }
+      case "NOT":
+        return this._collectPositiveSetTypePrefixes(ast.child, notDepth + 1);
+      case "AND":
+      case "OR": {
+        const result: string[] = [];
+        for (const c of ast.children) {
+          const sub = this._collectPositiveSetTypePrefixes(c, notDepth);
           for (const s of sub) result.push(s);
         }
         return result;

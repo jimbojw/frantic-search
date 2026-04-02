@@ -31,6 +31,7 @@ This **prefix discovery** behavior matches Frantic’s [`set:`](?doc=reference/f
 
 ## Notes
 
+- Under the default result filter, a **positive** `set_type:` / `st:` term **widens** the same printing-level omissions as a positive `set:` (e.g. `st:m` toward `memorabilia` widens memorabilia printings while you type).
 - Set types follow Scryfall’s set taxonomy (see their API docs for `set_type` on [set objects](https://scryfall.com/docs/api/sets)).
 - Combine with other printing or face filters as usual, e.g. `q=t:creature set_type:expansion`.
 - Canonical Scryfall links may still resolve a uniquely short `set_type` value where Spec 103 applies; in-app search uses prefix matching on printings.
