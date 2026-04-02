@@ -10,7 +10,7 @@ Transform the raw Scryfall `oracle-cards.json` into a compact columnar JSON file
 
 The `download` command (Spec 001) fetches `oracle-cards.json` — a JSON array of ~37,000 card objects. Each object uses Scryfall's card schema, where some fields live at the top level and others live on `card_faces` depending on the card's `layout`.
 
-The `process` command reads this raw data and produces `columns.json`, the columnar format consumed by the query engine (Spec 002). The transformation involves expanding multi-face cards into separate rows and encoding fields into compact columnar arrays. All layouts from Scryfall are indexed; default result filtering (playable cards only) is applied at query time (Spec 057).
+The `process` command reads this raw data and produces `columns.json`, the columnar format consumed by the query engine (Spec 002). The transformation involves expanding multi-face cards into separate rows and encoding fields into compact columnar arrays. All layouts from Scryfall are indexed; default result filtering is applied at query time ([Spec 178](178-default-search-inclusion-filter.md), supersedes Spec 057).
 
 ## CLI Interface
 
@@ -173,7 +173,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   Scryfall supports is:host and is:augment; these Unstable half-cards are searchable.
 - 2026-03-04: Removed ETL-level layout filtering (Issue #80). All layouts (tokens, emblems,
   art_series, planar, scheme, vanguard) are now indexed. Default "playable only" behavior
-  remains via query-time filter (Spec 057); `include:extras` reveals non-playable objects.
+  remains via query-time filter (Spec 178 / Spec 057); `include:extras` reveals hidden objects.
   Added double_faced_token to MULTI_FACE_LAYOUTS for proper per-face indexing.
 - 2026-03-04: Added `oracle_ids` column (Issue #84). One entry per face row; all faces
   of a multi-face card share the same Scryfall oracle_id. Prerequisite for client-side

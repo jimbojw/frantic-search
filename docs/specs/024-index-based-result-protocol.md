@@ -151,13 +151,13 @@ export type FromWorker =
       artistUnavailable?: boolean  // Spec 149: a:/artist: term present but artist-index not loaded
       breakdown: BreakdownNode
       histograms: Histograms
-      // ... pinnedBreakdown, pinnedIndicesCount, indicesIncludingExtras, etc.
+      // ... pinnedBreakdown, pinnedIndicesCount, indicesBeforeDefaultFilter, etc.
     }
 ```
 
 The `indices` array contains **all** deduplicated canonical card indices, sorted by `seededSort`. When printing conditions are present, `printingIndices` contains printing-row indices sorted by `seededSortPrintings` (Spec 019). Both arrays use `Uint32Array` and are transferred zero-copy via `Transferable`. The main thread uses `hasPrintingConditions` and `uniqueMode` to decide whether to render from `indices` (card-level) or `printingIndices` (printing-level). See Spec 048 for the display logic.
 
-Optional **pre–playable-filter** counts (`indicesIncludingExtras`, `printingIndicesIncludingExtras`, Spec 057 / Spec 175) may be present on `result` for UI that distinguishes semantic matches from default-filtered results.
+Optional **pre–default-inclusion-filter** counts (`indicesBeforeDefaultFilter`, `printingIndicesBeforeDefaultFilter`, Spec 178 / Spec 175) may be present on `result` for UI that distinguishes semantic matches from default-filtered results.
 
 #### Removed types
 

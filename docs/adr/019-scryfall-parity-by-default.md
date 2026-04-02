@@ -11,7 +11,7 @@ ADR-013 was written early in the project when Frantic Search had no printing dat
 Since then, the project has evolved significantly:
 
 - **Printing data model** (Spec 046) and **printing query fields** (Spec 047) give us per-printing evaluation.
-- **Default playable filter** (Spec 057) excludes `is:funny` cards and non-tournament printings unless `include:extras` is present — matching Scryfall's default behavior.
+- **Default result filter** — [Spec 057](../specs/057-include-extras-default-playable-filter.md) implemented a legality-based “playable somewhere” gate plus non-tournament printings; [Spec 178](../specs/178-default-search-inclusion-filter.md) (draft) supersedes that model with layout / playtest / wholesale-set / content-warning passes while keeping `include:extras` and `NON_TOURNAMENT_MASK`. Until Spec 178 is implemented, code follows Spec 057.
 - **Printing-level format legality** (Spec 056) filters non-tournament printings (gold-bordered, oversized, 30th Anniversary Edition).
 - **Compliance suite** (Spec 035) and **diff command** (Spec 069) provide automated verification against Scryfall's API.
 - **Date query semantics** (Spec 061) align with Scryfall for complete values while extending behavior for partial input.
@@ -23,7 +23,7 @@ The cumulative effect is that Frantic Search now aims for — and largely achiev
 Scryfall search behavior is the **default target** for Frantic Search. Specifically:
 
 1. **Match Scryfall's documented syntax and semantics.** For every query that Scryfall's [syntax guide](https://scryfall.com/docs/syntax) documents, Frantic Search should strive to return equivalent results under default conditions.
-2. **Match Scryfall's default result filtering.** Non-playable cards (funny, digital-only Specialize variants) and non-tournament printings are excluded by default, consistent with Scryfall. The `include:extras` modifier bypasses this filter.
+2. **Match Scryfall's default result filtering.** Exclusions are defined by [Spec 178](../specs/178-default-search-inclusion-filter.md) (draft; supersedes Spec 057): extras layouts, `playtest` promo printings, configured wholesale omit sets, content-warning oracles (unless widened), and non-tournament printings (`NON_TOURNAMENT_MASK`), with explicit wideners (`include:extras`, positive `set:`, `is:content_warning`, `is:playtest`). The `include:extras` modifier bypasses the entire default filter.
 3. **Diverge only with principled rationale.** When we intentionally differ from Scryfall, the divergence is documented (in a spec, the compliance suite, or the comparison guide) with an explanation of why.
 4. **Do not replicate undocumented bugs.** Scryfall behaviors that are inconsistent, undocumented, or appear to be bugs are not targets for parity.
 

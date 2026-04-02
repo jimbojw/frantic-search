@@ -8,7 +8,7 @@ Scryfall’s **default** inclusion rules (what appears without `include:extras`,
 
 - [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md) — [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227)
 
-When a finding is stable, add it here under **Known Divergences** (or update Spec 057) rather than only in the research note.
+When a finding is stable, add it here under **Known Divergences** (or update Spec 178) rather than only in the research note.
 
 ## When to Compare
 
@@ -85,7 +85,7 @@ These are principled divergences documented in ADR-019, not bugs:
 
 ### Filtered by default (matching Scryfall)
 
-The following categories are excluded by default (Spec 057) and only appear with `include:extras`:
+The following categories are excluded by default ([Spec 178](../specs/178-default-search-inclusion-filter.md), draft; historically Spec 057) and only appear with `include:extras` unless a widener (e.g. `set:`, `is:playtest`) applies:
 
 - **Specialize variants**: Alchemy's Specialize mechanic creates 5 color-specific forms per base card. Scryfall's bulk data includes them as separate oracle entries, but both Scryfall and Frantic Search hide them by default.
 - **Playtest/event cards**: Cards from `set_type: "funny"` (Mystery Booster playtest cards, Unknown Event cards, etc.) are excluded by default.

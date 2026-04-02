@@ -1,6 +1,8 @@
 # Spec 057: Default Playable Filter & `include:extras`
 
-**Status:** Implemented
+**Status:** Superseded by [Spec 178](178-default-search-inclusion-filter.md) (default inclusion model). This document remains the historical specification for the **legality + `NON_TOURNAMENT_MASK`** implementation and for **`include:extras` / `**`** parser behavior until Spec 178 is implemented; after implementation, treat Spec 178 as canonical for default filtering.
+
+**Status (historical):** Implemented (pre–Spec 178)
 
 **Extended by:** Spec 150 (ChipButton — suggestion chips)
 
@@ -10,7 +12,7 @@
 
 **Depends on:** Spec 002 (Query Engine), Spec 032 (is: Operator), Spec 054 (Pinned Search Criteria), Spec 056 (Printing-Level Format Legality), ADR-009 (Bitmask-per-Node AST)
 
-**Ongoing research:** Scryfall’s server-side default filtering is not fully reverse-engineered and may depend on query shape (not only bulk legalities). Empirical notes and a repeatable test matrix: [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md); tracking [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227).
+**Ongoing research:** Scryfall’s server-side default filtering is not fully reverse-engineered and may depend on query shape (not only bulk legalities). Empirical notes and a repeatable test matrix: [`docs/research/scryfall-default-result-filtering.md`](../research/scryfall-default-result-filtering.md); tracking [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227). **Successor spec:** [Spec 178](178-default-search-inclusion-filter.md).
 
 ## Goal
 

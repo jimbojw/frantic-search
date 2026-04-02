@@ -2,11 +2,11 @@
 
 **Status:** In progress (living document)  
 **Tracking:** [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227)  
-**Related:** [Spec 057](../specs/057-include-extras-default-playable-filter.md) (Frantic default playable filter), [Spec 170](../specs/170-is-content-warning.md) (`is:content_warning`), [ADR-019](../adr/019-scryfall-parity-by-default.md) (Scryfall parity)
+**Related:** [Spec 178](../specs/178-default-search-inclusion-filter.md) (draft default inclusion filter; supersedes Spec 057), [Spec 057](../specs/057-include-extras-default-playable-filter.md) (historical playable filter), [Spec 170](../specs/170-is-content-warning.md) (`is:content_warning`), [ADR-019](../adr/019-scryfall-parity-by-default.md) (Scryfall parity)
 
 ## Purpose
 
-Scryfall’s default search behavior is only partly documented. Frantic models “playable by default” in Spec 057; we assumed alignment with Scryfall, but **API probing shows Scryfall’s rules are not reducible to a single legality bitmask** and likely depend on **query shape** and flags.
+Scryfall’s default search behavior is only partly documented. Frantic previously modeled “playable by default” in Spec 057; [Spec 178](../specs/178-default-search-inclusion-filter.md) (draft) replaces that with a layout / playtest / set / content-warning inclusion model. **API probing shows Scryfall’s rules are not reducible to a single legality bitmask** and likely depend on **query shape** and flags.
 
 This file records **incremental progress**: confirmed observations, falsified hypotheses, open questions, and a **repeatable test matrix**. It is intentionally incomplete until the spike’s acceptance criteria are met (or we explicitly close the track with documented divergences).
 
@@ -20,7 +20,7 @@ This file records **incremental progress**: confirmed observations, falsified hy
    `https://api.scryfall.com/cards/search?q=<url-encoded-query>`
 
 3. Add a row to the **Test matrix** (or update cells) and summarize the implication under **Confirmed**, **Falsified hypotheses**, or **Open questions**.
-4. When something is **stable** and actionable, **graduate** it: update `docs/guides/scryfall-comparison.md`, Spec 057 / product behavior, or ADR-019 as appropriate—then link back here from the guide instead of duplicating long prose.
+4. When something is **stable** and actionable, **graduate** it: update `docs/guides/scryfall-comparison.md`, Spec 178 (or product behavior), or ADR-019 as appropriate—then link back here from the guide instead of duplicating long prose.
 
 ## Confirmed (empirical)
 
@@ -30,13 +30,13 @@ _Steady observations with reproduction. Keep entries short; link or cite queries
 - **`set:` inside a larger query still pulls full set slices.** Example: `e (set:unk OR set:arn)` returns cards with `e` in the name from UNK **or** ARN, including content-warning **Stone-Throwing Devils** (ARN), without `include:extras`. So a positive `set:` disjunct is enough to **include** cards that would be suppressed under other default query shapes (see #227, Pradesh Gypsies).
 - **Astral (`set:past`) vs generic mechanical queries:** `goblin mv=2 pow=1 tou=1 ci=r` does **not** surface **Goblin Polka Band** (Astral, `set:past`) on default Scryfall—so **PAST** can stay hidden in set-agnostic searches even when name + stats + CI match, unlike **UNK** / **ARN** when pulled in via `set:`. _(Re-verify with `include:extras` and with `set:past` alone; see matrix.)_
 - **Bare `goblin` vs `goblin include:extras`:** Default **249** hits, with extras **283** (**+34**); extras is a **strict superset** (diff by `oracle_id`). Of the **34** extras-only objects, **30** are `token`, `double_faced_token`, `art_series`, or `vanguard`; **4** are layout **`normal`**—each explained by the [working model](#working-model-scryfall-default-search-hypothesis-v03) below (**`past`**, **`promo_types: playtest`** ×2, **`hho`**), not by a global “omit funny” rule. Detail in [case study](#case-study-goblin-vs-goblin-includeextras-api-2026-04-02).
-- **Bare `amulet` and ante:** Default search **`amulet`** returns **Amulet of Quoz** (`set:ice`, ante-related oracle) without `include:extras`. In Scryfall bulk **every format is `banned` or `not_legal`**—there is **no** `legal` or `restricted` entry—so this oracle would be **dropped by Frantic’s Spec 057** playable filter (legal \| restricted in ≥1 format). Another gap between “legality bitmask only” stories and Scryfall’s default name search.
+- **Bare `amulet` and ante:** Default search **`amulet`** returns **Amulet of Quoz** (`set:ice`, ante-related oracle) without `include:extras`. In Scryfall bulk **every format is `banned` or `not_legal`**—there is **no** `legal` or `restricted` entry—so this oracle would be **dropped by Frantic’s superseded Spec 057** playable filter (legal \| restricted in ≥1 format). Spec 178 is intended to fix this class of gap. Another gap between “legality bitmask only” stories and Scryfall’s default name search.
 - **Happy Holidays (`hho`) wholesale omission:** **`gifts`** (default search) returns **3** results and **does not** include **Gifts Given** (`set:hho`, `promo_types: datestamped + event`). **`set:hho`** alone returns **21** cards including **Gifts Given** (API, 2026-04-03)—same **`set:`** bypass class as ARN/UNK. **Goblin Sleigh Ride** is also **`set:hho`** (not `playtest`).
 - **Query shape (regex / quotes) changes inclusions:** **`name:/^gifts/`** returns **Gifts Given** while bare **`gifts`** does not; **`name:/^stone/`** includes **Stone-Throwing Devils** and **Stone Drake** (`playtest`) while **`ston de`** and **`name:"stone d"`** do not. Detail and a **fallthrough** hypothesis in [Query shape, regex, and fallthrough](#query-shape-regex-and-empty-result-fallthrough).
 
 ## Working model: Scryfall default search (hypothesis v0.3)
 
-**Scope:** Empirical model of **Scryfall’s** default result shaping. **Frantic Spec 057** remains **legality + NON_TOURNAMENT_MASK** until intentionally changed; it is **not** superseded in code by this document—see ADR-019 for parity vs divergence.
+**Scope:** Empirical model of **Scryfall’s** default result shaping. **Frantic:** Spec 178 (draft) supersedes Spec 057’s default filter in documentation; **code** may still implement Spec 057 until Spec 178 ships—see ADR-019 for parity vs divergence.
 
 Scryfall’s default inclusion is **not** “legal or restricted somewhere.” A workable **hypothesis** that fits **known** observations (goblin diff, `past`/`hho`, playtest, content-warning stories, `set:` bypass, Amulet of Quoz, Hurloon):
 
@@ -140,7 +140,7 @@ _Systematic follow-ups from #227._
 5. **Format weighting:** Minor formats (Predh, Old School, Premodern) vs Frantic’s all-format bitmask in practice on Scryfall.
 6. **`unique:`** and printing-level queries vs oracle-unique defaults.
 7. **Wholesale omitted sets (`past`, `hho`, …):** What is the **full** set-code list? Same treatment for digital-only vs paper? **Partial:** **`set:past`** and **`set:hho`** behave like “omit entire set from default unless named.” **`set:hho`** returns 21 cards including **Gifts Given**; **`gifts`** omits **Gifts Given** (2026-04-03). Still verify **`goblin mv=2 pow=1 tou=1 ci=r` include:extras** for Polka Band.
-8. **Ante / `banned`-only oracles:** Are other ante cards always visible on bare-word search like **Amulet of Quoz**, or is this name-fragment / set-specific? Interaction with `game:paper` and Commander banlist philosophy on Scryfall’s side vs Frantic’s Spec 057.
+8. **Ante / `banned`-only oracles:** Are other ante cards always visible on bare-word search like **Amulet of Quoz**, or is this name-fragment / set-specific? Interaction with `game:paper` and Commander banlist philosophy on Scryfall’s side vs Frantic’s default filter (Spec 178).
 9. **Empty-result / low-count fallthrough:** Does Scryfall **expand** into normally excluded objects when the strict pool is empty (or small)? If so, what threshold and which fields? See [fallthrough hypothesis](#query-shape-regex-and-empty-result-fallthrough).
 
 ## Test matrix
