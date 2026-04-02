@@ -556,6 +556,64 @@ describe('default inclusion filter (Spec 178)', () => {
     expect(result.printingIndices?.length).toBe(1)
   })
 
+  it('wholesale-omit set excludes face when all printings in omit set (card-only query)', () => {
+    // Sol Ring (face 3) has printings #3, #4, #7. Move all to set PAST.
+    const allPastData = {
+      ...TEST_PRINTING_DATA,
+      set_lookup: [
+        ...TEST_PRINTING_DATA.set_lookup,
+        { code: "PAST", name: "Astral", released_at: 19980101 },
+      ],
+      set_indices: [
+        ...TEST_PRINTING_DATA.set_indices.slice(0, 3),
+        7, 7, // printings #3, #4 → PAST
+        ...TEST_PRINTING_DATA.set_indices.slice(5, 7),
+        7, // printing #7 → PAST
+        ...TEST_PRINTING_DATA.set_indices.slice(8),
+      ],
+    }
+    const allPastPIdx = new PrintingIndex(allPastData)
+    const allPastCache = new NodeCache(index, allPastPIdx)
+    // "sol" is a bare word query (card-only, no printing conditions).
+    // Sol Ring should be excluded because all its printings are in PAST.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'sol' },
+      cache: allPastCache,
+      index,
+      printingIndex: allPastPIdx,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.indicesBeforeDefaultFilter).toBe(1)
+  })
+
+  it('playtest promo excludes face when all printings are playtest (card-only query)', () => {
+    // Make ALL Sol Ring printings (#3, #4, #7) have playtest promo.
+    const allPlaytestData = {
+      ...TEST_PRINTING_DATA,
+      promo_types_flags_1: [
+        ...TEST_PRINTING_DATA.promo_types_flags_1!.slice(0, 3),
+        TEST_PRINTING_DATA.promo_types_flags_1![3] | 1, // #3: playtest
+        TEST_PRINTING_DATA.promo_types_flags_1![4] | 1, // #4: playtest
+        ...TEST_PRINTING_DATA.promo_types_flags_1!.slice(5, 7),
+        TEST_PRINTING_DATA.promo_types_flags_1![7] | 1, // #7: playtest (already Oversized too)
+        ...TEST_PRINTING_DATA.promo_types_flags_1!.slice(8),
+      ],
+    }
+    const allPlaytestPIdx = new PrintingIndex(allPlaytestData)
+    const allPlaytestCache = new NodeCache(index, allPlaytestPIdx)
+    // "sol" bare word → Sol Ring. All printings have playtest → face excluded.
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'sol' },
+      cache: allPlaytestCache,
+      index,
+      printingIndex: allPlaytestPIdx,
+      sessionSalt,
+    })
+    expect(result.indices.length).toBe(0)
+    expect(result.indicesBeforeDefaultFilter).toBe(1)
+  })
+
   it('legality no longer gates default inclusion', () => {
     // Face 9 has legalities_legal=0 but no omission-pass flags.
     // Under Spec 178 it passes the default filter (no layout/playtest/set/CW/mask).

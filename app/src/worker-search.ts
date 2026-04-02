@@ -216,20 +216,36 @@ export function runSearch(params: RunSearchParams): SearchResult {
         indicesBeforeDefaultFilter = unfilteredFaces.size
       }
       rawPrintingIndices = new Uint32Array(filtered)
-    } else {
-      // Card-only path: apply face-level omission passes only (printing-level
-      // passes like playtest, wholesale-set, and non-tournament require printing data).
+    } else if (printingIndex) {
+      // Card-only path with printing data: expand faces to printings and apply
+      // all five passes. A face survives only if at least one printing survives.
       const preFaceCount = deduped.length
-      deduped = deduped.filter(fi => {
-        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false
-        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false
-        return true
-      })
+      const survivingFaces: number[] = []
+      for (const fi of deduped) {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) continue
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) continue
+
+        const printings = printingIndex.printingsOf(fi)
+        let hasSurvivor = printings.length === 0
+        for (const p of printings) {
+          const setCode = printingIndex.setCodesLower[p]
+          const setWide = isSetWidened(setCode)
+
+          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
+          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
+          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+
+          hasSurvivor = true
+          break
+        }
+        if (hasSurvivor) survivingFaces.push(fi)
+      }
+      deduped = survivingFaces
       if (deduped.length < preFaceCount) {
         indicesBeforeDefaultFilter = preFaceCount
       }
 
-      if (rawPrintingIndices && printingIndex) {
+      if (rawPrintingIndices) {
         const preLen = rawPrintingIndices.length
         const filtered: number[] = []
         for (let i = 0; i < preLen; i++) {
@@ -250,6 +266,17 @@ export function runSearch(params: RunSearchParams): SearchResult {
           printingIndicesBeforeDefaultFilter = preLen
           rawPrintingIndices = new Uint32Array(filtered)
         }
+      }
+    } else {
+      // No printing data at all: face-level passes only.
+      const preFaceCount = deduped.length
+      deduped = deduped.filter(fi => {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false
+        return true
+      })
+      if (deduped.length < preFaceCount) {
+        indicesBeforeDefaultFilter = preFaceCount
       }
     }
   }

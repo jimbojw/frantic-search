@@ -65,13 +65,32 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
         }
       }
       altPrintingIndices = new Uint32Array(filtered)
-    } else {
-      altDeduped = altDeduped.filter((fi) => {
-        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false
-        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false
-        return true
-      })
-      if (altPrintingIndices && printingIndex) {
+    } else if (printingIndex) {
+      // Card-only path with printing data: expand faces to printings and apply
+      // all five passes. A face survives only if at least one printing survives.
+      const survivingFaces: number[] = []
+      for (const fi of altDeduped) {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) continue
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) continue
+
+        const printings = printingIndex.printingsOf(fi)
+        let hasSurvivor = printings.length === 0
+        for (const p of printings) {
+          const setCode = printingIndex.setCodesLower[p]
+          const setWide = isSetWidened(setCode)
+
+          if (!setWide && !widenPlaytest && (printingIndex.promoTypesFlags1[p] & 1) !== 0) continue
+          if (!setWide && DEFAULT_OMIT_SET_CODES.has(setCode)) continue
+          if (!setWide && (printingIndex.printingFlags[p] & NON_TOURNAMENT_MASK) !== 0) continue
+
+          hasSurvivor = true
+          break
+        }
+        if (hasSurvivor) survivingFaces.push(fi)
+      }
+      altDeduped = survivingFaces
+
+      if (altPrintingIndices) {
         const filtered: number[] = []
         for (let i = 0; i < altPrintingIndices.length; i++) {
           const p = altPrintingIndices[i]
@@ -89,6 +108,13 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
         }
         altPrintingIndices = new Uint32Array(filtered)
       }
+    } else {
+      // No printing data: face-level passes only.
+      altDeduped = altDeduped.filter((fi) => {
+        if (!widenExtrasLayout && EXTRAS_LAYOUT_SET.has(index.layouts[fi])) return false
+        if (!widenContentWarning && (index.flags[fi] & CardFlag.ContentWarning) !== 0) return false
+        return true
+      })
     }
   }
 
