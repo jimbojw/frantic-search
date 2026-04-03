@@ -243,6 +243,13 @@ Sorting is defined as a printings-first pipeline followed by card regrouping:
 
 Sorting and regrouping run on every keystroke and must avoid GC-heavy allocation patterns in the hot path.
 
+**Per-sort vs per-comparison (normative for implementations)**
+
+- **Allowed:** Heap allocation for the **sort operation as a whole** — bounded work **once per sort** (typically **O(n)**), not once per pairwise comparison. Examples: permutation or index arrays, parallel key buffers for decorate-sort-undecorate, regroup scaffolding, and **one** locale collator (or equivalent) built **before** sorting and reused for every comparison in that sort.
+- **Forbidden:** Heap allocation **inside** the callback passed to `Array.prototype.sort` (or any equivalent comparison hook invoked on each compare). Implementations must not allocate there: no object or array literals, no `new`, no fresh `Map`/`Set`, and no helper that returns a **new** object on each invocation (e.g. `{ cmp, applyDir }` wrappers). Garbage from the sort path must not scale with **n log n** comparisons.
+
+**String collation in comparators:** Do not call `String.prototype.localeCompare` with a **new** options object from inside the comparator on every comparison (and avoid other per-call patterns that allocate). Prefer comparing **precomputed** sort keys (materialized before the sort), or a **single** `Intl.Collator` instance created once per sort and reused for all comparisons, or primitive column comparisons only.
+
 - Prefer pre-allocated typed-array workflows (`Uint8Array`, `Uint32Array`) with count-then-fill passes.
 - Avoid dynamic growth APIs (`array.push`) and hash containers (`Set`, `Map`) in core result processing paths when a typed-array/indexed approach is practical.
 - "Lists" and "emit" in this spec are conceptual terms; implementation should materialize final outputs as fixed-size typed arrays.

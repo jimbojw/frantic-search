@@ -147,6 +147,8 @@ function seededSort(
 
 Pre-computing `tier` and `rank` into parallel arrays avoids re-hashing and re-checking startsWith on every comparison. The sort's comparator becomes two integer subtractions.
 
+**Comparator allocation (Spec 059):** Default ordering aligns with Spec 059’s allocation discipline: the `order.sort` callback uses only integer reads and subtractions (no per-comparison allocation). One-time allocation for `tier`, `rank`, `order`, and the `map` step that writes back into `indices` is explicitly allowed as **whole-sort** work, not per-comparison.
+
 ### Integration point
 
 The sort replaces `seededShuffle` in the worker pipeline:

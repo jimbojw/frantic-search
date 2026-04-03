@@ -28,6 +28,27 @@ export function seededRank(seedHash: number, index: number): number {
 
 const NAME_SUBSTRING_OPS = new Set([":", "="]);
 
+/** Mutable out-record for null-aware sort comparisons (Spec 059 — no per-compare object alloc). */
+type SortCmpOut = { cmp: number; applyDir: boolean };
+
+const _outFaceField: SortCmpOut = { cmp: 0, applyDir: true };
+const _outPrintingField: SortCmpOut = { cmp: 0, applyDir: true };
+const _outCollector: SortCmpOut = { cmp: 0, applyDir: true };
+
+let _setCodeCollator: Intl.Collator | undefined;
+let _collectorNumberCollator: Intl.Collator | undefined;
+
+function getSetCodeCollator(): Intl.Collator {
+  return _setCodeCollator ??= new Intl.Collator();
+}
+
+function getCollectorNumberCollator(): Intl.Collator {
+  return _collectorNumberCollator ??= new Intl.Collator("und", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 /**
  * Walk the AST and collect values from BARE nodes and name-field terms
  * (name:value, n:value) that are not under a NOT. These represent the
@@ -216,86 +237,204 @@ function comparePrintingRarity(a: number, b: number, pIdx: PrintingIndex): numbe
   return ra - rb;
 }
 
-/** Empty collector number sorts last; else numeric-aware localeCompare (Scryfall-style cn ordering). */
-function comparePrintingCollectorRaw(
+/** Empty collector number sorts last; else numeric-aware collator (Scryfall-style cn ordering). */
+function comparePrintingCollectorInto(
+  out: SortCmpOut,
   a: number,
   b: number,
   pIdx: PrintingIndex,
-): { cmp: number; applyDir: boolean } {
+  coll: Intl.Collator,
+): void {
   const ca = pIdx.collectorNumbersLower[a] ?? "";
   const cb = pIdx.collectorNumbersLower[b] ?? "";
   const emptyA = ca.length === 0;
   const emptyB = cb.length === 0;
-  if (emptyA && emptyB) return { cmp: 0, applyDir: false };
-  if (emptyA) return { cmp: 1, applyDir: false };
-  if (emptyB) return { cmp: -1, applyDir: false };
-  return {
-    cmp: ca.localeCompare(cb, undefined, { numeric: true, sensitivity: "base" }),
-    applyDir: true,
-  };
+  if (emptyA && emptyB) {
+    out.cmp = 0;
+    out.applyDir = false;
+    return;
+  }
+  if (emptyA) {
+    out.cmp = 1;
+    out.applyDir = false;
+    return;
+  }
+  if (emptyB) {
+    out.cmp = -1;
+    out.applyDir = false;
+    return;
+  }
+  out.cmp = coll.compare(ca, cb);
+  out.applyDir = true;
 }
 
-/** Null-aware field comparison: returns [cmp, bothPresent] where cmp is the
- *  null-aware ordering (null sorts last regardless of direction) and bothPresent
- *  indicates whether both values are present (so the caller can apply direction). */
-function compareFieldRaw(a: number, b: number, field: string, idx: CardIndex): { cmp: number; applyDir: boolean } {
+/** Null-aware field comparison: `applyDir` false means do not multiply by sort direction (null/empty last). */
+function compareFieldInto(
+  out: SortCmpOut,
+  a: number,
+  b: number,
+  field: string,
+  idx: CardIndex,
+): void {
   switch (field) {
-    case "name": return { cmp: compareName(a, b, idx), applyDir: true };
-    case "mv": return { cmp: compareMv(a, b, idx), applyDir: true };
-    case "color": return { cmp: compareColor(a, b, idx), applyDir: true };
-    case "identity": return { cmp: compareIdentity(a, b, idx), applyDir: true };
+    case "name":
+      out.cmp = compareName(a, b, idx);
+      out.applyDir = true;
+      return;
+    case "mv":
+      out.cmp = compareMv(a, b, idx);
+      out.applyDir = true;
+      return;
+    case "color":
+      out.cmp = compareColor(a, b, idx);
+      out.applyDir = true;
+      return;
+    case "identity":
+      out.cmp = compareIdentity(a, b, idx);
+      out.applyDir = true;
+      return;
     case "power": {
       const va = idx.numericPowerLookup[a];
       const vb = idx.numericPowerLookup[b];
-      if (isNaN(va) && isNaN(vb)) return { cmp: 0, applyDir: false };
-      if (isNaN(va)) return { cmp: 1, applyDir: false };
-      if (isNaN(vb)) return { cmp: -1, applyDir: false };
-      return { cmp: va - vb, applyDir: true };
+      if (isNaN(va) && isNaN(vb)) {
+        out.cmp = 0;
+        out.applyDir = false;
+        return;
+      }
+      if (isNaN(va)) {
+        out.cmp = 1;
+        out.applyDir = false;
+        return;
+      }
+      if (isNaN(vb)) {
+        out.cmp = -1;
+        out.applyDir = false;
+        return;
+      }
+      out.cmp = va - vb;
+      out.applyDir = true;
+      return;
     }
     case "toughness": {
       const va = idx.numericToughnessLookup[a];
       const vb = idx.numericToughnessLookup[b];
-      if (isNaN(va) && isNaN(vb)) return { cmp: 0, applyDir: false };
-      if (isNaN(va)) return { cmp: 1, applyDir: false };
-      if (isNaN(vb)) return { cmp: -1, applyDir: false };
-      return { cmp: va - vb, applyDir: true };
+      if (isNaN(va) && isNaN(vb)) {
+        out.cmp = 0;
+        out.applyDir = false;
+        return;
+      }
+      if (isNaN(va)) {
+        out.cmp = 1;
+        out.applyDir = false;
+        return;
+      }
+      if (isNaN(vb)) {
+        out.cmp = -1;
+        out.applyDir = false;
+        return;
+      }
+      out.cmp = va - vb;
+      out.applyDir = true;
+      return;
     }
-    case "edhrec": return { cmp: compareEdhrec(a, b, idx), applyDir: true };
-    case "salt": return { cmp: compareSalt(a, b, idx), applyDir: true };
-    default: return { cmp: 0, applyDir: true };
+    case "edhrec":
+      out.cmp = compareEdhrec(a, b, idx);
+      out.applyDir = true;
+      return;
+    case "salt":
+      out.cmp = compareSalt(a, b, idx);
+      out.applyDir = true;
+      return;
+    default:
+      out.cmp = 0;
+      out.applyDir = true;
   }
 }
 
-function comparePrintingFieldRaw(a: number, b: number, field: string, pIdx: PrintingIndex): { cmp: number; applyDir: boolean } {
+function comparePrintingFieldInto(
+  out: SortCmpOut,
+  a: number,
+  b: number,
+  field: string,
+  pIdx: PrintingIndex,
+  setColl: Intl.Collator,
+): void {
   switch (field) {
     case "usd": {
       const pa = pIdx.priceUsd[a];
       const pb = pIdx.priceUsd[b];
-      if (pa === 0 && pb === 0) return { cmp: 0, applyDir: false };
-      if (pa === 0) return { cmp: 1, applyDir: false };
-      if (pb === 0) return { cmp: -1, applyDir: false };
-      return { cmp: pa - pb, applyDir: true };
+      if (pa === 0 && pb === 0) {
+        out.cmp = 0;
+        out.applyDir = false;
+        return;
+      }
+      if (pa === 0) {
+        out.cmp = 1;
+        out.applyDir = false;
+        return;
+      }
+      if (pb === 0) {
+        out.cmp = -1;
+        out.applyDir = false;
+        return;
+      }
+      out.cmp = pa - pb;
+      out.applyDir = true;
+      return;
     }
     case "date": {
       const da = pIdx.releasedAt[a];
       const db = pIdx.releasedAt[b];
-      if (da === 0 && db === 0) return { cmp: 0, applyDir: false };
-      if (da === 0) return { cmp: 1, applyDir: false };
-      if (db === 0) return { cmp: -1, applyDir: false };
-      return { cmp: da - db, applyDir: true };
+      if (da === 0 && db === 0) {
+        out.cmp = 0;
+        out.applyDir = false;
+        return;
+      }
+      if (da === 0) {
+        out.cmp = 1;
+        out.applyDir = false;
+        return;
+      }
+      if (db === 0) {
+        out.cmp = -1;
+        out.applyDir = false;
+        return;
+      }
+      out.cmp = da - db;
+      out.applyDir = true;
+      return;
     }
-    case "rarity": return { cmp: comparePrintingRarity(a, b, pIdx), applyDir: true };
+    case "rarity":
+      out.cmp = comparePrintingRarity(a, b, pIdx);
+      out.applyDir = true;
+      return;
     case "set": {
       const sa = pIdx.setCodesLower[a] ?? "";
       const sb = pIdx.setCodesLower[b] ?? "";
       const emptyA = sa.length === 0;
       const emptyB = sb.length === 0;
-      if (emptyA && emptyB) return { cmp: 0, applyDir: false };
-      if (emptyA) return { cmp: 1, applyDir: false };
-      if (emptyB) return { cmp: -1, applyDir: false };
-      return { cmp: sa.localeCompare(sb), applyDir: true };
+      if (emptyA && emptyB) {
+        out.cmp = 0;
+        out.applyDir = false;
+        return;
+      }
+      if (emptyA) {
+        out.cmp = 1;
+        out.applyDir = false;
+        return;
+      }
+      if (emptyB) {
+        out.cmp = -1;
+        out.applyDir = false;
+        return;
+      }
+      out.cmp = setColl.compare(sa, sb);
+      out.applyDir = true;
+      return;
     }
-    default: return { cmp: 0, applyDir: true };
+    default:
+      out.cmp = 0;
+      out.applyDir = true;
   }
 }
 
@@ -314,7 +453,8 @@ export function sortByField(
   const dir = direction === "desc" ? -1 : 1;
 
   indices.sort((a, b) => {
-    const { cmp, applyDir } = compareFieldRaw(a, b, field, idx);
+    compareFieldInto(_outFaceField, a, b, field, idx);
+    const { cmp, applyDir } = _outFaceField;
     if (cmp !== 0) return applyDir ? dir * cmp : cmp;
     if (field !== "name") {
       const nameCmp = compareName(a, b, idx);
@@ -344,6 +484,9 @@ export function sortPrintingDomain(
   const { field, direction } = directive;
   const dir = direction === "desc" ? -1 : 1;
 
+  const setColl = getSetCodeCollator();
+  const collectorColl = getCollectorNumberCollator();
+
   // 1. Partition printings by canonical face
   const cardPrintings = new Map<number, number[]>();
   for (let i = 0; i < rawPrintingIndices.length; i++) {
@@ -360,16 +503,20 @@ export function sortPrintingDomain(
   // 2. Sort each card's printing list
   for (const [, prints] of cardPrintings) {
     prints.sort((a, b) => {
-      const { cmp, applyDir } = comparePrintingFieldRaw(a, b, field, pIdx);
+      comparePrintingFieldInto(_outPrintingField, a, b, field, pIdx, setColl);
+      let cmp = _outPrintingField.cmp;
+      let applyDir = _outPrintingField.applyDir;
       if (cmp !== 0) return applyDir ? dir * cmp : cmp;
       if (field === "set") {
-        const cn = comparePrintingCollectorRaw(a, b, pIdx);
-        if (cn.cmp !== 0) return cn.applyDir ? dir * cn.cmp : cn.cmp;
+        comparePrintingCollectorInto(_outCollector, a, b, pIdx, collectorColl);
+        cmp = _outCollector.cmp;
+        applyDir = _outCollector.applyDir;
+        if (cmp !== 0) return applyDir ? dir * cmp : cmp;
       }
       const dateCmp = pIdx.releasedAt[b] - pIdx.releasedAt[a];
       if (dateCmp !== 0) return dateCmp;
-      const cnT = comparePrintingCollectorRaw(a, b, pIdx);
-      if (cnT.cmp !== 0) return cnT.cmp;
+      comparePrintingCollectorInto(_outCollector, a, b, pIdx, collectorColl);
+      if (_outCollector.cmp !== 0) return _outCollector.cmp;
       return seededRank(seedHash, a) - seededRank(seedHash, b);
     });
   }
@@ -379,11 +526,15 @@ export function sortPrintingDomain(
   cardOrder.sort((cfA, cfB) => {
     const repA = cardPrintings.get(cfA)![0];
     const repB = cardPrintings.get(cfB)![0];
-    const { cmp, applyDir } = comparePrintingFieldRaw(repA, repB, field, pIdx);
+    comparePrintingFieldInto(_outPrintingField, repA, repB, field, pIdx, setColl);
+    let cmp = _outPrintingField.cmp;
+    let applyDir = _outPrintingField.applyDir;
     if (cmp !== 0) return applyDir ? dir * cmp : cmp;
     if (field === "set") {
-      const cn = comparePrintingCollectorRaw(repA, repB, pIdx);
-      if (cn.cmp !== 0) return cn.applyDir ? dir * cn.cmp : cn.cmp;
+      comparePrintingCollectorInto(_outCollector, repA, repB, pIdx, collectorColl);
+      cmp = _outCollector.cmp;
+      applyDir = _outCollector.applyDir;
+      if (cmp !== 0) return applyDir ? dir * cmp : cmp;
     }
     const nameCmp = compareName(cfA, cfB, idx);
     if (nameCmp !== 0) return nameCmp;
