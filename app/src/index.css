@@ -81,6 +81,13 @@ button, [role="button"] {
   pointer-events: none;
 }
 
+/* A trailing newline in a <textarea> reserves an extra line for the caret; the mirror
+ * <pre> often does not. Appending NBSP via ::after keeps highlight and text in sync
+ * (GitHub #244). */
+.hl-layer pre::after {
+  content: '\00a0';
+}
+
 .hl-input {
   grid-area: 1 / 1;
   color: transparent;
