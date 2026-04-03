@@ -2,6 +2,7 @@
 import type { ASTNode, SortDirective } from "./ast";
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
+import { COLLECTOR_KEY_STRIDE } from "./collector-sort-key";
 import { RARITY_ORDER } from "../bits";
 import { FIELD_ALIASES } from "./eval-leaves";
 
@@ -262,6 +263,35 @@ function comparePrintingCollectorInto(
   if (emptyB) {
     out.cmp = -1;
     out.applyDir = false;
+    return;
+  }
+  const keys = pIdx.collectorSortKeys;
+  const oa = a * COLLECTOR_KEY_STRIDE;
+  const ob = b * COLLECTOR_KEY_STRIDE;
+  const k0a = keys[oa];
+  const k0b = keys[ob];
+  if (k0a > 0 && k0b > 0) {
+    for (let i = 0; i < COLLECTOR_KEY_STRIDE; i++) {
+      const va = keys[oa + i];
+      const vb = keys[ob + i];
+      if (va !== vb) {
+        out.cmp = va < vb ? -1 : 1;
+        out.applyDir = true;
+        return;
+      }
+    }
+    out.cmp = 0;
+    out.applyDir = true;
+    return;
+  }
+  if (k0a > 0 && k0b === 0) {
+    out.cmp = -1;
+    out.applyDir = true;
+    return;
+  }
+  if (k0a === 0 && k0b > 0) {
+    out.cmp = 1;
+    out.applyDir = true;
     return;
   }
   out.cmp = coll.compare(ca, cb);

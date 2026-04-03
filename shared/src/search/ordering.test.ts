@@ -406,6 +406,23 @@ const SET_SORT_PAIR_DATA: PrintingColumnarData = {
 };
 const setSortPairPrintingIndex = new PrintingIndex(SET_SORT_PAIR_DATA);
 
+/** Spec 180: fast digit vs fallback punctuation — numeric collator orders "!" before "5"; partition reverses that. */
+const SET_SORT_PARTITION_DATA: PrintingColumnarData = {
+  canonical_face_ref: [0, 5],
+  scryfall_ids: ["pt-a", "pt-b"],
+  collector_numbers: ["5", "!"],
+  set_indices: [0, 0],
+  rarity: [Rarity.Common, Rarity.Common],
+  printing_flags: [0, 0],
+  finish: [Finish.Nonfoil, Finish.Nonfoil],
+  frame: [Frame.Y2015, Frame.Y2015],
+  price_usd: [50, 50],
+  released_at: [20070713, 20070713],
+  games: [Game.Paper, Game.Paper],
+  set_lookup: [{ code: "10E", name: "Tenth Edition", released_at: 20070713, set_type: "core" }],
+};
+const setSortPartitionPrintingIndex = new PrintingIndex(SET_SORT_PARTITION_DATA);
+
 describe("sortByField — face-domain sort", () => {
   // Canonical faces: 0=Birds, 1=Bolt, 2=Counterspell, 3=Sol Ring,
   // 4=Tarmogoyf, 5=Azorius Charm, 6=Thalia, 7=Ayara, 9=Dismember
@@ -649,6 +666,24 @@ describe("sortPrintingDomain — printing-domain sort", () => {
     const d: SortDirective = { field: "set", direction: "asc", isPrintingDomain: true };
     const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, setSortPairPrintingIndex, 0);
     expect(cardOrder).toEqual([0, 5]);
+  });
+
+  test("sort:set Spec 180 — fast collector sorts before fallback even when collator would invert", () => {
+    const coll = new Intl.Collator("und", { numeric: true, sensitivity: "base" });
+    expect(coll.compare("5", "!")).toBe(1);
+    const deduped = [0, 5];
+    const printings = new Uint32Array([0, 1]);
+    const d: SortDirective = { field: "set", direction: "asc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, setSortPartitionPrintingIndex, 0);
+    expect(cardOrder).toEqual([0, 5]);
+  });
+
+  test("sort:set desc reverses Spec 180 partition (fallback before fast within set)", () => {
+    const deduped = [0, 5];
+    const printings = new Uint32Array([0, 1]);
+    const d: SortDirective = { field: "set", direction: "desc", isPrintingDomain: true };
+    const { cardOrder } = sortPrintingDomain(deduped, printings, d, index, setSortPartitionPrintingIndex, 0);
+    expect(cardOrder).toEqual([5, 0]);
   });
 
   test("sort:set desc reverses collector tiebreak within same set", () => {

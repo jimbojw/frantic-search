@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingColumnarData } from "../data";
+import { COLLECTOR_KEY_STRIDE, encodeCollectorSortKeyInto } from "./collector-sort-key";
 
 function buildPercentileArrays(
   priceUsd: number[],
@@ -44,6 +45,8 @@ export class PrintingIndex {
   readonly canonicalFaceRef: number[];
   readonly scryfallIds: string[];
   readonly collectorNumbersLower: string[];
+  /** Spec 180: strided uint32 fast sort keys for collector tie-break (`COLLECTOR_KEY_STRIDE` words per printing). */
+  readonly collectorSortKeys: Uint32Array;
   readonly setIndices: number[];
   readonly setCodesLower: string[];
   /** Lowercase set type per printing row via `set_lookup[set_indices[i]].set_type` (Spec 179). */
@@ -76,6 +79,10 @@ export class PrintingIndex {
     this.canonicalFaceRef = data.canonical_face_ref;
     this.scryfallIds = data.scryfall_ids;
     this.collectorNumbersLower = data.collector_numbers.map(cn => cn.toLowerCase());
+    this.collectorSortKeys = new Uint32Array(this.printingCount * COLLECTOR_KEY_STRIDE);
+    for (let i = 0; i < this.printingCount; i++) {
+      encodeCollectorSortKeyInto(this.collectorSortKeys, i, this.collectorNumbersLower[i] ?? "");
+    }
     this.setIndices = data.set_indices;
     this.setCodesLower = data.set_indices.map(
       idx => data.set_lookup[idx]?.code?.toLowerCase() ?? "",

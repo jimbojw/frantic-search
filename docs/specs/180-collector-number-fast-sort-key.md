@@ -1,6 +1,6 @@
 # Spec 180: Collector Number — Parsed Shape and Fast Sort Key
 
-**Status:** Draft
+**Status:** Implemented
 
 **Depends on:** Spec 059 (Sort Directives — `sort:set` tie-break uses collector number; **§ Sort implementation → Allocation discipline** is normative for how this spec is wired into the worker sort path), [Research: Scryfall `collector_number` shapes](../research/scryfall-collector-number-shapes.md)
 
