@@ -50,6 +50,31 @@ Let **`u = normalizeForResolution(trimmedUserValue)`**.
 - **Prefix (`:`):** A candidate **matches** when **`normalizeForResolution(candidate).startsWith(u)`** (for **non-empty** **`u`** only; see **Empty value**).
 - **Exact (`=`):** A candidate **matches** when **`normalizeForResolution(candidate) === u`** (for **non-empty** **`u`** only; see **Empty value**). If several vocabulary keys share the same normalized form, **OR** their contributions (same as matching that normalized string as a set of aliases).
 
+The subsection below does **not** change these semantics. It requires **observationally equivalent** behavior while avoiding redundant work in the query hot path.
+
+### Implementation performance (precompute and cache)
+
+**Observational equivalence:** Any optimization **must** match the results of applying **`normalizeForResolution`** to the **wire** or **source** strings (user input and index keys / per-printing fields) as defined above. Caching or changing storage layout is allowed only if it preserves that equivalence.
+
+**Why:** Re-running **`normalizeForResolution`** (NFD, strip combining marks, alphanumeric extraction) on **every candidate on every evaluation** scales with the number of printings or faces and runs on **every keystroke** in the SPA. That pattern is a known hotspot: internal performance tests have attributed on the order of **~12%** of total cost in **affected** hot paths (e.g. full-index scans that normalize per row, such as **`set:`** / **`set_type:`**-style loops in [`eval-printing.ts`](../../shared/src/search/eval-printing.ts)) to this **re-normalization** work alone. Spec 182 fields and the same **`in:`** / **`cn:`** row-wise work should **not** repeat that pattern.
+
+**Per-query hot path (target shape):**
+
+1. Normalize the user value **once** per leaf evaluation → **`u`**.
+2. Compare **`u`** to **precomputed** normalized strings using only **`startsWith`** / **`===`** (and bitwise OR of pre-mapped bits for small vocabs).
+
+**Closed / build-time vocabularies** (keys of **`FORMAT_NAMES`**, **`FRAME_NAMES`**, **`GAME_NAMES`**, **`RARITY_NAMES`**, etc.): Precompute **`normalizeForResolution(key)`** once per key (module initialization, lazy static cache, or generated tables). Per query, iterate keys or use pre-built prefix structures **without** re-normalizing key strings.
+
+**Runtime vocabularies** (e.g. **`knownSetCodes`**, oracle / illustration tag labels, keyword index keys): When the worker loads or builds the index, compute and store normalized forms alongside (or instead of) display strings wherever eval reads them. **`resolveForField`** / canonicalize may still use the same cached strings.
+
+**Per-printing columns** (set code, set type, collector number, and any similar row string): Add **parallel columns** (e.g. additional **`string[]`** on **`PrintingIndex`**, filled in the constructor from wire data) holding **`normalizeForResolution(...)`** of each row’s source string. Eval loops then use **`rowNorm[i].startsWith(u)`** or **`rowNorm[i] === u`** with **no** per-row call into **`normalizeAlphanumeric`** / **`normalizeForResolution`**. This extends the idea of existing lowercased columns (**`setCodesLower`**, **`collectorNumbersLower`**) to full resolution normalization where the spec requires more than ASCII lowercasing.
+
+**Keyword / tag inverted indices:** Pre-normalize keys when building **`KeywordData`** / tag maps so eval union walks compare **`u`** to cached normalized keys only.
+
+**Testing:** During migration, parity tests (naive normalize-in-loop vs precomputed columns) are recommended; after cutover, existing query tests plus spot checks on diacritics / spacing prove equivalence.
+
+**Related fields not in Spec 182 scope:** **`set:`**, **`set_type:`**, **`kw:`**, **`otag:`** / **`atag:`** should use the same precompute discipline when touched for performance or when amended for **`:`** vs **`=`** (see **Relation to other specs**).
+
 ### Operators and negation
 
 - **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — **`:`** and **`=`** only; no **`!=`**. Negate with **`-`** / **`NOT`** around the term.
@@ -183,6 +208,7 @@ Scryfall’s syntax for these fields is largely **exact** or **unique** token or
 6. **Normalization** matches **Spec 103** rules for cross-field consistency.
 7. **Spec 103** and **Spec 072** are updated (when implementation lands) to reference this spec and to avoid contradicting eval vs canonicalize split.
 8. Negating a **prefix-union** **`:`** term uses **`-` / `NOT`** only; **`!=`** is **not** specified for format / frame / **`cn`** in this spec.
+9. **Performance:** Evaluators for these fields **do not** call **`normalizeForResolution`** on every printing (or every vocabulary key) inside the per-keystroke hot path. Normalized forms are **precomputed** at index or vocabulary load (or equivalent cache) per **Implementation performance** above; behavior remains **observationally equivalent** to the semantic normalization rules.
 
 ## Implementation Notes
 
