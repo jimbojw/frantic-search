@@ -1,6 +1,6 @@
 # Spec 182: Prefix union for format, frame, `in:`, and collector number
 
-**Status:** Draft
+**Status:** In Progress
 
 **Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix union precedent), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`), ADR-022 (Categorical field operators — normative field slice for this pattern)
 
@@ -21,6 +21,8 @@ with a **clear split between operators**:
 - **`=`** — **exact match** after `normalizeForResolution`: only candidates whose normalized form **equals** the normalized user value contribute (still **OR** if two distinct vocabulary keys normalize identically — rare — so behavior stays deterministic).
 
 Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several format names ORs those formats’ legality bits). **`=`** is an **escape hatch** for users who want no stemming (e.g. match a tag or frame key that is itself a prefix of a longer key — analogous motivation to `otag:peek` vs a longer `peek-*` tag). This spec’s fields follow **`:`** / **`=`** here. **`kw:`** / **`keyword:`** follow the same split per amended **[Spec 176](176-kw-keyword-prefix-query-semantics.md)**; **`otag:`** / **`atag:`** and related fields are not yet migrated — see **Relation to other specs** below.
+
+**Empty values ([ADR-022](../adr/022-categorical-field-operators.md)):** For every field in **Goal**, a **trimmed-empty** value on **`:`** or **`=`** must **not** narrow the result set while the user is still typing — including **`in:`** (no **`unknown in value`** for bare **`in:`** / **`in=`**). Mechanism remains implementation-defined per **Empty value** below.
 
 **Negation:** **`!=`** (where the field supports it — **legalities** (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**), **`in:`**, and **`frame:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term`), not `!=`.
 
@@ -101,7 +103,7 @@ Concrete messages (preserve existing shapes where they already exist):
 
 ### Empty value
 
-**`=` (exact), empty trimmed** — all fields in **Goal**: **Neutral** — the term must **not** narrow the result set (observable effect: **filters nothing**, e.g. **`f=`** while the user has not yet typed a value). The leaf must **not** act as a **zero-hit** filter on its own. **How** this is achieved is **implementation-defined** and **out of scope** to unify here: e.g. an all-match buffer, or an **`unknown format`** / **`unknown frame`** / **`unknown in value`** / **`unknown collector number`** node that **passthrough** elides in combination ([Spec 039](039-non-destructive-error-handling.md)), or equivalent — the **`unknown …`** wording in code or older specs may remain even when the **combined query** behaves like no constraint. Breakdown chips, hints, and other UX for this transient state are **out of scope**.
+**`=` (exact), empty trimmed** — all fields in **Goal**: **Neutral** — the term must **not** narrow the result set (observable effect: **filters nothing**, e.g. **`f=`** while the user has not yet typed a value). The leaf must **not** act as a **zero-hit** filter on its own. **How** this is achieved is **implementation-defined** and **out of scope** to unify here: e.g. an all-match buffer, or an **`unknown format`** / **`unknown frame`** / **`unknown collector number`** node that **passthrough** elides in combination ([Spec 039](039-non-destructive-error-handling.md)), or equivalent — the **`unknown …`** wording in code or older specs may remain even when the **combined query** behaves like no constraint. For **`in=`**, prefer **match-all** like **`frame=`**; do **not** surface **`unknown in value`** for trimmed empty (**ADR-022**). Breakdown chips, hints, and other UX for this transient state are **out of scope**.
 
 **`:` (prefix), empty trimmed:**
 
@@ -109,7 +111,7 @@ Concrete messages (preserve existing shapes where they already exist):
 |----------|----------|
 | **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** | **Neutral** — same as empty **`=`** / **`!=`**: the leaf must **not** narrow results while the user has only typed the operator (parity with **`frame:`** empty **`:`** and **`kw:`**). |
 | **`frame:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`kw:`** / **`keyword:`** (Spec 176) — trimmed empty must not narrow results while the user is still typing. |
-| **`in:`** | Empty **`:`** → **`unknown in value`** (Spec 072 style). |
+| **`in:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`frame:`** / **`kw:`** and [ADR-022](../adr/022-categorical-field-operators.md) — do **not** return **`unknown in value`** for trimmed empty. |
 | **`cn:`** | Empty **`:`** → **exact** match against empty stored collector string only, or **`unknown collector number`**; document in **Implementation Notes** if product chooses. |
 
 ### Spec 103 split (evaluation vs canonicalize)
@@ -198,7 +200,11 @@ Unlike **`:`**, **`=`** does **not** OR multiple namespaces for one token: **fir
 
 **Empty `=`:** Neutral per **Empty value**.
 
-**Note:** This **replaces** Spec 103 §4’s rule that **`in:`** auto-resolution requires **exactly one** match **across** the union for **evaluation** when using **`:`**. **`=`** eval follows **single-branch exact** disambiguation. **Canonicalize** may still use **unique-prefix** when a single candidate exists.
+**Empty `:`:** Neutral — all printings match (parity with **`frame:`** / **`kw:`**); do **not** return **`unknown in value`** for trimmed empty.
+
+**Empty `!=`:** Neutral — all printings match (same as empty **`=`** / **`:`**).
+
+**Note:** This **replaces** Spec 103 §4’s rule that **`in:`** auto-resolution requires **exactly one** match **across** the union for **evaluation** when using **`:`**. **`=`** eval follows **single-branch exact** disambiguation. **Canonicalize** may still use **unique-prefix** when a single candidate exists. It also supersedes any prior behavior where bare **`in:`** (empty value) surfaced as **`unknown in value`** — [Spec 072](072-in-query-qualifier.md) is amended to match when implementation lands (see **Acceptance criteria** §7).
 
 ### 4. `cn:` / `collectornumber:` / `number:`
 
@@ -230,7 +236,7 @@ Scryfall’s syntax for these fields is largely **exact** or **unique** token or
 
 1. **Format:** **`:`** — non-empty prefix matching **multiple** format name keys ORs legality bits; **`unknown format`** when no key matches the prefix. **`=`** — only keys with **normalized equality** contribute; **`unknown format`** when none match exactly. **`!=`** — negation of **`=`** exact mask only; **`unknown format`** when the positive exact mask is zero. **Empty `=`** / **empty `!=`** — neutral (observable: filters nothing), mechanism implementation-defined per **Empty value**.
 2. **Frame:** Same **`:`** / **`=`** split over **`FRAME_NAMES`**; **`!=`** negates **`frame=`** exact mask only (Frantic extension vs Scryfall). **`unknown frame`** when no exact vocabulary match for **`=`** / **`!=`** positive mask, or no prefix match for **`:`** (non-empty value only). **Empty `=`**, **empty `:`**, and **empty `!=`** — neutral (all printings match), aligned with **`kw:`** (Spec 176).
-3. **`in:`** **`:`** — union across all games, sets, and rarities whose normalized names/codes **start with** **`u`**; **`OR`** printing results; **`unknown in value`** when none match (and not unsupported language). **`=`** — **exact** match with **game → set → rarity** disambiguation; **`!=`** — **negation of that exact `=` mask** only. **`in:ru`** / **`in=ru`** still **`unsupported in value`** per Spec 072 language detection. **Empty `=`** — neutral per **Empty value**.
+3. **`in:`** **`:`** — union across all games, sets, and rarities whose normalized names/codes **start with** **`u`**; **`OR`** printing results; **`unknown in value`** when none match (and not unsupported language). **`=`** — **exact** match with **game → set → rarity** disambiguation; **`!=`** — **negation of that exact `=` mask** only. **`in:ru`** / **`in=ru`** still **`unsupported in value`** per Spec 072 language detection. **Empty `=`**, **empty `:`**, and **empty `!=`** — neutral (all printings match), aligned with **`frame:`** / **`kw:`** and ADR-022.
 4. **`cn:`** **`:`** — normalized **prefix** on per-printing collector strings; **`=`** — normalized **equality**; non-empty non-match → **`unknown collector number`** (passthrough). **Empty `=`** — neutral per **Empty value**.
 5. **Canonicalize** still uses **`resolveForField`** for unique-prefix collapse where vocabulary is available.
 6. **Normalization** matches **Spec 103** rules for cross-field consistency.
@@ -241,4 +247,5 @@ Scryfall’s syntax for these fields is largely **exact** or **unique** token or
 ## Implementation Notes
 
 - **Empty `=` observable behavior:** Today, queries such as **`f=`** (no value yet) already **do not** narrow results; Spec 182 **normative** requirement is that **outcome**, whether the leaf is implemented as match-all, **`unknown format`** + passthrough, or otherwise.
+- **Empty `in:` / `in=` / `in!=`:** Same **neutral** observable outcome as **`frame:`** while the value is still empty after trim — not an **`unknown in value`** leaf for bare **`in:`** (ADR-022 alignment; **[Spec 072](072-in-query-qualifier.md)** update pending implementation).
 - **2026-04-04:** Legalities family (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**) — eval uses precomputed **`normalizeForResolution`** of **`FORMAT_NAMES`** keys in **`shared/src/search/eval-leaves.ts`** (**`combinedFormatMask`**); **`:`** / **`=`** / **`!=`** per §1; **`resolveForField`** remains for canonicalize only (Spec 103).
