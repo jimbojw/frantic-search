@@ -8,7 +8,7 @@ import {
 import { parseManaSymbols, manaContains, manaEquals } from "./mana";
 import { parseStatValue, isPlainNumericStatQueryToken } from "./stats";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
-import { resolveForField, type ResolutionContext } from "./categorical-resolve";
+import { normalizeForResolution, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
 import { normalizeAlphanumeric } from "../normalize";
 
@@ -58,6 +58,27 @@ export const FIELD_ALIASES: Record<string, string> = {
   saltiness: "salt",
   produces: "produces",
 };
+
+/** Face-domain legalities: skip global empty fill; case handles empty `:` / `=` / `!=` (Spec 182). */
+const LEGALITY_CANONICAL = new Set(["legal", "banned", "restricted"]);
+
+/** Precomputed `normalizeForResolution(FORMAT_NAMES key)` → bit (Spec 182). */
+const FORMAT_NORM_BITS: { norm: string; bit: number }[] = Object.entries(FORMAT_NAMES).map(([key, bit]) => ({
+  norm: normalizeForResolution(key),
+  bit,
+}));
+
+function combinedFormatMask(prefixOp: boolean, u: string): number {
+  let m = 0;
+  for (const row of FORMAT_NORM_BITS) {
+    if (prefixOp) {
+      if (row.norm.startsWith(u)) m |= row.bit;
+    } else if (row.norm === u) {
+      m |= row.bit;
+    }
+  }
+  return m;
+}
 
 function parseColorValue(value: string): number {
   const named = COLOR_NAMES[value.toLowerCase()];
@@ -195,7 +216,7 @@ export function evalLeafField(
   node: FieldNode,
   index: CardIndex,
   buf: Uint8Array,
-  context?: ResolutionContext,
+  _context?: ResolutionContext,
 ): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   const n = index.faceCount;
@@ -207,11 +228,12 @@ export function evalLeafField(
     return `unknown field "${node.field}"`;
   }
   if (val === "") {
-    if (canonical !== "produces") {
+    if (canonical !== "produces" && !LEGALITY_CANONICAL.has(canonical)) {
       fillCanonical(buf, cf, n);
       return null;
     }
     // produces: empty value falls through to case "produces" (same as produces>0)
+    // legalities: empty handled in case (Spec 182 — neutral for `:` / `=` / `!=`)
   }
 
   const valLower = val.toLowerCase();
@@ -648,14 +670,34 @@ export function evalLeafField(
     case "legal":
     case "banned":
     case "restricted": {
-      const formatVal = resolveForField(canonical, val, context);
-      const formatBit = FORMAT_NAMES[formatVal.toLowerCase()];
-      if (formatBit === undefined) return `unknown format "${node.value}"`;
+      if (op !== ":" && op !== "=" && op !== "!=") {
+        return `${node.field}: does not support operator "${op}"`;
+      }
+      const trimmed = val.trim();
+      if (trimmed === "") {
+        // Empty `=`, `!=`, and `:` are neutral (Spec 182): user still typing; do not error or narrow.
+        fillCanonical(buf, cf, n);
+        break;
+      }
+      const u = normalizeForResolution(trimmed);
+      if (u === "") {
+        return `unknown format "${trimmed}"`;
+      }
       const col = canonical === "legal" ? index.legalitiesLegal
         : canonical === "banned" ? index.legalitiesBanned
         : index.legalitiesRestricted;
+      if (op === "!=") {
+        const combined = combinedFormatMask(false, u);
+        if (combined === 0) return `unknown format "${trimmed}"`;
+        for (let i = 0; i < n; i++) {
+          if ((col[i] & combined) === 0) buf[cf[i]] = 1;
+        }
+        break;
+      }
+      const combined = combinedFormatMask(op === ":", u);
+      if (combined === 0) return `unknown format "${trimmed}"`;
       for (let i = 0; i < n; i++) {
-        if ((col[i] & formatBit) !== 0) buf[cf[i]] = 1;
+        if ((col[i] & combined) !== 0) buf[cf[i]] = 1;
       }
       break;
     }

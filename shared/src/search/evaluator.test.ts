@@ -455,9 +455,35 @@ describe("evaluate", () => {
     expect(matchCount("f:edh")).toBe(matchCount("f:commander"));
   });
 
-  test("f:c and f:e resolve to commander (Spec 103)", () => {
+  test("f:c and f:e prefix union matches same card set as unique single-key prefix (Spec 182)", () => {
     expect(matchCount("f:c")).toBe(matchCount("f:commander"));
     expect(matchCount("f:e")).toBe(matchCount("f:edh"));
+  });
+
+  test("f:p ORs pioneer, pauper, penny, predh prefix matches (Spec 182)", () => {
+    expect(matchCount("f:p")).toBeGreaterThan(matchCount("f:pioneer"));
+    expect(matchCount("f:pioneer")).toBe(1);
+  });
+
+  test("f=mod unknown format; f:mod prefix-matches modern (Spec 182 exact vs prefix)", () => {
+    const cache = new NodeCache(index);
+    expect(cache.evaluate(parse("f=mod")).result.error).toBe('unknown format "mod"');
+    expect(matchCount("f:mod")).toBe(matchCount("f:modern"));
+  });
+
+  test("f!=legacy matches cards with no face legal in legacy (Spec 182 != negates exact = only)", () => {
+    // Azorius Charm (Pioneer only) and Sol Ring (Commander|Vintage, no Legacy bit) in TEST_DATA.
+    expect(matchCount("f!=legacy")).toBe(2);
+  });
+
+  test("empty f= and f!= are neutral (Spec 182)", () => {
+    expect(matchCount("f=")).toBe(9);
+    expect(matchCount("f!=")).toBe(9);
+  });
+
+  test("f>modern rejects unsupported operator", () => {
+    const cache = new NodeCache(index);
+    expect(cache.evaluate(parse("f>modern")).result.error).toBe('f: does not support operator ">"');
   });
 
   test("banned:legacy matches cards banned in legacy", () => {

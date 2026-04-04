@@ -8,26 +8,28 @@ Format legality (whether the card is legal in a format).
 
 **Canonical:** `legal`  
 **Aliases:** `f`, `format`  
-**Domain:** Card
+**Domain:** Face (oracle-level; same legality bitmask on each face of a card)
 
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Legal in format | `q=f:modern` |
-| `=` | Legal in format | `q=legal:commander` |
-| `!=` | Not legal in format | `q=f!=standard` |
+| `:` | **Prefix union** on normalized format names: ORs legality bits for every `FORMAT_NAMES` key whose normalized form **starts with** your value (discovery). Non-empty value that matches no key → `unknown format` (passthrough). Empty **`:`** is neutral (filters nothing while typing), same as empty **`=`** / **`!=`**. | `q=f:modern`, `q=f:p` |
+| `=` | **Exact** match after normalization: OR bits for keys whose normalized form **equals** your value. Non-empty no match → `unknown format`. Empty `=` is neutral (filters nothing while typing). | `q=legal:commander`, `q=f=edh` |
+| `!=` | **Frantic extension:** negation of the **`=`** (exact) positive mask only — not negation of **`:`** prefix union. Same combined bit as `f=…`; matches faces with **no** overlap on that bit. Non-empty no exact match → `unknown format`. Empty `!=` is neutral. Scryfall does not document format `!=`. | `q=f!=standard` |
+
+To exclude a **prefix** predicate (e.g. everything `f:p` would match), use **`-f:p`** or **`NOT`**, not `!=`.
 
 ## Allowed values
 
-Format codes: `standard`, `pioneer`, `modern`, `legacy`, `vintage`, `commander`, `pauper`, etc. Matching is case-insensitive. Use Scryfall's format names.
+Format codes: `standard`, `pioneer`, `modern`, `legacy`, `vintage`, `commander`, `edh`, `pauper`, etc. Matching uses the same normalization as other categorical fields (Spec 103).
 
 ## Notes
 
 - By default, Frantic Search shows all cards. Use `q=f:modern` (or `q=f:commander`, etc.) to filter by format legality.
 - For banned/restricted, use [banned](?doc=reference/fields/card/banned) and [restricted](?doc=reference/fields/card/restricted).
-- Legality is stored per printing in the dataset; most oracle cards share the same status across printings.
+- Legality comes from Scryfall bulk oracle data; it is evaluated at **face** (oracle) level per Spec 178.
 
 ## Scryfall
 
-Scryfall excludes cards not legal in any format by default. Frantic Search shows all cards; use `q=f:format` to filter.
+Scryfall excludes cards not legal in any format by default. Frantic Search shows all cards; use `q=f:format` to filter. Scryfall often treats `:` and `=` interchangeably for format; Frantic intentionally splits **`:`** (prefix union) and **`=`** (exact) for discovery and escape hatch (Spec 182).

@@ -198,6 +198,19 @@ describe("non-destructive error handling", () => {
     expect(result.matchCount).toBe(-1);
   });
 
+  test("f: with empty value is neutral like f= (Spec 182 prefix passthrough)", () => {
+    const { result } = getResult("f:");
+    expect(result.error).toBeUndefined();
+    expect(result.matchCount).toBe(9);
+  });
+
+  test("banned: and restricted: with empty value are neutral", () => {
+    expect(getResult("banned:").result.error).toBeUndefined();
+    expect(getResult("banned:").result.matchCount).toBe(9);
+    expect(getResult("restricted:").result.error).toBeUndefined();
+    expect(getResult("restricted:").result.matchCount).toBe(9);
+  });
+
   test("is:xyz produces unknown keyword error", () => {
     const { result } = getResult("is:xyz");
     expect(result.error).toBe('unknown keyword "xyz"');

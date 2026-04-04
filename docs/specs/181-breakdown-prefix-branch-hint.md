@@ -32,17 +32,20 @@ These are the fields where **evaluation** applies `normalizeForResolution` + `st
 | `set` | `set`, `s` → `set`, `e` → `set`, `edition` → `set` | **Distinct** normalized set codes present on loaded printings (same strings `eval-printing` prefix-matches for **`:`**; align with `PrintingIndex`) | 047 |
 | `set_type` | `set_type`, `st` → `set_type` | **Distinct** normalized set-type strings on loaded printings (prefix-union path for **`:`** only) | 179 |
 | `frame` | `frame` | Keys of **`FRAME_NAMES`** in `shared/src/bits.ts` (normalize each key with `normalizeForResolution` for hint candidates; align with `eval-printing` prefix path for **`:`**) | 047, 182 |
+| `legal` | `f` → `legal`, `format` → `legal` | Keys of **`FORMAT_NAMES`** in `shared/src/bits.ts` (same normalization as `eval-leaves` prefix path for **`:`**) | 182 |
+| `banned` | `banned` | Keys of **`FORMAT_NAMES`** | 182 |
+| `restricted` | `restricted` | Keys of **`FORMAT_NAMES`** | 182 |
 
 **Normalization:** Hints use the same `normalizeForResolution` as evaluation (Spec 103) on both the user value and each candidate string.
 
-**Operators:** Only leaves that run **prefix** (**`:`**) union eval (Specs 176, 174, 032, 047, 179, 182). Fields such as **`set=`** / **`set_type=`** / **`frame=`** / **`frame!=`** use **exact** (or exact-negated) match — **no** prefix-branch hint (optional future: exact-resolution hint). Range or unsupported operators: no hint.
+**Operators:** Only leaves that run **prefix** (**`:`**) union eval (Specs 176, 174, 032, 047, 179, 182, legalities). Fields such as **`set=`** / **`set_type=`** / **`frame=`** / **`frame!=`** / **`f=`** / **`f!=`** use **exact** (or exact-negated) match — **no** prefix-branch hint (optional future: exact-resolution hint). Range or unsupported operators: no hint.
 
 ## Fields explicitly out of scope (for this spec)
 
 | Field / area | Reason |
 |--------------|--------|
 | `in:` | Spec 072: **unique-prefix resolution** across a union of namespaces, then **exact** game / set / rarity match—not eval-time prefix union over a single OR’d vocabulary like `kw:`. A separate UX spec could add “ambiguous `in:` candidates” later. |
-| `f:` / `legal:` / `format:` / `banned:` / `restricted:`, `view:`, `unique:`, `sort:` / `order:`, `include:`, `rarity:` / `r:`, `game:` | Spec 103: **unique** categorical resolution to one token when unambiguous; evaluation uses the resolved single value, not OR of all prefix matches. |
+| `view:`, `unique:`, `sort:` / `order:`, `include:`, `rarity:` / `r:`, `game:` | Spec 103: **unique** categorical resolution to one token when unambiguous at non-eval sites; eval for these fields does not use Spec 182-style prefix union on a format vocabulary. |
 | `flavor:` / `ft:`, `artist:` / `a:` | Substring / index semantics differ from normalized-prefix vocabulary union (see `eval-printing`). |
 | `collector number`, numeric fields, regex, bare text | Not categorical prefix union. |
 
@@ -51,7 +54,7 @@ These are the fields where **evaluation** applies `normalizeForResolution` + `st
 ### When to show
 
 - Canonical field is in **Fields in scope** above.
-- Operator is the prefix-union operator(s) for that field (per existing specs, typically `:` and `=`).
+- Operator is the prefix-union operator for that field (**`:`** only; **`=`** / **`!=`** get no prefix-branch hint).
 - Trimmed value may be **empty** or **non-empty**. Empty is **in scope**: e.g. `is:`, `kw:`, `set:` (broad match) should still be able to show a first-character digest over the field’s candidate set so new users can discover how to narrow the query.
 - Leaf has **no** evaluator error for that term (e.g. omit hint for `unknown keyword`, `unknown set`, etc.).
 - **Non-empty trimmed value:** Show a hint only when **at least two** distinct vocabulary entries (or set codes / set types on disk) match the normalized prefix—otherwise the prefix is already unambiguous for discovery and the hint adds little. *(Optional later enhancement: single-match case from #177—muted full resolved token—can be a follow-up.)*

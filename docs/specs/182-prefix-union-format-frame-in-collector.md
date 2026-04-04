@@ -22,7 +22,7 @@ with a **clear split between operators**:
 
 Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several format names ORs those formats’ legality bits). **`=`** is an **escape hatch** for users who want no stemming (e.g. match a tag or frame key that is itself a prefix of a longer key — analogous motivation to `otag:peek` vs a longer `peek-*` tag). This spec’s fields follow **`:`** / **`=`** here. **`kw:`** / **`keyword:`** follow the same split per amended **[Spec 176](176-kw-keyword-prefix-query-semantics.md)**; **`otag:`** / **`atag:`** and related fields are not yet migrated — see **Relation to other specs** below.
 
-**Negation:** **`!=`** (where the field supports it — **`in:`** and **`frame:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term`), not `!=`.
+**Negation:** **`!=`** (where the field supports it — **legalities** (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**), **`in:`**, and **`frame:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term`), not `!=`.
 
 ## Out of scope
 
@@ -81,8 +81,8 @@ The subsection below does **not** change these semantics. It requires **observat
 
 ### Operators and negation
 
-- **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — **`:`** and **`=`** only; no **`!=`**. Negate with **`-`** / **`NOT`** around the term.
-- **`frame:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `frame=`** (exact positive mask per §2), **not** negation of **`frame:`** (prefix union). Scryfall does not document **`frame!=`**; Frantic treats it as a principled extension, same **`!=`** rule family as **`in:`**.
+- **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `=`** (exact positive mask per §1), **not** negation of **`:`** (prefix union). Scryfall does not document format **`!=`**; Frantic treats it as a principled extension, same **`!=`** rule family as **`frame:`** / **`in:`**.
+- **`frame:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `frame=`** (exact positive mask per §2), **not** negation of **`frame:`** (prefix union). Scryfall does not document **`frame!=`**; Frantic treats it as a principled extension, same **`!=`** rule family as **`in:`** / legalities.
 - **`in:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is defined as **negation of `in=`** (exact positive match per §3), **not** negation of **`in:`** (prefix union).
 - **`cn:`** / **`collectornumber:`** / **`number:`** — **`:`** and **`=`** only unless a future spec adds comparison ops; negate with **`-`** / **`NOT`**.
 
@@ -107,7 +107,7 @@ Concrete messages (preserve existing shapes where they already exist):
 
 | Field(s) | Behavior |
 |----------|----------|
-| **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** | **No** neutral “match all” via prefix union. Empty **`:`** keeps **invalid / unknown**-style outcome (implementation: typically **`unknown format`** once evaluated, or equivalent). |
+| **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** | **Neutral** — same as empty **`=`** / **`!=`**: the leaf must **not** narrow results while the user has only typed the operator (parity with **`frame:`** empty **`:`** and **`kw:`**). |
 | **`frame:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`kw:`** / **`keyword:`** (Spec 176) — trimmed empty must not narrow results while the user is still typing. |
 | **`in:`** | Empty **`:`** → **`unknown in value`** (Spec 072 style). |
 | **`cn:`** | Empty **`:`** → **exact** match against empty stored collector string only, or **`unknown collector number`**; document in **Implementation Notes** if product chooses. |
@@ -137,7 +137,13 @@ Concrete messages (preserve existing shapes where they already exist):
 
 **Evaluation:** For each face `i`, set **`buf[canonicalFace[i]] = 1`** when **`(col[i] & combinedBit) !== 0`**, where **`col`** is the appropriate legality column for the leaf (**legal** / **banned** / **restricted**).
 
+**`!=`:** **Negation of `=`** only. Build **`combinedBit`** exactly as for **`=`** (normalized key equality). If **`combinedBit === 0`**, **`unknown format`**. Otherwise set **`buf[canonicalFace[i]] = 1`** when **`(col[i] & combinedBit) === 0`**.
+
 **Empty `=`:** Neutral per **Empty value** — do not evaluate **`combinedBit`** from an empty exact token.
+
+**Empty `!=`:** Neutral — all faces match in the leaf (same as empty **`=`**).
+
+**Empty `:`:** Neutral — all canonical faces match in the leaf (same as empty **`=`** / **`!=`**); do not return **`unknown format`** for trimmed empty.
 
 **Aliases:** **`f:`** → **`legal`**, **`format:`** → **`legal`** (existing alias map in `FIELD_ALIASES`).
 
@@ -216,22 +222,23 @@ Let **`c = normalizeForResolution(collectorNumbersLower[i])`** per printing (con
 
 ## Scryfall
 
-Scryfall’s syntax for these fields is largely **exact** or **unique** token oriented, and often treats **`:`** and **`=`** as interchangeable. Frantic’s **`:`** = **prefix union** and **`=`** = **exact** are **intentional** extensions for discovery plus an escape hatch; document deltas in `app/src/docs/reference/scryfall/differences.mdx` when implemented. **`frame!=`** is a **Frantic-only** operator (negation of **`frame=`**); Scryfall does not document it.
+Scryfall’s syntax for these fields is largely **exact** or **unique** token oriented, and often treats **`:`** and **`=`** as interchangeable. Frantic’s **`:`** = **prefix union** and **`=`** = **exact** are **intentional** extensions for discovery plus an escape hatch; document deltas in `app/src/docs/reference/scryfall/differences.mdx` when implemented. **`frame!=`** and **format `!=`** (**`f!=`**, **`banned!=`**, **`restricted!=`**, etc.) are **Frantic-only** operators (negation of exact **`=`** positive mask); Scryfall does not document them.
 
 ---
 
 ## Acceptance criteria
 
-1. **Format:** **`:`** — non-empty prefix matching **multiple** format name keys ORs legality bits; **`unknown format`** when no key matches the prefix. **`=`** — only keys with **normalized equality** contribute; **`unknown format`** when none match exactly. **Empty `=`** — neutral (observable: filters nothing), mechanism implementation-defined per **Empty value**.
+1. **Format:** **`:`** — non-empty prefix matching **multiple** format name keys ORs legality bits; **`unknown format`** when no key matches the prefix. **`=`** — only keys with **normalized equality** contribute; **`unknown format`** when none match exactly. **`!=`** — negation of **`=`** exact mask only; **`unknown format`** when the positive exact mask is zero. **Empty `=`** / **empty `!=`** — neutral (observable: filters nothing), mechanism implementation-defined per **Empty value**.
 2. **Frame:** Same **`:`** / **`=`** split over **`FRAME_NAMES`**; **`!=`** negates **`frame=`** exact mask only (Frantic extension vs Scryfall). **`unknown frame`** when no exact vocabulary match for **`=`** / **`!=`** positive mask, or no prefix match for **`:`** (non-empty value only). **Empty `=`**, **empty `:`**, and **empty `!=`** — neutral (all printings match), aligned with **`kw:`** (Spec 176).
 3. **`in:`** **`:`** — union across all games, sets, and rarities whose normalized names/codes **start with** **`u`**; **`OR`** printing results; **`unknown in value`** when none match (and not unsupported language). **`=`** — **exact** match with **game → set → rarity** disambiguation; **`!=`** — **negation of that exact `=` mask** only. **`in:ru`** / **`in=ru`** still **`unsupported in value`** per Spec 072 language detection. **Empty `=`** — neutral per **Empty value**.
 4. **`cn:`** **`:`** — normalized **prefix** on per-printing collector strings; **`=`** — normalized **equality**; non-empty non-match → **`unknown collector number`** (passthrough). **Empty `=`** — neutral per **Empty value**.
 5. **Canonicalize** still uses **`resolveForField`** for unique-prefix collapse where vocabulary is available.
 6. **Normalization** matches **Spec 103** rules for cross-field consistency.
 7. **Spec 103** and **Spec 072** are updated (when implementation lands) to reference this spec and to avoid contradicting eval vs canonicalize split.
-8. Negating a **prefix-union** **`:`** predicate uses **`-` / `NOT`** only. Where **`!=`** is defined (**`frame!=`**, **`in!=`**), it is **negation of exact `=`** only, not negation of **`:`**. **`!=`** is **not** specified for format / **`cn`** in this spec.
+8. Negating a **prefix-union** **`:`** predicate uses **`-` / `NOT`** only. Where **`!=`** is defined (**legalities**, **`frame!=`**, **`in!=`**), it is **negation of exact `=`** only, not negation of **`:`**. **`!=`** is **not** specified for **`cn:`** in this spec.
 9. **Performance:** Evaluators for these fields **do not** call **`normalizeForResolution`** on every printing (or every vocabulary key) inside the per-keystroke hot path. Normalized forms are **precomputed** at index or vocabulary load (or equivalent cache) per **Implementation performance** above; behavior remains **observationally equivalent** to the semantic normalization rules.
 
 ## Implementation Notes
 
 - **Empty `=` observable behavior:** Today, queries such as **`f=`** (no value yet) already **do not** narrow results; Spec 182 **normative** requirement is that **outcome**, whether the leaf is implemented as match-all, **`unknown format`** + passthrough, or otherwise.
+- **2026-04-04:** Legalities family (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**) — eval uses precomputed **`normalizeForResolution`** of **`FORMAT_NAMES`** keys in **`shared/src/search/eval-leaves.ts`** (**`combinedFormatMask`**); **`:`** / **`=`** / **`!=`** per §1; **`resolveForField`** remains for canonicalize only (Spec 103).

@@ -60,7 +60,7 @@ export const TEST_DATA: ColumnarData = {
   defenses:       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   legalities_legal: [
     Format.Commander | Format.Legacy,                   // #0 Birds
-    Format.Commander | Format.Legacy | Format.Modern,   // #1 Bolt
+    Format.Commander | Format.Legacy | Format.Modern | Format.Pauper,   // #1 Bolt (Pauper for f:p vs f:pioneer Spec 182 tests)
     Format.Commander | Format.Legacy,                   // #2 Counterspell
     Format.Commander | Format.Vintage,                  // #3 Sol Ring
     Format.Commander | Format.Legacy | Format.Modern,   // #4 Tarmogoyf

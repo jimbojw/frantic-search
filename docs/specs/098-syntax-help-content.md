@@ -38,9 +38,9 @@ The Fields table must include every queryable field with canonical name, aliases
 | `mana value` | `mv`, `cmc` | Mana value (numeric) | `mv<=2` |
 | `mana` | `m` | Mana cost (symbols) | `m:{b/p}` |
 | `produces` | — | Mana the card can produce (lands, rocks, rituals); W,U,B,R,G,C,T; named combos (azorius, multicolor); numeric count; `:` = at least, `=` = exactly | `produces:wu`, `produces=0`, `produces:multicolor` |
-| `legal` | `f`, `format` | Format legality | `f:modern` |
-| `banned` | — | Banned in format | `banned:legacy` |
-| `restricted` | — | Restricted in format | `restricted:vintage` |
+| `legal` | `f`, `format` | Format legality; **`:`** = normalized **prefix** union over **`FORMAT_NAMES`**, **`=`** = exact, **`!=`** = negation of **`=`** mask (Spec 182); empty **`:`** / **`=`** / **`!=`** neutral | `f:modern`, `f=commander`, `f!=standard` |
+| `banned` | — | Banned in format; same **`:`** / **`=`** / **`!=`** semantics as **`legal:`** on the banned column (Spec 182) | `banned:legacy`, `banned!=legacy` |
+| `restricted` | — | Restricted in format; same operator semantics as **`legal:`** (Spec 182) | `restricted:vintage` |
 | `is` | `not` | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil); `not:` = `-is:` | `is:commander`, `not:dfc` |
 | `kw` | `keyword` | Keyword ability; normalized **prefix** with union over matching names; no match → `unknown keyword` (Spec 176) | `kw:flying`, `kw:first` |
 | `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
