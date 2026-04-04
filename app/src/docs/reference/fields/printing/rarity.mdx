@@ -14,15 +14,21 @@ Rarity of the printing.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Exact or substring | `q=r:mythic` |
-| `=` | Exact rarity | `q=rarity=mythic` |
-| `!=` | Not rarity | `q=r!=common` |
-| `>`, `<`, `>=`, `<=` | Rarity comparison (tier order below) | `q=r>=rare` |
+| `:` | **Prefix union** (normalized): printing has **any** rarity tier whose vocabulary key (full name or abbreviation) starts with what you typed | `q=r:ra` → rare |
+| `=` | **Exact** match on a rarity key after normalization | `q=rarity=mythic`, `q=r=r` (single-letter key `r` = rare) |
+| `!=` | **Frantic extension:** not exactly the tier(s) matched by **`rarity=`** / **`r=`** with the same value—not negation of **`:`** prefix union | `q=r!=common` |
+| `>`, `<`, `>=`, `<=` | Rarity comparison (tier order below); the right-hand side uses unique-prefix resolution when possible | `q=r>=rare` |
 
 ## Allowed values
 
 Rarity codes: `common`, `uncommon`, `rare`, `special`, `mythic`, `bonus`. Matching is case-insensitive.
 
-Single-letter aliases (where unambiguous for this field): `c` (common), `u` (uncommon), `r` (rare), `m` (mythic), `s` (special), `b` (bonus).
+Single-letter keys: `c`, `u`, `r`, `m`, `s`, `b` (same tiers as above). With **`=`**, `r` matches the **`r`** key (rare), not a prefix of `rare`; with **`:`**, a prefix such as `ra` can match `rare`.
 
 **Comparison order** (for `>`, `<`, `>=`, `<=`): common &lt; uncommon &lt; rare &lt; special &lt; mythic &lt; bonus. For example, `q=rarity<mythic` includes special-rarity printings but not mythic or bonus.
+
+**Empty value:** After trimming, `rarity:`, `rarity=`, `r!=`, etc. with no value are **neutral** (they do not narrow results while typing).
+
+## Notes
+
+- Scryfall’s syntax reference often treats `:` and `=` as interchangeable; Frantic uses **`:`** for discovery (prefix union over keys) and **`=`** as an exact escape hatch — see [Scryfall differences](?doc=reference/scryfall/differences).

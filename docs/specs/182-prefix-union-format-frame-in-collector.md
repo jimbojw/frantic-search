@@ -1,4 +1,4 @@
-# Spec 182: Prefix union for format, frame, `in:`, and collector number
+# Spec 182: Prefix union for format, frame, `game:`, `rarity:`, `in:`, and collector number
 
 **Status:** Implemented
 
@@ -12,6 +12,8 @@ Extend **eval-time** matching for:
 
 - **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** (face domain, oracle-level legality columns)
 - **`frame:`** (printing domain)
+- **`game:`** (printing domain; normative field semantics in [Spec 068](068-game-query-qualifier.md))
+- **`r:`** / **`rarity:`** (printing domain; normative field semantics in [Spec 047](047-printing-query-fields.md) § Rarity)
 - **`in:`** (printing domain, promotes to face per Spec 072)
 - **`cn:`** / **`collectornumber:`** / **`number:`** (printing domain)
 
@@ -24,19 +26,18 @@ Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several f
 
 **Empty values ([ADR-022](../adr/022-categorical-field-operators.md)):** For every field in **Goal**, a **trimmed-empty** value on **`:`** or **`=`** must **not** narrow the result set while the user is still typing — including **`in:`** (no **`unknown in value`** for bare **`in:`** / **`in=`**). Mechanism remains implementation-defined per **Empty value** below.
 
-**Negation:** **`!=`** (where the field supports it — **legalities** (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**), **`in:`**, and **`frame:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term`), not `!=`.
+**Negation:** **`!=`** (where the field supports it — **legalities** (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**), **`in:`**, **`frame:`**, **`game:`**, and **`r:`** / **`rarity:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term`), not `!=`.
 
 ## Out of scope
 
 - **`artist:`** / **`a:`** — keep **substring** semantics ([Spec 149](149-artist-evaluator.md)); no prefix-union change.
-- **`game:`** / **`rarity:`** / **`r:`** — vocabularies are too small for meaningful prefix collision; no change ([GitHub #247](https://github.com/jimbojw/frantic-search/issues/247)).
 - **Spec 181** (breakdown prefix-branch hints) — optional follow-up once evaluation matches this spec; not required for acceptance here.
 
 ## Background
 
 [Spec 103](103-categorical-field-value-auto-resolution.md) applies **unique-prefix** resolution (`resolveForField` → `resolveCategoricalValue`) for many categoricals: **exactly one** normalized prefix match resolves; otherwise the typed value is passed through and lookup often fails with **`unknown format`**, **`unknown frame`**, or **`unknown in value`**.
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) uses the same operator split with precomputed normalized tag keys. This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**. **`is:`** / **`not:`** follow the same ADR-022 operator convention per **[Spec 032](032-is-operator.md)** (normative for that field).
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) uses the same operator split with precomputed normalized tag keys. **`game:`** and **`r:`** / **`rarity:`** use the same split over **`GAME_NAMES`** and **`RARITY_NAMES`** keys ([Spec 068](068-game-query-qualifier.md), [Spec 047](047-printing-query-fields.md) § Rarity). This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**. **`is:`** / **`not:`** follow the same ADR-022 operator convention per **[Spec 032](032-is-operator.md)** (normative for that field).
 
 ## Shared rules
 
@@ -86,6 +87,8 @@ The subsection below does **not** change these semantics. It requires **observat
 - **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `=`** (exact positive mask per §1), **not** negation of **`:`** (prefix union). Scryfall does not document format **`!=`**; Frantic treats it as a principled extension, same **`!=`** rule family as **`frame:`** / **`in:`**.
 - **`frame:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `frame=`** (exact positive mask per §2), **not** negation of **`frame:`** (prefix union). Scryfall does not document **`frame!=`**; Frantic treats it as a principled extension, same **`!=`** rule family as **`in:`** / legalities.
 - **`in:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is defined as **negation of `in=`** (exact positive match per §3), **not** negation of **`in:`** (prefix union).
+- **`game:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is **negation of `game=`** (exact positive mask), **not** negation of **`game:`** (prefix union). Normative details: [Spec 068](068-game-query-qualifier.md).
+- **`r:`** / **`rarity:`** — **`:`**, **`=`**, and **`!=`** for **tier equality** (same **`!=`** rule family as **`frame:`**). **`>`, `>=`, `<`, `<=`** remain ordinal comparisons per [Spec 047](047-printing-query-fields.md) § Rarity (RHS uses **Spec 103** **`resolveForField`** on long-form rarity vocabulary). Negate a prefix-union **`:`** predicate with **`-`** / **`NOT`**, not **`!=`**.
 - **`cn:`** / **`collectornumber:`** / **`number:`** — **`:`** and **`=`** only unless a future spec adds comparison ops; negate with **`-`** / **`NOT`**.
 
 ### Error model (Spec 039 passthrough)
@@ -98,6 +101,8 @@ Concrete messages (preserve existing shapes where they already exist):
 
 - Format triple: **`unknown format "<trimmed value>"`** (use the **user-facing** field token as today, e.g. `node.value` / original spelling).
 - **`frame:`** — **`unknown frame "<trimmed value>"`**
+- **`game:`** — **`unknown game "<trimmed value>"`**
+- **`r:`** / **`rarity:`** — **`unknown rarity "<trimmed value>"`**
 - **`in:`** — **`unknown in value "<trimmed value>"`**; **unsupported language** remains **`unsupported in value "<trimmed value>"`** (see **`in:`** below).
 - **`cn:`** — **`unknown collector number "<trimmed value>"`** (new string; align wording with implementation and docs).
 
@@ -113,11 +118,13 @@ Concrete messages (preserve existing shapes where they already exist):
 | **`frame:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`kw:`** / **`keyword:`** (Spec 176) — trimmed empty must not narrow results while the user is still typing. |
 | **`in:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`frame:`** / **`kw:`** and [ADR-022](../adr/022-categorical-field-operators.md) — do **not** return **`unknown in value`** for trimmed empty. |
 | **`cn:`** | Empty **`:`** — **neutral** (all printings match), same as **`frame:`** / **`in:`** / **`kw:`** (ADR-022 empty-value forgiveness). |
+| **`game:`** | Empty **`:`** / **`=`** / **`!=`** — **neutral** (all printings match in the leaf), same as **`frame:`** / **`kw:`**. |
+| **`r:`** / **`rarity:`** | Empty **`:`** / **`=`** / **`!=`** — **neutral** (all printings match in the leaf), same as **`frame:`** / **`kw:`**. |
 
 ### Spec 103 split (evaluation vs canonicalize)
 
 - **Query evaluation** does **not** use **`resolveForField`** for semantic matching for these fields once this spec is implemented. The AST **operator** (**`:`** vs **`=`**) and value select **prefix** vs **exact** rules per this spec.
-- **`resolveForField`** for **`legal`**, **`f`**, **`format`**, **`banned`**, **`restricted`**, **`frame`**, **`in`**, and collector aliases remains for **`toScryfallQuery`** / **canonicalize** and any other non-eval consumer that needs **unique-prefix** collapse when exactly one vocabulary candidate matches ([Spec 103](103-categorical-field-value-auto-resolution.md)).
+- **`resolveForField`** for **`legal`**, **`f`**, **`format`**, **`banned`**, **`restricted`**, **`frame`**, **`game`**, **`rarity`**, **`r`**, **`in`**, and collector aliases remains for **`toScryfallQuery`** / **canonicalize** and any other non-eval consumer that needs **unique-prefix** collapse when exactly one vocabulary candidate matches ([Spec 103](103-categorical-field-value-auto-resolution.md)). **`rarity`** **comparison** operators (**`>`**, **`>=`**, **`<`**, **`<=`**) still use **`resolveForField`** on the eval path for a single anchor tier ([Spec 047](047-printing-query-fields.md) § Rarity).
 
 ### Relation to other specs (migration, not in scope of Spec 182 ACs)
 
@@ -238,11 +245,13 @@ Scryfall’s syntax for these fields is largely **exact** or **unique** token or
 2. **Frame:** Same **`:`** / **`=`** split over **`FRAME_NAMES`**; **`!=`** negates **`frame=`** exact mask only (Frantic extension vs Scryfall). **`unknown frame`** when no exact vocabulary match for **`=`** / **`!=`** positive mask, or no prefix match for **`:`** (non-empty value only). **Empty `=`**, **empty `:`**, and **empty `!=`** — neutral (all printings match), aligned with **`kw:`** (Spec 176).
 3. **`in:`** **`:`** — union across all games, sets, and rarities whose normalized names/codes **start with** **`u`**; **`OR`** printing results; **`unknown in value`** when none match (and not unsupported language). **`=`** — **exact** match with **game → set → rarity** disambiguation; **`!=`** — **negation of that exact `=` mask** only. **`in:ru`** / **`in=ru`** still **`unsupported in value`** per Spec 072 language detection. **Empty `=`**, **empty `:`**, and **empty `!=`** — neutral (all printings match), aligned with **`frame:`** / **`kw:`** and ADR-022.
 4. **`cn:`** **`:`** — normalized **prefix** on per-printing collector strings; **`=`** — normalized **equality**; non-empty non-match → **`unknown collector number`** (passthrough). **Empty `=`** — neutral per **Empty value**.
-5. **Canonicalize** still uses **`resolveForField`** for unique-prefix collapse where vocabulary is available.
-6. **Normalization** matches **Spec 103** rules for cross-field consistency.
-7. **Spec 103** and **Spec 072** are updated (when implementation lands) to reference this spec and to avoid contradicting eval vs canonicalize split.
-8. Negating a **prefix-union** **`:`** predicate uses **`-` / `NOT`** only. Where **`!=`** is defined (**legalities**, **`frame!=`**, **`in!=`**), it is **negation of exact `=`** only, not negation of **`:`**. **`!=`** is **not** specified for **`cn:`** in this spec.
-9. **Performance:** Evaluators for these fields **do not** call **`normalizeForResolution`** on every printing (or every vocabulary key) inside the per-keystroke hot path. Normalized forms are **precomputed** at index or vocabulary load (or equivalent cache) per **Implementation performance** above; behavior remains **observationally equivalent** to the semantic normalization rules.
+5. **`game:`** — same **`:`** / **`=`** split over **`GAME_NAMES`** keys as **`frame:`** over **`FRAME_NAMES`**; **`!=`** negates **`game=`** exact mask only. **`unknown game`** when no vocabulary match under the active operator (non-empty value). **Empty `=`**, **empty `:`**, **empty `!=`** — neutral (all printings match). See [Spec 068](068-game-query-qualifier.md).
+6. **`r:`** / **`rarity:`** — **`:`** / **`=`** / **`!=`** over **`RARITY_NAMES`** keys (prefix union / exact / **`!=`** negates **`=`** only), same pattern as **`frame:`**; **`>`, `>=`, `<`, `<=`** unchanged (Spec 047). **Empty** operators neutral. See [Spec 047](047-printing-query-fields.md) § Rarity.
+7. **Canonicalize** still uses **`resolveForField`** for unique-prefix collapse where vocabulary is available.
+8. **Normalization** matches **Spec 103** rules for cross-field consistency.
+9. **Spec 103** and **Spec 072** are updated (when implementation lands) to reference this spec and to avoid contradicting eval vs canonicalize split.
+10. Negating a **prefix-union** **`:`** predicate uses **`-` / `NOT`** only. Where **`!=`** is defined (**legalities**, **`frame!=`**, **`in!=`**, **`game!=`**, **`rarity!=`**), it is **negation of exact `=`** only, not negation of **`:`**. **`!=`** is **not** specified for **`cn:`** in this spec.
+11. **Performance:** Evaluators for these fields **do not** call **`normalizeForResolution`** on every printing (or every vocabulary key) inside the per-keystroke hot path. Normalized forms are **precomputed** at index or vocabulary load (or equivalent cache) per **Implementation performance** above; behavior remains **observationally equivalent** to the semantic normalization rules.
 
 ## Implementation Notes
 

@@ -22,7 +22,7 @@ Typical cases:
 
 Many categorical fields use **`normalizeForResolution`** plus **`startsWith`** on **`:`** to **OR** matches (ADR-022 §4; field specs). The chip label uses the user’s typed text (`app/src/worker-breakdown.ts` uses `sourceText ?? value`), so users cannot see which vocabulary entries fired. This spec lists every field where **`:`** evaluation uses that prefix-union shape (or the **`in:`** three-namespace union per Spec 072 / 182) and requires matching breakdown hints.
 
-**Eval alignment:** Hints **MUST** use the **same** normalization and **same** candidate-matching rule as **`:`** evaluation for that field. Where a field’s evaluator has not yet migrated **`:`** to ADR-022 prefix union, implement **eval first** (or in the same change set) so hints never advertise branches the query does not match.
+**Eval alignment:** Hints **MUST** use the **same** normalization and **same** candidate-matching rule as **`:`** evaluation for that field.
 
 ## Fields in scope (`:` prefix union at evaluation)
 
@@ -107,7 +107,7 @@ Optional follow-up: align `app/src/QueryHighlight.tsx` ([Spec 088](088-syntax-hi
 - **`is:` / `not:`** candidate list must match **evaluation** (including `IS_PREFIX_VOCABULARY` expansions such as land cycles if present in eval), not only display keys—avoid drift vs `shared/src/search/eval-is.ts`.
 - **`set:` / `set_type:` / `collectornumber:`** hints should derive candidates from the **same** distinct per-printing values the evaluator scans (or an equivalent precomputed distinct list on `PrintingIndex`) so the hint never shows continuations that match zero rows.
 - **`in:`** hints must build candidates as the **union** of game keys, rarity keys, and distinct normalized set codes, matching `combinedInGameMask` / `combinedInRarityMask` / `matchedSetNormsPrefix` logic in `shared/src/search/eval-printing.ts` (Spec 072).
-- **`game:` / `rarity:`** hints use **`GAME_NAMES` / `RARITY_NAMES`** keys with the same normalization as eval. If evaluation still resolves via unique-prefix only, migrate **`:`** to ADR-022 prefix union before shipping hints so ambiguous prefixes (e.g. **`a`** matching both **arena** and **astral**) match user-visible results.
+- **`game:` / `rarity:`** hints use **`GAME_NAMES` / `RARITY_NAMES`** keys with the same normalization as eval ([Spec 068](068-game-query-qualifier.md), [Spec 047](047-printing-query-fields.md) § Rarity, Spec 182).
 
 ## Non-goals
 

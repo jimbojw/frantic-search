@@ -75,6 +75,20 @@ describe("printing-domain leaves", () => {
     expect(result.error).toBeUndefined();
   });
 
+  test("game: and game= empty value are neutral → all cards (evaluator invokes evalPrintingField)", () => {
+    for (const q of ["game:", "game="] as const) {
+      expect(cardCount(q)).toBe(2);
+      expect(evaluate(q).result.error).toBeUndefined();
+    }
+  });
+
+  test("rarity: and rarity= empty value are neutral → all cards", () => {
+    for (const q of ["rarity:", "rarity="] as const) {
+      expect(cardCount(q)).toBe(2);
+      expect(evaluate(q).result.error).toBeUndefined();
+    }
+  });
+
   test("set:mh2 matches Lightning Bolt (1 card)", () => {
     expect(cardCount("set:mh2")).toBe(1);
   });

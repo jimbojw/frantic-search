@@ -24,7 +24,7 @@ Individual **specs** remain the normative, testable source for each field. This 
 
 4. **Non-empty `:` — prefix union for discoverability.** **`:`** means **prefix union** after the same normalization: every candidate whose normalized form **starts with** the normalized user value contributes (**OR**). If **no** candidate matches, the leaf returns an **error** (same broad family as (3)) — unless the field spec documents a deliberate exception (e.g. historical silent zero-hit for some tag fields).
 
-5. **Intentional exceptions.** Any deviation from (3) or (4) must be **stated in the field spec** with rationale. Examples: **very small** closed vocabularies where prefix and exact behavior are effectively identical (e.g. `game:`, `rarity:` — see [Spec 182](../specs/182-prefix-union-format-frame-in-collector.md) out-of-scope list), or **non-vocabulary** string semantics (e.g. substring **`artist:`** per [Spec 149](../specs/149-artist-evaluator.md)).
+5. **Intentional exceptions.** Any deviation from (3) or (4) must be **stated in the field spec** with rationale. Example: **non-vocabulary** string semantics (e.g. substring **`artist:`** per [Spec 149](../specs/149-artist-evaluator.md)).
 
 6. **`!=` — Frantic extension: negation of exact `=`.** Where **`!=`** is supported, it negates the **positive mask built for `=`** (exact normalized match), **not** the positive mask for **`:`** (prefix union). Excluding a prefix-union predicate uses AST **`NOT`** / unary **`-`**. User-facing deltas vs Scryfall belong in reference docs (e.g. `app` Scryfall differences) when Scryfall does not document **`!=`** for that field.
 

@@ -4,7 +4,7 @@ title: game
 
 # game
 
-Paper, Arena, or MTGO availability.
+Paper, Arena, MTGO, Astral, or Sega availability per printing.
 
 **Canonical:** `game`  
 **Aliases:** —  
@@ -14,14 +14,19 @@ Paper, Arena, or MTGO availability.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Available in | `q=game:arena` |
-| `=` | Available in | `q=game=arena` |
-| `!=` | Not available in | `q=game!=paper` |
+| `:` | **Prefix union** (normalized): printing is available in **any** game whose vocabulary key starts with what you typed | `q=game:a` (arena + astral) |
+| `=` | **Exact** match on a game key after normalization | `q=game=arena` |
+| `!=` | **Frantic extension:** not available in the game(s) matched by **`game=`** with the same value—not negation of **`game:`** prefix union (use **`-`** / **`NOT`** for that) | `q=game!=paper` |
 
 ## Allowed values
 
-Game availability: `paper`, `arena`, `mtgo`. Matches printings available in that game. Comparison operators (`>`, `<`, etc.) are not supported — only `:`, `=`, and `!=`.
+Per printing: `paper`, `mtgo`, `arena`, `astral`, `sega`. Matching is case-insensitive; normalization follows the shared categorical rules (see [Scryfall differences](?doc=reference/scryfall/differences)).
+
+Comparison operators (`>`, `<`, etc.) are not supported — only `:`, `=`, and `!=`.
+
+**Empty value:** After trimming, `game:`, `game=`, and `game!=` with no value are **neutral** (they do not narrow results while typing).
 
 ## Notes
 
-- `q=game:arena` finds cards on Arena; `q=game:paper` finds paper printings; `q=game:mtgo` finds MTGO availability.
+- `q=game:arena` finds printings available on Arena; `q=game:paper` finds paper printings; `q=game:mtgo` finds MTGO availability.
+- Scryfall’s docs often treat `:` and `=` as interchangeable; Frantic splits them like `set:` and `frame:` — see [Scryfall differences](?doc=reference/scryfall/differences).

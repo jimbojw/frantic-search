@@ -45,18 +45,32 @@ See **[Spec 179](179-set-type-query-field.md)**. Summary: same **`:`** / **`=`**
 
 ### `r:` / `rarity:` — Rarity
 
+Normative operator split: **[Spec 182](182-prefix-union-format-frame-in-collector.md)** / [ADR-022](../adr/022-categorical-field-operators.md) (same convention as **`frame:`** / **`set:`**).
+
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Printing has this exact rarity |
-| `>`, `>=`, `<`, `<=` | Ordinal rarity comparison |
+| `:` | **Prefix union** after Spec 103 **`normalizeForResolution`**: OR the rarity bits for every key of **`RARITY_NAMES`** in [`shared/src/bits.ts`](../../shared/src/bits.ts) whose normalized form **starts with** **`u`** (`u = normalizeForResolution(trimmedUserValue)`). A printing matches when **`(rarity[i] & combinedMask) !== 0`**. |
+| `=` | **Exact match** after the same normalization: OR bits for every key with **`normalizeForResolution(key) === u`**. |
+| `!=` | **Frantic extension:** negation of **`rarity=`** only — a printing matches when **`(rarity[i] & combinedMask) === 0`**, where **`combinedMask`** is built exactly as for **`=`** (not as for **`:`**). |
+| `>`, `>=`, `<`, `<=` | Ordinal rarity comparison (unchanged). |
 
 Rarity values: `common`, `uncommon`, `rare`, `special`, `mythic`, `bonus` (plus abbreviations `c`, `u`, `r`, `s`, `m`, `b`).
 
 Ordinal ordering for comparison operators: common(0) < uncommon(1) < rare(2) < special(3) < mythic(4) < bonus(5).
 
-Implementation: Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8, special=16, bonus=32`). For `:` and `=`, test `rarity[i] & targetBit`. For comparisons like `r>=rare`, build a mask of all qualifying rarities (`rare | special | mythic | bonus = 0b111100`) and test `rarity[i] & mask`.
+**Comparison RHS:** After trim, apply **Spec 103** **`resolveForField("rarity", …)`** (or alias **`r`**) against the long-form candidate list (**keys of `RARITY_FROM_STRING`**, same as categorical-resolve). That yields a single anchor tier when uniquely resolvable; then **`RARITY_NAMES`** maps to a bit and **`buildRarityMask`** (existing logic) applies the comparison. If lookup fails, **`unknown rarity`** (passthrough, Spec 039).
 
-Examples: `r:mythic`, `rarity>=rare`, `r:special`, `r:c`
+**Implementation:** Rarity is bitmask-encoded (`common=1, uncommon=2, rare=4, mythic=8, special=16, bonus=32`). For **`:`** / **`=`** / **`!=`**, compute **`combinedMask`** from vocabulary keys (dedupe by ORing bits; multiple keys can map to the same bit). For comparisons like **`r>=rare`**, build a mask of all qualifying rarities and test **`rarity[i] & mask`**.
+
+**Empty value:** After trim, **`:`**, **`=`**, and **`!=`** with an empty value are **neutral** (all printings match in the leaf), consistent with Spec 182 / **`frame:`** / **`kw:`**.
+
+**No matching keys:** Non-empty trimmed value with **no** **`RARITY_NAMES`** key matching under the active operator → **`unknown rarity "<trimmed value>"`** with Spec 039 passthrough.
+
+**Spec 103:** **Query evaluation** does **not** call **`resolveForField`** for **`:`** / **`=`** / **`!=`** semantic matching; the AST operator selects prefix vs exact vs **`!=`**. **`resolveForField("rarity", …)`** remains for **canonicalize** and for **comparison-operator** RHS resolution.
+
+**Performance:** Normalize the user value once per query to **`u`**; iterate **`RARITY_NAMES`** keys (build-time precomputed **`{ norm, bit }[]`** in code if desired) — do not call **`normalizeForResolution`** on every printing row.
+
+Examples: `r:mythic`, `rarity>=rare`, `r:special`, `r:c`, `r:ra` (prefix **`:`** matches **`rare`**).
 
 ### `is:foil` / `is:etched` — Finish
 

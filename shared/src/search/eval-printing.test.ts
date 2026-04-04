@@ -284,6 +284,24 @@ describe("rarity field", () => {
     const { error } = evalField("rarity", ":", "legendary");
     expect(error).toBe('unknown rarity "legendary"');
   });
+
+  test("rarity:ra prefix matches rare (Spec 047 / 182)", () => {
+    expect(marked(evalField("rarity", ":", "ra").buf)).toEqual([0, 1]);
+  });
+
+  test("rarity=r exact key r matches rare only", () => {
+    expect(marked(evalField("rarity", "=", "r").buf)).toEqual([0, 1]);
+  });
+
+  test("rarity=rare exact matches rare", () => {
+    expect(marked(evalField("rarity", "=", "rare").buf)).toEqual([0, 1]);
+  });
+
+  test("empty rarity: rarity= rarity!= neutral", () => {
+    for (const op of [":", "=", "!="] as const) {
+      expect(marked(evalField("rarity", op, "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -576,6 +594,24 @@ describe("game field", () => {
 
   test("game!=arena matches rows without Arena", () => {
     expect(marked(evalField("game", "!=", "arena").buf)).toEqual([3, 4]);
+  });
+
+  test("game:a prefix ORs arena and astral (Spec 068 / 182)", () => {
+    expect(marked(evalField("game", ":", "a").buf)).toEqual([0, 1, 2, 5, 6]);
+  });
+
+  test("game=arena exact matches Arena rows only", () => {
+    expect(marked(evalField("game", "=", "arena").buf)).toEqual([0, 1, 2, 5, 6]);
+  });
+
+  test("game=a exact unknown — no vocabulary key a", () => {
+    expect(evalField("game", "=", "a").error).toBe('unknown game "a"');
+  });
+
+  test("empty game: game= game!= neutral (all printings)", () => {
+    for (const op of [":", "=", "!="] as const) {
+      expect(marked(evalField("game", op, "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    }
   });
 
   test("unknown game returns error", () => {

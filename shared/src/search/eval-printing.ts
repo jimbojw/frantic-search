@@ -236,12 +236,38 @@ export function evalPrintingField(
       break;
     }
     case "rarity": {
-      const rarityVal = resolveForField("rarity", val, context);
-      const targetBit = RARITY_NAMES[rarityVal.toLowerCase()];
-      if (targetBit === undefined) return `unknown rarity "${val}"`;
-      const mask = buildRarityMask(op, targetBit);
-      for (let i = 0; i < n; i++) {
-        if (pIdx.rarity[i] & mask) buf[i] = 1;
+      // Ordinal comparisons: single anchor via Spec 103 resolveForField (Spec 047).
+      if (op === ">" || op === ">=" || op === "<" || op === "<=") {
+        const rarityVal = resolveForField("rarity", val, context);
+        const targetBit = RARITY_NAMES[rarityVal.toLowerCase()];
+        if (targetBit === undefined) return `unknown rarity "${val}"`;
+        const mask = buildRarityMask(op, targetBit);
+        for (let i = 0; i < n; i++) {
+          if (pIdx.rarity[i]! & mask) buf[i] = 1;
+        }
+        break;
+      }
+      if (op !== ":" && op !== "=" && op !== "!=") {
+        return `rarity: does not support operator "${op}"`;
+      }
+      const trimmedR = val.trim();
+      if (trimmedR === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
+      const uR = normalizeForResolution(trimmedR);
+      if (op === "!=") {
+        const combinedEq = combinedInRarityMask(false, uR);
+        if (combinedEq === 0) return `unknown rarity "${trimmedR}"`;
+        for (let i = 0; i < n; i++) {
+          if ((pIdx.rarity[i]! & combinedEq) === 0) buf[i] = 1;
+        }
+      } else {
+        const combined = combinedInRarityMask(op === ":", uR);
+        if (combined === 0) return `unknown rarity "${trimmedR}"`;
+        for (let i = 0; i < n; i++) {
+          if (pIdx.rarity[i]! & combined) buf[i] = 1;
+        }
       }
       break;
     }
@@ -395,19 +421,27 @@ export function evalPrintingField(
       break;
     }
     case "game": {
-      const gameVal = resolveForField("game", val, context);
-      const targetBit = GAME_NAMES[gameVal.toLowerCase()];
-      if (targetBit === undefined) return `unknown game "${val}"`;
-      const games = pIdx.games;
-      for (let i = 0; i < n; i++) {
-        const g = games[i] ?? 0;
-        let match = false;
-        switch (op) {
-          case ":": case "=": match = (g & targetBit) !== 0; break;
-          case "!=": match = (g & targetBit) === 0; break;
-          default: return `game: does not support operator "${op}"`;
+      if (op !== ":" && op !== "=" && op !== "!=") {
+        return `game: does not support operator "${op}"`;
+      }
+      const trimmedG = val.trim();
+      if (trimmedG === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
+      const uG = normalizeForResolution(trimmedG);
+      if (op === "!=") {
+        const combinedEx = combinedInGameMask(false, uG);
+        if (combinedEx === 0) return `unknown game "${trimmedG}"`;
+        for (let i = 0; i < n; i++) {
+          if (((pIdx.games[i] ?? 0) & combinedEx) === 0) buf[i] = 1;
         }
-        if (match) buf[i] = 1;
+      } else {
+        const combined = combinedInGameMask(op === ":", uG);
+        if (combined === 0) return `unknown game "${trimmedG}"`;
+        for (let i = 0; i < n; i++) {
+          if ((pIdx.games[i] ?? 0) & combined) buf[i] = 1;
+        }
       }
       break;
     }
