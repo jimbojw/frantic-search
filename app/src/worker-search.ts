@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, TagDataRef } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, TagDataRef, KeywordDataRef } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax, printingPassesDefaultInclusionFilter, isSetCodeWidenedByQuery, isSetTypeWidenedByQuery } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
 import { buildSuggestions } from './worker-suggestions'
 import { toBreakdown, computeHistograms } from './worker-breakdown'
+import { buildPrefixHintContext } from './worker-prefix-hint'
 
 export type RunSearchParams = {
   msg: Extract<ToWorker, { type: 'search' }>
@@ -19,12 +20,14 @@ export type RunSearchParams = {
   getListMask?: (listId: string) => { printingIndices?: Uint32Array } | null
   /** Spec 154: domain labels for bare-term-upgrade. */
   keywordLabels?: string[]
+  /** Spec 181: keyword index ref for breakdown prefix hints. */
+  keywordDataRef?: KeywordDataRef | null
 }
 
 export type SearchResult = Extract<FromWorker, { type: 'result' }>
 
 export function runSearch(params: RunSearchParams): SearchResult {
-  const { msg, cache, index, printingIndex, sessionSalt, tagData, keywordLabels } = params
+  const { msg, cache, index, printingIndex, sessionSalt, tagData, keywordLabels, keywordDataRef } = params
   const hasPinned = !!msg.pinnedQuery?.trim()
   const hasLive = !!msg.query.trim()
   const allowEmptyUrlLive =
@@ -41,6 +44,11 @@ export function runSearch(params: RunSearchParams): SearchResult {
   }
 
   const nopBreakdown: BreakdownNode = { type: 'NOP', label: '', matchCount: 0 }
+  const prefixHintCtx = buildPrefixHintContext(
+    printingIndex,
+    keywordDataRef ?? null,
+    tagData ?? null,
+  )
 
   // Spec 155: URL has `q=` but no live or pinned text — starter suggestions only.
   if (allowEmptyUrlLive) {
@@ -63,7 +71,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   if (hasPinned && !hasLive) {
     const pinnedAst = parse(msg.pinnedQuery!)
     const pinnedEval = cache.evaluate(pinnedAst)
-    const pinnedBreakdown = toBreakdown(pinnedEval.result)
+    const pinnedBreakdown = toBreakdown(pinnedEval.result, prefixHintCtx)
     let pinnedPrintingCount: number | undefined = (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards")
       ? (pinnedEval.printingIndices?.length ?? 0)
       : undefined
@@ -95,7 +103,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
 
   const ast = parse(msg.query)
   const liveEval = cache.evaluate(ast)
-  const breakdown = toBreakdown(liveEval.result)
+  const breakdown = toBreakdown(liveEval.result, prefixHintCtx)
 
   let deduped: number[]
   let rawPrintingIndices = liveEval.printingIndices
@@ -120,7 +128,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
   if (hasPinned) {
     const pinnedAst = parse(msg.pinnedQuery!)
     const pinnedEval = cache.evaluate(pinnedAst)
-    pinnedBreakdown = toBreakdown(pinnedEval.result)
+    pinnedBreakdown = toBreakdown(pinnedEval.result, prefixHintCtx)
     pinnedIndicesCount = pinnedEval.indices.length
     if (pinnedEval.hasPrintingConditions || pinnedEval.uniqueMode !== "cards") {
       pinnedPrintingCount = pinnedEval.printingIndices?.length ?? 0
@@ -402,7 +410,7 @@ export function runSearch(params: RunSearchParams): SearchResult {
     const effectiveQuery = sealQuery(msg.pinnedQuery!.trim()) + ' ' + sealQuery(msg.query.trim())
     const effectiveAst = parse(effectiveQuery)
     const effectiveEval = cache.evaluate(effectiveAst)
-    effectiveBreakdown = toBreakdown(effectiveEval.result)
+    effectiveBreakdown = toBreakdown(effectiveEval.result, prefixHintCtx)
   } else {
     effectiveBreakdown = breakdown
   }

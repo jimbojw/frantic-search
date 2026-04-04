@@ -66,6 +66,7 @@ function ChipSection(props: {
                 printCount={child.matchCountPrints}
                 error={child.error}
                 pinned={props.pinned}
+                prefixBranchHint={child.prefixBranchHint}
                 onClick={() => props.onChipClick(reconstructQuery(child))}
                 onRemove={() => props.onRemove(reconstructWithout(props.breakdown, child))}
               />
@@ -79,6 +80,7 @@ function ChipSection(props: {
             printCount={props.breakdown.matchCountPrints}
             error={props.breakdown.error}
             pinned={props.pinned}
+            prefixBranchHint={props.breakdown.prefixBranchHint}
             onClick={() => props.onChipClick(reconstructQuery(props.breakdown))}
             onRemove={() => props.onRemove('')}
           />

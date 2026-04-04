@@ -114,6 +114,8 @@ export function BreakdownChip(props: {
   nop?: boolean
   /** When set, only this substring gets syntax highlighting; the rest (e.g. " (3)") renders as plain text. */
   labelHighlightOnly?: string
+  /** Spec 181: presentation-only; not part of label or remove handler. */
+  prefixBranchHint?: string
   onClick?: () => void
   onRemove?: () => void
 }) {
@@ -147,16 +149,23 @@ export function BreakdownChip(props: {
         <Show when={!isNop()} fallback={<span class="shrink-0 w-3" />}>
           <IconPin pinned={props.pinned} />
         </Show>
-        <span class="truncate min-w-0 flex-1">
-          <Show when={useHighlight()} fallback={props.label}>
-            <Show when={props.labelHighlightOnly !== undefined} fallback={
-              <HighlightedLabel label={props.label} />
-            }>
-              <>
-                <HighlightedLabel label={props.labelHighlightOnly!} />
-                <span class="opacity-60">{props.label.slice(props.labelHighlightOnly!.length)}</span>
-              </>
+        <span class="truncate min-w-0 flex-1 flex items-baseline gap-1 flex-wrap">
+          <span class="min-w-0 truncate">
+            <Show when={useHighlight()} fallback={props.label}>
+              <Show when={props.labelHighlightOnly !== undefined} fallback={
+                <HighlightedLabel label={props.label} />
+              }>
+                <>
+                  <HighlightedLabel label={props.labelHighlightOnly!} />
+                  <span class="opacity-60">{props.label.slice(props.labelHighlightOnly!.length)}</span>
+                </>
+              </Show>
             </Show>
+          </span>
+          <Show when={props.prefixBranchHint}>
+            <span class="shrink-0 text-[10px] opacity-50 text-gray-500 dark:text-gray-400 font-mono">
+              {props.prefixBranchHint}
+            </span>
           </Show>
         </span>
         <Show when={props.onRemove}>
@@ -219,6 +228,7 @@ export function ChipTreeNode(props: {
           pinned={props.pinned}
           nop={isNop()}
           labelHighlightOnly={isAndOr() ? props.node.type : undefined}
+          prefixBranchHint={props.node.prefixBranchHint}
           onClick={isPinnable() ? () => props.onChipClick(reconstructQuery(props.node)) : undefined}
           onRemove={removeHandler()}
         />
@@ -318,6 +328,7 @@ export default function InlineBreakdown(props: {
                       printCount={child.matchCountPrints}
                       error={child.error}
                       pinned={false}
+                      prefixBranchHint={child.prefixBranchHint}
                       onClick={() => props.onPin(reconstructQuery(child))}
                       onRemove={() => props.onNodeRemove(reconstructWithout(props.breakdown, child))}
                     />
@@ -331,6 +342,7 @@ export default function InlineBreakdown(props: {
                   printCount={props.breakdown.matchCountPrints}
                   error={props.breakdown.error}
                   pinned={false}
+                  prefixBranchHint={props.breakdown.prefixBranchHint}
                   onClick={() => props.onPin(reconstructQuery(props.breakdown))}
                   onRemove={() => props.onNodeRemove('')}
                 />

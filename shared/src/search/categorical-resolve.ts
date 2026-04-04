@@ -122,6 +122,22 @@ export function expandIsKeywordsExact(value: string): string[] | null {
   return [];
 }
 
+/**
+ * Spec 181: normalized `is:` / `not:` vocabulary for prefix-branch hints (unsupported stubs excluded).
+ */
+export function collectIsNotPrefixHintNormalizedCandidates(): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const kw of IS_PREFIX_VOCABULARY) {
+    if (UNSUPPORTED_IS_KEYWORDS.has(kw)) continue;
+    const n = normalizeForResolution(kw);
+    if (n.length === 0 || seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  return out;
+}
+
 const CATEGORICAL_FIELDS = new Set([
   "view", "display", "unique", "sort", "order", "include",
   "legal", "f", "format", "banned", "restricted",

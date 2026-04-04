@@ -379,6 +379,7 @@ async function init(): Promise<void> {
       tagData: tagDataRef,
       getListMask,
       keywordLabels: Object.keys(keywordsIndex),
+      keywordDataRef,
     })
 
     const resultWithSide = msg.side !== undefined ? { ...resultMsg, side: msg.side } : resultMsg

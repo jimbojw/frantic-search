@@ -6,6 +6,7 @@ import {
   resolveForField,
   expandIsKeywordsFromPrefix,
   expandIsKeywordsExact,
+  collectIsNotPrefixHintNormalizedCandidates,
   type ResolutionContext,
 } from "./categorical-resolve";
 
@@ -57,6 +58,13 @@ describe("expandIsKeywordsFromPrefix (Spec 032)", () => {
 
   it("does not map type-line false positives to longer is tokens (creature vs creatureland)", () => {
     expect(expandIsKeywordsFromPrefix("creature")).toEqual([]);
+  });
+});
+
+describe("collectIsNotPrefixHintNormalizedCandidates (Spec 181)", () => {
+  it("omits unsupported is stubs from hint vocabulary", () => {
+    const c = collectIsNotPrefixHintNormalizedCandidates();
+    expect(c.includes(normalizeForResolution("spotlight"))).toBe(false);
   });
 });
 

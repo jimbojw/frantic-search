@@ -1,6 +1,6 @@
 # Spec 181: Query breakdown prefix-branch hint
 
-**Status:** Draft
+**Status:** Implemented
 
 **References:** [GitHub #177](https://github.com/jimbojw/frantic-search/issues/177)
 
@@ -91,9 +91,9 @@ Collect all **matching** candidates (same rule as eval: normalized candidate `st
 
 **Rendering (non-empty prefix):**
 
-1. **Exactly one** matching candidate: let `c` be its normalized form. The hint is **`(`** + **`c.slice(prefix.length)`** + **`)`** — the **suffix** that completes the normalized token after what the user typed (examples: `game:p` → `(aper)`; `f:c` with only **commander** matching → `(ommander)`). If `c === prefix` (typed value already equals the full normalized key), show **`(=)`** per (3) instead of an empty pair.
+1. **Exactly one** matching candidate: let `c` be its normalized form. If `c === prefix` (typed value already equals the full normalized key), **omit** the hint—there is nothing left to complete. Otherwise the hint is **`(`** + **`c.slice(prefix.length)`** + **`)`** — the **suffix** that completes the normalized token after what the user typed (examples: `game:p` → `(aper)`; `f:c` with only **commander** matching → `(ommander)`).
 2. **Two or more** matching candidates: take the substring of each candidate **after** the shared normalized prefix; take the **first code unit** of each remainder in normalized space; **dedupe**; **sort** deterministically. Apply **range collapsing** (see above) to produce the final **`(a-f|h|j|0-5)`**-style digest listing **all** distinct branch units.
-3. **Exact-prefix / prefix-of-longer:** If some candidate’s normalized form **equals** the typed prefix while others extend it, include **`=`** (U+003D EQUALS SIGN) as a branch in the multi-branch hint so users see “already a complete key” vs “keep typing.” Example: `rarity:c` matches both `c` (exact key for common) and `common` (prefix) → `(=|o)`. For a **single** candidate where `c === prefix`, show **`(=)`** as the hint body—the typed value already names a complete key.
+3. **Exact-prefix / prefix-of-longer:** If some candidate’s normalized form **equals** the typed prefix while others extend it, include **`=`** (U+003D EQUALS SIGN) as a branch in the multi-branch hint so users see “already a complete key” vs “keep typing.” Example: `rarity:c` matches both `c` (exact key for common) and `common` (prefix) → `(=|o)`.
 
 **Rendering (empty prefix):** First character of each non-empty normalized candidate; dedupe, sort, apply **range collapsing** → **`(a-f|h|0-5)`**-style digest (same delimiter and collapsing rules as multi-branch).
 
@@ -106,7 +106,7 @@ Optional follow-up: align `app/src/QueryHighlight.tsx` ([Spec 088](088-syntax-hi
 ## Acceptance criteria
 
 1. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **two or more** **`:`** candidates, and does not error produces a breakdown `FIELD` node with a non-empty `prefixBranchHint` using the **multi-branch** form with pipe-separated branch units and **range collapsing** for 3+ contiguous characters (e.g. `(a-f|h|0-5)`).
-2. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **exactly one** **`:`** candidate, and does not error produces a `prefixBranchHint` using the **single-completion** form `(suffix)` — the normalized candidate with the normalized prefix removed (or **`(=)`** when the sole candidate’s normalized form equals the prefix).
+2. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **exactly one** **`:`** candidate, and does not error: if the sole candidate’s normalized form **equals** the prefix, **omit** `prefixBranchHint` (nothing to complete); otherwise produce `prefixBranchHint` using the **single-completion** form `(suffix)` — the normalized candidate with the normalized prefix removed.
 3. For each **canonical** field in the in-scope table, a query whose trimmed value is **empty** on **`:`** (e.g. `is:`, `kw:`, `in:`) produces a `prefixBranchHint` over **all distinct first characters** of that field’s candidate set when data is loaded and the leaf is not errored, using the same pipe-delimited, range-collapsed multi-branch form as criterion 1.
 4. Hints use **`normalizeForResolution`** consistently with **`:`** evaluation (Spec 103).
 5. `BreakdownNode.label` remains the user-facing term as today; hint is separate wire data.

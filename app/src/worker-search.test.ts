@@ -797,6 +797,60 @@ describe('aggregation counts (Spec 087)', () => {
 // Spec 082: dual counts on breakdown nodes
 // ---------------------------------------------------------------------------
 
+function findBreakdownField(
+  n: import('@frantic-search/shared').BreakdownNode | null | undefined,
+  predicate: (c: import('@frantic-search/shared').BreakdownNode) => boolean,
+): import('@frantic-search/shared').BreakdownNode | null {
+  if (!n) return null
+  if (predicate(n)) return n
+  if (n.children) {
+    for (const c of n.children) {
+      const f = findBreakdownField(c, predicate)
+      if (f) return f
+    }
+  }
+  return null
+}
+
+describe('Spec 181: prefix-branch hints on breakdown', () => {
+  it('game:p shows single-completion hint', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'game:p' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const node = findBreakdownField(result.breakdown, c => c.type === 'FIELD' && c.label.startsWith('game:'))
+    expect(node?.prefixBranchHint).toBe('(aper)')
+  })
+
+  it('rarity:c shows exact key plus extension branch', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'rarity:c' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const node = findBreakdownField(result.breakdown, c => c.type === 'FIELD' && c.label.startsWith('rarity:'))
+    expect(node?.prefixBranchHint).toBe('(=|o)')
+  })
+
+  it('is:creature (type-line false positive) has no hint on errored leaf', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'is:creature' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+    })
+    const node = findBreakdownField(result.breakdown, c => c.type === 'FIELD' && c.label.startsWith('is:'))
+    expect(node?.error).toBeDefined()
+    expect(node?.prefixBranchHint).toBeUndefined()
+  })
+})
+
 describe('quoted values in breakdown (issue 133)', () => {
   it('toBreakdown preserves quotes in oracle field label', () => {
     const result = runSearch({

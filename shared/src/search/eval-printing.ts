@@ -78,6 +78,24 @@ export function isPrintingField(canonical: string): boolean {
   return PRINTING_FIELDS.has(canonical);
 }
 
+/** Spec 181: normalized vocabulary union for `in:` prefix-branch hints. */
+export function collectInPrefixHintNormalizedCandidates(pIdx: PrintingIndex): string[] {
+  const s = new Set<string>();
+  for (const key of Object.keys(GAME_NAMES)) {
+    const n = normalizeForResolution(key);
+    if (n.length > 0) s.add(n);
+  }
+  for (const key of Object.keys(RARITY_NAMES)) {
+    const n = normalizeForResolution(key);
+    if (n.length > 0) s.add(n);
+  }
+  for (const code of pIdx.knownSetCodes) {
+    const sn = pIdx.setCodeNormByLower.get(code);
+    if (sn !== undefined && sn.length > 0) s.add(sn);
+  }
+  return [...s];
+}
+
 /** Precomputed `normalizeForResolution(FRAME_NAMES key)` → bit (Spec 047 / 182). */
 const FRAME_NORM_BITS: { norm: string; bit: number }[] = Object.entries(FRAME_NAMES).map(([key, bit]) => ({
   norm: normalizeForResolution(key),

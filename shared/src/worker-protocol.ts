@@ -71,6 +71,8 @@ export type BreakdownNode = {
   children?: BreakdownNode[]
   span?: { start: number; end: number }
   valueSpan?: { start: number; end: number }
+  /** Spec 181: dense parenthesized hint for `:` prefix-union leaves; presentation-only. */
+  prefixBranchHint?: string
 }
 
 export type Histograms = {

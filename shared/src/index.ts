@@ -57,11 +57,12 @@ export {
 } from "./card-list";
 
 export { TokenType } from "./search/ast";
-export type { ASTNode, BareWordNode, Token, QueryNodeResult, Span, SortDirective } from "./search/ast";
+export type { ASTNode, BareWordNode, FieldNode, Token, QueryNodeResult, Span, SortDirective } from "./search/ast";
 export { lex } from "./search/lexer";
 export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
 export { NodeCache, nodeKey, FIELD_ALIASES, getUniqueModeFromQuery } from "./search/evaluator";
+export { collectInPrefixHintNormalizedCandidates } from "./search/eval-printing";
 export type { TagDataRef, KeywordDataRef } from "./search/evaluator";
 export { buildKeywordDataRef, buildKeywordEvalIndex } from "./search/eval-keywords";
 export type { OracleTagEvalEntry, IllustrationTagEvalEntry } from "./search/eval-tags";
@@ -94,7 +95,14 @@ export { formatSlackCardReference } from "./slack-card-reference";
 export { singleExactNameFromAst } from "./search/exact-name-from-ast";
 export { toScryfallQuery } from "./search/canonicalize";
 export { astUsesFranticExtensionSyntax } from "./search/query-extension-syntax";
-export { resolveForField, expandIsKeywordsFromPrefix, expandIsKeywordsExact } from "./search/categorical-resolve";
+export {
+  resolveForField,
+  expandIsKeywordsFromPrefix,
+  expandIsKeywordsExact,
+  collectIsNotPrefixHintNormalizedCandidates,
+  normalizeForResolution,
+} from "./search/categorical-resolve";
+export { buildPrefixBranchHint, collapseBranchTokens, sortBranchTokens } from "./search/prefix-branch-hint";
 export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";
 export { getSortByFromQuery } from "./search/query-sort";

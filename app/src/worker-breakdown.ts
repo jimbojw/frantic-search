@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { BreakdownNode, CardIndex, Histograms, QueryNodeResult } from '@frantic-search/shared'
+import type { BreakdownNode, CardIndex, FieldNode, Histograms, QueryNodeResult } from '@frantic-search/shared'
 import { Color } from '@frantic-search/shared'
+import { computePrefixBranchHintForLeaf, type PrefixHintContext } from './worker-prefix-hint'
 
 function leafLabel(qnr: QueryNodeResult): string {
   const n = qnr.node
@@ -28,17 +29,22 @@ function isNotLeaf(qnr: QueryNodeResult): boolean {
 /**
  * Convert evaluator QueryNodeResult tree to BreakdownNode for display.
  */
-export function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
+export function toBreakdown(qnr: QueryNodeResult, ctx?: PrefixHintContext): BreakdownNode {
   if (qnr.node.type === 'NOP') {
     return { type: 'NOP', label: '(no-op)', matchCount: -1 }
   }
   if (isNotLeaf(qnr)) {
-    const childLabel = leafLabel(qnr.children![0])
+    const child = qnr.children![0]!
+    const childLabel = leafLabel(child)
     const node: BreakdownNode = { type: 'NOT', label: `-${childLabel}`, matchCount: qnr.matchCount }
     if (qnr.matchCountCards !== undefined) node.matchCountCards = qnr.matchCountCards
     if (qnr.matchCountPrints !== undefined) node.matchCountPrints = qnr.matchCountPrints
     if (qnr.error) node.error = qnr.error
     if (qnr.node.span) node.span = qnr.node.span
+    if (ctx && child.node.type === 'FIELD') {
+      const hint = computePrefixBranchHintForLeaf(child.node as FieldNode, child, ctx)
+      if (hint) node.prefixBranchHint = hint
+    }
     return node
   }
   const node: BreakdownNode = { type: qnr.node.type, label: leafLabel(qnr), matchCount: qnr.matchCount }
@@ -47,8 +53,12 @@ export function toBreakdown(qnr: QueryNodeResult): BreakdownNode {
   if (qnr.error) node.error = qnr.error
   if (qnr.node.span) node.span = qnr.node.span
   if (qnr.node.type === 'FIELD' && qnr.node.valueSpan) node.valueSpan = qnr.node.valueSpan
+  if (ctx && qnr.node.type === 'FIELD') {
+    const hint = computePrefixBranchHintForLeaf(qnr.node as FieldNode, qnr, ctx)
+    if (hint) node.prefixBranchHint = hint
+  }
   if (qnr.children) {
-    node.children = qnr.children.map(toBreakdown)
+    node.children = qnr.children.map(c => toBreakdown(c, ctx))
   }
   return node
 }
