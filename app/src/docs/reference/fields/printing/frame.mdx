@@ -14,9 +14,13 @@ Frame version (1993, 1997, 2003, 2015, future).
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Frame version | `q=frame:2015` |
-| `=` | Frame version | `q=frame=2015` |
-| `!=` | Not frame version | `q=frame!=1993` |
+| `:` | Normalized **prefix union** over frame vocabulary keys. Every key whose normalized form starts with your value ORs its frame bit; a printing matches if it has any of those frames. | `q=frame:2` (discovers 1997, 2003, 2015, …) |
+| `=` | Normalized **exact** match on a vocabulary key (escape hatch when you do not want prefix OR). | `q=frame=2015` |
+| `!=` | **Frantic-only** (Scryfall does not document **`frame!=`**): negation of **`frame=`** — same **`combinedBit`** as exact **`=`**, but a printing matches when it has **none** of those bits. Same rule family as **`in!=`**. Does **not** negate a **`frame:`** prefix union; for that, use **`NOT`** / **`-`**. | `q=frame!=future` |
+
+**Ordering operators** (`>`, `<`, …) are not supported on **`frame:`**.
+
+To exclude a **prefix-union** predicate (e.g. everything matching **`frame:2`**), use **`NOT`** / **`-`** around the term (printing-domain NOT inverts rows, then promotes to card level like other printing fields).
 
 ## Allowed values
 
@@ -29,3 +33,11 @@ Frame version: `1993`, `1997`, `2003`, `2015`, `future`. Matches the frame style
 | `2003` | Modern frame (8th edition onward) |
 | `2015` | Current standard frame (Magic Origins onward) |
 | `future` | Futuristic frame variant |
+
+## Empty value
+
+After trim, **`frame:`**, **`frame=`**, and **`frame!=`** with no value are **neutral** (every printing matches in the leaf), same as **`kw:`** / **`keyword:`** while the user is still typing.
+
+## Unknown value
+
+A **non-empty** value that matches **no** vocabulary key under the active operator (**`:`** prefix, or exact mask for **`=`** / **`!=`**) yields **`unknown frame "…"`** with passthrough.

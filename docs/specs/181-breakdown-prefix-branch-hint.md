@@ -4,7 +4,7 @@
 
 **References:** [GitHub #177](https://github.com/jimbojw/frantic-search/issues/177)
 
-**Depends on:** [Spec 009](009-query-breakdown.md) (superseded by 021; breakdown wire format), [Spec 021](021-inline-query-breakdown.md), [Spec 079](079-consolidated-query-accordion.md), [Spec 103](103-categorical-field-value-auto-resolution.md) (`normalizeForResolution`), [Spec 032](032-is-operator.md) (`is:` / `not:` prefix union), [Spec 047](047-printing-query-fields.md) (`set:`), [Spec 179](179-set-type-query-field.md) (`set_type:`), [Spec 174](174-otag-atag-prefix-query-semantics.md), [Spec 176](176-kw-keyword-prefix-query-semantics.md)
+**Depends on:** [Spec 009](009-query-breakdown.md) (superseded by 021; breakdown wire format), [Spec 021](021-inline-query-breakdown.md), [Spec 079](079-consolidated-query-accordion.md), [Spec 103](103-categorical-field-value-auto-resolution.md) (`normalizeForResolution`), [Spec 032](032-is-operator.md) (`is:` / `not:` prefix union), [Spec 047](047-printing-query-fields.md) (`set:`), [Spec 179](179-set-type-query-field.md) (`set_type:`), [Spec 182](182-prefix-union-format-frame-in-collector.md) (`frame:`), [Spec 174](174-otag-atag-prefix-query-semantics.md), [Spec 176](176-kw-keyword-prefix-query-semantics.md)
 
 ## Goal
 
@@ -31,17 +31,18 @@ These are the fields where **evaluation** applies `normalizeForResolution` + `st
 | `not` | `not` | Same closed vocabulary as `is:` for semantic matching | 032 |
 | `set` | `set`, `s` → `set`, `e` → `set`, `edition` → `set` | **Distinct** normalized set codes present on loaded printings (same strings `eval-printing` prefix-matches for **`:`**; align with `PrintingIndex`) | 047 |
 | `set_type` | `set_type`, `st` → `set_type` | **Distinct** normalized set-type strings on loaded printings (prefix-union path for **`:`** only) | 179 |
+| `frame` | `frame` | Keys of **`FRAME_NAMES`** in `shared/src/bits.ts` (normalize each key with `normalizeForResolution` for hint candidates; align with `eval-printing` prefix path for **`:`**) | 047, 182 |
 
 **Normalization:** Hints use the same `normalizeForResolution` as evaluation (Spec 103) on both the user value and each candidate string.
 
-**Operators:** Only leaves that run **prefix** (**`:`**) union eval (Specs 176, 174, 032, 047, 179). Fields such as **`set=`** / **`set_type=`** use **exact** match — **no** prefix-branch hint (optional future: exact-resolution hint). Range or unsupported operators: no hint.
+**Operators:** Only leaves that run **prefix** (**`:`**) union eval (Specs 176, 174, 032, 047, 179, 182). Fields such as **`set=`** / **`set_type=`** / **`frame=`** / **`frame!=`** use **exact** (or exact-negated) match — **no** prefix-branch hint (optional future: exact-resolution hint). Range or unsupported operators: no hint.
 
 ## Fields explicitly out of scope (for this spec)
 
 | Field / area | Reason |
 |--------------|--------|
 | `in:` | Spec 072: **unique-prefix resolution** across a union of namespaces, then **exact** game / set / rarity match—not eval-time prefix union over a single OR’d vocabulary like `kw:`. A separate UX spec could add “ambiguous `in:` candidates” later. |
-| `f:` / `legal:` / `format:` / `banned:` / `restricted:`, `view:`, `unique:`, `sort:` / `order:`, `include:`, `rarity:` / `r:`, `game:`, `frame:` | Spec 103: **unique** categorical resolution to one token when unambiguous; evaluation uses the resolved single value, not OR of all prefix matches. |
+| `f:` / `legal:` / `format:` / `banned:` / `restricted:`, `view:`, `unique:`, `sort:` / `order:`, `include:`, `rarity:` / `r:`, `game:` | Spec 103: **unique** categorical resolution to one token when unambiguous; evaluation uses the resolved single value, not OR of all prefix matches. |
 | `flavor:` / `ft:`, `artist:` / `a:` | Substring / index semantics differ from normalized-prefix vocabulary union (see `eval-printing`). |
 | `collector number`, numeric fields, regex, bare text | Not categorical prefix union. |
 

@@ -2,7 +2,7 @@
 
 **Status:** Implemented 
 
-**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation)
+**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation), Spec 039 (passthrough errors), Spec 103 (normalization / canonicalize resolution), Spec 182 (`frame:` / `set:` operator split and performance)
 
 ## Goal
 
@@ -109,15 +109,27 @@ When promoted to face domain (e.g. `t:creature is:poster`), semantics are "card 
 
 ### `frame:` — Frame
 
+Normative operator split: **[Spec 182](182-prefix-union-format-frame-in-collector.md)** § `frame:` (same convention as **`set:`** / **`kw:`**).
+
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Printing uses this frame |
+| `:` | **Prefix union** after Spec 103 `normalizeForResolution`: OR the `FRAME_NAMES` bits for every vocabulary key whose normalized form **starts with** `u` (`u = normalizeForResolution(trimmedUserValue)`). A printing matches when `(frame[i] & combinedBit) !== 0`. |
+| `=` | **Exact match** after the same normalization: OR bits for keys with `normalize(key) === u`. |
+| `!=` | **Frantic extension** (Scryfall does not support `frame!=`): negation of **`frame=`** only — a printing matches when `(frame[i] & combinedBit) === 0`, where **`combinedBit`** is built exactly as for **`=`** (not as for **`:`**). Same rule family as **`in!=`** ([Spec 182](182-prefix-union-format-frame-in-collector.md)). To exclude a **prefix-union** **`frame:`** predicate, use **`-`** / **`NOT`**, not **`!=`**. |
 
-Frame values: `1993`, `1997`, `2003`, `2015`, `future`.
+Frame values (vocabulary keys): `1993`, `1997`, `2003`, `2015`, `future`.
 
-Implementation: Bitmask-encoded. `frame[i] & targetBit`.
+**Implementation (Spec 182 alignment):** Evaluators must **not** call `normalizeForResolution` on vocabulary keys inside the per-query hot path. Precompute `normalizeForResolution(key)` for each key of `FRAME_NAMES` once at module load (lazy static or top-level init). Per query, normalize the user value **once** to `u`, then iterate cached pairs with `startsWith` / `===` only.
 
-Examples: `frame:2015`, `frame:future`
+**Empty value:** After trim, **`:`**, **`=`**, and **`!=`** with an empty value are **neutral** — all printings match in the leaf buffer (same as **`kw:`** / **`keyword:`**; contrast empty **`set:`**, which matches only printings with a non-empty normalized set code).
+
+**No matching keys:** If the trimmed value is **non-empty** and **no** vocabulary key matches under the active operator (prefix for **`:`**, exact for **`=`** / **`!=`** positive mask), the leaf returns **`unknown frame "<trimmed value>"`** with passthrough.
+
+**Ordering operators** (`>`, `<`, …) are **not** supported on **`frame:`**.
+
+**Spec 103:** Query evaluation does **not** use `resolveForField` for semantic matching; the AST operator selects prefix vs exact. **`resolveForField("frame", …)`** remains for **canonicalize** / unique-prefix collapse when exactly one candidate matches.
+
+Examples: `frame:2015`, `frame:2` (prefix discovery — ORs every era whose normalized key starts with `2`, e.g. `1997`, `2003`, `2015`), `frame=2015` (exact escape hatch), `frame!=2015` (exclude exact 2015-frame printings), `frame:future`
 
 ### `usd:` / `$` — Price (USD)
 
@@ -458,14 +470,16 @@ Add printing-field entries once the full dataset is available.
 6. `t:creature set:mh2` returns creatures that appear in MH2 (cross-domain AND).
 7. `-is:foil` matches printing rows that are not foil (NOT stays in printing domain). When promoted to face, returns cards with at least one non-foil printing.
 8. `frame:future` returns cards with the futuristic frame.
-9. `price<1` excludes rows with no price data (price_usd = 0).
-10. `cn:1` returns printings with collector number "1".
-11. Queries with no printing-domain fields are unaffected (no performance regression, no behavioral change).
-12. When printing data is not yet loaded, printing-domain fields match nothing and the evaluator flags `printingsUnavailable`.
-13. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
-14. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
-15. `-is:poster` correctly negates (matches printings without poster promo type).
-16. **`atag:`** / **`art:`** evaluation uses normalized prefix matching and union over illustration tag keys (Spec 174), analogous to **`set:`** prefix discovery.
+9. **`frame:`** / **`frame=`** / **`frame!=`** follow Spec 182: **`:`** = prefix union on normalized `FRAME_NAMES` keys; **`=`** = normalized exact; **`!=`** = negation of that exact mask (Frantic extension; Scryfall omits **`frame!=`**). Non-empty no vocabulary match under the active operator → **`unknown frame "…"`** (passthrough). Empty **`frame:`** / **`frame=`** / **`frame!=`** are neutral (all printings), same as **`kw:`**. Evaluation does not use **`resolveForField`** on the eval path; vocabulary normalization is precomputed once per key.
+10. `frame:2` ORs every frame era whose normalized vocabulary key starts with **`2`** (e.g. `1997`, `2003`, `2015`).
+11. `price<1` excludes rows with no price data (price_usd = 0).
+12. `cn:1` returns printings with collector number "1".
+13. Queries with no printing-domain fields are unaffected (no performance regression, no behavioral change).
+14. When printing data is not yet loaded, printing-domain fields match nothing and the evaluator flags `printingsUnavailable`.
+15. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
+16. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
+17. `-is:poster` correctly negates (matches printings without poster promo type).
+18. **`atag:`** / **`art:`** evaluation uses normalized prefix matching and union over illustration tag keys (Spec 174), analogous to **`set:`** prefix discovery.
 
 ## Implementation Notes
 
@@ -476,3 +490,5 @@ Add printing-field entries once the full dataset is available.
 - 2026-03-31: `set:` / `set=` use **prefix** matching on normalized set codes; empty value matches printings with non-empty normalized set code; non-matching prefix initially yielded zero results with **no** `unknown set` error ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)). Evaluation does not use Spec 103 unique resolution for `set`. Evaluator must call `evalPrintingField` for `set` even when the AST value is empty (printing-domain branch previously skipped empty values).
 - 2026-04-02: Non-empty prefix with no matching set code → **`unknown set "…"`** (Spec 039 passthrough; `NOT` propagates error). Aligns with `kw:` / `set_type:`; supersedes silent zero-hit behavior above for unknown prefixes.
 - 2026-04-04: **`:`** = prefix union, **`=`** = exact normalized match (aligned with Spec 176 / 182). Empty **`=`** neutral. Precomputed per-row normalization on `PrintingIndex`; Spec 178 widening splits prefix vs exact (see Spec 178 changelog).
+- 2026-04-04: **`frame:`** / **`frame=`** — Spec 182 operator split on `FRAME_NAMES`; precomputed normalized keys; empty **`frame:`** / **`frame=`** neutral (all printings, **`kw:`** parity). Evaluator invokes `evalPrintingField` for `frame` when the AST value is empty (same dispatch fix pattern as **`set`** / **`set_type`**).
+- 2026-04-04: **`frame!=`** — negation of **`frame=`** exact mask only (principled Frantic extension vs Scryfall); empty neutral.

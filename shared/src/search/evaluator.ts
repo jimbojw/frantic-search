@@ -967,7 +967,7 @@ export class NodeCache {
             }
           } else if (
             canonical &&
-            (ast.value !== "" || canonical === "set" || canonical === "set_type")
+            (ast.value !== "" || canonical === "set" || canonical === "set_type" || canonical === "frame")
           ) {
             error = evalPrintingField(canonical, ast.operator, ast.value, pIdx, buf, this._getResolutionContext());
           }

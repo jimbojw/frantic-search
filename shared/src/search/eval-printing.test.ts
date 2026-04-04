@@ -453,6 +453,53 @@ describe("frame field", () => {
     expect(marked(evalField("frame", ":", "2015").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
+  test("prefix frame:2 ORs 1997, 2003, 2015 keys — all rows here are 2015", () => {
+    expect(marked(evalField("frame", ":", "2").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("frame=2015 exact matches all rows", () => {
+    expect(marked(evalField("frame", "=", "2015").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("frame=2 has no exact vocabulary key", () => {
+    expect(evalField("frame", "=", "2").error).toBe('unknown frame "2"');
+  });
+
+  test("empty frame= is neutral (all printings)", () => {
+    expect(marked(evalField("frame", "=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("frame", "=", "   ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("empty frame: is neutral like kw: (all printings)", () => {
+    expect(marked(evalField("frame", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(evalField("frame", ":", "").error).toBe(null);
+    expect(marked(evalField("frame", ":", "  ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("frame!= negates exact frame= only (all rows are 2015 → no row matches)", () => {
+    expect(marked(evalField("frame", "!=", "2015").buf)).toEqual([]);
+    expect(evalField("frame", "!=", "2015").error).toBe(null);
+  });
+
+  test("frame!=future excludes future rows on mixed data", () => {
+    const mixedData: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      frame: [Frame.Y2015, Frame.Future, Frame.Y2003, Frame.Y2015, Frame.Y1993, Frame.Y2015, Frame.Y2015],
+    };
+    const idx = new PrintingIndex(mixedData);
+    const buf = new Uint8Array(idx.printingCount);
+    expect(evalPrintingField("frame", "!=", "future", idx, buf)).toBe(null);
+    expect(marked(buf)).toEqual([0, 2, 3, 4, 5, 6]);
+  });
+
+  test("frame!=2 unknown (no exact vocabulary key)", () => {
+    expect(evalField("frame", "!=", "2").error).toBe('unknown frame "2"');
+  });
+
+  test("empty frame!= is neutral", () => {
+    expect(marked(evalField("frame", "!=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
   test("future matches none in this dataset", () => {
     expect(marked(evalField("frame", ":", "future").buf)).toEqual([]);
   });
@@ -464,12 +511,23 @@ describe("frame field", () => {
   test("frame works with mixed data", () => {
     const mixedData: PrintingColumnarData = {
       ...PRINTING_DATA,
-      frame: [Frame.Y2015, Frame.Future, Frame.Y2003, Frame.Y2015, Frame.Y1993, Frame.Y2015],
+      frame: [Frame.Y2015, Frame.Future, Frame.Y2003, Frame.Y2015, Frame.Y1993, Frame.Y2015, Frame.Y2015],
     };
     const idx = new PrintingIndex(mixedData);
     const buf = new Uint8Array(idx.printingCount);
     evalPrintingField("frame", ":", "future", idx, buf);
     expect(marked(buf)).toEqual([1]);
+  });
+
+  test("prefix frame:20 ORs 2003 and 2015 on mixed data", () => {
+    const mixedData: PrintingColumnarData = {
+      ...PRINTING_DATA,
+      frame: [Frame.Y2015, Frame.Future, Frame.Y2003, Frame.Y2015, Frame.Y1993, Frame.Y2015, Frame.Y2015],
+    };
+    const idx = new PrintingIndex(mixedData);
+    const buf = new Uint8Array(idx.printingCount);
+    evalPrintingField("frame", ":", "20", idx, buf);
+    expect(marked(buf)).toEqual([0, 2, 3, 5, 6]);
   });
 });
 

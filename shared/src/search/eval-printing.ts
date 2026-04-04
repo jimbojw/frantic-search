@@ -78,6 +78,24 @@ export function isPrintingField(canonical: string): boolean {
   return PRINTING_FIELDS.has(canonical);
 }
 
+/** Precomputed `normalizeForResolution(FRAME_NAMES key)` → bit (Spec 047 / 182). */
+const FRAME_NORM_BITS: { norm: string; bit: number }[] = Object.entries(FRAME_NAMES).map(([key, bit]) => ({
+  norm: normalizeForResolution(key),
+  bit,
+}));
+
+function combinedFrameMask(prefixOp: boolean, u: string): number {
+  let m = 0;
+  for (const row of FRAME_NORM_BITS) {
+    if (prefixOp) {
+      if (row.norm.startsWith(u)) m |= row.bit;
+    } else if (row.norm === u) {
+      m |= row.bit;
+    }
+  }
+  return m;
+}
+
 function buildRarityMask(op: string, targetBit: number): number {
   const targetOrder = RARITY_ORDER[targetBit];
   if (targetOrder === undefined) return 0;
@@ -229,11 +247,29 @@ export function evalPrintingField(
       break;
     }
     case "frame": {
-      const frameVal = resolveForField("frame", val, context);
-      const frameBit = FRAME_NAMES[frameVal.toLowerCase()];
-      if (frameBit === undefined) return `unknown frame "${val}"`;
-      for (let i = 0; i < n; i++) {
-        if (pIdx.frame[i] & frameBit) buf[i] = 1;
+      if (op !== ":" && op !== "=" && op !== "!=") {
+        return `frame: does not support operator "${op}"`;
+      }
+      const trimmed = val.trim();
+      if (trimmed === "") {
+        // Same as `kw:` / `keyword:` (Spec 176): empty `:` and `=` are neutral — all printings match.
+        for (let i = 0; i < n; i++) buf[i] = 1;
+      } else {
+        const u = normalizeForResolution(trimmed);
+        if (op === "!=") {
+          // Principled Frantic extension (Spec 182): `!=` negates **exact `=`** only, not prefix `:` (use NOT for that).
+          const combined = combinedFrameMask(false, u);
+          if (combined === 0) return `unknown frame "${trimmed}"`;
+          for (let i = 0; i < n; i++) {
+            if ((pIdx.frame[i] & combined) === 0) buf[i] = 1;
+          }
+        } else {
+          const combined = combinedFrameMask(op === ":", u);
+          if (combined === 0) return `unknown frame "${trimmed}"`;
+          for (let i = 0; i < n; i++) {
+            if (pIdx.frame[i] & combined) buf[i] = 1;
+          }
+        }
       }
       break;
     }

@@ -58,7 +58,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `rarity` | `r` | Rarity (exact or comparison) | `r:mythic` |
 | `usd` | `$` | Price in USD; `=null` (or `n`/`nu`/`nul` while typing) for no price data; percentile (`>90%`); invalid price text → error (Spec 172) | `usd<5`, `usd=null`, `usd>90%` |
 | `collectornumber` | `cn`, `number` | Collector number | `cn:261` |
-| `frame` | — | Frame version (1993, 1997, 2003, 2015, future) | `frame:2015` |
+| `frame` | — | Frame version; **`:`** = normalized **prefix** union, **`=`** = normalized **exact**, **`!=`** = negation of **`=`** (Frantic extension; Spec 047 / 182); empty **`:`** / **`=`** / **`!=`** neutral (all printings, like **`kw:`**) | `frame:2015`, `frame=2015`, `frame!=future` |
 | `year` | — | Release year (YYYY or partial) | `year:2021` |
 | `date` | `released` | Release date (YYYY, YYYY-MM, YYYY-MM-DD, set code, now); percentile (`>90%`) | `date:2021`, `date>90%` |
 | `game` | — | Paper, Arena, MTGO availability | `game:arena` |
@@ -68,7 +68,7 @@ The Fields table must include every queryable field with canonical name, aliases
 
 ### Section 2: Operators
 
-Unchanged from Spec 014. All operators apply to fields that support them; some fields restrict operators (e.g. `game:` only `:`, `=`, `!=`).
+Unchanged from Spec 014. All operators apply to fields that support them; some fields restrict operators (e.g. `game:` only `:`, `=`, `!=`; `frame:` `:`, `=`, `!=` per Spec 047 / 182 — no ordering ops).
 
 | Operator | Meaning | Example |
 |----------|---------|---------|
