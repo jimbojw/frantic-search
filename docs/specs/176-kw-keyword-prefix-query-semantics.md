@@ -15,7 +15,7 @@ This gives **discovery** via incomplete **`:`** tokens (e.g. **`kw:first`** matc
 
 When the trimmed value is **non-empty** and **no** index key matches under the active operator, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039). **`set:`** / **`set_type:`** (Spec 047 / 179) and **`otag:`** / **`atag:`** (Spec 174: **`unknown oracle tag`** / **`unknown illustration tag`**) use the same **unknown token error** model.
 
-**Related:** **`is:`** / **`not:`** still use **prefix union for both `:` and `=`** until amended — **[Spec 032](032-is-operator.md)** § Value resolution.
+**Related:** **`is:`** / **`not:`** use the same **`:`** / **`=`** / **`!=`** operator split as this spec (ADR-022) — **[Spec 032](032-is-operator.md)** § Operators and § Value resolution.
 
 ## Background
 

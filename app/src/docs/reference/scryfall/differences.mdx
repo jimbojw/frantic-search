@@ -31,7 +31,7 @@ Frantic parses that shape as a **`FIELD` with an empty string value**. Evaluator
 
 ### `:` vs `=` and `!=` on vocabulary-style fields
 
-On many categorical or indexed fields, Frantic uses **`:`** for **normalized prefix** discovery (typically **unioning** all matching vocabulary entries) and **`=`** for **normalized exact** match; **`!=`**, where supported, negates the **`=`** mask only—not a **`:`** prefix union (use **`-term`** / **`NOT`** for that). Scryfall’s syntax guide often treats **`:`** and **`=`** as interchangeable for those filters.
+On many categorical or indexed fields, Frantic uses **`:`** for **normalized prefix** discovery (typically **unioning** all matching vocabulary entries) and **`=`** for **normalized exact** match; **`!=`**, where supported, negates the **`=`** mask only—not a **`:`** prefix union (use **`-term`** / **`NOT`** for that). Scryfall’s syntax guide often treats **`:`** and **`=`** as interchangeable for those filters. **`is:`** and **`not:`** follow the same pattern, including Frantic-only **`!=`** on those fields.
 
 ### Bare regex
 

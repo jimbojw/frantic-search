@@ -25,6 +25,8 @@ function fieldUsesFranticExtension(node: FieldNode): boolean {
 
   const canonical = FIELD_ALIASES[node.field.toLowerCase()] ?? node.field.toLowerCase();
 
+  if ((canonical === "is" || canonical === "not") && node.operator === "!=") return true;
+
   if (canonical === "salt") return true;
 
   if (canonical && PERCENTILE_CAPABLE_FIELDS.has(canonical) && PERCENTILE_RE.test(node.value)) {

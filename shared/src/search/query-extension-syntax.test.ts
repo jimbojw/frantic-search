@@ -13,6 +13,13 @@ describe("astUsesFranticExtensionSyntax", () => {
     expect(ext("c:r o:draw")).toBe(false);
   });
 
+  it("is true for is!= / not!= (Frantic-only, Spec 032 / ADR-022 / Spec 085)", () => {
+    expect(ext("is!=bear")).toBe(true);
+    expect(ext("not!=token")).toBe(true);
+    expect(ext("is:bear")).toBe(false);
+    expect(ext("is=bear")).toBe(false);
+  });
+
   it("is false for unique:prints, unique:art, ++, @@ (Scryfall-supported)", () => {
     expect(ext("t:instant unique:prints")).toBe(false);
     expect(ext("t:creature unique:art")).toBe(false);

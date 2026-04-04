@@ -5,6 +5,7 @@ import {
   resolveCategoricalValue,
   resolveForField,
   expandIsKeywordsFromPrefix,
+  expandIsKeywordsExact,
   type ResolutionContext,
 } from "./categorical-resolve";
 
@@ -47,14 +48,41 @@ describe("expandIsKeywordsFromPrefix (Spec 032)", () => {
 
   it("uses exact normalized match so meld does not absorb meldpart", () => {
     expect(expandIsKeywordsFromPrefix("meld")).toEqual(["meld"]);
-    const mel = expandIsKeywordsFromPrefix("mel");
-    expect(mel!.length).toBeGreaterThan(1);
-    expect(mel).toContain("meld");
-    expect(mel).toContain("meldpart");
+  });
+
+  it("prefix discovery drops unsupported stubs (me/mel → meld only, not meldpart)", () => {
+    expect(expandIsKeywordsFromPrefix("me")).toEqual(["meld"]);
+    expect(expandIsKeywordsFromPrefix("mel")).toEqual(["meld"]);
   });
 
   it("does not map type-line false positives to longer is tokens (creature vs creatureland)", () => {
     expect(expandIsKeywordsFromPrefix("creature")).toEqual([]);
+  });
+});
+
+describe("expandIsKeywordsExact (Spec 032 / ADR-022)", () => {
+  it("returns null when trimmed empty", () => {
+    expect(expandIsKeywordsExact("")).toBe(null);
+    expect(expandIsKeywordsExact("  \t ")).toBe(null);
+  });
+
+  it("returns empty when no exact keyword matches", () => {
+    expect(expandIsKeywordsExact("zzznotakeyword")).toEqual([]);
+    expect(expandIsKeywordsExact("mel")).toEqual([]);
+  });
+
+  it("returns singleton for exact keyword (no prefix widen)", () => {
+    expect(expandIsKeywordsExact("meld")).toEqual(["meld"]);
+    expect(expandIsKeywordsExact("commander")).toEqual(["commander"]);
+  });
+
+  it("returns empty for type-line false positive without exact is keyword", () => {
+    expect(expandIsKeywordsExact("creature")).toEqual([]);
+  });
+
+  it("returns sorted deterministic list", () => {
+    const u = expandIsKeywordsExact("spell");
+    expect(u).toEqual(["spell"]);
   });
 });
 

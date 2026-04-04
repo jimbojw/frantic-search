@@ -656,16 +656,32 @@ describe("is: operator", () => {
     expect((defaultOut.printingIndices?.length ?? 0) + (atypicalOut.printingIndices?.length ?? 0)).toBe(11);
   });
 
-  test("is: with comparison operators matches zero cards", () => {
-    expect(isMatchCount("is>spell")).toBe(0);
-    expect(isMatchCount("is<commander")).toBe(0);
-    expect(isMatchCount("is>=vanilla")).toBe(0);
-    expect(isMatchCount("is!=bear")).toBe(0);
+  test("is: unsupported operators yield leaf error (Spec 032 / ADR-022)", () => {
+    const cache = new NodeCache(isIndex);
+    for (const q of ["is>spell", "is<commander", "is>=vanilla"]) {
+      const r = cache.evaluate(parse(q)).result;
+      expect(r.matchCount).toBe(-1);
+      expect(r.error).toContain("requires");
+    }
   });
 
-  test("is= works same as is:", () => {
+  test("is!= negates exact is= mask (same as -is= for single keyword)", () => {
+    expect(isMatchIndices("is!=bear").sort((a, b) => a - b)).toEqual(
+      isMatchIndices("-is=bear").sort((a, b) => a - b),
+    );
+  });
+
+  test("is= is exact-only; is: can prefix-widen (Spec 032 / ADR-022)", () => {
     expect(isMatchCount("is=spell")).toBe(isMatchCount("is:spell"));
     expect(isMatchCount("is=commander")).toBe(isMatchCount("is:commander"));
+    const cache = new NodeCache(isIndex);
+    expect(cache.evaluate(parse("is=per")).result.error).toMatch(/unknown keyword/);
+    expect(isMatchCount("is:per")).toBe(isMatchCount("is:permanent"));
+  });
+
+  test("is:me prefix matches meld without failing on unsupported meld stubs", () => {
+    expect(isMatchCount("is:me")).toBe(isMatchCount("is:meld"));
+    expect(isMatchCount("is=me")).toBe(-1);
   });
 
   test("negation -is:spell works", () => {

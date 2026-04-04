@@ -2,7 +2,7 @@
 import { FORMAT_NAMES, GAME_NAMES, RARITY_FROM_STRING, FRAME_NAMES } from "../bits";
 import { normalizeAlphanumeric } from "../normalize";
 import { SORT_FIELDS } from "./sort-fields";
-import { IS_KEYWORDS, IS_PREFIX_VOCABULARY } from "./eval-is";
+import { IS_KEYWORDS, IS_PREFIX_VOCABULARY, UNSUPPORTED_IS_KEYWORDS } from "./eval-is";
 
 /**
  * Type-line words users often put after `is:` by mistake (`not:creature`, `is:instant`).
@@ -91,7 +91,35 @@ export function expandIsKeywordsFromPrefix(value: string): string[] | null {
     if (normalizeForResolution(kw).startsWith(normTyped)) matches.push(kw);
   }
   matches.sort();
-  return matches;
+  // Drop unsupported stubs from **prefix** discovery only. Otherwise a prefix like `me`
+  // would OR `meld` + `meldpart` + `meldresult` and fail the whole leaf on `meldpart`
+  // (unsupported). Exact-token expansion above still returns unsupported names verbatim.
+  return matches.filter((k) => !UNSUPPORTED_IS_KEYWORDS.has(k));
+}
+
+/**
+ * Spec 032 / ADR-022: expand `is=` / `is!=` / `not=` / `not!=` to vocabulary keywords — **exact**
+ * normalized match only (no prefix discovery).
+ *
+ * @returns `null` if trimmed value is empty (neutral / match-all for that leaf).
+ * @returns `[]` if non-empty but no keyword shares the normalized form (`unknown keyword`).
+ */
+export function expandIsKeywordsExact(value: string): string[] | null {
+  const t = value.trim();
+  if (t === "") return null;
+  const normTyped = normalizeForResolution(t);
+  const exact: string[] = [];
+  for (const kw of IS_PREFIX_VOCABULARY) {
+    if (normalizeForResolution(kw) === normTyped) exact.push(kw);
+  }
+  if (exact.length > 0) {
+    exact.sort();
+    return exact;
+  }
+  if (IS_VALUE_TYPE_LINE_FALSE_POSITIVE.has(normTyped)) {
+    return [];
+  }
+  return [];
 }
 
 const CATEGORICAL_FIELDS = new Set([

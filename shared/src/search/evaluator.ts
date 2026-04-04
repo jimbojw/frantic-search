@@ -37,9 +37,51 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
 }
 import { parse } from "./parser";
 import type { OracleTagData, FlavorTagData, ArtistIndexData } from "../data";
-import { resolveForField, normalizeForResolution, expandIsKeywordsFromPrefix } from "./categorical-resolve";
+import {
+  resolveForField,
+  normalizeForResolution,
+  expandIsKeywordsFromPrefix,
+  expandIsKeywordsExact,
+} from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
+
+/** Spec 032: prefix vs exact expansion for `is` / `not` evaluation. */
+function expandIsKeywordsForEval(op: string, value: string): string[] | null {
+  if (op === ":") return expandIsKeywordsFromPrefix(value);
+  if (op === "=" || op === "!=") return expandIsKeywordsExact(value);
+  return null;
+}
+
+/**
+ * After building positive `is`/`=` mask: apply `!=` then `not:` inversions (Spec 032 / ADR-022).
+ * Face domain: flip canonical front faces only (same as historical `not:`).
+ * Printing domain: flip every printing row.
+ */
+function applyIsNotNegations(
+  buf: Uint8Array,
+  domain: "face" | "printing",
+  operator: string,
+  canonical: "is" | "not",
+  cf: readonly number[] | Uint32Array,
+  faceCount: number,
+  printingCount: number,
+): void {
+  if (operator === "!=") {
+    if (domain === "face") {
+      for (let i = 0; i < faceCount; i++) if (cf[i] === i) buf[i] ^= 1;
+    } else {
+      for (let i = 0; i < printingCount; i++) buf[i] ^= 1;
+    }
+  }
+  if (canonical === "not") {
+    if (domain === "face") {
+      for (let i = 0; i < faceCount; i++) if (cf[i] === i) buf[i] ^= 1;
+    } else {
+      for (let i = 0; i < printingCount; i++) buf[i] ^= 1;
+    }
+  }
+}
 
 /** Extract effective unique mode from AST (last legal unique: term wins). */
 export function getUniqueModeFromAst(ast: ASTNode): "cards" | "prints" | "art" {
@@ -220,9 +262,13 @@ export class NodeCache {
     return Object.keys(ctx).length > 0 ? ctx : undefined;
   }
 
-  /** Spec 032 / 178: non-empty prefix expansion; empty or unknown does not widen. */
-  private _expandedIsKeywordsMatch(value: string, pred: (kw: string) => boolean): boolean {
-    const exp = expandIsKeywordsFromPrefix(value);
+  /** Spec 032 / 178: widen from expanded `:` / `=` keywords only; `!=` excluded. */
+  private _expandedIsKeywordsMatch(node: FieldNode, pred: (kw: string) => boolean): boolean {
+    const canonical = FIELD_ALIASES[node.field.toLowerCase()];
+    if (canonical !== "is" && canonical !== "not") return false;
+    if (node.operator === "!=") return false;
+    if (node.operator !== ":" && node.operator !== "=") return false;
+    const exp = expandIsKeywordsForEval(node.operator, node.value);
     if (exp === null || exp.length === 0) return false;
     return exp.some(pred);
   }
@@ -267,22 +313,22 @@ export class NodeCache {
     const widenExtrasLayout = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return this._expandedIsKeywordsMatch(n.value, (kw) => EXTRAS_LAYOUT_IS_KEYWORDS.has(kw));
+      return this._expandedIsKeywordsMatch(n, (kw) => EXTRAS_LAYOUT_IS_KEYWORDS.has(kw));
     });
     const widenContentWarning = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "content_warning");
+      return this._expandedIsKeywordsMatch(n, (kw) => kw === "content_warning");
     });
     const widenPlaytest = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "playtest");
+      return this._expandedIsKeywordsMatch(n, (kw) => kw === "playtest");
     });
     const widenOversized = this._isPositiveInAst(ast, (n) => {
       const canonical = FIELD_ALIASES[n.field.toLowerCase()];
       if (canonical !== "is" && canonical !== "not") return false;
-      return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "oversized");
+      return this._expandedIsKeywordsMatch(n, (kw) => kw === "oversized");
     });
     const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
     const positiveSetExact = this._collectPositiveSetExact(ast);
@@ -414,7 +460,8 @@ export class NodeCache {
           return masks.printingIndices !== undefined;
         }
         if (canonical === "is" || canonical === "not") {
-          const exp = expandIsKeywordsFromPrefix(ast.value);
+          if (ast.operator !== ":" && ast.operator !== "=" && ast.operator !== "!=") return false;
+          const exp = expandIsKeywordsForEval(ast.operator, ast.value);
           if (exp === null || exp.length === 0) return false;
           const printKws = exp.filter((k) => PRINTING_IS_KEYWORDS.has(k));
           if (printKws.length === 0) return false;
@@ -587,7 +634,8 @@ export class NodeCache {
       case "FIELD": {
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
         const expForIntersect = (canonical === "is" || canonical === "not")
-          ? expandIsKeywordsFromPrefix(ast.value)
+          && (ast.operator === ":" || ast.operator === "=" || ast.operator === "!=")
+          ? expandIsKeywordsForEval(ast.operator, ast.value)
           : null;
         const isPrinting = ((canonical === "is" || canonical === "not")
           && expForIntersect !== null
@@ -792,14 +840,15 @@ export class NodeCache {
         if (canonical === "is" || canonical === "not") {
           const t0 = performance.now();
           const cf = this.index.canonicalFace;
-          if (ast.operator !== ":" && ast.operator !== "=") {
-            const z = new Uint8Array(n);
-            const ms = performance.now() - t0;
-            interned.computed = { buf: z, domain: "face", matchCount: 0, productionMs: ms };
-            timings.set(interned.key, { cached: false, evalMs: ms });
+          if (ast.operator !== ":" && ast.operator !== "=" && ast.operator !== "!=") {
+            interned.computed = {
+              buf: new Uint8Array(0), domain: "face", matchCount: -1, productionMs: 0,
+              error: `${ast.field}: requires :, =, or != operator`,
+            };
+            timings.set(interned.key, { cached: false, evalMs: 0 });
             break;
           }
-          const exp = expandIsKeywordsFromPrefix(ast.value);
+          const exp = expandIsKeywordsForEval(ast.operator, ast.value);
           if (exp === null) {
             const buf = new Uint8Array(n);
             for (let i = 0; i < n; i++) buf[i] = 1;
@@ -865,9 +914,7 @@ export class NodeCache {
           }
 
           if (!pIdx) {
-            if (canonical === "not") {
-              for (let i = 0; i < n; i++) if (cf[i] === i) faceBuf[i] ^= 1;
-            }
+            applyIsNotNegations(faceBuf, "face", ast.operator, canonical as "is" | "not", cf, n, 0);
             const ms = performance.now() - t0;
             interned.computed = {
               buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms,
@@ -904,9 +951,7 @@ export class NodeCache {
           }
 
           if (printKws.length === 0) {
-            if (canonical === "not") {
-              for (let i = 0; i < n; i++) if (cf[i] === i) faceBuf[i] ^= 1;
-            }
+            applyIsNotNegations(faceBuf, "face", ast.operator, canonical as "is" | "not", cf, n, pn);
             const ms = performance.now() - t0;
             interned.computed = {
               buf: faceBuf, domain: "face", matchCount: popcount(faceBuf, n), productionMs: ms,
@@ -916,9 +961,7 @@ export class NodeCache {
           }
 
           if (faceKws.length === 0) {
-            if (canonical === "not") {
-              for (let i = 0; i < pn; i++) printBuf[i] ^= 1;
-            }
+            applyIsNotNegations(printBuf, "printing", ast.operator, canonical as "is" | "not", cf, n, pn);
             const ms = performance.now() - t0;
             interned.computed = {
               buf: printBuf, domain: "printing", matchCount: popcount(printBuf, pn), productionMs: ms,
@@ -932,9 +975,7 @@ export class NodeCache {
             const f = pIdx.canonicalFaceRef[p]!;
             combinedPrint[p] = (printBuf[p]! | faceBuf[f]!) ? 1 : 0;
           }
-          if (canonical === "not") {
-            for (let i = 0; i < pn; i++) combinedPrint[i] ^= 1;
-          }
+          applyIsNotNegations(combinedPrint, "printing", ast.operator, canonical as "is" | "not", cf, n, pn);
           const ms = performance.now() - t0;
           interned.computed = {
             buf: combinedPrint,

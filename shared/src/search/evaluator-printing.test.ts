@@ -238,6 +238,11 @@ describe("printing is: keywords", () => {
     expect(cardCount("is:foil")).toBe(2);
   });
 
+  test("is=foil matches is:foil; is!=foil matches -is=foil (Spec 032 / ADR-022)", () => {
+    expect(cardCount("is=foil")).toBe(cardCount("is:foil"));
+    expect(cardCount("is!=foil")).toBe(cardCount("-is=foil"));
+  });
+
   test("is:nonfoil matches non-foil printings (including etched)", () => {
     expect(cardCount("is:nonfoil")).toBe(2);
   });

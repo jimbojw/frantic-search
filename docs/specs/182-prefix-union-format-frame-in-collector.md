@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix union precedent), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`), ADR-022 (Categorical field operators — normative field slice for this pattern)
+**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` operator split — ADR-022, shared vocabulary model), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`), ADR-022 (Categorical field operators — normative field slice for this pattern)
 
 **References:** [GitHub #247](https://github.com/jimbojw/frantic-search/issues/247)
 
@@ -36,7 +36,7 @@ Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several f
 
 [Spec 103](103-categorical-field-value-auto-resolution.md) applies **unique-prefix** resolution (`resolveForField` → `resolveCategoricalValue`) for many categoricals: **exactly one** normalized prefix match resolves; otherwise the typed value is passed through and lookup often fails with **`unknown format`**, **`unknown frame`**, or **`unknown in value`**.
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) uses the same operator split with precomputed normalized tag keys. This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`is:`** / **`not:`** (still prefix-for-both per Spec 032) remains **future work** (see **Relation to other specs**).
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) uses the same operator split with precomputed normalized tag keys. This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**. **`is:`** / **`not:`** follow the same ADR-022 operator convention per **[Spec 032](032-is-operator.md)** (normative for that field).
 
 ## Shared rules
 
