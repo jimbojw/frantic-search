@@ -8,14 +8,21 @@
 
 ## Goal
 
-Extend **eval-time prefix union** (normalized prefix over a vocabulary or per-printing string; **OR** all matches) to:
+Extend **eval-time** matching for:
 
 - **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** (face domain, oracle-level legality columns)
 - **`frame:`** (printing domain)
 - **`in:`** (printing domain, promotes to face per Spec 072)
 - **`cn:`** / **`collectornumber:`** / **`number:`** (printing domain)
 
-so incomplete tokens behave like **`kw:`** / **`set:`** for discovery: e.g. a prefix shared by several format names matches cards satisfying **any** of those formats’ legality bits.
+with a **clear split between operators**:
+
+- **`:`** — **prefix union** after `normalizeForResolution`: every candidate whose normalized form **starts with** the normalized user value contributes to the match (**OR** bits, **OR** printing masks, etc.).
+- **`=`** — **exact match** after `normalizeForResolution`: only candidates whose normalized form **equals** the normalized user value contribute (still **OR** if two distinct vocabulary keys normalize identically — rare — so behavior stays deterministic).
+
+Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several format names ORs those formats’ legality bits). **`=`** is an **escape hatch** for users who want no stemming (e.g. match a tag or frame key that is itself a prefix of a longer key — analogous motivation to `otag:peek` vs a longer `peek-*` tag; this spec’s fields follow **`:`** / **`=`** here even though **`kw:`** / **`otag:`** are not yet migrated — see **Relation to other specs** below).
+
+**Negation:** **`!=`** (only where the field supports it — **`in:`** in this spec) means the **negation of the `=` (exact) positive mask**, not the negation of a **`:`** prefix union. To exclude a prefix-union predicate, use **AST NOT** (`-term` / `NOT`), not `!=`.
 
 ## Out of scope
 
@@ -27,7 +34,7 @@ so incomplete tokens behave like **`kw:`** / **`set:`** for discovery: e.g. a pr
 
 [Spec 103](103-categorical-field-value-auto-resolution.md) applies **unique-prefix** resolution (`resolveForField` → `resolveCategoricalValue`) for many categoricals: **exactly one** normalized prefix match resolves; otherwise the typed value is passed through and lookup often fails with **`unknown format`**, **`unknown frame`**, or **`unknown in value`**.
 
-[Spec 176](176-kw-keyword-prefix-query-semantics.md) and **`set:`** ([Spec 047](047-printing-query-fields.md)) instead use **eval-time** normalized prefix matching over a vocabulary (or per-row set codes) and **union** results. This spec brings the listed fields in line with that family.
+[Spec 176](176-kw-keyword-prefix-query-semantics.md) and **`set:`** ([Spec 047](047-printing-query-fields.md)) use **eval-time** normalized prefix matching and **union** for **`:`** and **`=`** today (no distinction). This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`kw:`**, **`otag:`** / **`atag:`**, **`set:`**, **`set_type:`**, **`is:`** / **`not:`**, etc. is **out of scope** here but should follow the same convention when those specs are amended (see **Relation to other specs**).
 
 ## Shared rules
 
@@ -38,24 +45,23 @@ Use **Spec 103** **`normalizeForResolution`** (same as `normalizeAlphanumeric`) 
 - the user value (after **trim**), and  
 - each **candidate string** (format name key, frame name key, game key, set code, rarity key, or per-printing collector string — see per-field sections).
 
-A candidate **matches** the user prefix when:
+Let **`u = normalizeForResolution(trimmedUserValue)`**.
 
-`normalizeForResolution(candidate).startsWith(normalizeForResolution(userValue))`
+- **Prefix (`:`):** A candidate **matches** when **`normalizeForResolution(candidate).startsWith(u)`** (for **non-empty** **`u`** only; see **Empty value**).
+- **Exact (`=`):** A candidate **matches** when **`normalizeForResolution(candidate) === u`** (for **non-empty** **`u`** only; see **Empty value**). If several vocabulary keys share the same normalized form, **OR** their contributions (same as matching that normalized string as a set of aliases).
 
-For **non-empty** trimmed user values only; see **Empty value** below.
+### Operators and negation
 
-### Operators
-
-- **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — only **`:`** and **`=`** (unchanged from current eval).
-- **`frame:`** — only **`:`** and **`=`** (unchanged).
-- **`in:`** — **`:`**, **`=`**, and **`!=`** (unchanged from [Spec 072](072-in-query-qualifier.md)).
-- **`cn:`** / **`collectornumber:`** / **`number:`** — only **`:`** and **`=`** unless a future spec adds comparison ops (out of scope).
+- **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** — **`:`** and **`=`** only; no **`!=`**. Negate with **`-`** / **`NOT`** around the term.
+- **`frame:`** — **`:`** and **`=`** only; negate with **`-`** / **`NOT`**.
+- **`in:`** — **`:`**, **`=`**, and **`!=`**. **`!=`** is defined as **negation of `in=`** (exact positive match per §3), **not** negation of **`in:`** (prefix union).
+- **`cn:`** / **`collectornumber:`** / **`number:`** — **`:`** and **`=`** only unless a future spec adds comparison ops; negate with **`-`** / **`NOT`**.
 
 ### Error model (Spec 039 passthrough)
 
 For **non-empty** trimmed values:
 
-- If **no** candidate matches the prefix (and no printing matches for **`cn:`** per below), the leaf returns an **error string** and participates in **passthrough** ([Spec 039](039-non-destructive-error-handling.md)) — same family as **`kw:`** / **`set:`** / **`set_type:`**, **not** silent zero-hit like **`otag:`** / **`atag:`** ([Spec 174](174-otag-atag-prefix-query-semantics.md)).
+- If **no** candidate matches under the active operator (**`:`** prefix vs **`=`** exact) — and for **`cn:`** no printing matches — the leaf returns an **error string** and participates in **passthrough** ([Spec 039](039-non-destructive-error-handling.md)) — same family as **`kw:`** / **`set:`** / **`set_type:`**, **not** silent zero-hit like **`otag:`** / **`atag:`** ([Spec 174](174-otag-atag-prefix-query-semantics.md)).
 
 Concrete messages (preserve existing shapes where they already exist):
 
@@ -75,8 +81,12 @@ Concrete messages (preserve existing shapes where they already exist):
 
 ### Spec 103 split (evaluation vs canonicalize)
 
-- **Query evaluation** does **not** use **`resolveForField`** for semantic matching for these fields once this spec is implemented. The AST value is interpreted as a **prefix** per this spec.
+- **Query evaluation** does **not** use **`resolveForField`** for semantic matching for these fields once this spec is implemented. The AST **operator** (**`:`** vs **`=`**) and value select **prefix** vs **exact** rules per this spec.
 - **`resolveForField`** for **`legal`**, **`f`**, **`format`**, **`banned`**, **`restricted`**, **`frame`**, **`in`**, and collector aliases remains for **`toScryfallQuery`** / **canonicalize** and any other non-eval consumer that needs **unique-prefix** collapse when exactly one vocabulary candidate matches ([Spec 103](103-categorical-field-value-auto-resolution.md)).
+
+### Relation to other specs (migration, not in scope of Spec 182 ACs)
+
+Today **[Spec 174](174-otag-atag-prefix-query-semantics.md)**, **[Spec 176](176-kw-keyword-prefix-query-semantics.md)**, **[Spec 047](047-printing-query-fields.md)** (**`set:`**), **[Spec 179](179-set-type-query-field.md)**, and **[Spec 032](032-is-operator.md)** (**`is:`** / **`not:`**) treat **`:`** and **`=`** identically for prefix union. **Future amendments** should adopt the same **`:`** = prefix union / **`=`** = exact convention as this spec for parity and the **`otag:peek`**-style escape hatch. That work is **not** part of Spec 182’s acceptance criteria.
 
 ---
 
@@ -88,7 +98,9 @@ Concrete messages (preserve existing shapes where they already exist):
 
 **Vocabulary:** Keys of **`FORMAT_NAMES`** in [`shared/src/bits.ts`](../../shared/src/bits.ts) (same source as today).
 
-**Matching:** Collect every key whose **`normalizeForResolution(key)`** starts with the normalized user prefix. Let **`combinedBit`** be the bitwise **OR** of **`FORMAT_NAMES[key]`** for all matching keys.
+**`:` (prefix):** Collect every key whose **`normalizeForResolution(key).startsWith(u)`**. Let **`combinedBit`** be the bitwise **OR** of **`FORMAT_NAMES[key]`** for all such keys.
+
+**`=` (exact):** Collect every key whose **`normalizeForResolution(key) === u`**. Let **`combinedBit`** be the bitwise **OR** of **`FORMAT_NAMES[key]`** for all such keys.
 
 **Evaluation:** For each face `i`, set **`buf[canonicalFace[i]] = 1`** when **`(col[i] & combinedBit) !== 0`**, where **`col`** is the appropriate legality column for the leaf (**legal** / **banned** / **restricted**).
 
@@ -100,7 +112,9 @@ Concrete messages (preserve existing shapes where they already exist):
 
 **Vocabulary:** Keys of **`FRAME_NAMES`**.
 
-**Matching:** OR all **`FRAME_NAMES[key]`** bits for keys whose normalized form starts with the user prefix.
+**`:` (prefix):** **`combinedBit`** = OR of **`FRAME_NAMES[key]`** for all keys with **`normalizeForResolution(key).startsWith(u)`**.
+
+**`=` (exact):** **`combinedBit`** = OR of **`FRAME_NAMES[key]`** for all keys with **`normalizeForResolution(key) === u`**.
 
 **Evaluation:** For each printing row `i`, set **`buf[i] = 1`** when **`(pIdx.frame[i] & combinedBit) !== 0`**.
 
@@ -108,21 +122,32 @@ Concrete messages (preserve existing shapes where they already exist):
 
 **Domain:** Printing; promotion to face unchanged ([Spec 072](072-in-query-qualifier.md)).
 
-**Vocabulary for prefix union** (normalized prefix on keys / codes as strings):
+**Language branch:** If the trimmed value is **exactly** a **known unsupported language** token ([Spec 072](072-in-query-qualifier.md)) (same detection as today — typically case-insensitive exact code, not prefix), return **`unsupported in value "<trimmed value>"`** for **`:`**, **`=`**, and **`!=`**. **Do not** apply game/set/rarity matching for that leaf.
 
-1. **Games:** keys of **`GAME_NAMES`** whose normalized name starts with the user prefix.
-2. **Sets:** every code in **`knownSetCodes`** whose **`normalizeForResolution(code)`** starts with the user prefix.
-3. **Rarities:** keys of **`RARITY_NAMES`** (Spec 104 **`bonus`** tier included) whose normalized name starts with the user prefix.
+**`:` (prefix union across namespaces):** Build three sets of matching tokens using **`startsWith(u)`** on normalized strings:
 
-**Language branch (unchanged intent):** If the trimmed value is **exactly** (after trim + case fold for comparison) a **known unsupported language** token ([Spec 072](072-in-query-qualifier.md)), return **`unsupported in value "<trimmed value>"`** and do **not** apply prefix union for that leaf. **Do not** use prefix matching against language codes for union (avoids **`in:r`** being absorbed into **`ru`**-style unsupported paths).
+1. **Games:** keys of **`GAME_NAMES`** that match.
+2. **Sets:** codes in **`knownSetCodes`** that match.
+3. **Rarities:** keys of **`RARITY_NAMES`** (Spec 104 **`bonus`** tier included) that match.
 
-**Positive match (`:` / `=`):** Compute three masks (printing indices) — games OR, sets OR, rarities OR — then **OR** those masks into **`buf`**. A printing matches if it matches **any** resolved game, set, or rarity condition from the **union** of matching vocabulary entries.
+Compute the printing mask that is the **OR** of: every game condition, every set condition, every rarity condition induced by those tokens (same per-token semantics as Spec 072 for **positive** `:` / `=` today, but **union** all tokens in each namespace that match the prefix, then **OR** namespaces). A printing matches if it satisfies **any** of those conditions.
 
-**Negation (`!=`):** A printing matches when it does **not** satisfy the **positive** union above (same high-level meaning as today: no printing of the card may match the positive `in:` condition for promotion to face; implementation must match existing tests for `!=` composition).
+**`=` (exact):** Resolve **exactly one** semantic using **disambiguation order** [Spec 072](072-in-query-qualifier.md) — **game** → **set** → **rarity** — but require **normalized equality** (**`=== u`**) to the respective key or set code:
 
-**No matches:** If the union yields no matching vocabulary entries (and the value is not an exact unsupported language), **`unknown in value "<trimmed value>"`**.
+- If **`u`** equals a **game** name key → match printings for that game only.
+- Else if **`u`** equals a **set code** in **`knownSetCodes`** (normalized) → match printings in that set only.
+- Else if **`u`** equals a **rarity** key → match printings at that rarity only.
+- Else (and not unsupported language) → **`unknown in value`**.
 
-**Note:** This **replaces** Spec 103 §4’s rule that **`in:`** auto-resolution requires **exactly one** match **across** the union for **evaluation**. After this spec, **eval** uses **union**; **canonicalize** may still use **unique-prefix** when a single candidate exists.
+Unlike **`:`**, **`=`** does **not** OR multiple namespaces for one token: **first** matching branch in game → set → rarity wins (same spirit as current **`in:`** single-value interpretation).
+
+**`!=`:** **Negation of `in=`** only. Build the **exact** positive printing mask as for **`in=`** above; a printing matches **`in!=v`** when it does **not** match that **exact** positive mask. Promotion to face: card matches if **no** printing matches the exact positive predicate (consistent with Spec 072 **`!=`** card-level meaning, but the positive predicate is **exact-`=`**, not prefix-union **`:`**).
+
+**No matches (`:`):** If no game, set, or rarity vocabulary entry matches the prefix (and not unsupported language), **`unknown in value "<trimmed value>"`**.
+
+**No matches (`=`):** If disambiguation finds no exact game / set / rarity match, **`unknown in value "<trimmed value>"`**.
+
+**Note:** This **replaces** Spec 103 §4’s rule that **`in:`** auto-resolution requires **exactly one** match **across** the union for **evaluation** when using **`:`**. **`=`** eval follows **single-branch exact** disambiguation. **Canonicalize** may still use **unique-prefix** when a single candidate exists.
 
 ### 4. `cn:` / `collectornumber:` / `number:`
 
@@ -130,9 +155,13 @@ Concrete messages (preserve existing shapes where they already exist):
 
 **Data:** Per-printing collector string already lowercased for eval (**`collectorNumbersLower`** or equivalent).
 
-**Matching:** Let **`p = normalizeForResolution(trimmedUserValue)`**. For each printing **`i`**, let **`c = normalizeForResolution(collectorNumbersLower[i])`** (or the same normalization applied consistently to stored data). The printing matches when **`c.startsWith(p)`**.
+Let **`c = normalizeForResolution(collectorNumbersLower[i])`** per printing (consistent normalization everywhere).
 
-**No matches:** Non-empty **`p`** and **no** printing with **`c.startsWith(p)`** → **`unknown collector number "<trimmed value>"`** (passthrough).
+**`:` (prefix):** Printing **`i`** matches when **`c.startsWith(u)`** (for non-empty **`u`**).
+
+**`=` (exact):** Printing **`i`** matches when **`c === u`**.
+
+**No matches:** Non-empty **`u`** and no printing matches under the active operator → **`unknown collector number "<trimmed value>"`** (passthrough).
 
 **Normalization note:** Collector numbers can include letters and digits ([research](../research/scryfall-collector-number-shapes.md)); **`normalizeForResolution`** must be applied consistently so user input and stored values stay comparable. If implementation discovers edge cases (e.g. leading zeros), record them under **Implementation Notes**.
 
@@ -140,19 +169,20 @@ Concrete messages (preserve existing shapes where they already exist):
 
 ## Scryfall
 
-Scryfall’s syntax for these fields is largely **exact** or **unique** token oriented. Frantic’s **prefix union** is an intentional extension for discovery; document deltas in `app/src/docs/reference/scryfall/differences.mdx` when implemented.
+Scryfall’s syntax for these fields is largely **exact** or **unique** token oriented, and often treats **`:`** and **`=`** as interchangeable. Frantic’s **`:`** = **prefix union** and **`=`** = **exact** are **intentional** extensions for discovery plus an escape hatch; document deltas in `app/src/docs/reference/scryfall/differences.mdx` when implemented.
 
 ---
 
 ## Acceptance criteria
 
-1. **Format:** A prefix matching **multiple** format name keys ORs legality bits; **`unknown format`** when non-empty prefix matches **no** key.
-2. **Frame:** Same pattern over **`FRAME_NAMES`**; **`unknown frame`** when non-empty prefix matches **no** key.
-3. **`in:`** Prefix matches **all** games, sets, and rarities that share the prefix; **`OR`** printing results; **`!=`** consistent with positive union; **`in:ru`** still **`unsupported in value`**; non-matching non-language → **`unknown in value`**.
-4. **`cn:`** Prefix matches all printings whose **normalized** collector string starts with the normalized user prefix; non-empty non-match → **`unknown collector number`** (passthrough).
+1. **Format:** **`:`** — non-empty prefix matching **multiple** format name keys ORs legality bits; **`unknown format`** when no key matches the prefix. **`=`** — only keys with **normalized equality** contribute; **`unknown format`** when none match exactly.
+2. **Frame:** Same **`:`** / **`=`** split over **`FRAME_NAMES`**; **`unknown frame`** when no match under the active operator.
+3. **`in:`** **`:`** — union across all games, sets, and rarities whose normalized names/codes **start with** **`u`**; **`OR`** printing results; **`unknown in value`** when none match (and not unsupported language). **`=`** — **exact** match with **game → set → rarity** disambiguation; **`!=`** — **negation of that exact `=` mask** only. **`in:ru`** / **`in=ru`** still **`unsupported in value`** per Spec 072 language detection.
+4. **`cn:`** **`:`** — normalized **prefix** on per-printing collector strings; **`=`** — normalized **equality**; non-empty non-match → **`unknown collector number`** (passthrough).
 5. **Canonicalize** still uses **`resolveForField`** for unique-prefix collapse where vocabulary is available.
 6. **Normalization** matches **Spec 103** rules for cross-field consistency.
 7. **Spec 103** and **Spec 072** are updated (when implementation lands) to reference this spec and to avoid contradicting eval vs canonicalize split.
+8. Negating a **prefix-union** **`:`** term uses **`-` / `NOT`** only; **`!=`** is **not** specified for format / frame / **`cn`** in this spec.
 
 ## Implementation Notes
 
