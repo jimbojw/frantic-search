@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix evaluation exception — Spec 032 § Value resolution), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 058 (View Mode Query Term), Spec 072 (in: Query Qualifier), Spec 104 (Bonus Rarity Tier), Spec 174 (`otag` / `atag` prefix evaluation exception), Spec 176 (`kw` / `keyword` prefix evaluation exception), Spec 179 (`set_type:`), Spec 182 (`frame:` operator split)
+**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix evaluation exception — Spec 032 § Value resolution), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 058 (View Mode Query Term), Spec 072 (in: Query Qualifier), Spec 104 (Bonus Rarity Tier), Spec 174 (`otag` / `atag` prefix evaluation exception), Spec 176 (`kw` / `keyword` prefix evaluation exception), Spec 179 (`set_type:`), Spec 182 (`frame:` operator split), ADR-022 (Categorical field operators — eval vs canonicalize split)
 
 **GitHub Issue:** [#111](https://github.com/jimbojw/frantic-search/issues/111)
 

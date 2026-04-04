@@ -2,7 +2,7 @@
 
 **Status:** Draft
 
-**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix union precedent), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`)
+**Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix union precedent), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`), ADR-022 (Categorical field operators — normative field slice for this pattern)
 
 **References:** [GitHub #247](https://github.com/jimbojw/frantic-search/issues/247)
 

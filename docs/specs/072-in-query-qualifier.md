@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), Spec 068 (game:), ADR-017 (Dual-Domain Query Evaluation)
+**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), Spec 068 (game:), ADR-017 (Dual-Domain Query Evaluation), ADR-022 (Categorical field operators)
 
 **GitHub Issue:** [#69](https://github.com/jimbojw/frantic-search/issues/69)
 

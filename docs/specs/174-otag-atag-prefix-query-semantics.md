@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields, `set:` prefix precedent), Spec 093 (Evaluator Tag Query Support), Spec 103 (Categorical Field Value Auto-Resolution), Spec 159 (otag/atag bare-term prefix suggestions)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields, `set:` prefix precedent), Spec 093 (Evaluator Tag Query Support), Spec 103 (Categorical Field Value Auto-Resolution), Spec 159 (otag/atag bare-term prefix suggestions), ADR-022 (Categorical field operators — **documented exception**: silent zero-hit for unknown non-empty prefix until amended)
 
 ## Goal
 

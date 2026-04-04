@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 021 (Inline Query Breakdown)
+**Depends on:** Spec 002 (Query Engine), Spec 021 (Inline Query Breakdown), ADR-022 (Categorical field operators — passthrough pairs with operator policy in field specs)
 
 ## Goal
 

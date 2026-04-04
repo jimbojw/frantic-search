@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search — empty-value parity), Spec 176 (`kw:` / `keyword:` query semantics — related evaluation model; **`is:`** still uses equivalent **`:`** / **`=`**), Spec 178 (Default inclusion / widen flags)
+**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search — empty-value parity), Spec 176 (`kw:` / `keyword:` query semantics — related evaluation model; **`is:`** still uses equivalent **`:`** / **`=`**), Spec 178 (Default inclusion / widen flags), ADR-022 (Categorical field operators — **`is:`** / **`not:`** pending `:` / `=` split per spec)
 
 ## Goal
 

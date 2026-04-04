@@ -55,6 +55,7 @@ These are the most important ADRs. Read them in full before making changes in th
 
 - **ADR-007** — Bit-packed data representation. Colors, types, legalities are bitmasks, not strings.
 - **ADR-009** — Bitmask-per-node AST query engine. The parser, evaluator, and query debugger UX all operate on a single AST where each node owns a `Uint8Array`.
+- **ADR-022** — Categorical field operators: `:` (prefix union) vs `=` (exact), empty-value forgiveness while typing, and `!=` as negation of exact `=` where supported. Field specs document per-field behavior and exceptions.
 - **ADR-003** — Client-side architecture. Search runs in a WebWorker, not the main thread.
 - **ADR-005** — Data transfer format. JSON (gzip-compressed by the host), not CBOR.
 

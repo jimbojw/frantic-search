@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields, `set:` prefix precedent), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search), Spec 174 (`otag` / `atag` prefix query semantics), Spec 182 (prefix vs exact operator split and precomputed normalization — **aligned** with this spec for `kw` / `keyword`)
+**Depends on:** Spec 002 (Query Engine), Spec 047 (Printing Query Fields, `set:` prefix precedent), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search), Spec 174 (`otag` / `atag` prefix query semantics), Spec 182 (prefix vs exact operator split and precomputed normalization — **aligned** with this spec for `kw` / `keyword`), ADR-022 (Categorical field operators)
 
 ## Goal
 

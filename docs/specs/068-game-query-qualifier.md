@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 047 (Printing Query Fields), ADR-007 (Bit-packed data), ADR-017 (Dual-domain query evaluation)
+**Depends on:** Spec 047 (Printing Query Fields), ADR-007 (Bit-packed data), ADR-017 (Dual-domain query evaluation), ADR-022 (Categorical field operators — small-vocabulary exception per Spec 182)
 
 **GitHub Issue:** [#68](https://github.com/jimbojw/frantic-search/issues/68)
 

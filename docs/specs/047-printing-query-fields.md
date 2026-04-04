@@ -2,7 +2,7 @@
 
 **Status:** Implemented 
 
-**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation), Spec 039 (passthrough errors), Spec 103 (normalization / canonicalize resolution), Spec 182 (`frame:` / `set:` operator split and performance)
+**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), ADR-017 (Dual-Domain Query Evaluation), Spec 039 (passthrough errors), Spec 103 (normalization / canonicalize resolution), Spec 182 (`frame:` / `set:` operator split and performance), ADR-022 (Categorical field operators)
 
 ## Goal
 

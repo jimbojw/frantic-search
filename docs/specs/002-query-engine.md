@@ -2,6 +2,8 @@
 
 **Status:** Implemented
 
+**References:** ADR-009 (Bitmask-per-node AST), ADR-017 (Dual-domain evaluation), ADR-022 (Categorical field operators: `:` / `=` / empty / `!=`)
+
 ## Goal
 
 Implement the lexer, parser, and evaluator described in ADR-009 inside the `shared` workspace, with comprehensive tests, so that both the frontend WebWorker and a future CLI can parse and execute Scryfall-style queries against the columnar card dataset.

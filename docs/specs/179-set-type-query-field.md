@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 047 (Printing Query Fields), Spec 046 (Printing Data Model), Spec 103 (categorical resolution / `normalizeForResolution`)
+**Depends on:** Spec 047 (Printing Query Fields), Spec 046 (Printing Data Model), Spec 103 (categorical resolution / `normalizeForResolution`), ADR-022 (Categorical field operators)
 
 ## Goal
 

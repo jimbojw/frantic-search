@@ -4,7 +4,7 @@
 
 **GitHub Issue:** [#114](https://github.com/jimbojw/frantic-search/issues/114)
 
-**Depends on:** Spec 002 (Query Engine), Spec 003 (ETL Process), Spec 092 (Tag Data Model — inverted index pattern), Spec 098 (Syntax Help Content), Spec 103 (Categorical Field Value Auto-Resolution), Spec 176 (`kw` / `keyword` prefix query semantics), ADR-009 (Bitmask-per-Node AST)
+**Depends on:** Spec 002 (Query Engine), Spec 003 (ETL Process), Spec 092 (Tag Data Model — inverted index pattern), Spec 098 (Syntax Help Content), Spec 103 (Categorical Field Value Auto-Resolution), Spec 176 (`kw` / `keyword` prefix query semantics), ADR-009 (Bitmask-per-Node AST), ADR-022 (Categorical field operators)
 
 ## Goal
 

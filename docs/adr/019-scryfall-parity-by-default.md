@@ -50,6 +50,7 @@ Parity is verified through:
 
 ## Consequences
 
+- **Related:** Operator semantics for **categorical-style** fields (`:` prefix union vs `=` exact, empty-value forgiveness, and Frantic’s `!=` rule) are recorded in [ADR-022](022-categorical-field-operators.md). ADR-019 remains about **result** parity; ADR-022 governs **how** those fields behave during live typing unless a spec documents an exception.
 - **Positive:** Clear standard for correctness. When results differ from Scryfall, the default assumption is "our bug" rather than "known divergence."
 - **Positive:** The compliance suite and diff tool make parity measurable and regressions detectable.
 - **Positive:** Principled divergences are documented and discoverable, not scattered across commit history.
