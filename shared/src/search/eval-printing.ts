@@ -114,21 +114,26 @@ export function evalPrintingField(
       if (op !== ":" && op !== "=") {
         return `set: does not support operator "${op}"`;
       }
-      // Spec 047 / issue #234: prefix on normalized set code; no resolveForField (Spec 103 split).
+      // Spec 047: `:` prefix union, `=` exact; precomputed row norms (Spec 182).
       const trimmed = val.trim();
       if (trimmed === "") {
-        for (let i = 0; i < n; i++) {
-          const codeNorm = normalizeForResolution(pIdx.setCodesLower[i]);
-          if (codeNorm.length > 0) buf[i] = 1;
+        if (op === "=") {
+          for (let i = 0; i < n; i++) buf[i] = 1;
+        } else {
+          for (let i = 0; i < n; i++) {
+            if (pIdx.setCodesNormResolved[i]!.length > 0) buf[i] = 1;
+          }
         }
       } else {
-        const prefix = normalizeForResolution(trimmed);
+        const u = normalizeForResolution(trimmed);
+        const prefixOp = op === ":";
         let matchedAny = false;
         for (let i = 0; i < n; i++) {
-          if (normalizeForResolution(pIdx.setCodesLower[i]).startsWith(prefix)) {
-            buf[i] = 1;
-            matchedAny = true;
-          }
+          const row = pIdx.setCodesNormResolved[i]!;
+          const ok = prefixOp ? row.startsWith(u) : row === u;
+          if (!ok) continue;
+          matchedAny = true;
+          buf[i] = 1;
         }
         if (!matchedAny) return `unknown set "${trimmed}"`;
       }
@@ -140,18 +145,23 @@ export function evalPrintingField(
       }
       const trimmedSt = val.trim();
       if (trimmedSt === "") {
-        for (let i = 0; i < n; i++) {
-          const typeNorm = normalizeForResolution(pIdx.setTypesLower[i]);
-          if (typeNorm.length > 0) buf[i] = 1;
+        if (op === "=") {
+          for (let i = 0; i < n; i++) buf[i] = 1;
+        } else {
+          for (let i = 0; i < n; i++) {
+            if (pIdx.setTypesNormResolved[i]!.length > 0) buf[i] = 1;
+          }
         }
       } else {
-        const prefixSt = normalizeForResolution(trimmedSt);
+        const u = normalizeForResolution(trimmedSt);
+        const prefixOpSt = op === ":";
         let matchedAnySt = false;
         for (let i = 0; i < n; i++) {
-          if (normalizeForResolution(pIdx.setTypesLower[i]).startsWith(prefixSt)) {
-            buf[i] = 1;
-            matchedAnySt = true;
-          }
+          const row = pIdx.setTypesNormResolved[i]!;
+          const ok = prefixOpSt ? row.startsWith(u) : row === u;
+          if (!ok) continue;
+          matchedAnySt = true;
+          buf[i] = 1;
         }
         if (!matchedAnySt) return `unknown set_type "${trimmedSt}"`;
       }

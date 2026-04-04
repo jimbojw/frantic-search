@@ -14,8 +14,8 @@ Scryfall **set type** for the printing’s set. Common values include `expansion
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Prefix match on normalized set type | `q=set_type:expansion`, `q=st:mem` |
-| `=` | Same as `:` (prefix) | `q=set_type=commander` |
+| `:` | Prefix match on normalized set type (discovery) | `q=set_type:expansion`, `q=st:mem` |
+| `=` | Exact match on normalized set type | `q=set_type=masters` |
 
 Comparison operators (`>`, `<`, `!=`, …) are not supported on `set_type:`.
 
@@ -23,15 +23,16 @@ Comparison operators (`>`, `<`, `!=`, …) are not supported on `set_type:`.
 
 Values use the same normalization as other categorical fields (lowercase, alphanumeric only): underscores and punctuation are stripped for comparison, so tokens align with how types appear in Scryfall bulk data.
 
-- **Prefix:** Each printing matches if its set’s type string **starts with** the normalized query (e.g. `st:m` matches `masters` and `memorabilia`).
-- **Empty value:** `set_type:` or `set_type=` with nothing after the operator matches every printing whose normalized set type is **non-empty** (printings whose set has a recorded type in data).
-- **No match:** If no type has that prefix, the leaf returns **`unknown set_type "…"`** (trimmed value).
+- **Prefix (`:`):** Each printing matches if its set’s normalized type **starts with** the normalized query (e.g. `st:m` matches `masters` and `memorabilia`).
+- **Exact (`=`):** Matches only when the normalized type **equals** the query (e.g. `set_type=m` does not match `masters`).
+- **Empty value:** `set_type:` with nothing after the operator matches every printing whose normalized set type is **non-empty**. **`set_type=`** empty is **neutral** (does not narrow results).
+- **No match:** If no printing matches under **`:`** or **`=`**, the leaf returns **`unknown set_type "…"`** (trimmed value).
 
-This **prefix discovery** behavior matches Frantic’s [`set:`](?doc=reference/fields/printing/set) field and differs from Scryfall’s documented `set_type:` filter, which targets an **exact** type token. See [Scryfall differences](?doc=reference/scryfall/differences).
+**`:`** is for **discovery**; **`=`** is exact on the normalized type (same operator split as [`set:`](?doc=reference/fields/printing/set)). See [Scryfall differences](?doc=reference/scryfall/differences).
 
 ## Notes
 
-- Under the default result filter, a **positive** `set_type:` / `st:` term **widens** the same printing-level omissions as a positive `set:` (e.g. `st:m` toward `memorabilia` widens memorabilia printings while you type).
+- Under the default result filter, a **positive** `set_type:` / `st:` **prefix** term or **`set_type=`** / **`st=`** **exact** term **widens** the same printing-level omissions as a positive `set:` / `set=` (e.g. `st:m` toward `memorabilia` widens while you type; `set_type=masters` widens masters printings).
 - Set types follow Scryfall’s set taxonomy (see their API docs for `set_type` on [set objects](https://scryfall.com/docs/api/sets)).
 - Combine with other printing or face filters as usual, e.g. `q=t:creature set_type:expansion`.
 - Canonical Scryfall links may still resolve a uniquely short `set_type` value where Spec 103 applies; in-app search uses prefix matching on printings.

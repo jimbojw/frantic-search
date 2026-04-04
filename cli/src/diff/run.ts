@@ -7,7 +7,8 @@ import {
   EXTRAS_LAYOUT_SET,
   CardFlag,
   printingPassesDefaultInclusionFilter,
-  isSetTypeWidenedByPrefixes,
+  isSetCodeWidenedByQuery,
+  isSetTypeWidenedByQuery,
 } from "@frantic-search/shared";
 import type { UniqueMode } from "@frantic-search/shared";
 import { NodeCache } from "@frantic-search/shared/src/search/evaluator";
@@ -248,7 +249,9 @@ export function normalizeLocalParity(
     widenPlaytest: boolean;
     widenOversized: boolean;
     positiveSetPrefixes: string[];
+    positiveSetExact: string[];
     positiveSetTypePrefixes: string[];
+    positiveSetTypeExact: string[];
   },
 ): NormalizedLocalResult {
   let deduped = Array.from(evalOut.indices);
@@ -263,13 +266,13 @@ export function normalizeLocalParity(
       widenPlaytest,
       widenOversized,
       positiveSetPrefixes,
+      positiveSetExact,
       positiveSetTypePrefixes,
+      positiveSetTypeExact,
     } = evalOut;
-    const isPrintingWide = (setCode: string, setType: string): boolean => {
-      for (let i = 0; i < positiveSetPrefixes.length; i++) {
-        if (setCode.startsWith(positiveSetPrefixes[i])) return true;
-      }
-      return isSetTypeWidenedByPrefixes(setType, positiveSetTypePrefixes);
+    const isPrintingWide = (normSetCode: string, normSetType: string): boolean => {
+      if (isSetCodeWidenedByQuery(normSetCode, positiveSetPrefixes, positiveSetExact)) return true;
+      return isSetTypeWidenedByQuery(normSetType, positiveSetTypePrefixes, positiveSetTypeExact);
     };
 
     if (evalOut.hasPrintingConditions && rawPrintingIndices && printingIndex && printingData) {
@@ -278,7 +281,10 @@ export function normalizeLocalParity(
         const cf = printingIndex.canonicalFaceRef[p];
         const setCode = printingIndex.setCodesLower[p];
         const setType = printingIndex.setTypesLower[p];
-        const wide = isPrintingWide(setCode, setType);
+        const wide = isPrintingWide(
+          printingIndex.setCodesNormResolved[p],
+          printingIndex.setTypesNormResolved[p],
+        );
         if (
           !printingPassesDefaultInclusionFilter({
             wide,
@@ -321,7 +327,10 @@ export function normalizeLocalParity(
         for (const p of printings) {
           const setCode = printingIndex.setCodesLower[p];
           const setType = printingIndex.setTypesLower[p];
-          const wide = isPrintingWide(setCode, setType);
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          );
           if (
             printingPassesDefaultInclusionFilter({
               wide,
@@ -351,7 +360,10 @@ export function normalizeLocalParity(
           const cf = printingIndex.canonicalFaceRef[p];
           const setCode = printingIndex.setCodesLower[p];
           const setType = printingIndex.setTypesLower[p];
-          const wide = isPrintingWide(setCode, setType);
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          );
           if (
             !printingPassesDefaultInclusionFilter({
               wide,
@@ -566,7 +578,9 @@ export async function runDiff(
     widenPlaytest: evalOut.widenPlaytest,
     widenOversized: evalOut.widenOversized,
     positiveSetPrefixes: evalOut.positiveSetPrefixes,
+    positiveSetExact: evalOut.positiveSetExact,
     positiveSetTypePrefixes: evalOut.positiveSetTypePrefixes,
+    positiveSetTypeExact: evalOut.positiveSetTypeExact,
   });
 
   const localCards = collectLocalCards(

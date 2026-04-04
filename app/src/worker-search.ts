@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
-import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax, printingPassesDefaultInclusionFilter, isSetTypeWidenedByPrefixes } from '@frantic-search/shared'
+import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax, printingPassesDefaultInclusionFilter, isSetCodeWidenedByQuery, isSetTypeWidenedByQuery } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
 import { buildEmptyUrlLiveQuerySuggestions } from './worker-empty-url-suggestions'
@@ -107,7 +107,9 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let widenPlaytest = liveEval.widenPlaytest
   let widenOversized = liveEval.widenOversized
   let positiveSetPrefixes = liveEval.positiveSetPrefixes
+  let positiveSetExact = liveEval.positiveSetExact
   let positiveSetTypePrefixes = liveEval.positiveSetTypePrefixes
+  let positiveSetTypeExact = liveEval.positiveSetTypeExact
   let flavorUnavailable = liveEval.flavorUnavailable
   let artistUnavailable = liveEval.artistUnavailable
   let liveSortBy = liveEval.sortBy
@@ -153,11 +155,21 @@ export function runSearch(params: RunSearchParams): SearchResult {
         ? [...positiveSetPrefixes, ...pinnedEval.positiveSetPrefixes]
         : positiveSetPrefixes)
       : pinnedEval.positiveSetPrefixes
+    positiveSetExact = positiveSetExact.length > 0
+      ? (pinnedEval.positiveSetExact.length > 0
+        ? [...positiveSetExact, ...pinnedEval.positiveSetExact]
+        : positiveSetExact)
+      : pinnedEval.positiveSetExact
     positiveSetTypePrefixes = positiveSetTypePrefixes.length > 0
       ? (pinnedEval.positiveSetTypePrefixes.length > 0
         ? [...positiveSetTypePrefixes, ...pinnedEval.positiveSetTypePrefixes]
         : positiveSetTypePrefixes)
       : pinnedEval.positiveSetTypePrefixes
+    positiveSetTypeExact = positiveSetTypeExact.length > 0
+      ? (pinnedEval.positiveSetTypeExact.length > 0
+        ? [...positiveSetTypeExact, ...pinnedEval.positiveSetTypeExact]
+        : positiveSetTypeExact)
+      : pinnedEval.positiveSetTypeExact
     flavorUnavailable = flavorUnavailable || pinnedEval.flavorUnavailable || false
     artistUnavailable = artistUnavailable || pinnedEval.artistUnavailable || false
     if (!liveSortBy) liveSortBy = pinnedEval.sortBy
@@ -170,11 +182,9 @@ export function runSearch(params: RunSearchParams): SearchResult {
   let printingIndicesBeforeDefaultFilter: number | undefined
 
   if (!includeExtras) {
-    const isPrintingWide = (setCode: string, setType: string): boolean => {
-      for (let i = 0; i < positiveSetPrefixes.length; i++) {
-        if (setCode.startsWith(positiveSetPrefixes[i])) return true
-      }
-      return isSetTypeWidenedByPrefixes(setType, positiveSetTypePrefixes)
+    const isPrintingWide = (normSetCode: string, normSetType: string): boolean => {
+      if (isSetCodeWidenedByQuery(normSetCode, positiveSetPrefixes, positiveSetExact)) return true
+      return isSetTypeWidenedByQuery(normSetType, positiveSetTypePrefixes, positiveSetTypeExact)
     }
 
     if (hasPrintingConditions && rawPrintingIndices && printingIndex) {
@@ -187,7 +197,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
         const cf = printingIndex.canonicalFaceRef[p]
         const setCode = printingIndex.setCodesLower[p]
         const setType = printingIndex.setTypesLower[p]
-        const wide = isPrintingWide(setCode, setType)
+        const wide = isPrintingWide(
+          printingIndex.setCodesNormResolved[p],
+          printingIndex.setTypesNormResolved[p],
+        )
         if (!printingPassesDefaultInclusionFilter({
           wide,
           widenExtrasLayout,
@@ -240,7 +253,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
         for (const p of printings) {
           const setCode = printingIndex.setCodesLower[p]
           const setType = printingIndex.setTypesLower[p]
-          const wide = isPrintingWide(setCode, setType)
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          )
           if (printingPassesDefaultInclusionFilter({
             wide,
             widenExtrasLayout,
@@ -273,7 +289,10 @@ export function runSearch(params: RunSearchParams): SearchResult {
           const cf = printingIndex.canonicalFaceRef[p]
           const setCode = printingIndex.setCodesLower[p]
           const setType = printingIndex.setTypesLower[p]
-          const wide = isPrintingWide(setCode, setType)
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          )
           if (!printingPassesDefaultInclusionFilter({
             wide,
             widenExtrasLayout,

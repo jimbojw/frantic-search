@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PrintingColumnarData } from "../data";
 import { COLLECTOR_KEY_STRIDE, encodeCollectorSortKeyInto } from "./collector-sort-key";
+import { normalizeForResolution } from "./categorical-resolve";
 
 function buildPercentileArrays(
   priceUsd: number[],
@@ -49,8 +50,12 @@ export class PrintingIndex {
   readonly collectorSortKeys: Uint32Array;
   readonly setIndices: number[];
   readonly setCodesLower: string[];
+  /** Spec 047 / 182: `normalizeForResolution` of each row's set code (hot path avoids per-eval normalize). */
+  readonly setCodesNormResolved: string[];
   /** Lowercase set type per printing row via `set_lookup[set_indices[i]].set_type` (Spec 179). */
   readonly setTypesLower: string[];
+  /** Spec 179 / 182: `normalizeForResolution` of each row's set type string. */
+  readonly setTypesNormResolved: string[];
   readonly rarity: number[];
   readonly printingFlags: number[];
   readonly finish: number[];
@@ -90,6 +95,8 @@ export class PrintingIndex {
     this.setTypesLower = data.set_indices.map(
       idx => data.set_lookup[idx]?.set_type?.toLowerCase() ?? "",
     );
+    this.setCodesNormResolved = this.setCodesLower.map(c => normalizeForResolution(c));
+    this.setTypesNormResolved = this.setTypesLower.map(t => normalizeForResolution(t));
     this.rarity = data.rarity;
     this.printingFlags = data.printing_flags;
     this.finish = data.finish;

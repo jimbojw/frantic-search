@@ -121,6 +121,16 @@ describe("set field", () => {
     expect(marked(evalField("set", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
+  test("empty set= is neutral (all printings)", () => {
+    expect(marked(evalField("set", "=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("set= exact match (not prefix)", () => {
+    expect(marked(evalField("set", "=", "mh2").buf)).toEqual([0, 1]);
+    const { error } = evalField("set", "=", "sl");
+    expect(error).toBe('unknown set "sl"');
+  });
+
   test("empty set value skips rows whose set code normalizes to empty", () => {
     const dataWithHole: PrintingColumnarData = {
       ...PRINTING_DATA,
@@ -176,6 +186,16 @@ describe("set_type field", () => {
 
   test("empty value matches rows with non-empty normalized set type", () => {
     expect(marked(evalField("set_type", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("empty set_type= is neutral (all printings)", () => {
+    expect(marked(evalField("set_type", "=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("set_type= exact match (not prefix)", () => {
+    expect(marked(evalField("set_type", "=", "masters").buf)).toEqual([2]);
+    const { error } = evalField("set_type", "=", "m");
+    expect(error).toBe('unknown set_type "m"');
   });
 
   test("unsupported operator returns error", () => {

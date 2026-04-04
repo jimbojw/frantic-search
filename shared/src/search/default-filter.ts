@@ -47,18 +47,47 @@ export function isMemorabiliaDefaultOmit(setType: string): boolean {
 }
 
 /**
- * Spec 178: printing is set-type-widened when its normalized type starts with
- * any positive `st:` / `set_type:` prefix (same rule as `evalPrintingField` set_type).
+ * Spec 178: per-printing set-code widening vs positive `set:` prefixes and `set=` exacts.
+ * `normalizedCode` must be `PrintingIndex.setCodesNormResolved[p]`.
  */
+export function isSetCodeWidenedByQuery(
+  normalizedCode: string,
+  prefixes: readonly string[],
+  exacts: readonly string[],
+): boolean {
+  if (normalizedCode.length === 0) return false;
+  for (let i = 0; i < prefixes.length; i++) {
+    if (normalizedCode.startsWith(prefixes[i])) return true;
+  }
+  for (let i = 0; i < exacts.length; i++) {
+    if (normalizedCode === exacts[i]) return true;
+  }
+  return false;
+}
+
+/**
+ * Spec 178: per-printing set-type widening (prefix + exact lists from AST collectors).
+ * `normalizedType` must be `PrintingIndex.setTypesNormResolved[p]`.
+ */
+export function isSetTypeWidenedByQuery(
+  normalizedType: string,
+  prefixes: readonly string[],
+  exacts: readonly string[],
+): boolean {
+  if (normalizedType.length === 0) return false;
+  for (let i = 0; i < prefixes.length; i++) {
+    if (normalizedType.startsWith(prefixes[i])) return true;
+  }
+  for (let i = 0; i < exacts.length; i++) {
+    if (normalizedType === exacts[i]) return true;
+  }
+  return false;
+}
+
+/** Spec 178: normalize `setType` then test prefix list (tests / legacy callers). */
 export function isSetTypeWidenedByPrefixes(
   setType: string,
   prefixes: readonly string[],
 ): boolean {
-  if (prefixes.length === 0) return false;
-  const t = normalizeForResolution(setType);
-  if (t.length === 0) return false;
-  for (let i = 0; i < prefixes.length; i++) {
-    if (t.startsWith(prefixes[i])) return true;
-  }
-  return false;
+  return isSetTypeWidenedByQuery(normalizeForResolution(setType), prefixes, []);
 }

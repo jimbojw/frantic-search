@@ -75,6 +75,8 @@ export {
   DEFAULT_OMIT_SET_CODES,
   DEFAULT_OMIT_SET_TYPE_MEMORABILIA,
   isMemorabiliaDefaultOmit,
+  isSetCodeWidenedByQuery,
+  isSetTypeWidenedByQuery,
   isSetTypeWidenedByPrefixes,
 } from "./search/default-filter";
 export {

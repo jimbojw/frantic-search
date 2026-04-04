@@ -14,8 +14,8 @@ Set code (e.g. mh2, dmu).
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Prefix match on normalized set code | `q=set:mh2`, `q=set:u` |
-| `=` | Same as `:` (prefix) | `q=set=mh2` |
+| `:` | Prefix match on normalized set code (discovery) | `q=set:mh2`, `q=set:u` |
+| `=` | Exact match on normalized set code | `q=set=mh2` |
 
 Comparison operators (`>`, `<`, `!=`, …) are not supported on `set:`.
 
@@ -23,11 +23,12 @@ Comparison operators (`>`, `<`, `!=`, …) are not supported on `set:`.
 
 Values are normalized the same way as other categorical fields (lowercase, alphanumeric only): `set:9ed` and set codes that normalize the same way prefix-match together.
 
-- **Prefix:** Each printing matches if its set code **starts with** the normalized query (e.g. `set:u` matches printings in `ugin`, `usd`, `usg`, …).
-- **Empty value:** `set:` or `set=` with nothing after the operator matches every printing whose set code is **non-empty** after normalization (in practice, essentially all printings).
-- **No match:** If no set code has that prefix, the leaf returns **`unknown set "…"`** (trimmed value). Scryfall may show 0 cards for an impossible set token instead of a named error.
+- **Prefix (`:`):** Each printing matches if its normalized set code **starts with** the normalized query (e.g. `set:u` matches `ugin`, `usd`, …).
+- **Exact (`=`):** Each printing matches only if its normalized set code **equals** the normalized query (e.g. `set=sl` does **not** match `sld` / `slb`).
+- **Empty value:** `set:` with nothing after the operator matches every printing whose normalized set code is **non-empty**. **`set=`** with an empty value is **neutral** (does not narrow results).
+- **No match:** If no printing matches under **`:`** (prefix) or **`=`** (exact), the leaf returns **`unknown set "…"`** (trimmed value). Scryfall may show 0 cards for an impossible token instead of a named error.
 
-This is a **discovery** affordance and differs from Scryfall’s set filter, which targets an exact set code. See [Scryfall differences](?doc=reference/scryfall/differences).
+**`:`** is tuned for **discovery**; **`=`** matches Scryfall-style exact codes on the normalized form. See [Scryfall differences](?doc=reference/scryfall/differences).
 
 ## Notes
 

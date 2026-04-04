@@ -272,7 +272,9 @@ export class NodeCache {
       return this._expandedIsKeywordsMatch(n.value, (kw) => kw === "oversized");
     });
     const positiveSetPrefixes = this._collectPositiveSetPrefixes(ast);
+    const positiveSetExact = this._collectPositiveSetExact(ast);
     const positiveSetTypePrefixes = this._collectPositiveSetTypePrefixes(ast);
+    const positiveSetTypeExact = this._collectPositiveSetTypeExact(ast);
     const sortBy = this._findSortDirective(ast);
     const hasPrintingConditions = this._hasPrintingLeaves(ast);
     const printingsUnavailable = hasPrintingConditions && !this._printingIndex;
@@ -282,7 +284,7 @@ export class NodeCache {
     const artistUnavailable = hasArtistLeaves && this._printingIndex != null && !this._tagDataRef?.artist;
 
     if (ast.type === "NOP" || root.computed!.matchCount === -1) {
-      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetTypePrefixes, sortBy };
+      return { result, indices: new Uint32Array(0), hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetExact, positiveSetTypePrefixes, positiveSetTypeExact, sortBy };
     }
 
     // Root buffer may be printing-domain if all conditions are printing-level.
@@ -344,7 +346,7 @@ export class NodeCache {
       }
     }
 
-    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetTypePrefixes, sortBy };
+    return { result, indices, printingIndices, hasPrintingConditions, printingsUnavailable, flavorUnavailable, artistUnavailable, uniqueMode, includeExtras, widenExtrasLayout, widenContentWarning, widenPlaytest, widenOversized, positiveSetPrefixes, positiveSetExact, positiveSetTypePrefixes, positiveSetTypeExact, sortBy };
   }
 
   private _hasArtistLeaves(ast: ASTNode): boolean {
@@ -442,7 +444,7 @@ export class NodeCache {
     }
   }
 
-  /** Spec 178: collect normalized prefix values from positive set:/s:/e: FIELD nodes. */
+  /** Spec 178: collect normalized prefix values from positive set:/s:/e:/edition: (`:` only). */
   private _collectPositiveSetPrefixes(ast: ASTNode, notDepth = 0): string[] {
     switch (ast.type) {
       case "FIELD": {
@@ -473,14 +475,45 @@ export class NodeCache {
     }
   }
 
-  /** Spec 178: collect normalized prefix values from positive set_type:/st: FIELD nodes. */
+  /** Spec 178: normalized exact values from positive set=/s=/e=/edition=. */
+  private _collectPositiveSetExact(ast: ASTNode, notDepth = 0): string[] {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (
+          canonical === "set" &&
+          ast.operator === "=" &&
+          notDepth % 2 === 0
+        ) {
+          const u = normalizeForResolution(ast.value);
+          return u.length > 0 ? [u] : [];
+        }
+        return [];
+      }
+      case "NOT":
+        return this._collectPositiveSetExact(ast.child, notDepth + 1);
+      case "AND":
+      case "OR": {
+        const result: string[] = [];
+        for (const c of ast.children) {
+          const sub = this._collectPositiveSetExact(c, notDepth);
+          for (const s of sub) result.push(s);
+        }
+        return result;
+      }
+      default:
+        return [];
+    }
+  }
+
+  /** Spec 178: collect normalized prefix values from positive set_type:/st: (`:` only). */
   private _collectPositiveSetTypePrefixes(ast: ASTNode, notDepth = 0): string[] {
     switch (ast.type) {
       case "FIELD": {
         const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
         if (
           canonical === "set_type" &&
-          (ast.operator === ":" || ast.operator === "=") &&
+          ast.operator === ":" &&
           notDepth % 2 === 0
         ) {
           const prefix = normalizeForResolution(ast.value);
@@ -495,6 +528,37 @@ export class NodeCache {
         const result: string[] = [];
         for (const c of ast.children) {
           const sub = this._collectPositiveSetTypePrefixes(c, notDepth);
+          for (const s of sub) result.push(s);
+        }
+        return result;
+      }
+      default:
+        return [];
+    }
+  }
+
+  /** Spec 178: normalized exact values from positive set_type=/st=. */
+  private _collectPositiveSetTypeExact(ast: ASTNode, notDepth = 0): string[] {
+    switch (ast.type) {
+      case "FIELD": {
+        const canonical = FIELD_ALIASES[ast.field.toLowerCase()];
+        if (
+          canonical === "set_type" &&
+          ast.operator === "=" &&
+          notDepth % 2 === 0
+        ) {
+          const u = normalizeForResolution(ast.value);
+          return u.length > 0 ? [u] : [];
+        }
+        return [];
+      }
+      case "NOT":
+        return this._collectPositiveSetTypeExact(ast.child, notDepth + 1);
+      case "AND":
+      case "OR": {
+        const result: string[] = [];
+        for (const c of ast.children) {
+          const sub = this._collectPositiveSetTypeExact(c, notDepth);
           for (const s of sub) result.push(s);
         }
         return result;

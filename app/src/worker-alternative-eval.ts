@@ -5,7 +5,8 @@ import {
   CardFlag,
   parse,
   printingPassesDefaultInclusionFilter,
-  isSetTypeWidenedByPrefixes,
+  isSetCodeWidenedByQuery,
+  isSetTypeWidenedByQuery,
 } from '@frantic-search/shared'
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
@@ -42,14 +43,14 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
       widenPlaytest,
       widenOversized,
       positiveSetPrefixes,
+      positiveSetExact,
       positiveSetTypePrefixes,
+      positiveSetTypeExact,
     } = altEval
 
-    const isPrintingWide = (setCode: string, setType: string): boolean => {
-      for (let i = 0; i < positiveSetPrefixes.length; i++) {
-        if (setCode.startsWith(positiveSetPrefixes[i])) return true
-      }
-      return isSetTypeWidenedByPrefixes(setType, positiveSetTypePrefixes)
+    const isPrintingWide = (normSetCode: string, normSetType: string): boolean => {
+      if (isSetCodeWidenedByQuery(normSetCode, positiveSetPrefixes, positiveSetExact)) return true
+      return isSetTypeWidenedByQuery(normSetType, positiveSetTypePrefixes, positiveSetTypeExact)
     }
 
     if (altEval.hasPrintingConditions && altPrintingIndices && printingIndex) {
@@ -59,7 +60,10 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
         const cf = printingIndex.canonicalFaceRef[p]
         const setCode = printingIndex.setCodesLower[p]
         const setType = printingIndex.setTypesLower[p]
-        const wide = isPrintingWide(setCode, setType)
+        const wide = isPrintingWide(
+          printingIndex.setCodesNormResolved[p],
+          printingIndex.setTypesNormResolved[p],
+        )
         if (!printingPassesDefaultInclusionFilter({
           wide,
           widenExtrasLayout,
@@ -99,7 +103,10 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
         for (const p of printings) {
           const setCode = printingIndex.setCodesLower[p]
           const setType = printingIndex.setTypesLower[p]
-          const wide = isPrintingWide(setCode, setType)
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          )
           if (printingPassesDefaultInclusionFilter({
             wide,
             widenExtrasLayout,
@@ -128,7 +135,10 @@ export function evaluateAlternative(params: AlternativeEvalParams): AlternativeE
           const cf = printingIndex.canonicalFaceRef[p]
           const setCode = printingIndex.setCodesLower[p]
           const setType = printingIndex.setTypesLower[p]
-          const wide = isPrintingWide(setCode, setType)
+          const wide = isPrintingWide(
+            printingIndex.setCodesNormResolved[p],
+            printingIndex.setTypesNormResolved[p],
+          )
           if (!printingPassesDefaultInclusionFilter({
             wide,
             widenExtrasLayout,

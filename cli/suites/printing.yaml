@@ -27,6 +27,18 @@
   assertions:
     count: 0
 
+- name: "set=mh2 exact operator matches MH2 slice (Spec 047 `:` vs `=`)"
+  query: "set=mh2"
+  assertions:
+    contains:
+      - "Ragavan, Nimble Pilferer"
+    count_min: 300
+
+- name: "set=nonexistentexactcode returns no cards (query error)"
+  query: "set=nonexistentexactcode"
+  assertions:
+    count: 0
+
 # ---------------------------------------------------------------------------
 # set_type: / st: (Spec 179)
 # ---------------------------------------------------------------------------
@@ -43,6 +55,16 @@
 
 - name: "set_type:nonexistentprefixxyz returns no cards (query error; count still zero)"
   query: "set_type:nonexistentprefixxyz"
+  assertions:
+    count: 0
+
+- name: "set_type=masters exact operator (Spec 179 `:` vs `=`)"
+  query: "set_type=masters"
+  assertions:
+    count_min: 50
+
+- name: "set_type=nonexistentexacttype returns no cards (query error)"
+  query: "set_type=nonexistentexacttype"
   assertions:
     count: 0
 

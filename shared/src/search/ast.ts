@@ -146,9 +146,13 @@ export interface EvalOutput {
   widenPlaytest: boolean;
   /** Spec 178: positive `is:oversized` disables oversized default omission. */
   widenOversized: boolean;
-  /** Spec 178: normalized prefixes from positive `set:`/`s:` FIELD nodes for per-printing set widening. */
+  /** Spec 178: normalized prefixes from positive `set:` / `s:` / `e:` / `edition:` with `:` only. */
   positiveSetPrefixes: string[];
-  /** Spec 178: normalized prefixes from positive `set_type:`/`st:` FIELD nodes (`:` or `=`). */
+  /** Spec 178: normalized exact values from positive `set=` / `s=` / `e=` / `edition=`. */
+  positiveSetExact: string[];
+  /** Spec 178: normalized prefixes from positive `set_type:` / `st:` with `:` only. */
   positiveSetTypePrefixes: string[];
+  /** Spec 178: normalized exact values from positive `set_type=` / `st=`. */
+  positiveSetTypeExact: string[];
   sortBy: SortDirective | null;
 }

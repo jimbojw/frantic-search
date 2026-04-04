@@ -1438,6 +1438,17 @@ describe("positiveSetPrefixes (Spec 178)", () => {
     const prefixes = evaluate("set:arn -set:lea").positiveSetPrefixes;
     expect(prefixes).toEqual(["arn"]);
   });
+
+  test("set= does not populate prefix list", () => {
+    const o = evaluate("set=mh2");
+    expect(o.positiveSetPrefixes).toEqual([]);
+    expect(o.positiveSetExact).toEqual(["mh2"]);
+  });
+
+  test("set: does not populate exact list", () => {
+    const o = evaluate("set:mh2");
+    expect(o.positiveSetExact).toEqual([]);
+  });
 });
 
 describe("positiveSetTypePrefixes (Spec 178 + 179)", () => {
@@ -1449,8 +1460,10 @@ describe("positiveSetTypePrefixes (Spec 178 + 179)", () => {
     expect(evaluate("st:m").positiveSetTypePrefixes).toEqual(["m"]);
   });
 
-  test("set_type=m extracts prefix (equals operator)", () => {
-    expect(evaluate("set_type=masters").positiveSetTypePrefixes).toEqual(["masters"]);
+  test("set_type=masters uses exact list not prefix list", () => {
+    const o = evaluate("set_type=masters");
+    expect(o.positiveSetTypePrefixes).toEqual([]);
+    expect(o.positiveSetTypeExact).toEqual(["masters"]);
   });
 
   test("-st:m extracts no prefix (odd NOT depth)", () => {

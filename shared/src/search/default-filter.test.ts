@@ -2,6 +2,8 @@
 import { describe, test, expect } from "vitest";
 import {
   isMemorabiliaDefaultOmit,
+  isSetCodeWidenedByQuery,
+  isSetTypeWidenedByQuery,
   isSetTypeWidenedByPrefixes,
 } from "./default-filter";
 
@@ -24,5 +26,18 @@ describe("default-filter helpers (Spec 178)", () => {
     expect(isSetTypeWidenedByPrefixes("memorabilia", ["exp"])).toBe(false);
     expect(isSetTypeWidenedByPrefixes("", ["m"])).toBe(false);
     expect(isSetTypeWidenedByPrefixes("memorabilia", [])).toBe(false);
+  });
+
+  test("isSetCodeWidenedByQuery prefix and exact", () => {
+    expect(isSetCodeWidenedByQuery("mh2", ["m"], [])).toBe(true);
+    expect(isSetCodeWidenedByQuery("mh2", [], ["mh2"])).toBe(true);
+    expect(isSetCodeWidenedByQuery("mh2", [], ["m"])).toBe(false);
+    expect(isSetCodeWidenedByQuery("", ["m"], [])).toBe(false);
+  });
+
+  test("isSetTypeWidenedByQuery prefix and exact", () => {
+    expect(isSetTypeWidenedByQuery("memorabilia", ["mem"], [])).toBe(true);
+    expect(isSetTypeWidenedByQuery("masters", [], ["masters"])).toBe(true);
+    expect(isSetTypeWidenedByQuery("masters", [], ["m"])).toBe(false);
   });
 });
