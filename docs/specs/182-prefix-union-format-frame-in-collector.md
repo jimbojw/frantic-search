@@ -34,7 +34,7 @@ Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several f
 
 [Spec 103](103-categorical-field-value-auto-resolution.md) applies **unique-prefix** resolution (`resolveForField` → `resolveCategoricalValue`) for many categoricals: **exactly one** normalized prefix match resolves; otherwise the typed value is passed through and lookup often fails with **`unknown format`**, **`unknown frame`**, or **`unknown in value`**.
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** ([Spec 047](047-printing-query-fields.md)) still uses **eval-time** normalized prefix matching and **union** for **`:`** and **`=`** with no distinction. This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`otag:`** / **`atag:`**, **`set:`**, **`set_type:`**, **`is:`** / **`not:`**, etc. is **out of scope** here but should follow the same convention when those specs are amended (see **Relation to other specs**).
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`otag:`** / **`atag:`**, **`is:`** / **`not:`**, etc. is **out of scope** here but should follow the same convention when those specs are amended (see **Relation to other specs**).
 
 ## Shared rules
 
@@ -60,7 +60,7 @@ The subsection below does **not** change these semantics. It requires **observat
 
 **Observational equivalence:** Any optimization **must** match the results of applying **`normalizeForResolution`** to the **wire** or **source** strings (user input and index keys / per-printing fields) as defined above. Caching or changing storage layout is allowed only if it preserves that equivalence.
 
-**Why:** Re-running **`normalizeForResolution`** (NFD, strip combining marks, alphanumeric extraction) on **every candidate on every evaluation** scales with the number of printings or faces and runs on **every keystroke** in the SPA. That pattern is a known hotspot: internal performance tests have attributed on the order of **~12%** of total cost in **affected** hot paths (e.g. full-index scans that normalize per row, such as **`set:`** / **`set_type:`**-style loops in [`eval-printing.ts`](../../shared/src/search/eval-printing.ts)) to this **re-normalization** work alone. Spec 182 fields and the same **`in:`** / **`cn:`** row-wise work should **not** repeat that pattern.
+**Why:** Re-running **`normalizeForResolution`** on **every candidate on every evaluation** scales with the number of printings or faces and runs on **every keystroke** in the SPA. **`set:`** / **`set_type:`** historically did this per row; migration to **precomputed** columns (Specs 047 / 179 / 178) removes that hotspot. Spec 182 fields and the same **`in:`** / **`cn:`** row-wise work should **not** repeat the per-row normalize pattern.
 
 **Per-query hot path (target shape):**
 
@@ -77,7 +77,7 @@ The subsection below does **not** change these semantics. It requires **observat
 
 **Testing:** During migration, parity tests (naive normalize-in-loop vs precomputed columns) are recommended; after cutover, existing query tests plus spot checks on diacritics / spacing prove equivalence.
 
-**Related fields not in Spec 182 scope:** **`set:`**, **`set_type:`**, **`otag:`** / **`atag:`** should use the same precompute discipline when touched for performance or when amended for **`:`** vs **`=`** (see **Relation to other specs**). **`kw:`** / **`keyword:`** already use precomputed normalized keys per Spec 176.
+**Related fields not in Spec 182 scope:** **`otag:`** / **`atag:`** should use the same precompute discipline when touched for performance or when amended for **`:`** vs **`=`** (see **Relation to other specs**). **`kw:`** / **`keyword:`**, **`set:`**, and **`set_type:`** use precomputed normalized keys/columns per Specs 176 and 047 / 179.
 
 ### Operators and negation
 
@@ -119,7 +119,7 @@ Concrete messages (preserve existing shapes where they already exist):
 
 ### Relation to other specs (migration, not in scope of Spec 182 ACs)
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) **migrated:** **`:`** = prefix union, **`=`** = exact (same convention as this spec). **[Spec 174](174-otag-atag-prefix-query-semantics.md)**, **[Spec 047](047-printing-query-fields.md)** (**`set:`**), **[Spec 179](179-set-type-query-field.md)**, and **[Spec 032](032-is-operator.md)** (**`is:`** / **`not:`**) still treat **`:`** and **`=`** identically for prefix union. **Future amendments** to those specs should adopt the same **`:`** / **`=`** split as this spec for parity and the **`otag:peek`**-style escape hatch. That migration work is **not** part of Spec 182’s acceptance criteria.
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) **migrated:** **`:`** = prefix union, **`=`** = exact. **[Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)** (**`set:`** / **`set_type:`**) **migrated** the same way. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** and **[Spec 032](032-is-operator.md)** (**`is:`** / **`not:`**) still treat **`:`** and **`=`** identically for prefix union. **Future amendments** to those specs should adopt the same **`:`** / **`=`** split as this spec for parity. That migration work is **not** part of Spec 182’s acceptance criteria.
 
 ---
 

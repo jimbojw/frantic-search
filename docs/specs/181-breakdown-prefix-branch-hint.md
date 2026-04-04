@@ -29,12 +29,12 @@ These are the fields where **evaluation** applies `normalizeForResolution` + `st
 | `atag` | `atag`, `art` → `atag` | Illustration tag labels (loaded index) | 174 |
 | `is` | `is` | Closed vocabulary used for **eval** prefix expansion (`IS_PREFIX_VOCABULARY` / `expandIsKeywordsFromPrefix` in `shared/src/search/eval-is.ts`), not merely `IS_KEYWORDS` if the two differ | 032 |
 | `not` | `not` | Same closed vocabulary as `is:` for semantic matching | 032 |
-| `set` | `set`, `s` → `set`, `e` → `set`, `edition` → `set` | **Distinct** normalized set codes present on loaded printings (same strings `eval-printing` prefix-matches per row; align with `PrintingIndex` / `knownSetCodes` usage) | 047 |
-| `set_type` | `set_type`, `st` → `set_type` | **Distinct** normalized set-type strings on loaded printings (per Spec 179 / `eval-printing` `set_type` branch) | 179 |
+| `set` | `set`, `s` → `set`, `e` → `set`, `edition` → `set` | **Distinct** normalized set codes present on loaded printings (same strings `eval-printing` prefix-matches for **`:`**; align with `PrintingIndex`) | 047 |
+| `set_type` | `set_type`, `st` → `set_type` | **Distinct** normalized set-type strings on loaded printings (prefix-union path for **`:`** only) | 179 |
 
 **Normalization:** Hints use the same `normalizeForResolution` as evaluation (Spec 103) on both the user value and each candidate string.
 
-**Operators:** Only leaves that actually run the prefix-union eval path for `:` / `=` (as today). Range or unsupported operators: no hint.
+**Operators:** Only leaves that run **prefix** (**`:`**) union eval (Specs 176, 174, 032, 047, 179). Fields such as **`set=`** / **`set_type=`** use **exact** match — **no** prefix-branch hint (optional future: exact-resolution hint). Range or unsupported operators: no hint.
 
 ## Fields explicitly out of scope (for this spec)
 

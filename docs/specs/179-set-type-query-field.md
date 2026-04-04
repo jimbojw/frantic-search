@@ -6,11 +6,11 @@
 
 ## Goal
 
-Expose Scryfall’s printing-level **`set_type`** string as a searchable field: **`set_type:`** with alias **`st:`**. Semantics mirror **`set:`** (Spec 047): prefix on normalized value, `:` and `=` only, and **non-empty unknown prefix** → **`unknown set_type "…"`** with Spec 039 passthrough (same as **`unknown set`** for `set:`).
+Expose Scryfall’s printing-level **`set_type`** string as a searchable field: **`set_type:`** with alias **`st:`**. Semantics mirror **`set:`** (Spec 047): **`:`** = normalized prefix union, **`=`** = normalized exact match, `:` and `=` only, and **non-empty no match under the active operator** → **`unknown set_type "…"`** with Spec 039 passthrough (same as **`unknown set`** for `set:`).
 
 ## Background
 
-Each `default_cards` row already includes Scryfall **`set_type`** (e.g. `expansion`, `masters`, `memorabilia`, `funny`). The ETL uses it for `is:alchemy`, `is:unset`, and related flags but does not expose it as a query field. Scryfall’s documented `set_type:` filter targets **exact** set type tokens; Frantic uses **prefix matching on normalized strings** for discovery, consistent with Frantic’s `set:` behavior vs Scryfall (Spec 047, issue #234).
+Each `default_cards` row already includes Scryfall **`set_type`** (e.g. `expansion`, `masters`, `memorabilia`, `funny`). The ETL uses it for `is:alchemy`, `is:unset`, and related flags but does not expose it as a query field. Scryfall’s documented `set_type:` filter targets **exact** set type tokens; Frantic uses **`:`** for prefix discovery and **`=`** for exact match on normalized strings (Spec 047, issue #234).
 
 ## Wire format (Spec 046)
 
@@ -26,11 +26,11 @@ Legacy `printings.json` without `set_type` on lookup rows: treat as empty string
 
 - **Printing domain** only (`PRINTING_FIELDS`, `evalPrintingField`).
 - **Operators:** `:` and `=` only (same as `set:`); other operators return a field error string.
-- **Matching:** `normalizeForResolution(userValue)` and `normalizeForResolution(setTypesLower[i])`; printing matches when `normalize(type).startsWith(normalize(userValue))`.
-- **Empty value** (after trim): match every printing whose normalized `set_type` is **non-empty** (parallel to empty `set:`).
-- **Unknown prefix:** If the trimmed value is **non-empty** and **no** printing’s normalized `set_type` prefix-matches, the leaf returns **`unknown set_type "<trimmed value>"`** with Spec 039 passthrough; **`NOT`** propagates the error (Spec 047).
+- **Matching:** Let `u = normalizeForResolution(trimmedUserValue)`. **`:`** — printing matches when `normalizeForResolution(rowType).startsWith(u)` (prefix union). **`=`** — printing matches when `normalizeForResolution(rowType) === u` (OR rows if two types normalize identically). Per-row normalized strings are **precomputed** on `PrintingIndex` (Spec 047 / Spec 182); the hot path does not re-normalize every printing each evaluation.
+- **Empty value** (after trim): **`=`** is **neutral** (all printings match in the leaf). **`:`** matches every printing whose normalized `set_type` is **non-empty** (parallel to empty `set:`).
+- **Unknown token:** If the trimmed value is **non-empty** and **no** printing matches under the active operator, the leaf returns **`unknown set_type "<trimmed value>"`** with Spec 039 passthrough; **`NOT`** propagates the error (Spec 047).
 
-**Query evaluation** does **not** call `resolveForField` for matching (same split as `set:` in Spec 047). **`resolveForField` / enumerated candidates** use **`knownSetTypes`** (unique non-empty types from `set_lookup`) where Spec 103 applies (e.g. canonical outlinks).
+**Query evaluation** does **not** call `resolveForField` for semantic matching (same split as `set:` in Spec 047). **`resolveForField` / enumerated candidates** use **`knownSetTypes`** (unique non-empty types from `set_lookup`) where Spec 103 applies (e.g. canonical outlinks).
 
 ## Aliases
 
@@ -41,12 +41,12 @@ Legacy `printings.json` without `set_type` on lookup rows: treat as empty string
 
 ## Spec 178 (default inclusion filter)
 
-Positive **`set_type:`** / **`st:`** terms participate in **printing-wide widening** alongside **`set:`**: see Spec 178 (**Widening** table and **`positiveSetTypePrefixes`**). Prefix semantics match **`set_type`** field evaluation (`normalizeForResolution` + `startsWith`).
+Positive **`set_type:`** / **`st:`** with **`:`** contribute **prefix** widening; positive **`set_type=`** / **`st=`** contribute **exact** widening. See Spec 178 (**Widening** table, **`positiveSetTypePrefixes`**, **`positiveSetTypeExact`**).
 
 ## Acceptance
 
 1. ETL emits `set_type` on `set_lookup` rows; fresh pipeline produces valid `printings.json`.
-2. `PrintingIndex` exposes `setTypesLower` and `knownSetTypes`.
+2. `PrintingIndex` exposes `setTypesLower`, precomputed normalized per-row type strings for eval, and `knownSetTypes`.
 3. Queries `set_type:expansion`, `st:mem`, `-st:token` compose with face and printing domain as other printing fields.
 4. Unit tests in `eval-printing.test.ts` + fixture updates; compliance rows in `cli/suites/printing.yaml`.
 5. In-app reference: `set_type.mdx`, syntax table, fields index, nav; Scryfall differences note exact vs prefix.
@@ -56,3 +56,4 @@ Positive **`set_type:`** / **`st:`** terms participate in **printing-wide wideni
 - **2026-04-02:** Initial spec.
 - **2026-04-02:** Spec 178 integration — `st:` / `set_type:` contribute to default-inclusion widening (`positiveSetTypePrefixes`).
 - **2026-04-02:** Unknown non-empty prefix → **`unknown set_type "…"`** (aligned with Spec 047 `set:`); supersedes silent zero-hit wording in the initial spec.
+- **2026-04-04:** **`:`** vs **`=`** split (prefix vs exact); empty **`=`** neutral; cached normalization; Spec 178 exact widening list.

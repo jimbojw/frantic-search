@@ -534,3 +534,4 @@ Parser tests must cover § Whitespace and field clauses: spaced operator/value (
   marked superseded. Grammar, Error Recovery, Test Strategy, and new §
   Whitespace and field clauses document the behavior.
 - 2026-04-01: Spec 177 (`field-value-gap` suggestion) documents optional empty-state UX when users type a space between operator and value and get zero results; see § Whitespace and field clauses (**Recovery UX**).
+- 2026-04-04: Printing-domain **`set:`** / **`set_type:`** — **`:`** is normalized prefix union, **`=`** is normalized exact match; empty **`=`** is neutral (Specs 047 / 179 / 178). Dual-domain overview unchanged (Spec 047).

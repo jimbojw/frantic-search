@@ -22,25 +22,26 @@ All fields below are **printing-domain**: they evaluate against the `PrintingCol
 
 | Operator | Semantics |
 |---|---|
-| `:`, `=` | Printing's set code **prefix-matches** the value after normalization (Spec 103 `normalizeForResolution`) |
+| `:` | **Prefix union** after Spec 103 `normalizeForResolution`: a printing matches when `normalize(code).startsWith(u)` where `u = normalizeForResolution(trimmedUserValue)`. |
+| `=` | **Exact match** after the same normalization: a printing matches when `normalize(code) === u`. If two distinct wire codes normalize identically (rare), **OR** those printings. |
 
-Examples: `set:mh2`, `s:znr`, `e:usg`, `set:u` (every printing whose set code starts with `u` after normalization).
+Examples: `set:mh2`, `s:znr`, `set:u` (prefix discovery — every printing whose normalized set code starts with `u`). `set=mh2` matches only the `mh2` slice (no other code that is a strict prefix extension).
 
-**Matching:** Normalize the user value and each printing's set code (`set_lookup[set_indices[i]].code`) the same way as Spec 103. A printing matches when `normalize(code).startsWith(normalize(userValue))`.
+**Implementation (Spec 182 alignment):** Evaluators must **not** call `normalizeForResolution` on every printing on the hot path. `PrintingIndex` holds **precomputed** `normalizeForResolution` of each row’s set code (observationally equivalent to normalizing the wire lowercase code). Per query, normalize the user value **once** to `u`, then compare with `startsWith` / `===` only.
 
-**Empty value:** `set:` or `set=` with no value (after trim) matches every printing whose normalized set code is **non-empty** (all real printings in normal data; excludes rows with a missing/empty `code`).
+**Empty value:** After trim, **`=`** with an empty value is **neutral** — the term must not narrow the result set (all printings match in the leaf buffer), consistent with Spec 182 / `kw:` empty `=`. **`:`** with an empty value matches every printing whose normalized set code is **non-empty** (excludes rows with missing/empty `code`).
 
-**No matching set codes:** If the trimmed value is **non-empty** and **no** printing's set code prefix-matches (e.g. `set:xy` when no code starts with `xy`), the leaf returns **`unknown set "<trimmed value>"`** with **Spec 039 passthrough** (errored leaves are skipped in `AND`, so `set:xy t:creature` behaves like `t:creature` alone). The evaluator marks the leaf with `matchCount === -1` and `error` set. **NOT:** If the child `set:` leaf errors, **`NOT` propagates the error** (same as `kw:`); negating a non-matching prefix does **not** mean “all printings” (unlike inverting an all-zero buffer).
+**No matching set codes:** If the trimmed value is **non-empty** and **no** printing matches under the active operator (prefix for `:` , exact for `=`), the leaf returns **`unknown set "<trimmed value>"`** with **Spec 039 passthrough**. **NOT:** If the child `set` leaf errors, **`NOT` propagates the error** (same as `kw:`).
 
-**Scryfall:** Scryfall treats `set:` as an exact set code (or similar); Frantic Search uses prefix matching for **discovery** ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)). Scryfall may show 0 cards for an impossible token; Frantic surfaces a leaf error for a non-matching non-empty prefix.
+**Scryfall:** Scryfall treats `set:` as an exact set code (or similar); Frantic uses **`:`** for prefix **discovery** and **`=`** as an exact escape hatch ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)).
 
 Multiple sets can still be combined with OR: `set:mh2 OR set:mh3`.
 
-**Spec 103:** Unique-prefix auto-resolution for `set` still applies where `resolveForField` is used (e.g. canonical Scryfall outlinks). **Query evaluation** for the `set` field does **not** call `resolveForField`; it always applies prefix-on-printing-rows as above.
+**Spec 103:** Unique-prefix auto-resolution for `set` still applies where `resolveForField` is used (e.g. canonical Scryfall outlinks). **Query evaluation** does **not** call `resolveForField` for semantic matching; the AST operator selects prefix vs exact as above.
 
 ### `set_type:` / `st:` — Scryfall set type
 
-See **[Spec 179](179-set-type-query-field.md)**. Summary: printing’s set taxonomy string (from `set_lookup[].set_type`, lowercase at ETL). Same operators, prefix matching, empty value, and **unknown-prefix error** semantics as `set:` above; Scryfall documents exact `set_type` tokens — Frantic uses normalized prefix for discovery.
+See **[Spec 179](179-set-type-query-field.md)**. Summary: same **`:`** / **`=`** split, empty rules, unknown-token errors, and cached normalization discipline as **`set:`** above; vocabulary is each printing’s `set_type` string from `set_lookup`.
 
 ### `r:` / `rarity:` — Rarity
 
@@ -449,7 +450,7 @@ Add printing-field entries once the full dataset is available.
 
 ## Acceptance Criteria
 
-1. `set:` uses prefix matching on normalized set codes (issue #234): `set:mh2` returns cards with at least one MH2 printing; a non-empty prefix that matches no code yields **`unknown set "…"`** with passthrough (Spec 039); empty `set:` / `set=` matches every printing with a non-empty normalized set code.
+1. `set:` uses normalized prefix union on set codes (issue #234); `set=` uses normalized exact equality. Non-empty no match under the active operator yields **`unknown set "…"`** with passthrough (Spec 039). Empty `set=` is neutral (all printings); empty `set:` matches every printing with a non-empty normalized set code.
 2. `r:mythic` returns cards with at least one mythic printing.
 3. `r>=rare` returns cards with at least one rare or mythic printing.
 4. `is:foil` returns cards that have been printed in foil.
@@ -474,3 +475,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-03-30: Added printing-domain `is:unset` from `set_type: "funny"` → `PrintingFlag.Unset` (Spec 171 / issue #213). No face fallback when printings are unloaded.
 - 2026-03-31: `set:` / `set=` use **prefix** matching on normalized set codes; empty value matches printings with non-empty normalized set code; non-matching prefix initially yielded zero results with **no** `unknown set` error ([issue #234](https://github.com/jimbojw/frantic-search/issues/234)). Evaluation does not use Spec 103 unique resolution for `set`. Evaluator must call `evalPrintingField` for `set` even when the AST value is empty (printing-domain branch previously skipped empty values).
 - 2026-04-02: Non-empty prefix with no matching set code → **`unknown set "…"`** (Spec 039 passthrough; `NOT` propagates error). Aligns with `kw:` / `set_type:`; supersedes silent zero-hit behavior above for unknown prefixes.
+- 2026-04-04: **`:`** = prefix union, **`=`** = exact normalized match (aligned with Spec 176 / 182). Empty **`=`** neutral. Precomputed per-row normalization on `PrintingIndex`; Spec 178 widening splits prefix vs exact (see Spec 178 changelog).
