@@ -12,9 +12,9 @@ When a query leaf uses **normalized prefix matching** on **`:`** (prefix union p
 
 Typical cases:
 
-- **Several** vocabulary entries share the typed prefix (e.g. `kw:f` → flying, fight, first strike, …): show **next-branch** digest, e.g. `(a|i|o|…)`.
-- **Exactly one** entry matches the normalized prefix (e.g. `game:p` → only **paper**): show the **completion suffix** in normalized space so the resolved token is obvious, e.g. `(aper)` after `game:p`, or `(ommander)` after `f:c` when the canonical field is `legal` and the only matching format key is **commander**. The chip **label** stays the user’s text (`game:p`); the hint is a sibling span—visually `game:p` + muted `(aper)`.
-- **Empty** trimmed value on **`:`** (e.g. `is:`, `kw:`, `in:`): show distinct **first** characters over the field’s candidate set, e.g. `(a|b|c|d|…)`, so new users see how to narrow from “everything” without opening docs.
+- **Several** vocabulary entries share the typed prefix (e.g. `kw:f` → flying, fight, first strike, …): show **next-branch** digest using the **pipe-delimited** form `(a|e|i|o)` (each segment is one branch code unit; only **U+007C `|`** separates segments—no commas or spaces inside the digest).
+- **Exactly one** entry matches the normalized prefix (e.g. `game:p` → only **paper**): show the **completion suffix** in normalized space so the resolved token is obvious, e.g. `(aper)` after `game:p`, or `(ommander)` after `f:c` when the canonical field is `legal` and the only matching format key is **commander**. The chip **label** stays the user’s text (`game:p`); the hint is a sibling span—visually `game:p` + muted `(aper)`. **Single-completion** hints use parentheses **without** `|` (contrast multi-branch).
+- **Empty** trimmed value on **`:`** (e.g. `is:`, `kw:`, `in:`): show distinct **first** characters over the field’s candidate set in the same pipe form, e.g. `(a|b|c|…)`, so new users see how to narrow from “everything” without opening docs.
 
 **Non-goal:** Replace [Spec 089](089-inline-autocomplete.md) or the suggestion system ([Spec 151](151-suggestion-system.md)); this is **inline discoverability** on the breakdown only—not a completion menu or popover.
 
@@ -23,6 +23,8 @@ Typical cases:
 Many categorical fields use **`normalizeForResolution`** plus **`startsWith`** on **`:`** to **OR** matches (ADR-022 §4; field specs). The chip label uses the user’s typed text (`app/src/worker-breakdown.ts` uses `sourceText ?? value`), so users cannot see which vocabulary entries fired. This spec lists every field where **`:`** evaluation uses that prefix-union shape (or the **`in:`** three-namespace union per Spec 072 / 182) and requires matching breakdown hints.
 
 **Eval alignment:** Hints **MUST** use the **same** normalization and **same** candidate-matching rule as **`:`** evaluation for that field.
+
+**Eval baseline (current):** `is:`, `not:`, `game:`, and `rarity:` follow ADR-022 on **`:`** (normalized prefix union) and on **`=`** / **`!=`** (exact / exact-negated) per their field specs and tests. They are **in scope** for breakdown hints on **`:`** under the same rules as the rest of the in-scope table—not a future or exceptional case.
 
 ## Fields in scope (`:` prefix union at evaluation)
 
@@ -39,9 +41,9 @@ These are the fields where **evaluation** on **`:`** applies `normalizeForResolu
 | `set_type` | `set_type`, `st` → `set_type` | **Distinct** normalized set-type strings on loaded printings (prefix-union path for **`:`** only) | 179 |
 | `frame` | `frame` | Keys of **`FRAME_NAMES`** in `shared/src/bits.ts` (normalize each key with `normalizeForResolution` for hint candidates; align with `eval-printing` prefix path for **`:`**) | 047, 182 |
 | `collectornumber` | `cn` → `collectornumber`, `number` → `collectornumber`, `collectornumber` | **Distinct** normalized collector strings on loaded printings (`collectorNumbersNormResolved` / equivalent on `PrintingIndex`) | 182 |
-| `game` | `game` | Keys of **`GAME_NAMES`** in `shared/src/bits.ts` (normalize each key with `normalizeForResolution`; **`:`** must OR all games whose normalized key **starts with** `u`) | 068, ADR-022 |
-| `rarity` | `rarity`, `r` → `rarity` | Keys of **`RARITY_NAMES`** in `shared/src/bits.ts` (same normalization; **`:`** must OR all rarities whose normalized key **starts with** `u`) | 047, 104, ADR-022 |
-| `in` | `in` | **Union** of: (1) keys of **`GAME_NAMES`**, (2) keys of **`RARITY_NAMES`**, (3) **distinct** normalized set codes on loaded printings (`knownSetCodes` / `setCodeNormByLower` alignment with `eval-printing`). Same single-`u` prefix scan as Spec 072 / 182 **`in:`** **`:`** branch. | 072, 182 |
+| `game` | `game` | Keys of **`GAME_NAMES`** in `shared/src/bits.ts` (normalize each key with `normalizeForResolution`; **`:`** ORs every game whose normalized key **starts with** the user’s normalized prefix) | 068, ADR-022 |
+| `rarity` | `rarity`, `r` → `rarity` | Keys of **`RARITY_NAMES`** in `shared/src/bits.ts` (same normalization; **`:`** ORs every rarity whose normalized key **starts with** the user’s normalized prefix) | 047, 104, ADR-022 |
+| `in` | `in` | **Union** of: (1) keys of **`GAME_NAMES`**, (2) keys of **`RARITY_NAMES`**, (3) **distinct** normalized set codes on loaded printings (`knownSetCodes` / `setCodeNormByLower` alignment with `eval-printing`). Same normalized-prefix union as Spec 072 / 182 **`in:`** **`:`** branch. | 072, 182 |
 | `legal` | `f` → `legal`, `format` → `legal` | Keys of **`FORMAT_NAMES`** in `shared/src/bits.ts` (same normalization as `eval-leaves` prefix path for **`:`**) | 182 |
 | `banned` | `banned` | Keys of **`FORMAT_NAMES`** | 182 |
 | `restricted` | `restricted` | Keys of **`FORMAT_NAMES`** | 182 |
@@ -76,13 +78,15 @@ Let the **normalized prefix** be `normalizeForResolution(trimmed user value)` (m
 
 Collect all **matching** candidates (same rule as eval: normalized candidate `startsWith` normalized prefix). For an empty prefix, every non-empty normalized candidate matches; **exclude** candidates whose normalized form is empty so the continuation step is well-defined.
 
+**Multi-branch delimiter (normative):** Any hint that lists **multiple** branch or first-character options **MUST** use the form **`(`** *token* **`|`** *token* **`|`** … **`)`** — tokens separated **only** by **U+007C VERTICAL LINE** (`|`). Do **not** use commas, spaces, or slashes as separators inside the digest. **Single-completion** hints (exactly one extended match) **MUST NOT** contain `|` (they are **`(`** *suffix* **`)`** only).
+
 **Rendering (non-empty prefix):**
 
 1. **Exactly one** matching candidate: let `c` be its normalized form. The hint is **`(`** + **`c.slice(prefix.length)`** + **`)`** — the **suffix** that completes the normalized token after what the user typed (examples: `game:p` → `(aper)`; `f:c` with only **commander** matching → `(ommander)`). If `c === prefix` (typed value already equals the full normalized key), use the **exact-prefix marker** from (3) instead of an empty pair.
-2. **Two or more** matching candidates: take the substring of each candidate **after** the shared normalized prefix; take the **first code unit** of each remainder in normalized space; **dedupe**; **sort** deterministically. Render **`(a|b|c|…)`** listing **all** distinct branch units (no branch-count cap unless reintroduced later for UX).
+2. **Two or more** matching candidates: take the substring of each candidate **after** the shared normalized prefix; take the **first code unit** of each remainder in normalized space; **dedupe**; **sort** deterministically. Render **`(a|b|c|…)`** (pipe-delimited per above) listing **all** distinct branch units (no branch-count cap unless reintroduced later for UX).
 3. **Exact-prefix / prefix-of-longer:** If some candidate’s normalized form **equals** the typed prefix while others extend it, include an explicit marker in the multi-branch hint (character TBD in implementation, e.g. `·` or `∅`) so users see “stop here” vs “keep typing”. For **single** candidate with `c === prefix`, show that marker as the hint body, e.g. `(·)`, or a spec-defined minimal glyph—implementation chooses for clarity.
 
-**Rendering (empty prefix):** First character of each non-empty normalized candidate; dedupe, sort → **`(a|b|c|…)`** (all distinct first characters, same rules as multi-branch).
+**Rendering (empty prefix):** First character of each non-empty normalized candidate; dedupe, sort → **`(a|b|c|…)`** (pipe-delimited; all distinct first characters, same delimiter rules as multi-branch).
 
 **Wire / UI:** Extend `BreakdownNode` in `shared/src/worker-protocol.ts` with an optional presentation-only field, e.g. `prefixBranchHint?: string` (exact name chosen in implementation). The worker fills it when building the breakdown payload; the main thread only renders it next to the chip label in **muted** / smaller text. **`BreakdownNode.label` is unchanged** (user’s typed fragment); the hint is never merged into `label` and must **not** affect query reconstruction, pin, or remove handlers (`BreakdownChip` in `app/src/InlineBreakdown.tsx`, parallel chip renderers in `app/src/UnifiedBreakdown.tsx`).
 
@@ -92,9 +96,9 @@ Optional follow-up: align `app/src/QueryHighlight.tsx` ([Spec 088](088-syntax-hi
 
 ## Acceptance criteria
 
-1. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **two or more** **`:`** candidates, and does not error produces a breakdown `FIELD` node with a non-empty `prefixBranchHint` using the **multi-branch** form `(a|b|…)` (all distinct branch units).
+1. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **two or more** **`:`** candidates, and does not error produces a breakdown `FIELD` node with a non-empty `prefixBranchHint` using the **multi-branch** form `(a|b|…)` — **pipe-separated** only (all distinct branch units).
 2. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **exactly one** **`:`** candidate, and does not error produces a `prefixBranchHint` using the **single-completion** form `(suffix)` — the normalized candidate with the normalized prefix removed (subject to exact-prefix marker when candidate equals prefix).
-3. For each **canonical** field in the in-scope table, a query whose trimmed value is **empty** on **`:`** (e.g. `is:`, `kw:`, `in:`) produces a `prefixBranchHint` over **all distinct first characters** of that field’s candidate set when data is loaded and the leaf is not errored.
+3. For each **canonical** field in the in-scope table, a query whose trimmed value is **empty** on **`:`** (e.g. `is:`, `kw:`, `in:`) produces a `prefixBranchHint` over **all distinct first characters** of that field’s candidate set when data is loaded and the leaf is not errored, using the same **pipe-delimited** multi-branch form as criterion 1.
 4. Hints use **`normalizeForResolution`** consistently with **`:`** evaluation (Spec 103).
 5. `BreakdownNode.label` remains the user-facing term as today; hint is separate wire data.
 6. Chip interactions (pin, remove, click-to-edit) behave as before; hint string is not part of those code paths.
