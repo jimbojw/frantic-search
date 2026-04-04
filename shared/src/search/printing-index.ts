@@ -46,6 +46,8 @@ export class PrintingIndex {
   readonly canonicalFaceRef: number[];
   readonly scryfallIds: string[];
   readonly collectorNumbersLower: string[];
+  /** Spec 182: `normalizeForResolution` of each row's collector string (hot path avoids per-eval normalize). */
+  readonly collectorNumbersNormResolved: string[];
   /** Spec 180: strided uint32 fast sort keys for collector tie-break (`COLLECTOR_KEY_STRIDE` words per printing). */
   readonly collectorSortKeys: Uint32Array;
   readonly setIndices: number[];
@@ -67,6 +69,8 @@ export class PrintingIndex {
   readonly promoTypesFlags1: number[];
   readonly setReleasedAt: number[];
   readonly knownSetCodes: Set<string>;
+  /** Lowercase set code → `normalizeForResolution(code)` for `in:` / set eval (Spec 182). */
+  readonly setCodeNormByLower: Map<string, string>;
   /** Distinct non-empty lowercase set types from `set_lookup` (Spec 179). */
   readonly knownSetTypes: Set<string>;
 
@@ -84,6 +88,7 @@ export class PrintingIndex {
     this.canonicalFaceRef = data.canonical_face_ref;
     this.scryfallIds = data.scryfall_ids;
     this.collectorNumbersLower = data.collector_numbers.map(cn => cn.toLowerCase());
+    this.collectorNumbersNormResolved = this.collectorNumbersLower.map(s => normalizeForResolution(s));
     this.collectorSortKeys = new Uint32Array(this.printingCount * COLLECTOR_KEY_STRIDE);
     for (let i = 0; i < this.printingCount; i++) {
       encodeCollectorSortKeyInto(this.collectorSortKeys, i, this.collectorNumbersLower[i] ?? "");
@@ -108,6 +113,12 @@ export class PrintingIndex {
     this.promoTypesFlags1 = data.promo_types_flags_1 ?? [];
     this.setReleasedAt = data.set_lookup.map(e => e.released_at);
     this.knownSetCodes = new Set(data.set_lookup.map(e => e.code.toLowerCase()));
+    const setCodeNormByLower = new Map<string, string>();
+    for (const e of data.set_lookup) {
+      const lo = e.code.toLowerCase();
+      setCodeNormByLower.set(lo, normalizeForResolution(lo));
+    }
+    this.setCodeNormByLower = setCodeNormByLower;
     const knownSetTypes = new Set<string>();
     for (const e of data.set_lookup) {
       const t = e.set_type?.toLowerCase() ?? "";

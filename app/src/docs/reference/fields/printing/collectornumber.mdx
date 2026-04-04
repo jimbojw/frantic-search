@@ -14,10 +14,13 @@ Collector number within the set.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Substring (contains) | `q=cn:261` |
-| `=` | Exact collector number | `q=collectornumber=261` |
-| `!=` | Not this number | `q=cn!=1` |
+| `:` | Normalized **prefix** on stored collector strings (Spec 182) | `q=cn:261` |
+| `=` | Normalized **exact** match | `q=collectornumber=261` |
+
+Comparison operators and **`!=`** are not supported (use **`-`** / **`NOT`** to exclude).
 
 ## Allowed values
 
-Collector number as printed on the card. May be numeric or alphanumeric (e.g. `261`, `261a`). Matching is substring-based.
+Collector number as printed on the card (numeric or alphanumeric, e.g. `261`, `261a`, `1b`). Matching uses the same **`normalizeForResolution`** rules as other categorical fields on both the query and each printing’s collector string.
+
+A **non-empty** value that matches **no** printing under the active operator returns **`unknown collector number`** (passthrough per Spec 039). **Empty** **`cn:`** / **`cn=`** after trim does **not** narrow results (ADR-022).

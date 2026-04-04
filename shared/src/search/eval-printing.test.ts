@@ -433,14 +433,36 @@ describe("usd field", () => {
 // ---------------------------------------------------------------------------
 
 describe("collectornumber field", () => {
-  test("exact string match", () => {
+  test("cn: prefix matches normalized collector strings (Spec 182)", () => {
     expect(marked(evalField("collectornumber", ":", "261").buf)).toEqual([0, 1]);
     expect(marked(evalField("collectornumber", ":", "113").buf)).toEqual([2]);
     expect(marked(evalField("collectornumber", ":", "280").buf)).toEqual([3, 4]);
+    expect(marked(evalField("collectornumber", ":", "2").buf)).toEqual([0, 1, 3, 4]);
   });
 
-  test("no match returns empty", () => {
-    expect(marked(evalField("collectornumber", ":", "999").buf)).toEqual([]);
+  test("cn= exact only (Spec 182)", () => {
+    expect(marked(evalField("collectornumber", "=", "261").buf)).toEqual([0, 1]);
+    expect(evalField("collectornumber", "=", "2").error).toBe('unknown collector number "2"');
+  });
+
+  test("cn=1b matches bonus row only", () => {
+    expect(marked(evalField("collectornumber", "=", "1b").buf)).toEqual([6]);
+  });
+
+  test("no match returns unknown collector number (Spec 182)", () => {
+    const { buf, error } = evalField("collectornumber", ":", "999");
+    expect(error).toBe('unknown collector number "999"');
+    expect(marked(buf)).toEqual([]);
+  });
+
+  test("empty cn= and cn: are neutral (all printings)", () => {
+    expect(marked(evalField("collectornumber", "=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("collectornumber", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("collectornumber", ":", "   ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  test("unsupported operator", () => {
+    expect(evalField("collectornumber", "!=", "1").error).toContain("does not support operator");
   });
 });
 
@@ -600,8 +622,24 @@ describe("in field", () => {
     expect(marked(evalField("in", ":", "bonus").buf)).toEqual([6]);
   });
 
-  test("in!=mh2 matches rows not in MH2", () => {
+  test("in:sl prefix-union ORs SLD and SLB set codes (Spec 182)", () => {
+    expect(marked(evalField("in", ":", "sl").buf)).toEqual([5, 6]);
+  });
+
+  test("in= uses exact set / rarity disambiguation (Spec 182)", () => {
+    expect(marked(evalField("in", "=", "mh2").buf)).toEqual([0, 1]);
+    expect(marked(evalField("in", "=", "rare").buf)).toEqual([0, 1]);
+    expect(evalField("in", "=", "sl").error).toBe('unknown in value "sl"');
+  });
+
+  test("in!=mh2 negates exact in=mh2 only (Spec 182)", () => {
     expect(marked(evalField("in", "!=", "mh2").buf)).toEqual([2, 3, 4, 5, 6]);
+  });
+
+  test("empty in:, in=, in!= are neutral (Spec 182 / ADR-022)", () => {
+    expect(marked(evalField("in", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("in", "=", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("in", "!=", "  ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   test("in:ru returns unsupported (language out of scope)", () => {

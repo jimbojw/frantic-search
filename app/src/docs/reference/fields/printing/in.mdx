@@ -8,24 +8,25 @@ Game, set, or rarity (value disambiguates).
 
 **Canonical:** `in`  
 **Aliases:** —  
-**Domain:** Printing (disambiguated by value)
+**Domain:** Printing (disambiguated by value; results promote to card level so `in:mh2 in:a25` means “in both sets”.)
 
 ## Operators
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | In (game, set, or rarity) | `q=in:mh2` |
-| `=` | In | `q=in=arena` |
-| `!=` | Not in | `q=in!=paper` |
+| `:` | **Prefix union** across games, known set codes, and rarity keys (normalized); OR printings that match any branch (Spec 182) | `q=in:mh2`, `q=in:sl` |
+| `=` | **Exact** match with **game → set → rarity** disambiguation (normalized equality) | `q=in=arena` |
+| `!=` | Negates **`in=`** exact positive mask only—not a **`:`** prefix union (Frantic extension; use **`-`** / **`NOT`** for that) | `q=in!=mh2` |
+
+**Empty** **`in:`** / **`in=`** / **`in!=`** after trim: neutral (all printings in the leaf), same idea as **`frame:`** / **`kw:`** (ADR-022).
 
 ## Allowed values
 
-The `q=in:` qualifier is **disambiguated by value**:
+| Kind | Example | Notes |
+|------|---------|--------|
+| Game | `in:arena`, `in:mtgo` | Availability bitmask |
+| Set code | `in:mh2` | Known set codes from the index |
+| Rarity | `in:rare`, `in:bonus` | `bonus` is its own tier (Spec 104) |
+| Language | `in:ru` | **Unsupported** → `unsupported in value` (exact language token, not prefix) |
 
-| Value type | Resolves to | Example |
-|------------|-------------|---------|
-| Set code | Set | `q=in:mh2` → printings in MH2 |
-| Game | Game availability | `q=in:arena` → printings on Arena |
-| Rarity | Rarity | `q=in:mythic` → mythic printings |
-
-Use `q=in:mh2` for "printed in MH2", `q=in:arena` for "on Arena", `q=in:mythic` for mythic rarity. The evaluator infers intent from the value.
+Scryfall’s docs often treat **`:`** and **`=`** as interchangeable on overloads like `in:`; Frantic uses the same **`:`** / **`=`** split as `set:`, `frame:`, and `kw:` (see [Scryfall differences](?doc=reference/scryfall/differences)).

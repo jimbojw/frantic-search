@@ -228,13 +228,13 @@
 # cn: / number: (collector number)
 # ---------------------------------------------------------------------------
 
-- name: "cn:1 finds printings with collector number 1"
+- name: "cn:1 prefix matches printings whose collector normalizes starting with 1 (Spec 182)"
   query: "cn:1"
   assertions:
     count_min: 200
 
-- name: "cn:1 set:mh2 narrows to MH2 collector number 1"
-  query: "cn:1 set:mh2"
+- name: "cn=1 set:mh2 narrows to MH2 collector number 1 exactly (Spec 182)"
+  query: "cn=1 set:mh2"
   assertions:
     count_min: 1
     count_max: 5

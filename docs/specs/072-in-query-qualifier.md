@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), Spec 068 (game:), ADR-017 (Dual-Domain Query Evaluation), ADR-022 (Categorical field operators)
+**Depends on:** Spec 002 (Query Engine), Spec 046 (Printing Data Model), Spec 047 (Printing Query Fields), Spec 068 (game:), Spec 182 (prefix union / exact / `!=` for `in:`), ADR-017 (Dual-Domain Query Evaluation), ADR-022 (Categorical field operators)
 
 **GitHub Issue:** [#69](https://github.com/jimbojw/frantic-search/issues/69)
 
@@ -30,76 +30,49 @@ Examples:
 
 ## Semantics
 
-| Operator | Semantics |
-|----------|-----------|
-| `:`, `=` | Card has ≥1 printing matching the value |
-| `!=`     | Card has no printing matching the value |
+Evaluation follows **[Spec 182](182-prefix-union-format-frame-in-collector.md)** §3 (ADR-022 operator policy). **Canonicalize** and other non-eval paths still use **Spec 103** **`resolveForField`** for unique-prefix collapse when exactly one vocabulary candidate matches.
 
-### Value disambiguation
+| Operator | Semantics (evaluation) |
+|----------|------------------------|
+| `:` | **Prefix union** after `normalizeForResolution` on the trimmed value: OR printings that match **any** game key, **any** known set code, or **any** rarity key whose normalized form **starts with** `u` (same `u` for all three namespaces). |
+| `=` | **Exact** positive mask only: disambiguate **game** → **set** → **rarity** using **normalized equality** (`=== u`) to keys or set codes; first branch with a match wins (no OR across namespaces for one token). |
+| `!=` | **Negation of the `=` exact positive mask** for that value—not negation of a **`:`** prefix union (use **`-`** / **`NOT`** for that). |
 
-Check in order: **game** → **set** → **rarity** → **language** (unsupported) → **unknown**.
+**Empty value** (trimmed empty) on **`:`**, **`=`**, and **`!=`**: **neutral** (all printings match in the leaf)—aligned with **`frame:`** / **`kw:`** and ADR-022; do **not** return **`unknown in value`**.
 
-1. **Game**: `paper`, `mtgo`, `arena`, `astral`, `sega` (via `GAME_NAMES`)
-2. **Set code**: value is in `knownSetCodes` (case-insensitive)
+### Unsupported language (exact token)
+
+After empty handling, if the trimmed value (case-insensitive) is a **known unsupported language** token, return **`unsupported in value`** for **`:`**, **`=`**, and **`!=`**—**before** game/set/rarity matching. Examples: `ru`, `zhs`, `japanese` (see implementation list in `eval-printing.ts`).
+
+### Non-empty `:` — vocabulary
+
+If no game, set, or rarity vocabulary entry matches the prefix (and not unsupported language): **`unknown in value`**.
+
+### Non-empty `=` / `!=` — disambiguation order
+
+Check in order: **game** → **set** → **rarity** (normalized exact match to the respective key or set code).
+
+1. **Game**: `paper`, `mtgo`, `arena`, `astral`, `sega` (via `GAME_NAMES`); OR bits if several keys share the same normalized form.
+2. **Set code**: `knownSetCodes` with **`normalizeForResolution(code) === u`**
 3. **Rarity**: `common`, `uncommon`, `rare`, `mythic`, `special`, `bonus` (via `RARITY_NAMES`; `bonus` is a distinct tier above mythic, not an alias for `special`)
-4. **Language**: known but unsupported (e.g. `ru`, `zhs`, `japanese`) → return `unsupported in value "ru"`
-5. **Unknown**: none of the above → return `unknown in value "foo"`
+4. **None of the above** (and not language): **`unknown in value`**
 
 ### Error handling
 
-- `in:ru` (language) → `unsupported in value "ru"` — we know what it means but don't support it
-- `in:foo` (unrecognized) → `unknown in value "foo"`
-- Both produce error nodes in the AST (Spec 039 pattern)
+- `in:ru` / `in=ru` (language) → `unsupported in value "ru"` — we know what it means but don't support it
+- Non-empty value with no vocabulary match under the active operator → `unknown in value "…"`
+- Error leaves participate in **Spec 039** passthrough like other categorical fields
 
 ## Implementation
 
 ### Field registration
 
-- Add `in: "in"` to `FIELD_ALIASES` in `eval-leaves.ts`
-- Add `"in"` to `PRINTING_FIELDS` in `eval-printing.ts`
+- `in: "in"` in `FIELD_ALIASES` in `eval-leaves.ts`
+- `"in"` in `PRINTING_FIELDS` in `eval-printing.ts`
 
 ### evalPrintingField case for `in`
 
-New case in `evalPrintingField()` that dispatches by value type:
-
-```typescript
-case "in": {
-  const val = valLower;
-  // 1. Game
-  if (GAME_NAMES[val] !== undefined) {
-    for (let i = 0; i < n; i++) {
-      const g = pIdx.games[i] ?? 0;
-      const match = (op === ":" || op === "=") ? (g & GAME_NAMES[val]) !== 0
-        : op === "!=" ? (g & GAME_NAMES[val]) === 0 : false;
-      if (match) buf[i] = 1;
-    }
-    break;
-  }
-  // 2. Set code
-  if (pIdx.knownSetCodes.has(val)) {
-    for (let i = 0; i < n; i++) {
-      if (pIdx.setCodesLower[i] === val) buf[i] = 1;
-    }
-    break;
-  }
-  // 3. Rarity (bonus is distinct tier, in RARITY_NAMES)
-  const rarityBit = RARITY_NAMES[val];
-  if (rarityBit !== undefined) {
-    for (let i = 0; i < n; i++) {
-      const match = (op === ":" || op === "=") ? (pIdx.rarity[i] & rarityBit) !== 0
-        : op === "!=" ? (pIdx.rarity[i] & rarityBit) === 0 : false;
-      if (match) buf[i] = 1;
-    }
-    break;
-  }
-  // 4. Language (unsupported)
-  if (KNOWN_LANGUAGES.has(val)) return `unsupported in value "${val}"`;
-  // 5. Unknown
-  return `unknown in value "${val}"`;
-}
-```
-
-`KNOWN_LANGUAGES` is a small set of Scryfall language codes we explicitly reject with "unsupported" (e.g. `ru`, `zhs`, `japanese`, `en`, `es`, `fr`, `de`, `it`, `pt`, `ja`, `ko`, `zhs`, `zht`, `ru`). Minimal set for common cases is fine.
+Implemented in **`eval-printing.ts`**: precomputed **`GAME_IN_NORM_BITS`** / **`RARITY_IN_NORM_BITS`**; **`PrintingIndex.setCodeNormByLower`** for set norms; **no** **`resolveForField`** on the eval path (Spec 182 / Spec 103 split). See source for the full **`:`** / **`=`** / **`!=`** branches.
 
 ### Operator support
 
@@ -125,3 +98,4 @@ Only `:`, `=`, and `!=` are supported. Comparison operators (`>`, `<`, etc.) ret
 ## Implementation Notes
 
 - 2026-03-04: Implemented per Issue #69. `in:` evaluates in printing domain but promotes to face at the leaf level so `in:mh2 in:a25` combines at card level (cards in both sets), not printing level. Evaluator special-cases `canonical === "in"` to promote immediately after evalPrintingField.
+- 2026-04-04: Eval semantics amended per **Spec 182** — **`:`** prefix union across games, sets, and rarities; **`=`** exact with game → set → rarity disambiguation; **`!=`** negates **`=`** only; empty operators neutral.

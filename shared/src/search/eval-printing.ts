@@ -96,6 +96,57 @@ function combinedFrameMask(prefixOp: boolean, u: string): number {
   return m;
 }
 
+/** Precomputed norms for `in:` game / rarity prefix and exact union (Spec 182). */
+const GAME_IN_NORM_BITS: { norm: string; bit: number }[] = Object.entries(GAME_NAMES).map(([key, bit]) => ({
+  norm: normalizeForResolution(key),
+  bit,
+}));
+
+const RARITY_IN_NORM_BITS: { norm: string; bit: number }[] = Object.entries(RARITY_NAMES).map(([key, bit]) => ({
+  norm: normalizeForResolution(key),
+  bit,
+}));
+
+function combinedInGameMask(prefixOp: boolean, u: string): number {
+  let m = 0;
+  for (const row of GAME_IN_NORM_BITS) {
+    if (prefixOp) {
+      if (row.norm.startsWith(u)) m |= row.bit;
+    } else if (row.norm === u) {
+      m |= row.bit;
+    }
+  }
+  return m;
+}
+
+function combinedInRarityMask(prefixOp: boolean, u: string): number {
+  let m = 0;
+  for (const row of RARITY_IN_NORM_BITS) {
+    if (prefixOp) {
+      if (row.norm.startsWith(u)) m |= row.bit;
+    } else if (row.norm === u) {
+      m |= row.bit;
+    }
+  }
+  return m;
+}
+
+function matchedSetNormsPrefix(pIdx: PrintingIndex, u: string): Set<string> {
+  const out = new Set<string>();
+  for (const code of pIdx.knownSetCodes) {
+    const sn = pIdx.setCodeNormByLower.get(code);
+    if (sn !== undefined && sn.startsWith(u)) out.add(sn);
+  }
+  return out;
+}
+
+function hasExactSetNorm(pIdx: PrintingIndex, u: string): boolean {
+  for (const code of pIdx.knownSetCodes) {
+    if (pIdx.setCodeNormByLower.get(code) === u) return true;
+  }
+  return false;
+}
+
 function buildRarityMask(op: string, targetBit: number): number {
   const targetOrder = RARITY_ORDER[targetBit];
   if (targetOrder === undefined) return 0;
@@ -125,7 +176,6 @@ export function evalPrintingField(
   artistIndex?: ArtistIndexData | null,
 ): string | null {
   const n = pIdx.printingCount;
-  const valLower = val.toLowerCase();
 
   switch (canonical) {
     case "set": {
@@ -241,9 +291,25 @@ export function evalPrintingField(
       break;
     }
     case "collectornumber": {
-      for (let i = 0; i < n; i++) {
-        if (pIdx.collectorNumbersLower[i] === valLower) buf[i] = 1;
+      if (op !== ":" && op !== "=") {
+        return `collectornumber: does not support operator "${op}"`;
       }
+      const trimmedCn = val.trim();
+      if (trimmedCn === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
+      const uCn = normalizeForResolution(trimmedCn);
+      const prefixCn = op === ":";
+      let matchedCn = false;
+      for (let i = 0; i < n; i++) {
+        const c = pIdx.collectorNumbersNormResolved[i]!;
+        const ok = prefixCn ? c.startsWith(uCn) : c === uCn;
+        if (!ok) continue;
+        matchedCn = true;
+        buf[i] = 1;
+      }
+      if (!matchedCn) return `unknown collector number "${trimmedCn}"`;
       break;
     }
     case "frame": {
@@ -349,40 +415,61 @@ export function evalPrintingField(
       if (op !== ":" && op !== "=" && op !== "!=") {
         return `in: does not support operator "${op}"`;
       }
-      const inVal = resolveForField("in", val, context);
-      const inValLower = inVal.toLowerCase();
-      // Disambiguate by value: game → set → rarity → language (unsupported) → unknown
-      const targetGame = GAME_NAMES[inValLower];
-      if (targetGame !== undefined) {
-        const games = pIdx.games;
+      const trimmedIn = val.trim();
+      if (trimmedIn === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
+      const tlow = trimmedIn.toLowerCase();
+      if (KNOWN_LANGUAGES.has(tlow)) {
+        return `unsupported in value "${trimmedIn}"`;
+      }
+      const uIn = normalizeForResolution(trimmedIn);
+
+      if (op === ":") {
+        const gBits = combinedInGameMask(true, uIn);
+        const rMask = combinedInRarityMask(true, uIn);
+        const setNorms = matchedSetNormsPrefix(pIdx, uIn);
+        if (gBits === 0 && rMask === 0 && setNorms.size === 0) {
+          return `unknown in value "${trimmedIn}"`;
+        }
+        const gamesCol = pIdx.games;
         for (let i = 0; i < n; i++) {
-          const g = games[i] ?? 0;
-          const match = (op === ":" || op === "=") ? (g & targetGame) !== 0 : (g & targetGame) === 0;
-          if (match) buf[i] = 1;
+          const g = gamesCol[i] ?? 0;
+          const r = pIdx.rarity[i] ?? 0;
+          const sn = pIdx.setCodesNormResolved[i]!;
+          if ((g & gBits) !== 0 || (r & rMask) !== 0 || setNorms.has(sn)) buf[i] = 1;
         }
         break;
       }
-      if (pIdx.knownSetCodes.has(inValLower)) {
+
+      // `=` / `!=`: exact positive predicate (game → set → rarity); `!=` negates that mask only (Spec 182).
+      const gEx = combinedInGameMask(false, uIn);
+      const invert = op === "!=";
+      if (gEx !== 0) {
+        const gamesEx = pIdx.games;
         for (let i = 0; i < n; i++) {
-          const match = (op === ":" || op === "=")
-            ? pIdx.setCodesLower[i] === inValLower
-            : pIdx.setCodesLower[i] !== inValLower;
-          if (match) buf[i] = 1;
+          const pos = ((gamesEx[i] ?? 0) & gEx) !== 0;
+          buf[i] = invert ? (pos ? 0 : 1) : (pos ? 1 : 0);
         }
         break;
       }
-      const rarityBit = RARITY_NAMES[inValLower];
-      if (rarityBit !== undefined) {
+      if (hasExactSetNorm(pIdx, uIn)) {
         for (let i = 0; i < n; i++) {
-          const match = (op === ":" || op === "=")
-            ? (pIdx.rarity[i] & rarityBit) !== 0
-            : (pIdx.rarity[i] & rarityBit) === 0;
-          if (match) buf[i] = 1;
+          const pos = pIdx.setCodesNormResolved[i] === uIn;
+          buf[i] = invert ? (pos ? 0 : 1) : (pos ? 1 : 0);
         }
         break;
       }
-      if (KNOWN_LANGUAGES.has(inValLower)) return `unsupported in value "${val}"`;
-      return `unknown in value "${val}"`;
+      const rEx = combinedInRarityMask(false, uIn);
+      if (rEx !== 0) {
+        for (let i = 0; i < n; i++) {
+          const pos = (pIdx.rarity[i] & rEx) !== 0;
+          buf[i] = invert ? (pos ? 0 : 1) : (pos ? 1 : 0);
+        }
+        break;
+      }
+      return `unknown in value "${trimmedIn}"`;
     }
     case "flavor": {
       if (op !== ":" && op !== "=") {

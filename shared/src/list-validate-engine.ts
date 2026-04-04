@@ -21,6 +21,23 @@ import {
 import { tcgplayerToScryfallSetCode } from "./list-serialize";
 import { levenshteinDistance } from "./levenshtein";
 import { normalizeAlphanumeric, normalizeForLookalikes } from "./normalize";
+import { normalizeForResolution } from "./search/categorical-resolve";
+
+/** Deck list validation needs strict AND on collector; query AND elides error leaves (Spec 039). */
+function filterPrintingIndicesByExactCollector(
+  indices: Uint32Array | undefined,
+  collectorNum: string,
+  pIdx: PrintingIndex,
+): Uint32Array {
+  if (!indices || indices.length === 0) return new Uint32Array(0);
+  const u = normalizeForResolution(collectorNum.trim());
+  const out: number[] = [];
+  for (let i = 0; i < indices.length; i++) {
+    const pi = indices[i]!;
+    if (pIdx.collectorNumbersNormResolved[pi] === u) out.push(pi);
+  }
+  return new Uint32Array(out);
+}
 
 function isNumericCollectorNumber(v: string): boolean {
   return /^\d+[a-zA-Z]*$/.test(v.trim());
@@ -303,21 +320,24 @@ export function validateDeckListWithEngine(
       // § 3d.0: Unknown set — try name+collector before falling back
       if (collectorNum) {
         const nameExact = exactNode(normalizeDfcNameForLookup(nameTok.value));
-        const collectorField = fieldNode("cn", collectorNum);
         const uniquePrints = fieldNode("unique", "prints");
         const nameCnChildren: ASTNode[] = [
           nameExact,
-          collectorField,
           ...finishNodes,
           ...variantIsNodes,
           uniquePrints,
         ];
         const nameCnResult = cache.evaluate(andNode(nameCnChildren));
-        if (nameCnResult.printingIndices && nameCnResult.printingIndices.length > 0) {
+        const nameCnPis = filterPrintingIndicesByExactCollector(
+          nameCnResult.printingIndices,
+          collectorNum,
+          printingIndex!,
+        );
+        if (nameCnPis.length > 0) {
           // Disaggregate by set code — foil/non-foil share set+cn, count as one match
           const bySet = new Map<string, number[]>();
-          for (let i = 0; i < nameCnResult.printingIndices.length; i++) {
-            const idx = nameCnResult.printingIndices[i]!;
+          for (let i = 0; i < nameCnPis.length; i++) {
+            const idx = nameCnPis[i]!;
             const sc = printingDisplay!.set_codes[idx] ?? "";
             const arr = bySet.get(sc) ?? [];
             arr.push(idx);
@@ -842,16 +862,26 @@ function resolveCascade(
 ): { line: LineValidation; entry?: ParsedEntry; oracleIndex?: number; scryfallIndex?: number } {
   const nameExact = exactNode(normalizeDfcNameForLookup(nameTok.value));
   const setField = fieldNode("set", setCodeForLookup.toLowerCase());
-  const collectorField = collectorNum ? fieldNode("cn", collectorNum) : null;
   const uniquePrints = fieldNode("unique", "prints");
   const effectiveCollectorTok = isVariantCollector ? variantTok : collectorTok;
 
   // § 3a: Full match (name + set + cn + finish + variant)
-  if (collectorField) {
-    const fullChildren: ASTNode[] = [nameExact, setField, collectorField, ...finishNodes, ...variantIsNodes, uniquePrints];
+  // Collector is applied via filterPrintingIndicesByExactCollector — not cn in AST — so AND is not weakened by Spec 039 passthrough elision of unknown-collector errors.
+  if (collectorNum) {
+    const fullChildren: ASTNode[] = [nameExact, setField, ...finishNodes, ...variantIsNodes, uniquePrints];
     const fullResult = cache.evaluate(andNode(fullChildren));
-    if (fullResult.printingIndices && fullResult.printingIndices.length > 0) {
-      const pi = fullResult.printingIndices[0]!;
+    const fullPis = filterPrintingIndicesByExactCollector(
+      fullResult.printingIndices,
+      collectorNum,
+      _printingIndex,
+    );
+    if (fullPis.length > 0) {
+      let pi = fullPis[0]!;
+      if (fullPis.length > 1) {
+        const wantFoil = preferFoil ? 1 : 0;
+        const match = Array.from(fullPis).find((idx) => printingDisplay.finish[idx] === wantFoil);
+        if (match !== undefined) pi = match;
+      }
       return makeSuccess(
         pi, display, printingDisplay, quantityTok, finish,
         lineIndex, lineStart, lineEnd, variantTok, foilPrereleaseMarkerTok,
@@ -939,10 +969,20 @@ function resolveCascade(
     }
 
     // § 3c: Drop name
-    const dropNameChildren: ASTNode[] = [setField, collectorField, ...finishNodes, ...variantIsNodes, uniquePrints];
+    const dropNameChildren: ASTNode[] = [setField, ...finishNodes, ...variantIsNodes, uniquePrints];
     const dropNameResult = cache.evaluate(andNode(dropNameChildren));
-    if (dropNameResult.printingIndices && dropNameResult.printingIndices.length > 0) {
-      const pi = dropNameResult.printingIndices[0]!;
+    const dropNamePis = filterPrintingIndicesByExactCollector(
+      dropNameResult.printingIndices,
+      collectorNum,
+      _printingIndex,
+    );
+    if (dropNamePis.length > 0) {
+      let pi = dropNamePis[0]!;
+      if (dropNamePis.length > 1) {
+        const wantFoil = preferFoil ? 1 : 0;
+        const match = Array.from(dropNamePis).find((idx) => printingDisplay.finish[idx] === wantFoil);
+        if (match !== undefined) pi = match;
+      }
       const printingCanonicalFace = printingDisplay.canonical_face_ref[pi]!;
       const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
       if (correctName) {
@@ -996,7 +1036,7 @@ function resolveCascade(
     const faceIdx = nameResult.indices[0]!;
     const canonicalFace = display.canonical_face[faceIdx] ?? faceIdx;
 
-    if (!collectorField) {
+    if (!collectorNum) {
       // Set present but no collector (TappedOut format)
       const fallbackPi = findAnyPrintingInSetEngine(
         setCodeForLookup, canonicalFace, printingDisplay, preferFoil,
@@ -1029,11 +1069,21 @@ function resolveCascade(
   }
 
   // Name unknown — try set+collector to offer Case 3 quick fix
-  if (collectorField) {
-    const dropNameChildren: ASTNode[] = [setField, collectorField!, ...finishNodes, ...variantIsNodes, uniquePrints];
-    const dropNameResult = cache.evaluate(andNode(dropNameChildren));
-    if (dropNameResult.printingIndices && dropNameResult.printingIndices.length > 0) {
-      const pi = dropNameResult.printingIndices[0]!;
+  if (collectorNum) {
+    const dropNameChildrenNc: ASTNode[] = [setField, ...finishNodes, ...variantIsNodes, uniquePrints];
+    const dropNameResultNc = cache.evaluate(andNode(dropNameChildrenNc));
+    const dnpNc = filterPrintingIndicesByExactCollector(
+      dropNameResultNc.printingIndices,
+      collectorNum,
+      _printingIndex,
+    );
+    if (dnpNc.length > 0) {
+      let pi = dnpNc[0]!;
+      if (dnpNc.length > 1) {
+        const wantFoil = preferFoil ? 1 : 0;
+        const match = Array.from(dnpNc).find((idx) => printingDisplay.finish[idx] === wantFoil);
+        if (match !== undefined) pi = match;
+      }
       const printingCanonicalFace = printingDisplay.canonical_face_ref[pi]!;
       const correctName = getDisplayNameForCanonicalFace(printingCanonicalFace, display);
       if (correctName) {

@@ -1,6 +1,6 @@
 # Spec 182: Prefix union for format, frame, `in:`, and collector number
 
-**Status:** In Progress
+**Status:** Implemented
 
 **Depends on:** Spec 002 (Query Engine), Spec 032 (`is:` / `not:` prefix union precedent), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 056 / Spec 178 (oracle-level format legality), Spec 072 (`in:` qualifier), Spec 103 (Categorical Field Value Auto-Resolution), Spec 104 (bonus rarity tier), Spec 176 (`kw:` / `keyword:` prefix query semantics — pattern reference), Spec 068 (`game:`), ADR-022 (Categorical field operators — normative field slice for this pattern)
 
@@ -112,7 +112,7 @@ Concrete messages (preserve existing shapes where they already exist):
 | **`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`** | **Neutral** — same as empty **`=`** / **`!=`**: the leaf must **not** narrow results while the user has only typed the operator (parity with **`frame:`** empty **`:`** and **`kw:`**). |
 | **`frame:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`kw:`** / **`keyword:`** (Spec 176) — trimmed empty must not narrow results while the user is still typing. |
 | **`in:`** | Empty **`:`** — **neutral** (all printings match in the leaf), same as **`frame:`** / **`kw:`** and [ADR-022](../adr/022-categorical-field-operators.md) — do **not** return **`unknown in value`** for trimmed empty. |
-| **`cn:`** | Empty **`:`** → **exact** match against empty stored collector string only, or **`unknown collector number`**; document in **Implementation Notes** if product chooses. |
+| **`cn:`** | Empty **`:`** — **neutral** (all printings match), same as **`frame:`** / **`in:`** / **`kw:`** (ADR-022 empty-value forgiveness). |
 
 ### Spec 103 split (evaluation vs canonicalize)
 
@@ -247,5 +247,6 @@ Scryfall’s syntax for these fields is largely **exact** or **unique** token or
 ## Implementation Notes
 
 - **Empty `=` observable behavior:** Today, queries such as **`f=`** (no value yet) already **do not** narrow results; Spec 182 **normative** requirement is that **outcome**, whether the leaf is implemented as match-all, **`unknown format`** + passthrough, or otherwise.
-- **Empty `in:` / `in=` / `in!=`:** Same **neutral** observable outcome as **`frame:`** while the value is still empty after trim — not an **`unknown in value`** leaf for bare **`in:`** (ADR-022 alignment; **[Spec 072](072-in-query-qualifier.md)** update pending implementation).
+- **Empty `in:` / `in=` / `in!=`:** Same **neutral** observable outcome as **`frame:`** while the value is still empty after trim — not an **`unknown in value`** leaf for bare **`in:`** (ADR-022 alignment; **[Spec 072](072-in-query-qualifier.md)** updated with eval semantics).
 - **2026-04-04:** Legalities family (**`legal:`** / **`f:`** / **`format:`** / **`banned:`** / **`restricted:`**) — eval uses precomputed **`normalizeForResolution`** of **`FORMAT_NAMES`** keys in **`shared/src/search/eval-leaves.ts`** (**`combinedFormatMask`**); **`:`** / **`=`** / **`!=`** per §1; **`resolveForField`** remains for canonicalize only (Spec 103).
+- **2026-04-04:** **`in:`** / **`cn:`** — eval in **`shared/src/search/eval-printing.ts`** per §3–§4; precomputed row norms on **`PrintingIndex`** (**`setCodeNormByLower`**, **`collectorNumbersNormResolved`**). **Deck list validation** applies exact collector matching in **`list-validate-engine.ts`** via **`filterPrintingIndicesByExactCollector`** after evaluating name+set+… without a **`cn`** AST leaf, so AND is not weakened by Spec 039 passthrough elision of **`unknown collector number`** errors.

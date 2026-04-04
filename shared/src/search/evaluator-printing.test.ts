@@ -204,6 +204,22 @@ describe("printing-domain leaves", () => {
     expect(cardCount("cn:113")).toBe(1);
   });
 
+  test("empty in:, in=, in!= are neutral through full evaluator (Spec 182 / ADR-022)", () => {
+    const all = cardCount("set:");
+    for (const q of ["in:", "in=", "in!="]) {
+      expect(cardCount(q), q).toBe(all);
+      expect(evaluate(q).result.error, q).toBeUndefined();
+    }
+  });
+
+  test("empty cn:, cn=, number:, collectornumber: are neutral through full evaluator (Spec 182)", () => {
+    const all = cardCount("set:");
+    for (const q of ["cn:", "cn=", "number:", "number=", "collectornumber:", "collectornumber="]) {
+      expect(cardCount(q), q).toBe(all);
+      expect(evaluate(q).result.error, q).toBeUndefined();
+    }
+  });
+
   test("frame:2015 matches both cards with printings", () => {
     expect(cardCount("frame:2015")).toBe(2);
   });
