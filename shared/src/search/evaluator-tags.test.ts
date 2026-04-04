@@ -4,6 +4,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { index, printingIndex } from "./evaluator.test-fixtures";
 import type { OracleTagData } from "../data";
+import { buildOracleTagEvalIndex, buildIllustrationTagEvalIndex } from "./eval-tags";
 
 const oracleTags: OracleTagData = {
   ramp: [0, 3, 4], // Birds, Sol Ring, Tarmogoyf (face indices)
@@ -14,12 +15,18 @@ const illustrationTags = new Map<string, Uint32Array>([
   ["foot", new Uint32Array([3, 4])], // printing rows 3, 4 (Sol Ring)
 ]);
 
-const tagDataRef = {
-  oracle: oracleTags,
-  illustration: illustrationTags,
-  flavor: null,
-  artist: null,
-};
+function tagRef(oracle: OracleTagData | null, illustration: Map<string, Uint32Array> | null) {
+  return {
+    oracle,
+    oracleEvalIndex: oracle ? buildOracleTagEvalIndex(oracle) : null,
+    illustration,
+    illustrationEvalIndex: illustration ? buildIllustrationTagEvalIndex(illustration) : null,
+    flavor: null,
+    artist: null,
+  };
+}
+
+const tagDataRef = tagRef(oracleTags, illustrationTags);
 
 describe("otag: evaluator", () => {
   test("otag:ramp matches expected face indices", () => {
@@ -55,24 +62,32 @@ describe("otag: evaluator", () => {
       ...oracleTags,
       "ramp-artifact": [5],
     };
-    const cache = new NodeCache(index, null, null, {
-      ...tagDataRef,
-      oracle: oracleTagsExtended,
-    });
+    const cache = new NodeCache(index, null, null, tagRef(oracleTagsExtended, illustrationTags));
     const out = cache.evaluate(parse("otag:ramp"));
     expect(out.result.error).toBeUndefined();
     expect(out.result.matchCount).toBe(4);
   });
 
-  test("otag:nonexistent yields zero matches, no error (Spec 174)", () => {
+  test("otag=ramp does not include ramp-artifact prefix widen", () => {
+    const oracleTagsExtended: OracleTagData = {
+      ...oracleTags,
+      "ramp-artifact": [5],
+    };
+    const cache = new NodeCache(index, null, null, tagRef(oracleTagsExtended, illustrationTags));
+    const out = cache.evaluate(parse("otag=ramp"));
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(3);
+  });
+
+  test("otag:nonexistent yields unknown oracle tag (Spec 174)", () => {
     const cache = new NodeCache(index, null, null, tagDataRef);
     const out = cache.evaluate(parse("otag:nonexistent"));
-    expect(out.result.error).toBeUndefined();
-    expect(out.result.matchCount).toBe(0);
+    expect(out.result.matchCount).toBe(-1);
+    expect(out.result.error).toBe('unknown oracle tag "nonexistent"');
   });
 
   test("otag: without oracle tags returns error", () => {
-    const cache = new NodeCache(index, null, null, { oracle: null, illustration: null, flavor: null, artist: null });
+    const cache = new NodeCache(index, null, null, tagRef(null, null));
     const out = cache.evaluate(parse("otag:ramp"));
     expect(out.result.matchCount).toBe(-1);
     expect(out.result.error).toBe("oracle tags not loaded");
@@ -81,21 +96,33 @@ describe("otag: evaluator", () => {
   test("-otag:ramp negates correctly", () => {
     const cache = new NodeCache(index, null, null, tagDataRef);
     const out = cache.evaluate(parse("-otag:ramp"));
-    // 10 face rows, 9 canonical faces (Ayara 7+8 share). 3 ramp → 6 non-ramp
     expect(out.result.matchCount).toBe(6);
     expect(out.result.error).toBeUndefined();
   });
 
-  test("otag: requires : or = operator", () => {
+  test("otag!=ramp negates exact = ramp (face rows: 10 − 3 ramp faces = 7)", () => {
     const cache = new NodeCache(index, null, null, tagDataRef);
     const out = cache.evaluate(parse("otag!=ramp"));
-    expect(out.result.error).toBe("otag: requires : or = operator");
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(7);
+  });
+
+  test("unsupported operator on otag", () => {
+    const cache = new NodeCache(index, null, null, tagDataRef);
+    const out = cache.evaluate(parse("otag>ramp"));
+    expect(out.result.error).toBe('otag: does not support operator ">"');
+  });
+
+  test("otag: composes with other face-domain conditions (passthrough on bad tag)", () => {
+    const cache = new NodeCache(index, null, null, tagDataRef);
+    const creatureOnly = cache.evaluate(parse("t:creature")).result.matchCount;
+    const combined = cache.evaluate(parse("otag:nonexistent t:creature")).result.matchCount;
+    expect(combined).toBe(creatureOnly);
   });
 
   test("otag: composes with other face-domain conditions", () => {
     const cache = new NodeCache(index, null, null, tagDataRef);
     const out = cache.evaluate(parse("otag:ramp t:creature"));
-    // ramp = faces 0,3,4. creature = 0,4,6,7,8. Intersection = 0,4 (Birds, Tarmogoyf)
     expect(out.result.matchCount).toBe(2);
   });
 
@@ -116,7 +143,6 @@ describe("atag: evaluator", () => {
   test("atag:chair matches expected printing rows", () => {
     const cache = new NodeCache(index, printingIndex, null, tagDataRef);
     const out = cache.evaluate(parse("atag:chair"));
-    // chair = printings 0,2,5 → 3 printing rows match
     expect(out.result.matchCount).toBe(3);
     expect(out.result.error).toBeUndefined();
   });
@@ -128,20 +154,15 @@ describe("atag: evaluator", () => {
     expect(out1.result.matchCount).toBe(out2.result.matchCount);
   });
 
-  test("atag:nonexistent yields zero matches, no error (Spec 174)", () => {
+  test("atag:nonexistent yields unknown illustration tag", () => {
     const cache = new NodeCache(index, printingIndex, null, tagDataRef);
     const out = cache.evaluate(parse("atag:nonexistent"));
-    expect(out.result.error).toBeUndefined();
-    expect(out.result.matchCount).toBe(0);
+    expect(out.result.matchCount).toBe(-1);
+    expect(out.result.error).toBe('unknown illustration tag "nonexistent"');
   });
 
   test("atag: without illustration tags returns error", () => {
-    const cache = new NodeCache(index, printingIndex, null, {
-      oracle: oracleTags,
-      illustration: null,
-      flavor: null,
-      artist: null,
-    });
+    const cache = new NodeCache(index, printingIndex, null, tagRef(oracleTags, null));
     const out = cache.evaluate(parse("atag:chair"));
     expect(out.result.matchCount).toBe(-1);
     expect(out.result.error).toBe("illustration tags not loaded");
@@ -151,14 +172,12 @@ describe("atag: evaluator", () => {
     const cache = new NodeCache(index, printingIndex, null, tagDataRef);
     const out = cache.evaluate(parse("-atag:chair"));
     expect(out.result.error).toBeUndefined();
-    // 11 printing rows total, 3 match chair → 8 don't match
     expect(out.result.matchCount).toBe(8);
   });
 
   test("atag: composes with printing-domain conditions", () => {
     const cache = new NodeCache(index, printingIndex, null, tagDataRef);
     const out = cache.evaluate(parse("atag:chair set:mh2"));
-    // chair = printings 0,2,5. set:mh2 = 0,1,9,10. Intersection = 0,1
     expect(out.result.matchCount).toBe(1);
     expect(out.result.error).toBeUndefined();
   });

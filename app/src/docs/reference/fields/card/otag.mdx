@@ -14,19 +14,22 @@ Community-curated tags describing card function (e.g. ramp, removal).
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Prefix match on normalized tag keys | `q=otag:ramp` |
-| `=` | Same as `:` | `q=function:ramp` |
-| `!=` | Does not have tag | `q=otag!=removal` |
+| `:` | Prefix match on normalized tag keys (union) | `q=otag:ramp` |
+| `=` | Exact match on normalized tag keys | `q=otag=ramp` |
+| `!=` | Negates exact `=` only (Frantic extension) | `q=otag!=removal` |
 
 ## Matching
 
-Values are normalized like other categorical fields (lowercase, alphanumeric only; hyphens in stored keys disappear under normalization, so `mana` prefix-matches `mana-rock`).
+Values are normalized like other categorical fields (lowercase, alphanumeric only; hyphens in stored keys disappear under normalization, so `mana` prefix-matches `mana-rock` under `:`).
 
-- **Prefix:** Every oracle tag key whose **normalized** key **starts with** the normalized query contributes its faces; results are the **union** (OR) of those tags. Example: if both `ramp` and `ramp-artifact` exist, `otag:ramp` matches cards tagged with either.
-- **Empty value:** `otag:` or `otag=` with nothing after the operator matches every **face** that has **at least one** oracle tag in the loaded index.
-- **No match:** If no key has that prefix, you get **zero** results—there is no “unknown tag” error (similar to `set:` with an unused prefix). See [Scryfall differences](?doc=reference/scryfall/differences).
+- **Prefix (`:`):** Every oracle tag key whose **normalized** key **starts with** the normalized query contributes its faces; results are the **union** (OR) of those tags. Example: if both `ramp` and `ramp-artifact` exist, `otag:ramp` matches cards tagged with either.
+- **Exact (`=`):** Only keys whose normalized form **equals** the normalized query match (e.g. `otag=ramp` does not match a sole `ramp-artifact` key).
+- **`!=`:** Matches faces that do **not** carry the exact normalized tag from `=` (use `-otag:…` / `NOT` to exclude a prefix union).
+- **Empty value:** `otag:` or `otag=` with nothing after the operator matches every **face** that has **at least one** oracle tag in the loaded index (narrower than empty `kw:`; see [Scryfall differences](?doc=reference/scryfall/differences)).
+- **Empty `!=`:** Inverts that “any tag” set—faces with **no** oracle tags in the loaded index.
+- **No match:** Non-empty value with no key matching under the active operator → **`unknown oracle tag "…"`** with query passthrough.
 
-This is a **discovery** affordance. Scryfall’s oracle tag filter targets an **exact** label; Frantic uses prefix-on-keys for shorthand. **Canonical Scryfall links** may still expand a uniquely resolvable short value via auto-resolution; in-app search uses prefix union. See [set](?doc=reference/fields/printing/set) for the same split on another field.
+**Canonical Scryfall links** may still expand a uniquely resolvable short value via auto-resolution; in-app search uses the operator rules above. See [set](?doc=reference/fields/printing/set) for the same `:` / `=` split on another field.
 
 ## Notes
 

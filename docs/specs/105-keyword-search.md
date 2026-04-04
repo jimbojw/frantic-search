@@ -140,4 +140,4 @@ Per `shared/AGENTS.md`, use TDD for evaluator code:
 ## Implementation Notes
 
 - 2026-03-31: Spec 176 — `eval-keywords.ts` uses `normalizeForResolution` prefix union; `evaluator.ts` keyword branch passes `ast.value` through without `resolveForField` on the eval path. Whitespace-only values trim to empty and match all faces.
-- 2026-03-31: No matching keyword key for a non-empty value → `unknown keyword "…"` (passthrough), unlike silent zero-hit for `set:` / `otag:` / `atag:`.
+- 2026-03-31: No matching keyword key for a non-empty value → `unknown keyword "…"` (passthrough). (Historically contrasted with silent zero-hit on tags; Spec 174 migrated **`otag:`** / **`atag:`** to the same passthrough error family.)

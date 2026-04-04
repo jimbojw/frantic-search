@@ -479,7 +479,7 @@ Add printing-field entries once the full dataset is available.
 15. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
 16. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
 17. `-is:poster` correctly negates (matches printings without poster promo type).
-18. **`atag:`** / **`art:`** evaluation uses normalized prefix matching and union over illustration tag keys (Spec 174), analogous to **`set:`** prefix discovery.
+18. **`atag:`** / **`art:`** / **`art!=`** evaluation follows Spec 174: **`:`** = normalized prefix union over illustration tag keys; **`=`** = normalized exact; **`!=`** negates **`=`** only; non-empty no match → **`unknown illustration tag "…"`** (passthrough). Precomputed normalized keys per wire tag; eval path does not use **`resolveForField`**.
 
 ## Implementation Notes
 
@@ -492,3 +492,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-04-04: **`:`** = prefix union, **`=`** = exact normalized match (aligned with Spec 176 / 182). Empty **`=`** neutral. Precomputed per-row normalization on `PrintingIndex`; Spec 178 widening splits prefix vs exact (see Spec 178 changelog).
 - 2026-04-04: **`frame:`** / **`frame=`** — Spec 182 operator split on `FRAME_NAMES`; precomputed normalized keys; empty **`frame:`** / **`frame=`** neutral (all printings, **`kw:`** parity). Evaluator invokes `evalPrintingField` for `frame` when the AST value is empty (same dispatch fix pattern as **`set`** / **`set_type`**).
 - 2026-04-04: **`frame!=`** — negation of **`frame=`** exact mask only (principled Frantic extension vs Scryfall); empty neutral.
+- 2026-04-04: **`atag:`** / **`art:`** — Spec 174 ADR-022 migration: **`:`** / **`=`** / **`!=`**, **`unknown illustration tag`**, precomputed normalized keys (same family as **`kw:`** / **`set:`**).

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, OracleTagData, FlavorTagData, ArtistIndexData } from '@frantic-search/shared'
+import type { ToWorker, FromWorker, BreakdownNode, Histograms, SortDirective, TagDataRef } from '@frantic-search/shared'
 import { CardIndex, PrintingIndex, NodeCache, EXTRAS_LAYOUT_SET, CardFlag, parse, seededSort, seededSortPrintings, collectBareWords, queryForSortSeed, getUniqueModeFromQuery, sortByField, sortPrintingDomain, reorderPrintingsByCardOrder, fnv1a, normalizeAlphanumeric, astUsesFranticExtensionSyntax, printingPassesDefaultInclusionFilter, isSetCodeWidenedByQuery, isSetTypeWidenedByQuery } from '@frantic-search/shared'
 import { combinePrintingIndices } from './combine-printing-indices'
 import { sealQuery, parseBreakdown } from './query-edit'
@@ -13,8 +13,8 @@ export type RunSearchParams = {
   index: CardIndex
   printingIndex: PrintingIndex | null
   sessionSalt: number
-  /** Tag data for otag:/atag:/flavor:/artist: (Spec 092, 141, 149). */
-  tagData?: { oracle: OracleTagData | null; illustration: Map<string, Uint32Array> | null; flavor: FlavorTagData | null; artist: ArtistIndexData | null }
+  /** Tag data for otag:/atag:/flavor:/artist: (Spec 092, 141, 149, 174). */
+  tagData?: TagDataRef | null
   /** Spec 151: For empty-list suggestion when query references my:list/# and default list is empty. */
   getListMask?: (listId: string) => { printingIndices?: Uint32Array } | null
   /** Spec 154: domain labels for bare-term-upgrade. */

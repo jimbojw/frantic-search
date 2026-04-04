@@ -10,6 +10,8 @@ import {
   Color,
   Format,
   CardIndex,
+  buildOracleTagEvalIndex,
+  buildIllustrationTagEvalIndex,
 } from '@frantic-search/shared'
 import type { ColumnarData, OracleTagData } from '@frantic-search/shared'
 
@@ -18,7 +20,9 @@ const FIXTURE_ORACLE_TAGS: OracleTagData = {
 }
 const tagDataForOtagTests = {
   oracle: FIXTURE_ORACLE_TAGS,
+  oracleEvalIndex: buildOracleTagEvalIndex(FIXTURE_ORACLE_TAGS),
   illustration: null,
+  illustrationEvalIndex: null,
   flavor: null,
   artist: null,
 } as const
@@ -909,7 +913,9 @@ describe('oracle hint (Spec 131)', () => {
   it('otag bare-term-upgrade uses priority 21 (Spec 151; sorts after oracle 20)', () => {
     const cacheWithTags = new NodeCache(index, printingIndex, null, {
       oracle: FIXTURE_ORACLE_TAGS,
+      oracleEvalIndex: buildOracleTagEvalIndex(FIXTURE_ORACLE_TAGS),
       illustration: null,
+      illustrationEvalIndex: null,
       flavor: null,
       artist: null,
     })
@@ -935,7 +941,9 @@ describe('oracle hint (Spec 131)', () => {
     }
     const tagRef = {
       oracle: oracleTags209,
+      oracleEvalIndex: buildOracleTagEvalIndex(oracleTags209),
       illustration: null,
+      illustrationEvalIndex: null,
       flavor: null,
       artist: null,
     } as const
@@ -1480,7 +1488,9 @@ describe('artist-atag suggestions (Spec 153)', () => {
   }
   const tagData = {
     oracle: null,
+    oracleEvalIndex: null,
     illustration: illustrationTags,
+    illustrationEvalIndex: buildIllustrationTagEvalIndex(illustrationTags),
     flavor: null,
     artist: artistIndex,
   }

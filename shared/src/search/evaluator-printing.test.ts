@@ -23,7 +23,9 @@ const FLAVOR_INDEX: FlavorTagData = {
 
 const tagDataRefWithFlavor = {
   oracle: null,
+  oracleEvalIndex: null,
   illustration: null,
+  illustrationEvalIndex: null,
   flavor: FLAVOR_INDEX,
   artist: null,
 };
@@ -35,7 +37,9 @@ const ARTIST_INDEX: ArtistIndexData = {
 
 const tagDataRefWithArtist = {
   oracle: null,
+  oracleEvalIndex: null,
   illustration: null,
+  illustrationEvalIndex: null,
   flavor: null,
   artist: ARTIST_INDEX,
 };
@@ -714,7 +718,9 @@ describe("flavor: evaluator", () => {
     const idx: FlavorTagData = { "orc tribe": [1, 0], "orcs attack": [1, 2] };
     const cache = new NodeCache(index, printingIndex, null, {
       oracle: null,
+      oracleEvalIndex: null,
       illustration: null,
+      illustrationEvalIndex: null,
       flavor: idx,
       artist: null,
     });
@@ -731,7 +737,9 @@ describe("flavor: evaluator", () => {
   test("flavor:x when flavor index null produces flavorUnavailable", () => {
     const cache = new NodeCache(index, printingIndex, null, {
       oracle: null,
+      oracleEvalIndex: null,
       illustration: null,
+      illustrationEvalIndex: null,
       flavor: null,
       artist: null,
     });
@@ -791,7 +799,9 @@ describe("artist: evaluator", () => {
   test("a:x when artist index null produces artistUnavailable", () => {
     const cache = new NodeCache(index, printingIndex, null, {
       oracle: null,
+      oracleEvalIndex: null,
       illustration: null,
+      illustrationEvalIndex: null,
       flavor: null,
       artist: null,
     });

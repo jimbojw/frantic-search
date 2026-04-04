@@ -14,19 +14,22 @@ Community-tagged artwork from the Scryfall tagger project.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Prefix match on normalized tag keys | `q=atag:bolt` |
-| `=` | Same as `:` | `q=atag:bolt` |
-| `!=` | Does not have tag | `q=atag!=dragon` |
+| `:` | Prefix match on normalized tag keys (union) | `q=atag:bolt` |
+| `=` | Exact match on normalized tag keys | `q=atag=bolt` |
+| `!=` | Negates exact `=` only (Frantic extension) | `q=atag!=dragon` |
 
 ## Matching
 
 Values are normalized like other categorical fields (lowercase, alphanumeric only).
 
-- **Prefix:** Every illustration tag key whose **normalized** key **starts with** the normalized query contributes its printings; results are the **union** of those tags.
-- **Empty value:** `atag:` or `atag=` with nothing after the operator matches every **printing** that has **at least one** illustration tag in the loaded index.
-- **No match:** If no key has that prefix, **zero** printings—no “unknown tag” error. See [Scryfall differences](?doc=reference/scryfall/differences).
+- **Prefix (`:`):** Every illustration tag key whose **normalized** key **starts with** the normalized query contributes its printings; results are the **union** of those tags.
+- **Exact (`=`):** Only keys whose normalized form **equals** the normalized query match.
+- **`!=`:** Matches printings that do **not** carry the exact normalized tag from `=`.
+- **Empty value:** `atag:` or `atag=` with nothing after the operator matches every **printing** that has **at least one** illustration tag in the loaded index (narrower than empty `kw:`; see [Scryfall differences](?doc=reference/scryfall/differences)).
+- **Empty `!=`:** Inverts that set—printings with **no** illustration tags in the loaded index.
+- **No match:** Non-empty value with no key matching under the active operator → **`unknown illustration tag "…"`** with query passthrough.
 
-Frantic uses prefix-on-keys for discovery; Scryfall targets an **exact** illustration tag label. **Canonical Scryfall links** may still use unique-prefix resolution. See [otag](?doc=reference/fields/card/otag) and [set](?doc=reference/fields/printing/set) for the same pattern.
+Frantic uses **`:`** / **`=`** / **`!=`** as above; Scryfall targets an **exact** illustration tag label for the filter. **Canonical Scryfall links** may still use unique-prefix resolution. See [otag](?doc=reference/fields/card/otag) and [set](?doc=reference/fields/printing/set).
 
 ## Notes
 

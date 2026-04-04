@@ -19,7 +19,12 @@ import {
 import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToFace, promoteFaceToPrinting } from "./eval-printing";
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
 import type { GetMetadataIndex } from "./eval-leaves";
-import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
+import {
+  evalOracleTag,
+  evalIllustrationTag,
+  type OracleTagEvalEntry,
+  type IllustrationTagEvalEntry,
+} from "./eval-tags";
 import { evalKeyword, type KeywordDataRef } from "./eval-keywords";
 import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { PERCENTILE_RE } from "./eval-printing";
@@ -141,7 +146,10 @@ export type { GetMetadataIndex };
 
 export type TagDataRef = {
   oracle: OracleTagData | null;
+  /** Precomputed normalized keys for eval (Spec 174); null when oracle is null. */
+  oracleEvalIndex: readonly OracleTagEvalEntry[] | null;
   illustration: Map<string, Uint32Array> | null;
+  illustrationEvalIndex: readonly IllustrationTagEvalEntry[] | null;
   flavor: FlavorTagData | null;
   artist: ArtistIndexData | null;
 };
@@ -948,11 +956,17 @@ export class NodeCache {
           let error: string | null = null;
 
           if (canonical === "atag") {
-            if (ast.operator !== ":" && ast.operator !== "=") {
-              error = "atag: requires : or = operator";
+            if (ast.operator !== ":" && ast.operator !== "=" && ast.operator !== "!=") {
+              error = `atag: does not support operator "${ast.operator}"`;
             } else {
-              // Spec 174: prefix union on tag keys; no resolveForField on eval path (Spec 103).
-              error = evalIllustrationTag(ast.value, this._tagDataRef?.illustration ?? null, buf);
+              const tref = this._tagDataRef;
+              error = evalIllustrationTag(
+                ast.operator as ":" | "=" | "!=",
+                ast.value,
+                tref?.illustration ?? null,
+                tref?.illustrationEvalIndex ?? null,
+                buf,
+              );
             }
           } else if (canonical === "flavor") {
             if (ast.operator !== ":" && ast.operator !== "=") {
@@ -1026,11 +1040,17 @@ export class NodeCache {
           const buf = new Uint8Array(n);
           const t0 = performance.now();
           let err: string | null = null;
-          if (ast.operator !== ":" && ast.operator !== "=") {
-            err = "otag: requires : or = operator";
+          if (ast.operator !== ":" && ast.operator !== "=" && ast.operator !== "!=") {
+            err = `otag: does not support operator "${ast.operator}"`;
           } else {
-            // Spec 174: prefix union on tag keys; no resolveForField on eval path (Spec 103).
-            err = evalOracleTag(ast.value, this._tagDataRef?.oracle ?? null, buf);
+            const tref = this._tagDataRef;
+            err = evalOracleTag(
+              ast.operator as ":" | "=" | "!=",
+              ast.value,
+              tref?.oracle ?? null,
+              tref?.oracleEvalIndex ?? null,
+              buf,
+            );
           }
           const ms = performance.now() - t0;
           if (err) {

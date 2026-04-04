@@ -24,6 +24,8 @@ import {
   serializeMtgsalvation,
   validateLines,
   buildKeywordDataRef,
+  buildOracleTagEvalIndex,
+  buildIllustrationTagEvalIndex,
   extractDisplayColumns,
   extractPrintingDisplayColumns,
   normalizeFlavorIndexForSearch,
@@ -224,7 +226,9 @@ async function init(): Promise<void> {
   let printingToAtags: Map<number, string[]> | null = null
   const tagDataRef = {
     oracle: null as OracleTagData | null,
+    oracleEvalIndex: null as ReturnType<typeof buildOracleTagEvalIndex> | null,
     illustration: null as Map<string, Uint32Array> | null,
+    illustrationEvalIndex: null as ReturnType<typeof buildIllustrationTagEvalIndex> | null,
     flavor: null as FlavorTagData | null,
     artist: null as ArtistIndexData | null,
   }
@@ -291,6 +295,7 @@ async function init(): Promise<void> {
   otagsPromise.then((otags) => {
     if (otags) {
       tagDataRef.oracle = otags
+      tagDataRef.oracleEvalIndex = buildOracleTagEvalIndex(otags)
       faceToOtags = buildFaceToOtags(otags)
       post({ type: 'status', status: 'otags-ready', tagLabels: Object.keys(otags) })
     }
@@ -302,6 +307,7 @@ async function init(): Promise<void> {
     if (atags) {
       const resolved = resolveIllustrationTagsToPrintingRows(atags, printingDataForAtags)
       tagDataRef.illustration = resolved
+      tagDataRef.illustrationEvalIndex = buildIllustrationTagEvalIndex(resolved)
       printingToAtags = buildPrintingToAtags(resolved)
       post({ type: 'status', status: 'atags-ready', tagLabels: Array.from(resolved.keys()) })
     }

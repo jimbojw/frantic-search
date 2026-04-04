@@ -13,6 +13,8 @@ import type {
 } from "@frantic-search/shared";
 import {
   buildKeywordDataRef,
+  buildOracleTagEvalIndex,
+  buildIllustrationTagEvalIndex,
   normalizeArtistIndexForSearch,
   normalizeFlavorIndexForSearch,
   resolveIllustrationTagsToPrintingRows,
@@ -71,7 +73,9 @@ export function buildCliEvalRefs(
 
   const tagDataRef: TagDataRef = {
     oracle: null,
+    oracleEvalIndex: null,
     illustration: null,
+    illustrationEvalIndex: null,
     flavor: null,
     artist: null,
   };
@@ -84,7 +88,9 @@ export function buildCliEvalRefs(
 
   if (fs.existsSync(paths.otags)) {
     try {
-      tagDataRef.oracle = JSON.parse(fs.readFileSync(paths.otags, "utf-8")) as OracleTagData;
+      const o = JSON.parse(fs.readFileSync(paths.otags, "utf-8")) as OracleTagData;
+      tagDataRef.oracle = o;
+      tagDataRef.oracleEvalIndex = buildOracleTagEvalIndex(o);
     } catch {
       /* leave null */
     }
@@ -93,7 +99,9 @@ export function buildCliEvalRefs(
   if (printingData && fs.existsSync(paths.atags)) {
     try {
       const raw = JSON.parse(fs.readFileSync(paths.atags, "utf-8")) as IllustrationTagData;
-      tagDataRef.illustration = resolveIllustrationTagsToPrintingRows(raw, printingData);
+      const ill = resolveIllustrationTagsToPrintingRows(raw, printingData);
+      tagDataRef.illustration = ill;
+      tagDataRef.illustrationEvalIndex = buildIllustrationTagEvalIndex(ill);
     } catch {
       /* leave null */
     }

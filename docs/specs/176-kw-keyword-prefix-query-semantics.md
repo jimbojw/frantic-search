@@ -13,13 +13,13 @@
 
 This gives **discovery** via incomplete **`:`** tokens (e.g. **`kw:first`** matches **first strike**) and an **escape hatch** via **`=`** when the user wants no prefix widening (e.g. **`kw=fly`** matches only a key that normalizes to **`fly`**, not **`flying`**).
 
-**Unlike** **`otag:`** / **`atag:`** (Spec 174): when the trimmed value is **non-empty** and **no** index key matches under the active operator, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039). **`set:`** / **`set_type:`** use the same **unknown token error** model (Spec 047 / 179).
+When the trimmed value is **non-empty** and **no** index key matches under the active operator, the leaf returns **`unknown keyword "…"`** and participates in **passthrough** (Spec 039). **`set:`** / **`set_type:`** (Spec 047 / 179) and **`otag:`** / **`atag:`** (Spec 174: **`unknown oracle tag`** / **`unknown illustration tag`**) use the same **unknown token error** model.
 
 **Related:** **`is:`** / **`not:`** still use **prefix union for both `:` and `=`** until amended — **[Spec 032](032-is-operator.md)** § Value resolution.
 
 ## Background
 
-Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. Spec 174 uses prefix union for tags with **zero hits, no error** when nothing matches. **`set:`** / **`set_type:`** error on a non-empty non-matching prefix (Spec 047 / 179). Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.
+Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** now aligns **`otag:`** / **`atag:`** with the same **`:`** / **`=`** / **`!=`** and unknown-token model as keywords. **`set:`** / **`set_type:`** error on a non-empty non-matching prefix (Spec 047 / 179). Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.
 
 Historically **`kw:`** treated **`:`** and **`=`** identically (prefix union only). This spec now **splits** them to match Spec 182’s cross-field convention.
 
@@ -50,7 +50,7 @@ If **no** key matches (non-empty value, active operator), return **`unknown keyw
 
 ## Empty value
 
-When the value is empty (after trim), **`kw:`**, **`keyword:`**, **`kw=`**, and **`keyword=`** fill the face buffer with **1** on every index (match **all** faces / neutral filter). Same idea as Spec 182 **empty `=`** neutral behavior. This is **not** the same as Spec 174 empty **`otag:`** (which matches only faces that appear in some tag array). Implemented in `eval-keywords.ts`.
+When the value is empty (after trim), **`kw:`**, **`keyword:`**, **`kw=`**, and **`keyword=`** fill the face buffer with **1** on every index (match **all** faces / neutral filter). Same idea as Spec 182 **empty `=`** neutral behavior. Spec 174 empty **`otag:`** / **`otag=`** instead matches only faces that appear in some oracle tag array (**ADR-022 §5** exception). Implemented in `eval-keywords.ts`.
 
 ## Keywords not loaded
 
@@ -90,5 +90,6 @@ Scryfall keyword filters target **effectively exact** names. Frantic adds **pref
 - **`eval-keywords`** logic: [`shared/src/search/eval-keywords.ts`](../../shared/src/search/eval-keywords.ts) — **`evalKeyword`**, **`buildKeywordEvalIndex`**.
 - Evaluator branch: [`shared/src/search/evaluator.ts`](../../shared/src/search/evaluator.ts) — passes **`ast.operator`** and **`keywordEvalIndex`** from **`KeywordDataRef`**.
 - Ref construction: [`app/src/worker.ts`](../../app/src/worker.ts), [`cli/src/cli-eval-refs.ts`](../../cli/src/cli-eval-refs.ts) — attach **`keywordEvalIndex`** alongside **`keywords`**.
-- 2026-03-31 (historical): Prefix union only for both operators; unknown non-empty prefix → passthrough error (differs from `otag:` / `atag:`).
+- 2026-03-31 (historical): Prefix union only for both operators; unknown non-empty prefix → passthrough error.
+- 2026-04-04: **`otag:`** / **`atag:`** migrated to the same unknown-token model (Spec 174); historical contrast removed.
 - 2026-04-04: **`:`** vs **`=`** split aligned with Spec 182; precomputed normalized keys on ref build.

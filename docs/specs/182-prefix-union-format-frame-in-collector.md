@@ -20,7 +20,7 @@ with a **clear split between operators**:
 - **`:`** — **prefix union** after `normalizeForResolution`: every candidate whose normalized form **starts with** the normalized user value contributes to the match (**OR** bits, **OR** printing masks, etc.).
 - **`=`** — **exact match** after `normalizeForResolution`: only candidates whose normalized form **equals** the normalized user value contribute (still **OR** if two distinct vocabulary keys normalize identically — rare — so behavior stays deterministic).
 
-Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several format names ORs those formats’ legality bits). **`=`** is an **escape hatch** for users who want no stemming (e.g. match a tag or frame key that is itself a prefix of a longer key — analogous motivation to `otag:peek` vs a longer `peek-*` tag). This spec’s fields follow **`:`** / **`=`** here. **`kw:`** / **`keyword:`** follow the same split per amended **[Spec 176](176-kw-keyword-prefix-query-semantics.md)**; **`otag:`** / **`atag:`** and related fields are not yet migrated — see **Relation to other specs** below.
+Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several format names ORs those formats’ legality bits). **`=`** is an **escape hatch** for users who want no stemming (e.g. match a frame key that is itself a prefix of a longer key). This spec’s fields follow **`:`** / **`=`** here. **`kw:`** / **`keyword:`** follow the same split per **[Spec 176](176-kw-keyword-prefix-query-semantics.md)**; **`otag:`** / **`atag:`** follow the same split per **[Spec 174](174-otag-atag-prefix-query-semantics.md)**.
 
 **Empty values ([ADR-022](../adr/022-categorical-field-operators.md)):** For every field in **Goal**, a **trimmed-empty** value on **`:`** or **`=`** must **not** narrow the result set while the user is still typing — including **`in:`** (no **`unknown in value`** for bare **`in:`** / **`in=`**). Mechanism remains implementation-defined per **Empty value** below.
 
@@ -36,7 +36,7 @@ Incomplete **`:`** tokens support discovery (e.g. a shared prefix over several f
 
 [Spec 103](103-categorical-field-value-auto-resolution.md) applies **unique-prefix** resolution (`resolveForField` → `resolveCategoricalValue`) for many categoricals: **exactly one** normalized prefix match resolves; otherwise the typed value is passed through and lookup often fails with **`unknown format`**, **`unknown frame`**, or **`unknown in value`**.
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`otag:`** / **`atag:`**, **`is:`** / **`not:`**, etc. is **out of scope** here but should follow the same convention when those specs are amended (see **Relation to other specs**).
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) uses the same **`:`** = prefix union / **`=`** = exact convention as this spec (reference implementation). **`set:`** / **`set_type:`** ([Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)) use the same split with **precomputed** per-printing normalization (aligned with § Implementation performance below). **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) uses the same operator split with precomputed normalized tag keys. This spec applies **`:`** vs **`=`** **only** to the fields listed in **Goal**; aligning **`is:`** / **`not:`** (still prefix-for-both per Spec 032) remains **future work** (see **Relation to other specs**).
 
 ## Shared rules
 
@@ -79,7 +79,7 @@ The subsection below does **not** change these semantics. It requires **observat
 
 **Testing:** During migration, parity tests (naive normalize-in-loop vs precomputed columns) are recommended; after cutover, existing query tests plus spot checks on diacritics / spacing prove equivalence.
 
-**Related fields not in Spec 182 scope:** **`otag:`** / **`atag:`** should use the same precompute discipline when touched for performance or when amended for **`:`** vs **`=`** (see **Relation to other specs**). **`kw:`** / **`keyword:`**, **`set:`**, and **`set_type:`** use precomputed normalized keys/columns per Specs 176 and 047 / 179.
+**Related fields not in Spec 182 scope:** **`otag:`** / **`atag:`** use the same precompute discipline per Spec 174. **`kw:`** / **`keyword:`**, **`set:`**, and **`set_type:`** use precomputed normalized keys/columns per Specs 176 and 047 / 179.
 
 ### Operators and negation
 
@@ -92,7 +92,7 @@ The subsection below does **not** change these semantics. It requires **observat
 
 For **non-empty** trimmed values (see **Empty value** for **`=`** with empty — **not** covered here):
 
-- If **no** candidate matches under the active operator (**`:`** prefix vs **`=`** exact, and for **`!=`** the exact positive mask used for **`=`**) — and for **`cn:`** no printing matches — the leaf returns an **error string** and participates in **passthrough** ([Spec 039](039-non-destructive-error-handling.md)) — same family as **`kw:`** / **`set:`** / **`set_type:`**, **not** silent zero-hit like **`otag:`** / **`atag:`** ([Spec 174](174-otag-atag-prefix-query-semantics.md)).
+- If **no** candidate matches under the active operator (**`:`** prefix vs **`=`** exact, and for **`!=`** the exact positive mask used for **`=`**) — and for **`cn:`** no printing matches — the leaf returns an **error string** and participates in **passthrough** ([Spec 039](039-non-destructive-error-handling.md)) — same family as **`kw:`** / **`set:`** / **`set_type:`** / **`otag:`** / **`atag:`** (Spec 174).
 
 Concrete messages (preserve existing shapes where they already exist):
 
@@ -121,7 +121,7 @@ Concrete messages (preserve existing shapes where they already exist):
 
 ### Relation to other specs (migration, not in scope of Spec 182 ACs)
 
-**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) **migrated:** **`:`** = prefix union, **`=`** = exact. **[Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)** (**`set:`** / **`set_type:`**) **migrated** the same way. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** and **[Spec 032](032-is-operator.md)** (**`is:`** / **`not:`**) still treat **`:`** and **`=`** identically for prefix union. **Future amendments** to those specs should adopt the same **`:`** / **`=`** split as this spec for parity. That migration work is **not** part of Spec 182’s acceptance criteria.
+**[Spec 176](176-kw-keyword-prefix-query-semantics.md)** (**`kw:`** / **`keyword:`**) **migrated:** **`:`** = prefix union, **`=`** = exact. **[Specs 047](047-printing-query-fields.md) / [179](179-set-type-query-field.md)** (**`set:`** / **`set_type:`**) **migrated** the same way. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** (**`otag:`** / **`atag:`**) **migrated** the same way (plus **`!=`** negating **`=`**). **[Spec 032](032-is-operator.md)** (**`is:`** / **`not:`**) still treats **`:`** and **`=`** identically for prefix union. **Future amendments** to Spec 032 should adopt the same **`:`** / **`=`** split as this spec for parity. That **`is:`** / **`not:`** migration work is **not** part of Spec 182’s acceptance criteria.
 
 ---
 
