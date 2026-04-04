@@ -23,6 +23,7 @@ import {
   serializeManapool,
   serializeMtgsalvation,
   validateLines,
+  buildKeywordDataRef,
   extractDisplayColumns,
   extractPrintingDisplayColumns,
   normalizeFlavorIndexForSearch,
@@ -228,7 +229,7 @@ async function init(): Promise<void> {
     artist: null as ArtistIndexData | null,
   }
   const keywordsIndex = data.keywords_index ?? {}
-  const keywordDataRef = { keywords: keywordsIndex }
+  const keywordDataRef = buildKeywordDataRef(keywordsIndex)
   const cache = new NodeCache(
     index,
     printingIndex,

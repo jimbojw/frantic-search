@@ -63,6 +63,7 @@ export { CardIndex } from "./search/card-index";
 export { PrintingIndex } from "./search/printing-index";
 export { NodeCache, nodeKey, FIELD_ALIASES, getUniqueModeFromQuery } from "./search/evaluator";
 export type { TagDataRef, KeywordDataRef } from "./search/evaluator";
+export { buildKeywordDataRef, buildKeywordEvalIndex } from "./search/eval-keywords";
 export {
   normalizeFlavorIndexForSearch,
   normalizeArtistIndexForSearch,

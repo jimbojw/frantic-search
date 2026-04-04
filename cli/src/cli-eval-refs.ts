@@ -12,6 +12,7 @@ import type {
   TagDataRef,
 } from "@frantic-search/shared";
 import {
+  buildKeywordDataRef,
   normalizeArtistIndexForSearch,
   normalizeFlavorIndexForSearch,
   resolveIllustrationTagsToPrintingRows,
@@ -75,9 +76,7 @@ export function buildCliEvalRefs(
     artist: null,
   };
 
-  const keywordDataRef: KeywordDataRef = {
-    keywords: data.keywords_index ?? {},
-  };
+  const keywordDataRef: KeywordDataRef = buildKeywordDataRef(data.keywords_index ?? {});
 
   if (options?.noSupplemental) {
     return { tagDataRef, keywordDataRef };

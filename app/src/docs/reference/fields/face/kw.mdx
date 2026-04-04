@@ -14,24 +14,32 @@ Keyword abilities from the Scryfall catalog.
 
 | Operator | Behavior | Example |
 |----------|----------|---------|
-| `:` | Has keyword (prefix match on normalized name; see below) | `q=kw:flying` |
-| `=` | Same as `:` | `q=keyword=flying` |
+| `:` | Has keyword — **prefix** match on the normalized index key (discovery; unions all matching keys) | `q=kw:first` can match **first strike** and any other keyword whose normalized name starts with your prefix |
+| `=` | Has keyword — **exact** normalized match on an index key (no prefix widening) | `q=kw=first strike` matches only that keyword; `q=kw=fly` does **not** match **flying** unless a key normalizes exactly to `fly` |
 
 Other operators (for example `!=`) are not supported; the evaluator reports that `kw:` requires `:` or `=`.
 
 ## Allowed values
 
-Values are matched against the **keyword inverted index** (keys from Scryfall’s keyword list). Matching uses **normalized prefix** union (Spec 176): `normalizeForResolution` is applied to your value and to each index key; every key whose normalized form **starts with** the normalized query contributes its face matches. Examples:
+Values are matched against the **keyword inverted index** (keys from Scryfall’s keyword list). `normalizeForResolution` is applied to your value and, for evaluation, index keys are compared using **cached** normalized forms (Spec 176).
 
-- `q=kw:flying` matches cards with the Flying keyword.
-- A short prefix that matches several keyword names matches cards that have **any** of those keywords (discovery), similar to [`set:`](?doc=reference/fields/printing/set) and [`otag:`](?doc=reference/fields/card/otag).
-- A prefix that matches **no** keyword name in the index yields **`unknown keyword "…"`**. Same error pattern as [`set:`](?doc=reference/fields/printing/set) and [`set_type:`](?doc=reference/fields/printing/set_type) for unknown non-empty prefixes; [`otag:`](?doc=reference/fields/card/otag) and [`atag:`](?doc=reference/fields/printing/atag) still return zero hits with no error when nothing matches.
+- **`:`** — Every index key whose normalized form **starts with** the normalized query contributes its face matches (**OR**). Use this to discover keywords from a short prefix, similar in spirit to [`set:`](?doc=reference/fields/printing/set) (though `set:` still treats `:` and `=` the same).
+- **`=`** — Every index key whose normalized form **equals** the normalized query contributes (**OR** if two wire keys normalize the same). Use this when you want an exact keyword token without matching longer names that merely share a prefix.
+
+Examples:
+
+- `q=kw:flying` and `q=keyword=flying` both match cards with the Flying keyword (`:` prefix and `=` exact agree when the value is the full normalized name).
+- `q=kw:first` matches **first strike** (and any other keyword whose normalized name starts with `first`).
+- `q=kw=first` matches **only** a keyword whose normalized form is exactly `first` — not **first strike** — and yields **`unknown keyword`** if no such key exists.
+
+A non-empty value that matches **no** key under the active operator yields **`unknown keyword "…"`**. Same error pattern as [`set:`](?doc=reference/fields/printing/set) and [`set_type:`](?doc=reference/fields/printing/set_type) for unknown non-empty tokens; [`otag:`](?doc=reference/fields/card/otag) and [`atag:`](?doc=reference/fields/printing/atag) still return zero hits with no error when nothing matches.
 
 Matching is case-insensitive via the same normalization (accents and non-alphanumeric characters are stripped for comparison). Multi-word keywords (e.g. “first strike”) are compared after normalization so spacing and punctuation align with index keys.
 
-**Empty value:** `kw:` or `keyword:` with no value matches **all** faces (neutral filter).
+**Empty value:** `kw:`, `keyword:`, `kw=`, or `keyword=` with no value (after trim) matches **all** faces (neutral filter).
 
 ## Notes
 
 - For oracle text substring search, use [oracle](?doc=reference/fields/face/oracle).
-- Scryfall’s keyword syntax is effectively exact; Frantic’s prefix union is an intentional extension — see [Scryfall differences](?doc=reference/scryfall/differences).
+- Scryfall’s keyword syntax is effectively exact; Frantic’s **`:`** prefix union and **`=`** exact match are intentional extensions — see [Scryfall differences](?doc=reference/scryfall/differences).
+

@@ -4,6 +4,7 @@ import { NodeCache } from "./evaluator";
 import { parse } from "./parser";
 import { index } from "./evaluator.test-fixtures";
 import type { KeywordData } from "../data";
+import { buildKeywordDataRef } from "./eval-keywords";
 
 // Keywords index: flying on faces 0,4; firststrike on 6,7 (Thalia, Ayara front)
 const keywordsIndex: KeywordData = {
@@ -12,7 +13,7 @@ const keywordsIndex: KeywordData = {
   deathtouch: [2, 9],
 };
 
-const keywordDataRef = { keywords: keywordsIndex };
+const keywordDataRef = buildKeywordDataRef(keywordsIndex);
 
 describe("kw: evaluator", () => {
   test("kw:flying matches expected face indices", () => {
@@ -25,9 +26,9 @@ describe("kw: evaluator", () => {
     expect(indices).toContain(4);
   });
 
-  test("keyword:deathtouch matches expected faces", () => {
+  test("keyword=deathtouch matches same as keyword:deathtouch", () => {
     const cache = new NodeCache(index, null, null, null, keywordDataRef);
-    const out = cache.evaluate(parse("keyword:deathtouch"));
+    const out = cache.evaluate(parse("keyword=deathtouch"));
     expect(out.result.matchCount).toBe(2);
     const indices = Array.from(out.indices);
     expect(indices).toContain(2);
@@ -39,6 +40,20 @@ describe("kw: evaluator", () => {
     const out = cache.evaluate(parse("kw:firststrike"));
     expect(out.result.matchCount).toBe(2);
     expect(out.indices).not.toContain(0);
+  });
+
+  test("kw=fly is unknown when only flying exists", () => {
+    const cache = new NodeCache(index, null, null, null, keywordDataRef);
+    const out = cache.evaluate(parse("kw=fly"));
+    expect(out.result.matchCount).toBe(-1);
+    expect(out.result.error).toBe('unknown keyword "fly"');
+  });
+
+  test("kw:fly prefix-matches flying", () => {
+    const cache = new NodeCache(index, null, null, null, keywordDataRef);
+    const out = cache.evaluate(parse("kw:fly"));
+    expect(out.result.error).toBeUndefined();
+    expect(out.result.matchCount).toBe(2);
   });
 
   test("-kw:flying excludes cards with Flying", () => {
@@ -62,6 +77,13 @@ describe("kw: evaluator", () => {
     expect(out.result.error).toBeUndefined();
   });
 
+  test("kw= with empty value matches all cards", () => {
+    const cache = new NodeCache(index, null, null, null, keywordDataRef);
+    const out = cache.evaluate(parse("kw="));
+    expect(out.result.matchCount).toBe(10);
+    expect(out.result.error).toBeUndefined();
+  });
+
   test("non-matching prefix returns unknown keyword error", () => {
     const cache = new NodeCache(index, null, null, null, keywordDataRef);
     const out = cache.evaluate(parse("kw:xyz"));
@@ -74,14 +96,14 @@ describe("kw: evaluator", () => {
       flying: [0, 4],
       firststrike: [6, 7],
     };
-    const cache = new NodeCache(index, null, null, null, { keywords: kw });
+    const cache = new NodeCache(index, null, null, null, buildKeywordDataRef(kw));
     const out = cache.evaluate(parse("kw:f"));
     expect(out.result.error).toBeUndefined();
     expect(out.result.matchCount).toBe(4);
   });
 
   test("kw: without keywords data returns error", () => {
-    const cache = new NodeCache(index, null, null, null, { keywords: null });
+    const cache = new NodeCache(index, null, null, null, buildKeywordDataRef(null));
     const out = cache.evaluate(parse("kw:flying"));
     expect(out.result.matchCount).toBe(-1);
     expect(out.result.error).toBe("keywords not loaded");

@@ -20,7 +20,7 @@ import { isPrintingField, evalPrintingField, evalFlavorRegex, promotePrintingToF
 import { FIELD_ALIASES, fillCanonical, evalLeafField, evalLeafRegex, evalLeafBareWord, evalLeafExact, evalLeafMetadataTag } from "./eval-leaves";
 import type { GetMetadataIndex } from "./eval-leaves";
 import { evalOracleTag, evalIllustrationTag } from "./eval-tags";
-import { evalKeyword } from "./eval-keywords";
+import { evalKeyword, type KeywordDataRef } from "./eval-keywords";
 import { SORT_FIELDS, PERCENTILE_CAPABLE_FIELDS } from "./sort-fields";
 import { PERCENTILE_RE } from "./eval-printing";
 import { isEquatableNullLiteral } from "./null-query-literal";
@@ -31,7 +31,7 @@ function isPercentileQuery(canonical: string | undefined, value: string): boolea
     && PERCENTILE_RE.test(value);
 }
 import { parse } from "./parser";
-import type { OracleTagData, FlavorTagData, ArtistIndexData, KeywordData } from "../data";
+import type { OracleTagData, FlavorTagData, ArtistIndexData } from "../data";
 import { resolveForField, normalizeForResolution, expandIsKeywordsFromPrefix } from "./categorical-resolve";
 
 export { FIELD_ALIASES } from "./eval-leaves";
@@ -141,9 +141,7 @@ export type TagDataRef = {
   artist: ArtistIndexData | null;
 };
 
-export type KeywordDataRef = {
-  keywords: KeywordData | null;
-};
+export type { KeywordDataRef } from "./eval-keywords";
 
 export class NodeCache {
   private nodes: Map<string, InternedNode> = new Map();
@@ -942,8 +940,8 @@ export class NodeCache {
           if (ast.operator !== ":" && ast.operator !== "=") {
             err = "kw: requires : or = operator";
           } else {
-            // Spec 176: prefix union on keyword keys; no resolveForField on eval path (Spec 103).
-            err = evalKeyword(ast.value, this._keywordDataRef?.keywords ?? null, buf);
+            // Spec 176: `:` prefix union, `=` exact; no resolveForField on eval path (Spec 103).
+            err = evalKeyword(ast.operator as ":" | "=", ast.value, this._keywordDataRef, buf);
           }
           const ms = performance.now() - t0;
           if (err) {

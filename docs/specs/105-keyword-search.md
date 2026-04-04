@@ -57,11 +57,11 @@ This epic requires updates to the following specs:
 
 ### 3. Evaluator: Filtering
 
-Evaluation semantics: **Spec 176** (normalized prefix over all keyword index keys, union of face indices; no matching key → `unknown keyword` + passthrough). Summary:
+Evaluation semantics: **Spec 176** — **`:`** normalized **prefix union** over keyword index keys; **`=`** normalized **exact** match (OR keys that share the same normalized form); non-empty no match → `unknown keyword` + passthrough; prepared normalized keys at ref load (aligned with Spec 182). Summary:
 
 - Add `kw` and `keyword` to `FIELD_ALIASES` in `shared/src/search/eval-leaves.ts` (both resolve to canonical `keyword`)
 - Branch to keyword evaluation before `evalLeafField` — same pattern as `otag`/`atag` in Spec 093
-- **`evalKeyword`** in `shared/src/search/eval-keywords.ts` applies prefix union (not a single-key lookup); eval path does **not** call `resolveForField` (Spec 103 split; same idea as Spec 174 for tags)
+- **`evalKeyword`** in `shared/src/search/eval-keywords.ts` branches on **`:`** vs **`=`**; eval path does **not** call `resolveForField` (Spec 103 split; same idea as Spec 174 for tags)
 - Supported operators: `:` and `=` only (no numeric comparisons)
 - Negation via `-kw:flying` works via the existing NOT node
 - Empty value: fill buffer with 1s (match all faces / neutral filter) — Spec 176

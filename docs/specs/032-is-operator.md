@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search — empty-value parity), Spec 176 (`kw:` prefix semantics — parallel evaluation model), Spec 178 (Default inclusion / widen flags)
+**Depends on:** Spec 002 (Query Engine), Spec 039 (Non-Destructive Error Handling), Spec 047 (Printing Query Fields), Spec 103 (Categorical Field Value Auto-Resolution), Spec 105 (Keyword Search — empty-value parity), Spec 176 (`kw:` / `keyword:` query semantics — related evaluation model; **`is:`** still uses equivalent **`:`** / **`=`**), Spec 178 (Default inclusion / widen flags)
 
 ## Goal
 
@@ -18,15 +18,17 @@ Frantic Search indexes both oracle cards (abstract card identities) and individu
 
 The query `is:spell` already lexes and parses correctly under the existing grammar: `WORD("is") COLON WORD("spell")` → `FieldNode { field: "is", operator: ":", value: "spell" }`. The evaluator currently treats `is` as an unknown field (matches nothing). This spec adds evaluation logic for the `is` field, branching on the value.
 
-### Only `:` is meaningful
+### Only `:` and `=` (equivalent for `is:`)
 
-Unlike color or numeric fields, the `is:` operator only supports `:` (and `=` as a synonym). Comparison operators (`<`, `>`, `<=`, `>=`, `!=`) are not meaningful. Negation is handled at the AST level: `-is:spell` wraps the `FieldNode` in a `NotNode`.
+Unlike color or numeric fields, the `is:` operator only supports `:` and `=` as **equivalent** synonyms for the same prefix-union evaluation (see **Operator split** above — this differs from **`kw:`**, where **`=`** means exact match). Comparison operators (`<`, `>`, `<=`, `>=`, `!=`) are not meaningful. Negation is handled at the AST level: `-is:spell` wraps the `FieldNode` in a `NotNode`.
 
 The convenience field **`not:`** uses the same keyword vocabulary and the same prefix-union rules as **`is:`**; `not:x` is equivalent to `-is:x` (Spec 002).
 
 ## Value resolution: prefix union (evaluation)
 
-Query **evaluation** for **`is:`** and **`not:`** follows the same **closed-vocabulary prefix union** model as **`kw:`** / **`keyword:`** (Spec 176), not Spec 103 unique-prefix collapse.
+Query **evaluation** for **`is:`** and **`not:`** follows a **closed-vocabulary prefix union** model closely related to **`kw:`** / **`keyword:`** (Spec 176), not Spec 103 unique-prefix collapse.
+
+**Operator split:** **`kw:`** / **`keyword:`** distinguish **`:`** (prefix union) and **`=`** (exact normalized match) per Spec 176. **`is:`** / **`not:`** still treat **`:`** and **`=`** as **equivalent** for evaluation — both use the **prefix-union expansion** rules in this section — until a dedicated amendment to this spec.
 
 ### Vocabulary
 
