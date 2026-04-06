@@ -145,6 +145,23 @@ The result set is the set of indices in the slice. Mark those positions in the o
 
 O(1) bounds calculation on the pre-sorted array. No per-row comparison loop. Instant "as-you-type" performance on the main UI thread.
 
+## Card detail — equality percentile chip labels (Spec 183)
+
+Card detail shows **raw** chips (`edhrec=<n>`, `salt=…`, `$=…`) plus **percentile** chips (`edhrec=<p>%`, `salt=<p>%`, `$=<p>%`) that must use the **same equality band** as § Equality (`=`, `:`) above when the user runs that query.
+
+**Inputs (worker or shared helper):**
+
+- A **pre-sorted index array** of row indices (face indices for `edhrec` / `salt`; printing indices for `usd`) containing only **non-null** distribution members, in the **same order** as `CardIndex` / `PrintingIndex` use for evaluation (`sortedEdhrecIndices`, `sortedSaltIndices`, `sortedUsdIndices`, etc.).
+- `n` = length of that sorted array.
+- The **target row index** (`faceIndex` or `printingIndex`) whose label is being rendered.
+- **Null-valued** rows (no rank, no salt, no price) → **no percentile chip** (same as percentile queries excluding nulls).
+
+**Algorithm:** Find `pos` such that `sorted[pos] === target` (if duplicates exist, any matching position in the contiguous equal-value run may be used as long as the chosen `p` still places the target inside the equality band — see tests). Compute an **integer** display `p` in `0…100` such that the index band for `field=p%` per § Equality **includes** `pos`. The helper `displayEqualityPercentileLabel` in `shared/src/percentile-chip-display.ts` implements this (rounds to a stable integer; searches adjacent `p` if needed so the band contains the row).
+
+**Where it runs:** Only the worker holds `CardIndex` / `PrintingIndex`; the main thread holds raw column values but not the sorted percentile arrays. Implementations may (1) call the helper inside the worker and return labels in a card-detail supplement message, or (2) post compact distribution summaries on `ready` — **Spec 024** does not require shipping full sorted arrays to the main thread. Until card-detail UI lands, exporting the shared helper satisfies the contract for unit tests and future wiring.
+
+**Cross-reference:** [Spec 080](080-usd-null-and-negated-price-semantics.md) (`$` nulls), [Spec 024](024-index-based-result-protocol.md) (display payload).
+
 ## File Organization
 
 | File | Changes |
@@ -155,6 +172,7 @@ O(1) bounds calculation on the pre-sorted array. No per-row comparison loop. Ins
 | `shared/src/search/eval-printing.ts` | Add percentile branch in `usd` and `date` cases; detect value via `/^\d+(\.\d+)?%$/` |
 | `shared/src/search/eval-leaves.ts` | Add percentile branch in `name` and `edhrec` cases (Spec 096, Spec 099) |
 | `shared/src/search/evaluator.ts` | Extend negation path: when child is percentile-capable field with percentile value, use operator inversion (same as Spec 080 for usd) |
+| `shared/src/percentile-chip-display.ts` | Card-detail equality percentile labels (Spec 183); see § Card detail |
 
 ## Error Handling
 
@@ -194,3 +212,7 @@ Percentile queries have no Scryfall equivalent. Strip them from Scryfall outlink
 8. The `invertPercentile` flag supports rank-based columns (`edhrec` per Spec 099).
 9. `name` percentile support enabled by Spec 096.
 10. `edhrec` percentile support enabled by Spec 099.
+
+## Implementation Notes
+
+- 2026-04-06: Added § Card detail — equality percentile chip labels for Spec 183; `shared/src/percentile-chip-display.ts`.

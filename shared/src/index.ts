@@ -163,7 +163,17 @@ export { diffDeckList } from "./list-diff";
 export type { DiffResult } from "./list-diff";
 export { enrichDiffForPreserve } from "./enrich-diff-for-preserve";
 export type { PreserveOptions } from "./enrich-diff-for-preserve";
-export { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-columns";
+export {
+  extractDisplayColumns,
+  extractPrintingDisplayColumns,
+  buildKeywordsForFace,
+} from "./display-columns";
+export { resolveArtistForPrintingRow } from "./artist-printing-resolve";
+export {
+  positionInEqualityPercentileBand,
+  displayEqualityPercentileLabel,
+  sortedArrayPosition,
+} from "./percentile-chip-display";
 export {
   buildOracleToCanonicalFaceMap,
   buildPrintingLookup,

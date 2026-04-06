@@ -72,6 +72,12 @@ Evaluation semantics: **Spec 176** — **`:`** normalized **prefix union** over 
 - Add `kw` and `keyword` to syntax highlighting field set
 - Add `kw` and `keyword` to autocomplete field suggestions (prefix match on keyword vocabulary, same pattern as `otag`/`atag` in Spec 094)
 
+## Card detail / reverse lookup (Spec 183)
+
+The inverted index maps **keyword → sorted canonical face indices** (one index per oracle card per keyword). Card detail needs **canonical → sorted keyword list** for the Keywords row (`kw:` chips).
+
+**Chosen approach:** Build **`keywords_for_face`** at **extract time** in `extractDisplayColumns` ([Spec 024](024-index-based-result-protocol.md)): a `string[][]` parallel to `names`, where index `fi` holds the sorted unique keywords for `canonical_face[fi]`. Non-canonical face rows get the same list as their canonical row (small duplication; simple lookups). **Rationale:** No second pass in the worker at load; no extra `postMessage` round-trip; `columns.json` size unchanged (derivation is deterministic from `keywords_index`). Alternative considered: invert inside the worker only — would duplicate logic between CLI and app unless shared.
+
 ## Data Format: `keywords_index` (in columns.json)
 
 The `keywords_index` property in columns.json has the shape:

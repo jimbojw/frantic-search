@@ -6,7 +6,7 @@
 
 **Depends on:** [Spec 015](015-card-page.md), [Spec 050](050-printing-aware-card-detail.md), [Spec 106](106-card-detail-tags.md), [Spec 160](160-card-detail-analytics.md), [Spec 166](166-card-detail-body-cleanup.md)
 
-**Related:** [Spec 150](150-chip-button-component.md) (chip visuals), [Spec 047](047-printing-query-fields.md) (printing query fields), [Spec 095](095-percentile-filters.md) (percentile semantics), [Spec 099](099-edhrec-rank-support.md), [Spec 101](101-edhrec-salt-support.md), [Spec 102](102-edhrec-salt-percentile-chips.md), [Spec 136](136-nullable-face-fields.md) (nullable face fields including `m`), [Spec 179](179-set-type-query-field.md), [Spec 148](148-artist-etl-and-worker.md) (`artist:` queries), [ADR-008](../adr/008-documentation-strategy.md) (spec lifecycle)
+**Related:** [Spec 002](002-query-engine.md) (query semantics), [Spec 024](024-index-based-result-protocol.md) (normative `DisplayColumns` / `PrintingDisplayColumns` and card-detail worker messages for this epic), [Spec 048](048-printing-aware-display.md) (printing-aware **search results**; complements Spec 050 card detail), [Spec 150](150-chip-button-component.md) (chip visuals), [Spec 047](047-printing-query-fields.md) (printing query fields), [Spec 095](095-percentile-filters.md) (percentile semantics and card-detail chip display contract), [Spec 099](099-edhrec-rank-support.md), [Spec 101](101-edhrec-salt-support.md), [Spec 102](102-edhrec-salt-percentile-chips.md), [Spec 136](136-nullable-face-fields.md) (nullable face fields including `m`), [Spec 179](179-set-type-query-field.md), [Spec 148](148-artist-etl-and-worker.md) (`artist:` queries and strided index), [ADR-008](../adr/008-documentation-strategy.md) (spec lifecycle)
 
 ## Goal
 
@@ -16,7 +16,7 @@ Reorganize the card detail body into clear **information sections**: list action
 
 Today (`app/src/CardDetail.tsx`), printing metadata, oracle text, EDHREC fields, list controls, and navigation affordances share a single dense panel. [Issue #242](https://github.com/jimbojw/frantic-search/issues/242) asks for a presentation that matches how users reason about **oracle** vs **printing**, surfaces **Frantic Search query syntax** as first-class chips, and adds **affiliate and reference outlinks** with analytics.
 
-This spec is the **umbrella** for that epic. It defines information architecture, section ordering, and acceptance criteria. **Query semantics** remain governed by Spec 002 and the field specs cited above; **analytics schema extensions** are specified in [Spec 160](160-card-detail-analytics.md) (this spec states *what* must be instrumented).
+This spec is the **umbrella** for that epic. It defines information architecture, section ordering, and acceptance criteria. **Query semantics** remain governed by [Spec 002](002-query-engine.md) and the field specs cited above; **analytics schema extensions** are specified in [Spec 160](160-card-detail-analytics.md) (this spec states *what* must be instrumented).
 
 ## Vertical order (required)
 
@@ -122,23 +122,23 @@ Face **Fame:**
 | Toughness | Per face | Display toughness | `tou=3` |
 | Loyalty | Per face | If present | `loy=…` per engine |
 | Defense | Per face | If present | `def=…` per engine |
-| Color identity | Oracle (combined block for multi-face; single-face table) | Identity symbols or text | `ci:…` (syntax per engine / Spec 002) |
+| Color identity | Oracle (combined block for multi-face; single-face table) | Identity symbols or text | `ci:…` (syntax per engine / [Spec 002](002-query-engine.md)) |
 | Color | Per face | Face’s colors | `c:…` |
 | EDHREC rank | Oracle (combined block for multi-face; single-face table) | `#2953` or “Not ranked” | When ranked: **two separate chips**—`edhrec=<n>` (absolute rank, [Spec 099](099-edhrec-rank-support.md)) and `edhrec=<p>%` (equality percentile; `p` chosen so this card lies in the band, [Spec 095](095-percentile-filters.md)). When not ranked: no chips. |
-| EDHREC salt | Oracle (same) | Raw or “Not rated” | When rated: **two separate chips**—raw `salt=…` and `salt=<p>%` ([Spec 101](101-edhrec-salt-support.md), Spec 095). When not rated: no chips. |
+| EDHREC salt | Oracle (same) | Raw or “Not rated” | When rated: **two separate chips**—raw `salt=…` and `salt=<p>%` ([Spec 101](101-edhrec-salt-support.md), [Spec 095](095-percentile-filters.md)). When not rated: no chips. |
 | Keywords | Oracle (combined block for multi-face; single-face table) | **Always show.** Comma-separated list or placeholder **`_none_`** when empty | One `kw:` chip per keyword; **chips column empty** when there are no keywords |
 
-**Mana cost navigation:** Mana query chips **must** use the **`m=`** operator for navigation (exact / structured value form accepted by the parser per Spec 002 and [Spec 136](136-nullable-face-fields.md) for empty costs). Implement **one** shared helper (app or `shared/`) that maps each face’s mana cost string to the compact `m=` query fragment; unit-test it alongside the type-line tokenizer. Do not use `m:` for chip navigation.
+**Mana cost navigation:** Mana query chips **must** use the **`m=`** operator for navigation (exact / structured value form accepted by the parser per [Spec 002](002-query-engine.md) and [Spec 136](136-nullable-face-fields.md) for empty costs). Implement **one** shared helper (app or `shared/`) that maps each face’s mana cost string to the compact `m=` query fragment; unit-test it alongside the type-line tokenizer. Do not use `m:` for chip navigation.
 
-**Type line tokens:** Extract chips from `type_lines[faceIndex]` without classifying supertypes vs types vs subtypes. Split on **ASCII/Unicode whitespace** and on the **long dash** (`—`, U+2014) between type box and subtypes; trim each segment; **omit** empty tokens; do **not** emit a chip for the dash. Normalize each token for `t:` (typically lowercase; Spec 002 / evaluator substring semantics). Implement as a **small tested helper** in `shared/` or `app/`; must not throw on empty or unusual type lines. **Multi-face:** apply within each **per-face** block only (not in the oracle/combined block).
+**Type line tokens:** Extract chips from `type_lines[faceIndex]` without classifying supertypes vs types vs subtypes. Split on **ASCII/Unicode whitespace** and on the **long dash** (`—`, U+2014) between type box and subtypes; trim each segment; **omit** empty tokens; do **not** emit a chip for the dash. Normalize each token for `t:` (typically lowercase; [Spec 002](002-query-engine.md) / evaluator substring semantics). Implement as a **small tested helper** in `shared/` or `app/`; must not throw on empty or unusual type lines. **Multi-face:** apply within each **per-face** block only (not in the oracle/combined block).
 
 **Parsing (other):** No full type-line grammar parser beyond tokenization. Quoted `t:"…"` for multi-word tokens is **out of scope for v1** unless real data requires it (add tests if introduced).
 
 **EDHREC on multi-face:** Rank and salt refer to the **oracle** as today (`faces()[0]` / canonical primary in data); surface them only in the **oracle / combined** block, not repeated in every per-face block.
 
-**EDHREC, salt, and USD percentile chips:** For **rank** and **salt**, the UI presents **both** the **raw-value** chip and the **percentile** chip as **separate controls** whenever both are meaningful (ranked / rated). The percentile chip’s `p` is computed from the card’s value and the loaded distribution so that `edhrec=p%` / `salt=p%` uses the same **equality percentile band** as the evaluator ([Spec 095](095-percentile-filters.md)); display rounding must still yield a chip that **includes this card** when clicked (regression-test or property-test where feasible). **USD** rows in §4 use the same discipline for `$=…` and `$=…%` (Spec 095 / [Spec 080](080-usd-null-and-negated-price-semantics.md)).
+**EDHREC, salt, and USD percentile chips:** For **rank** and **salt**, the UI presents **both** the **raw-value** chip and the **percentile** chip as **separate controls** whenever both are meaningful (ranked / rated). The percentile chip’s `p` is computed from the card’s value and the loaded distribution so that `edhrec=p%` / `salt=p%` uses the same **equality percentile band** as the evaluator ([Spec 095](095-percentile-filters.md)); display rounding must still yield a chip that **includes this card** when clicked (regression-test or property-test where feasible). **USD** rows in §4 use the same discipline for `$=…` and `$=…%` ([Spec 095](095-percentile-filters.md) / [Spec 080](080-usd-null-and-negated-price-semantics.md)).
 
-**Data:** Rows requiring columns not yet on `DisplayColumns` (e.g. **card colors** `c=`) require **worker + extract** updates; **keywords** require a **face → keyword list** derivation from `keywords_index` (or equivalent materialized data). Document any new columns or messages in **Implementation notes** or a focused follow-up spec if the payload work is large.
+**Data:** Normative wire shapes: [Spec 024](024-index-based-result-protocol.md) (`DisplayColumns.colors`, `keywords_for_face`; percentile display helper § Card detail in [Spec 095](095-percentile-filters.md)).
 
 ---
 
@@ -161,9 +161,9 @@ Face **Fame:**
 | Foil price | When this printing row has a foil price (or separate row per finish if two USD columns exist) | Same pattern |
 | Illustrated by | Artist credit line | `a:"Carl Critchlow"` |
 
-**Note:** When only one finish exists, collapse price rows to match current data (single USD column). Percentile chips for `$` follow Spec 095 / [Spec 080](080-usd-null-and-negated-price-semantics.md).
+**Note:** When only one finish exists, collapse price rows to match current data (single USD column). Percentile chips for `$` follow [Spec 095](095-percentile-filters.md) / [Spec 080](080-usd-null-and-negated-price-semantics.md).
 
-**Data:** `PrintingDisplayColumns` (and/or `SetLookupEntry` via `set_lookup`) must expose **set_type** and **release** fields needed for chips; **artist** resolution uses the artist index ([Spec 148](148-artist-etl-and-worker.md)) for the active printing—plumb via worker message or batch fields as implemented.
+**Data:** Normative wire shapes: [Spec 024](024-index-based-result-protocol.md) (`PrintingDisplayColumns.set_types`, `released_at`; **artist** via `get-artist-for-printing` / `artist-for-printing-result` and [Spec 148](148-artist-etl-and-worker.md)).
 
 ---
 
@@ -202,8 +202,17 @@ Face **Fame:**
 3. **Oracle details** match the current oracle UX intent (image, DFC toggle, per-face name/cost/type/oracle/P-T/loyalty/defense) and exclude printing-only fields.
 4. **Card details** and **Printing details** use two-column tables; each query chip navigates to search with the correct string; mana chips may show symbolic rendering on the label but **always** navigate with **`m=`** (never `m:`). **Single-faced** oracles use one table per **Row catalog**. **Multi-faced** oracles use an **oracle / combined** block (name `!"A // B"`, color identity, EDHREC, keywords, …) plus **per-face** blocks (name, mana, **Type** chip sequence from **Type line tokens**, color, stats)—face-name section headers are optional. No separate supertype / type / subtype rows. **Keywords** row is **always** present; when there are no keywords, the human-facing column shows **`_none_`** and the chips column has no `kw:` chips. **EDHREC rank** and **EDHREC salt** (when ranked/rated) each show **two** chips: raw value and percentile, as in the row catalog.
 5. **Outlinks** include Scryfall, EDHREC (commander + card), Mana Pool, and TCGPlayer with affiliate handling for the latter two.
-6. **Percentile** chips for `edhrec`, `salt`, and `$` are consistent with evaluator bands (Spec 095).
+6. **Percentile** chips for `edhrec`, `salt`, and `$` are consistent with evaluator bands ([Spec 095](095-percentile-filters.md)).
 7. **Spec 160** is updated with the final payload schema for chips and outlinks; tests or manual checklist verifies one event per gesture.
+
+### Preparatory payload checklist (Spec 024)
+
+Before building §3–§4 UI, the worker→main contract must include:
+
+- `DisplayColumns.colors` and `keywords_for_face` (face-aligned; Spec 105 reverse derivation).
+- `PrintingDisplayColumns.set_types` and `released_at` (anchor printing row).
+- `get-artist-for-printing` / `artist-for-printing-result` for the illustrated-by row (Spec 148).
+- Equality-percentile labels for `edhrec`, `salt`, and `$` chips per [Spec 095](095-percentile-filters.md) § Card detail.
 
 ---
 
@@ -216,11 +225,12 @@ Face **Fame:**
 | Display columns / worker extract | `shared/src/worker-protocol.ts`, `shared/src/display-columns.ts`, worker init |
 | Type line tokenization | New helper + `.test.ts` (split on whitespace / `—`; `t:` chips) |
 | Mana cost → `m=` navigation | Shared helper + `.test.ts` (compact `m=` only; tested against parser acceptance) |
-| Percentile display values | Worker or shared helper aligned with `CardIndex` / evaluator |
+| Percentile display values | [Spec 095](095-percentile-filters.md) § Card detail; `shared/src/percentile-chip-display.ts` |
 | Analytics | `app/src/analytics.ts` + Spec 160 |
 
 ---
 
 ## Implementation notes
 
+- 2026-04-06: Prep payload checklist and normative pointers to [Spec 024](024-index-based-result-protocol.md), [Spec 048](048-printing-aware-display.md), [Spec 002](002-query-engine.md), [Spec 095](095-percentile-filters.md).
 - 2026-04-06: Locked mana chip navigation to **`m=`** (not `m:`); **Keywords** row always visible with human **`_none_`** when empty; **EDHREC rank** and **salt** use **two** chips each (raw + `%`) when ranked/rated; Scryfall analytics schema choice called out in §5 and **Analytics (summary)**; added [Spec 136](136-nullable-face-fields.md) to **Related**.

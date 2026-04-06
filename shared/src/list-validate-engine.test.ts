@@ -6,66 +6,11 @@ import { validateDeckListWithEngine, validateLines } from "./list-validate-engin
 import { CardIndex } from "./search/card-index";
 import { NodeCache } from "./search/evaluator";
 import { index, printingIndex, TEST_DATA, TEST_PRINTING_DATA } from "./search/evaluator.test-fixtures";
-import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+import type { PrintingDisplayColumns } from "./worker-protocol";
+import { extractDisplayColumns, extractPrintingDisplayColumns } from "./display-columns";
 
-// ---------------------------------------------------------------------------
-// Build DisplayColumns / PrintingDisplayColumns from test fixtures
-// (mirrors extractDisplayColumns / extractPrintingDisplayColumns in worker.ts)
-// ---------------------------------------------------------------------------
-
-function buildDisplay(): DisplayColumns {
-  const len = TEST_DATA.names.length;
-  return {
-    names: TEST_DATA.names,
-    mana_costs: TEST_DATA.mana_costs,
-    type_lines: TEST_DATA.type_lines,
-    oracle_texts: TEST_DATA.oracle_texts,
-    powers: TEST_DATA.powers,
-    toughnesses: TEST_DATA.toughnesses,
-    loyalties: TEST_DATA.loyalties,
-    defenses: TEST_DATA.defenses,
-    color_identity: TEST_DATA.color_identity,
-    scryfall_ids: TEST_DATA.scryfall_ids,
-    art_crop_thumb_hashes: TEST_DATA.art_crop_thumb_hashes ?? new Array<string>(len).fill(""),
-    card_thumb_hashes: TEST_DATA.card_thumb_hashes ?? new Array<string>(len).fill(""),
-    layouts: TEST_DATA.layouts,
-    legalities_legal: TEST_DATA.legalities_legal,
-    legalities_banned: TEST_DATA.legalities_banned,
-    legalities_restricted: TEST_DATA.legalities_restricted,
-    power_lookup: TEST_DATA.power_lookup,
-    toughness_lookup: TEST_DATA.toughness_lookup,
-    loyalty_lookup: TEST_DATA.loyalty_lookup,
-    defense_lookup: TEST_DATA.defense_lookup,
-    canonical_face: TEST_DATA.canonical_face,
-    oracle_ids: TEST_DATA.oracle_ids ?? new Array<string>(len).fill(""),
-    edhrec_rank: TEST_DATA.edhrec_ranks,
-    edhrec_salt: TEST_DATA.edhrec_salts,
-  };
-}
-
-function buildPrintingDisplay(): PrintingDisplayColumns {
-  return {
-    scryfall_ids: TEST_PRINTING_DATA.scryfall_ids,
-    collector_numbers: TEST_PRINTING_DATA.collector_numbers,
-    set_codes: TEST_PRINTING_DATA.set_indices.map(
-      (idx) => TEST_PRINTING_DATA.set_lookup[idx]?.code ?? "",
-    ),
-    set_names: TEST_PRINTING_DATA.set_indices.map(
-      (idx) => TEST_PRINTING_DATA.set_lookup[idx]?.name ?? "",
-    ),
-    rarity: TEST_PRINTING_DATA.rarity,
-    finish: TEST_PRINTING_DATA.finish,
-    price_usd: TEST_PRINTING_DATA.price_usd,
-    canonical_face_ref: TEST_PRINTING_DATA.canonical_face_ref,
-    illustration_id_index: TEST_PRINTING_DATA.illustration_id_index,
-    printing_flags: TEST_PRINTING_DATA.printing_flags,
-    promo_types_flags_0: TEST_PRINTING_DATA.promo_types_flags_0,
-    promo_types_flags_1: TEST_PRINTING_DATA.promo_types_flags_1,
-  };
-}
-
-const display = buildDisplay();
-const pd = buildPrintingDisplay();
+const display = extractDisplayColumns(TEST_DATA);
+const pd = extractPrintingDisplayColumns(TEST_PRINTING_DATA);
 
 function validate(text: string, d = display, p: PrintingDisplayColumns | null = pd) {
   const cache = new NodeCache(index, printingIndex);
@@ -533,32 +478,7 @@ describe("validateDeckListWithEngine", () => {
       produces: {},
     };
     const gloinIndex = new CardIndex(gloinData);
-    const gloinDisplay: DisplayColumns = {
-      names: gloinData.names,
-      mana_costs: gloinData.mana_costs,
-      type_lines: gloinData.type_lines,
-      oracle_texts: gloinData.oracle_texts,
-      powers: gloinData.powers,
-      toughnesses: gloinData.toughnesses,
-      loyalties: gloinData.loyalties,
-      defenses: gloinData.defenses,
-      color_identity: gloinData.color_identity,
-      scryfall_ids: gloinData.scryfall_ids,
-      art_crop_thumb_hashes: gloinData.art_crop_thumb_hashes ?? [""],
-      card_thumb_hashes: gloinData.card_thumb_hashes ?? [""],
-      layouts: gloinData.layouts,
-      legalities_legal: gloinData.legalities_legal,
-      legalities_banned: gloinData.legalities_banned,
-      legalities_restricted: gloinData.legalities_restricted,
-      power_lookup: gloinData.power_lookup,
-      toughness_lookup: gloinData.toughness_lookup,
-      loyalty_lookup: gloinData.loyalty_lookup,
-      defense_lookup: gloinData.defense_lookup,
-      canonical_face: gloinData.canonical_face,
-      oracle_ids: gloinData.oracle_ids ?? [""],
-      edhrec_rank: gloinData.edhrec_ranks,
-      edhrec_salt: gloinData.edhrec_salts,
-    };
+    const gloinDisplay = extractDisplayColumns(gloinData);
     const cache = new NodeCache(gloinIndex, null);
 
     const resultGloin = validateDeckListWithEngine(

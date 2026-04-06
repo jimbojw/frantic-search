@@ -3,6 +3,35 @@ import type { ColumnarData, PrintingColumnarData } from "./data";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 import { buildNormalizedAlternateIndex } from "./normalize";
 
+/** Spec 105 / 024: reverse keywords_index → per-face sorted lists (canonical → all faces). */
+export function buildKeywordsForFace(data: ColumnarData): string[][] {
+  const len = data.names.length;
+  const cf = data.canonical_face;
+  const byCanon = new Map<number, string[]>();
+  const kwIndex = data.keywords_index ?? {};
+  for (const [kw, faceIndices] of Object.entries(kwIndex)) {
+    for (let j = 0; j < faceIndices.length; j++) {
+      const canon = faceIndices[j]!;
+      let arr = byCanon.get(canon);
+      if (!arr) {
+        arr = [];
+        byCanon.set(canon, arr);
+      }
+      arr.push(kw);
+    }
+  }
+  for (const arr of byCanon.values()) {
+    arr.sort();
+  }
+  const out: string[][] = new Array(len);
+  for (let fi = 0; fi < len; fi++) {
+    const c = cf[fi]!;
+    const kws = byCanon.get(c);
+    out[fi] = kws ? [...kws] : [];
+  }
+  return out;
+}
+
 export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   const len = data.names.length;
   return {
@@ -15,6 +44,8 @@ export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     loyalties: data.loyalties,
     defenses: data.defenses,
     color_identity: data.color_identity,
+    colors: data.colors,
+    keywords_for_face: buildKeywordsForFace(data),
     scryfall_ids: data.scryfall_ids,
     art_crop_thumb_hashes: data.art_crop_thumb_hashes ?? new Array<string>(len).fill(""),
     card_thumb_hashes: data.card_thumb_hashes ?? new Array<string>(len).fill(""),
@@ -44,6 +75,8 @@ export function extractPrintingDisplayColumns(
     collector_numbers: data.collector_numbers,
     set_codes: data.set_indices.map((idx) => data.set_lookup[idx]?.code ?? ""),
     set_names: data.set_indices.map((idx) => data.set_lookup[idx]?.name ?? ""),
+    set_types: data.set_indices.map((idx) => data.set_lookup[idx]?.set_type ?? ""),
+    released_at: [...data.released_at],
     rarity: data.rarity,
     finish: data.finish,
     price_usd: data.price_usd,

@@ -129,6 +129,10 @@ Store **raw artist names** from Scryfall. Worker builds a normalized index (lowe
 3. Build normalized index (same pattern as flavor): for each raw key, add normalized form (lowercase, trim, collapse whitespace) → strided array. When multiple raw keys normalize to same string, merge their strided arrays (deduplicate pairs, sort by `(face, printing)`).
 4. Store in `tagDataRef.artist`: `Record<string, number[]>` (normalized key → strided pairs). Same structure as `TagDataRef.flavor`. Post `artist-ready`. This spec omits `tagLabels` from the status payload; autocomplete is planned and a follow-up spec will extend `artist-ready` to include `tagLabels` (and `artistTagLabels` in resolution context) for categorical completion.
 
+### Card detail consumption (Spec 183 / Spec 024)
+
+For the **anchor printing row** `printingRowIndex` ([Spec 050](050-printing-aware-card-detail.md), [Spec 183](183-card-detail-sections-query-chips-outlinks.md) §4) and a **face index within the card** `faceWithinCard` (0 = front, 1 = back, …; same convention as strided pair even indices), resolve display credit by scanning the **raw** `artist-index.json` object (keys as emitted by ETL — preserves Scryfall casing for credits): iterate `(artistName, stridedPairs)`; for each pair at positions `2k`, `2k+1`, if `stridedPairs[2k] === faceWithinCard && stridedPairs[2k+1] === printingRowIndex`, return **`artistName`**. **First match wins** in deterministic object iteration order. If no pair matches, return null. The worker answers via `get-artist-for-printing` / `artist-for-printing-result` ([Spec 024](024-index-based-result-protocol.md)); use that string for display and for `a:"…"` chip text (the query engine normalizes on search).
+
 ### Query resolution (evaluator, future spec)
 
 For `a:proce`:

@@ -56,11 +56,12 @@ When a printing is identified, `CardDetail` uses the printing's `scryfall_id` fo
 
 A new section appears between the card image and the face details when printing data is available. `CardDetail` receives all printing indices for the `scryfall_id` (via `buildPrintingScryfallGroupIndex`), not just the first.
 
-Shared fields use the first printing index:
+Shared fields use the first printing index (anchor row for the page `scryfall_id`; [Spec 183](183-card-detail-sections-query-chips-outlinks.md) §4 uses the same index for printing-scoped query chips):
 
 | Field | Source |
 |---|---|
 | Set | `set_names[pi]` (`set_codes[pi]`) |
+| Set type / release | `set_types[pi]`, `released_at[pi]` when present on `PrintingDisplayColumns` ([Spec 024](024-index-based-result-protocol.md)) |
 | Collector # | `collector_numbers[pi]` |
 | Rarity | Decoded from `rarity[pi]` bitmask |
 | Scryfall ID | URL `card` parameter (monospace + outlink to `scryfall.com/card/{id}`) — Spec 166 |

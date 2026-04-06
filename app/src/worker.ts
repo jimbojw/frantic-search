@@ -31,6 +31,7 @@ import {
   normalizeFlavorIndexForSearch,
   normalizeArtistIndexForSearch,
   resolveIllustrationTagsToPrintingRows,
+  resolveArtistForPrintingRow,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -222,6 +223,8 @@ async function init(): Promise<void> {
   >()
   const getListMask = (listId: string) => listMaskCache.get(listId) ?? null
   const getMetadataIndex = () => listMaskCache.get("default")?.metadataIndex ?? null
+  /** Raw artist-index keys (display casing) for Spec 183 card-detail lookup. */
+  let artistIndexRaw: ArtistIndexData | null = null
   let faceToOtags: Map<number, string[]> | null = null
   let printingToAtags: Map<number, string[]> | null = null
   const tagDataRef = {
@@ -317,6 +320,7 @@ async function init(): Promise<void> {
       post({ type: 'status', status: 'flavor-ready' })
     }
     if (artistRaw) {
+      artistIndexRaw = artistRaw
       tagDataRef.artist = normalizeArtistIndexForSearch(artistRaw)
       post({ type: 'status', status: 'artist-ready', tagLabels: Object.keys(tagDataRef.artist) })
     }
@@ -359,6 +363,19 @@ async function init(): Promise<void> {
         prints: tagDataRef.illustration?.get(label)?.length ?? 0,
       }))
       post({ type: 'card-tags', otags, atags })
+      return
+    }
+    if (msg.type === 'get-artist-for-printing') {
+      const artistName = resolveArtistForPrintingRow(
+        artistIndexRaw,
+        msg.printingRowIndex,
+        msg.faceWithinCard,
+      )
+      post({
+        type: 'artist-for-printing-result',
+        requestId: msg.requestId,
+        artistName,
+      })
       return
     }
     if (msg.type !== 'search') return

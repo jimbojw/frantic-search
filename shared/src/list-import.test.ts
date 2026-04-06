@@ -48,6 +48,8 @@ function makeDisplay(
     loyalties: [0, 0, 0, 0, 0, 0],
     defenses: [0, 0, 0, 0, 0, 0],
     color_identity: [0, 0, 0, 0, 0, 0],
+    colors: [0, 0, 0, 0, 0, 0],
+    keywords_for_face: [[], [], [], [], [], []],
     scryfall_ids: ["", "", "", "", "", ""],
     art_crop_thumb_hashes: ["", "", "", "", "", ""],
     card_thumb_hashes: ["", "", "", "", "", ""],
@@ -75,6 +77,8 @@ function makePrintingDisplay(
     collector_numbers: ["159", "273", "1"],
     set_codes: ["M21", "DMU", "MH2"],
     set_names: ["Core Set 2021", "Dominaria United", "Modern Horizons 2"],
+    set_types: ["expansion", "expansion", "expansion"],
+    released_at: [0, 0, 0],
     rarity: [0, 0, 0],
     finish: [0, 0, 0],
     price_usd: [0, 0, 0],
@@ -392,6 +396,8 @@ describe("importDeckList", () => {
       legalities_banned: [0, 0, 0, 0, 0, 0, 0],
       legalities_restricted: [0, 0, 0, 0, 0, 0, 0],
       canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      colors: [0, 0, 0, 0, 0, 0, 0],
+      keywords_for_face: [[], [], [], [], [], [], []],
       edhrec_rank: [null, null, null, null, null, null, null],
       edhrec_salt: [null, null, null, null, null, null, null],
     });
@@ -440,6 +446,8 @@ describe("importDeckList", () => {
       legalities_banned: [0, 0, 0, 0, 0, 0, 0],
       legalities_restricted: [0, 0, 0, 0, 0, 0, 0],
       canonical_face: [0, 1, 2, 3, 4, 5, 6],
+      colors: [0, 0, 0, 0, 0, 0, 0],
+      keywords_for_face: [[], [], [], [], [], [], []],
       edhrec_rank: [null, null, null, null, null, null, null],
       edhrec_salt: [null, null, null, null, null, null, null],
     });
@@ -486,6 +494,8 @@ describe("importDeckList", () => {
       legalities_banned: [0, 0, 0],
       legalities_restricted: [0, 0, 0],
       canonical_face: [0, 1, 2],
+      colors: [0, 0, 0],
+      keywords_for_face: [[], [], []],
       edhrec_rank: [null, null, null],
       edhrec_salt: [null, null, null],
     });
@@ -526,6 +536,8 @@ describe("importDeckList", () => {
       legalities_banned: [0, 0, 0],
       legalities_restricted: [0, 0, 0],
       canonical_face: [0, 1, 2],
+      colors: [0, 0, 0],
+      keywords_for_face: [[], [], []],
       edhrec_rank: [null, null, null],
       edhrec_salt: [null, null, null],
     });

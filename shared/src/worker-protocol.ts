@@ -27,6 +27,13 @@ export type ToWorker =
       metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] };
     }
   | { type: 'get-tags-for-card'; canonicalIndex: number; primaryPrintingIndex?: number }
+  /** Spec 024 / 183: resolve artist credit for anchor printing + face within card (raw display string). */
+  | {
+      type: 'get-artist-for-printing'
+      requestId: number
+      printingRowIndex: number
+      faceWithinCard: number
+    }
   | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat; listName?: string }
   | { type: 'validate-list'; requestId: number; lines: string[] }
 
@@ -40,6 +47,10 @@ export type DisplayColumns = {
   loyalties: number[]
   defenses: number[]
   color_identity: number[]
+  /** Per-face mana colors bitmask; Spec 024 / 183 (`c:` chips). */
+  colors: number[]
+  /** Per-face row: sorted keywords for this oracle; Spec 024 / 105 / 183. */
+  keywords_for_face: string[][]
   scryfall_ids: string[]
   art_crop_thumb_hashes: string[]
   card_thumb_hashes: string[]
@@ -88,6 +99,10 @@ export type PrintingDisplayColumns = {
   collector_numbers: string[]
   set_codes: string[]
   set_names: string[]
+  /** Lowercase set_type from set_lookup; Spec 024 / 179 / 183. */
+  set_types: string[]
+  /** Per-row YMD release; Spec 024 / 183. */
+  released_at: number[]
   rarity: number[]
   finish: number[]
   price_usd: number[]
@@ -119,6 +134,7 @@ export type FromWorker =
   | { type: 'status'; status: 'artist-ready'; tagLabels?: string[] }
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
+  | { type: 'artist-for-printing-result'; requestId: number; artistName: string | null }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; /** Spec 085: Frantic-vs-Scryfall syntax; not derived from includeExtras or uniqueMode. */ usedExtension: boolean; includeExtras?: boolean; /** Spec 178 / 175: pre-default-filter face count when filter removed matches. */ indicesBeforeDefaultFilter?: number; /** Spec 178 / 175: pre-default-filter printing count when relevant and filter removed printings. */ printingIndicesBeforeDefaultFilter?: number; flavorUnavailable?: boolean; artistUnavailable?: boolean; suggestions: Suggestion[]; side?: DualWieldSide }
   | { type: 'serialize-result'; requestId: number; text: string }
   | { type: 'validate-result'; requestId: number; result: LineValidationResult[]; indices: Int32Array }

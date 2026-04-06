@@ -17,6 +17,8 @@ const display: DisplayColumns = {
   loyalties: [0, 0, 0],
   defenses: [0, 0, 0],
   color_identity: [0, 0, 0],
+  colors: [0, 0, 0],
+  keywords_for_face: [[], [], []],
   scryfall_ids: ["bolt-sf", "delver-sf", "delver-sf"],
   art_crop_thumb_hashes: ["", "", ""],
   card_thumb_hashes: ["", "", ""],
@@ -37,6 +39,8 @@ const printingDisplay: PrintingDisplayColumns = {
   collector_numbers: ["141", "141", "51"],
   set_codes: ["M21", "2XM", "ISD"],
   set_names: ["Core Set 2021", "Double Masters", "Innistrad"],
+  set_types: ["expansion", "masters", "expansion"],
+  released_at: [0, 0, 0],
   rarity: [0, 0, 0],
   finish: [0, 1, 0], // bolt-print-b is foil
   price_usd: [0, 0, 0],

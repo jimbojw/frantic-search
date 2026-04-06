@@ -22,6 +22,8 @@ Add optional **`set_type`** on each **`SetLookupEntry`** in `printings.json`:
 
 Legacy `printings.json` without `set_type` on lookup rows: treat as empty string for every printing in that set.
 
+**Card detail (Spec 183 / Spec 024):** `PrintingDisplayColumns.set_types` repeats the same lowercase `set_type` string per printing row (from `set_lookup[set_indices[i]].set_type`). Query chips use that value for `st:` navigation so UI and evaluator stay aligned.
+
 ## Evaluation
 
 - **Printing domain** only (`PRINTING_FIELDS`, `evalPrintingField`).

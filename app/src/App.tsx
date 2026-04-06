@@ -629,6 +629,9 @@ function App() {
       case 'card-tags':
         setCardTags({ otags: msg.otags, atags: msg.atags })
         break
+      case 'artist-for-printing-result':
+        // Spec 183: wire requestId → callback when card-detail requests artist credit.
+        break
       case 'serialize-result': {
         const pending = serializePending.get(msg.requestId)
         if (pending) {

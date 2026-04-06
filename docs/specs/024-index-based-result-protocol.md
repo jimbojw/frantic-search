@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Depends on:** Spec 002 (Query Engine), Spec 005 (App Data Loading), Spec 007 (Worker Protocol), Spec 048 (Printing-Aware Display)
+**Depends on:** Spec 002 (Query Engine), Spec 005 (App Data Loading), Spec 007 (Worker Protocol), Spec 048 (Printing-Aware Display), Spec 148 (Artist Index — card-detail artist message), Spec 105 (Keyword Search — reverse lookup for card detail)
 
 ## Goal
 
@@ -73,13 +73,18 @@ The display column set:
 | `loyalty_lookup` | Decode loyalty index → display string |
 | `defense_lookup` | Decode defense index → display string |
 | `canonical_face` | Build facesOf map on main thread |
+| `oracle_ids` | Oracle id per face row (Spec 111 / list tooling) |
+| `edhrec_rank`, `edhrec_salt` | Card-detail and breakdown (nullable per face row) |
+| `colors` | Per-face mana color bitmask for `c:` query chips ([Spec 183](183-card-detail-sections-query-chips-outlinks.md) §3); same length and indexing as `names` (face-aligned oracle rows). Distinct from `color_identity` (deck-building identity). |
+| `keywords_for_face` | Per-face row: sorted keyword strings for that oracle (Spec 105 § Card detail); empty array when none. Same list duplicated on every face row of the same oracle. |
 
 Columns **not** sent to the main thread (evaluation-only):
 
 - `combined_names` — used for combined-name matching during evaluation (Spec 018). The UI does not need this column; it constructs the display name by joining individual face names with ` // ` via `facesOf`.
 - `oracle_texts_tilde` — tilde self-reference matching during evaluation (Spec 020)
-- `colors` — color filtering (distinct from `color_identity` used for display)
 - `card_index` — internal evaluation index
+
+**Note:** `colors` and `keywords_for_face` are included in the `display` payload (Spec 183) even though they are also used in evaluation; the duplicate cost is acceptable versus ad-hoc optional flags.
 
 ### Wire protocol changes
 
@@ -98,6 +103,8 @@ export type DisplayColumns = {
   loyalties: number[]
   defenses: number[]
   color_identity: number[]
+  colors: number[]
+  keywords_for_face: string[][]
   scryfall_ids: string[]
   art_crop_thumb_hashes: string[]
   card_thumb_hashes: string[]
@@ -110,6 +117,10 @@ export type DisplayColumns = {
   loyalty_lookup: string[]
   defense_lookup: string[]
   canonical_face: number[]
+  oracle_ids: string[]
+  edhrec_rank: (number | null)[]
+  edhrec_salt: (number | null)[]
+  alternate_name_to_canonical_face?: Record<string, number>
 }
 ```
 
@@ -121,6 +132,10 @@ export type PrintingDisplayColumns = {
   collector_numbers: string[]
   set_codes: string[]
   set_names: string[]
+  /** Lowercase Scryfall `set_type` from `set_lookup`; empty string when missing ([Spec 179](179-set-type-query-field.md), Spec 183 §4). */
+  set_types: string[]
+  /** Per-row release date as YMD integer from columnar printings ([Spec 061](061-date-query-semantics.md), Spec 183 §4). */
+  released_at: number[]
   rarity: number[]
   finish: number[]
   price_usd: number[]
@@ -132,7 +147,27 @@ export type PrintingDisplayColumns = {
   /** TCGPlayer Mass Entry resolved product names (empty = use oracle name). Spec 128. */
   tcgplayer_names?: string[]
 }
+```
 
+**Printing release vs set lookup:** `released_at` is the **printing-row** calendar date from Scryfall. `SetLookupEntry.released_at` is set-level metadata. For card-detail `year=` / `date=` chips (Spec 183), use **`released_at` on the anchor printing row** so promo or reprint rows can differ from their set’s generic release when the data differs.
+
+#### Card-detail artist lookup (Spec 183 / 148)
+
+**Choice (a) — on-demand message:** Do **not** add a per-row artist string column to `PrintingDisplayColumns` (would bloat the payload). The worker keeps [Spec 148](148-artist-etl-and-worker.md) `ArtistIndexData` in memory; the main thread requests the artist credit for a **(printing row index, face index within card)** pair when rendering the anchor printing.
+
+Extend `ToWorker` / `FromWorker`:
+
+```typescript
+// ToWorker (additional variant)
+| { type: 'get-artist-for-printing'; requestId: number; printingRowIndex: number; faceWithinCard: number }
+
+// FromWorker (additional variant)
+| { type: 'artist-for-printing-result'; requestId: number; artistName: string | null }
+```
+
+Resolution scans the artist map for a strided pair equal to `(faceWithinCard, printingRowIndex)`; first matching artist **name** wins ([Spec 148](148-artist-etl-and-worker.md) § Card detail consumption). When the artist index is not loaded, respond with `artistName: null`.
+
+```typescript
 export type FromWorker =
   | { type: 'status'; status: 'loading' }
   | { type: 'status'; status: 'ready'; display: DisplayColumns }
@@ -140,6 +175,7 @@ export type FromWorker =
   | { type: 'status'; status: 'flavor-ready' }  // Spec 141: flavor-index.json loaded
   | { type: 'status'; status: 'artist-ready'; tagLabels?: string[] }  // Spec 148/149: artist-index.json loaded
   | { type: 'status'; status: 'error'; error: string }
+  | { type: 'artist-for-printing-result'; requestId: number; artistName: string | null }  // Spec 183 / 148
   | {
       type: 'result'
       queryId: number
@@ -171,7 +207,7 @@ On receiving the `ready` message, the main thread:
 2. Builds a `facesOf` map from `canonical_face` — the same logic as `CardIndex._facesOf`, mapping each canonical index to its ordered list of face indices.
 3. Builds a reverse map from `scryfall_ids` → canonical index, for `CardDetail` navigation (see below).
 
-On receiving the `printings-ready` message (when `printings.json` loads), the main thread stores `PrintingDisplayColumns` for rendering set badges, collector numbers, rarity, finish, and price when `printingIndices` is present.
+On receiving the `printings-ready` message (when `printings.json` loads), the main thread stores `PrintingDisplayColumns` for rendering set badges, set type, release date, collector numbers, rarity, finish, and price when `printingIndices` is present.
 
 When rendering a card at canonical index `ci`:
 
@@ -241,7 +277,7 @@ Change from receiving `scryfallId`, `colorIdentity`, and `thumbHash` props to re
 
 ## Memory Impact
 
-The display columns duplicate a subset of the ~8 MB `ColumnarData` across two threads. The evaluation-only columns (`combined_names`, `oracle_texts_tilde`, `colors`, `card_index`) are not duplicated. Rough estimate: the display subset is ~6 MB, bringing total memory from ~8 MB to ~14 MB. This is acceptable for desktop and modern mobile devices.
+The display columns duplicate a subset of the ~8 MB `ColumnarData` across two threads. The evaluation-only columns (`combined_names`, `oracle_texts_tilde`, `card_index`) are not duplicated; `colors` and `keywords_for_face` **are** duplicated for card-detail chips (Spec 183). Rough estimate: the display subset remains on the order of ~6–7 MB including the new columns, bringing total memory from ~8 MB to ~15 MB. This is acceptable for desktop and modern mobile devices.
 
 The one-time `postMessage` to transfer display columns at startup is a single structured clone of ~6 MB. This happens once during loading (before the user can search) and is not on the hot path.
 
@@ -262,6 +298,7 @@ Per-query overhead is minimal. The `Uint32Array` for indices (~132 KB at 33K car
 
 ## Implementation Notes
 
+- 2026-04-06: Spec 183 prep — `DisplayColumns` gains `colors`, `keywords_for_face`; `PrintingDisplayColumns` gains `set_types`, `released_at`; `ToWorker` / `FromWorker` gain `get-artist-for-printing` / `artist-for-printing-result` (Spec 148). Equality-percentile display values for chips: [Spec 095](095-percentile-filters.md) § Card detail (`shared/src/percentile-chip-display.ts`).
 - 2026-03-13: Added optional `tcgplayer_set_codes` and `tcgplayer_collector_numbers` to
   `PrintingDisplayColumns` (Spec 128). Resolved from columnar indices at load; used by
   TCGPlayer Mass Entry export when resolution exists.

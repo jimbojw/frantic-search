@@ -95,6 +95,10 @@ When serializing to Scryfall outlinks, `usd=null`, `usd!=null`, and any **equata
 - [x] `-usd=null` returns printings with price data
 - [x] `toScryfallQuery` strips `usd=null` and `usd!=null`
 
+## Card detail percentile chips (Spec 183)
+
+`$=<p>%` chip labels on the card page follow [Spec 095](095-percentile-filters.md) § Card detail — equality bands and **null-price exclusion** from the distribution match this spec and `evalPrintingField` for `$` / `usd`.
+
 ## Scope
 
 - **In scope:** `usd` field only. The `$` alias (Spec 074) inherits behavior via `FIELD_ALIASES`.
