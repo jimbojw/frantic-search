@@ -57,7 +57,7 @@ If printing columns are unavailable, omit or degrade sections that require them 
 
 **Content (per face, in canonical face order):**
 
-- Card image(s): primary printing’s `scryfall_id` for CDN URLs per Spec 015/050; DFC **Front / Back** toggle when layout requires it (analytics: existing `face_toggle`).
+- Card image(s): the **anchor** printing’s `scryfall_id` for CDN URLs when printings resolve for the page `card` id (Spec 015/050); otherwise the URL id as today. DFC **Front / Back** toggle when layout requires it (analytics: existing `face_toggle`).
 - For each face: **name** (heading), **mana cost** right-aligned on the same row, **type line**, **oracle text** in the bordered box, then **power/toughness**, **loyalty**, or **defense** when present—matching the current `FaceDetail` structure and typography intent.
 
 **Not in this section:** EDHREC, prices, set name, collector number, query chips (those belong in **Card details** or **Printing details**).
@@ -144,7 +144,7 @@ Face **Fame:**
 
 ## 4. Printing details
 
-**Purpose:** Printing-scoped searchable fields for the **primary printing** (and when multiple rows represent the same card page, the same primary printing index as today: `printingIndices[0]` / Spec 050).
+**Purpose:** Printing-scoped searchable fields for the **anchor printing row** for **this** card view: the printing context implied by `?card=<scryfallId>` after oracle-vs-printing resolution ([Spec 050](050-printing-aware-card-detail.md) § URL Scheme). This is **not** “the product’s default printing for the oracle” in the abstract—it is whichever printing row the page is keyed to (oracle URL → metadata may be absent until a row exists; printing URL → that printing’s `scryfall_id`). When several dataset rows share the same page `scryfall_id` (e.g. finish variants), **shared** printing-scoped chips (set, `st:`, release, `cn:`, rarity, artist, etc.) use the same **first index** as today: `printingIndices[0]` (Spec 050 § CardDetail Changes — “Shared fields use the first printing index”). Per-finish price rows still follow the existing multi-finish layout.
 
 **Layout:** Same two-column pattern as Card details.
 
