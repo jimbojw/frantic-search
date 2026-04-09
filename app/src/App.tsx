@@ -1657,6 +1657,7 @@ function App() {
                 otags={cardTags()?.otags}
                 atags={cardTags()?.atags}
                 onNavigateToQuery={navigateToQuery}
+                onNavigateToMyList={() => navigateToLists()}
                 cardListStore={cardListStore}
                 listVersion={listVersion()}
                 artistName={cardArtistName()}

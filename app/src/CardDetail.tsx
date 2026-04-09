@@ -590,6 +590,8 @@ export default function CardDetail(props: {
   otags?: { label: string; cards: number }[]
   atags?: { label: string; prints: number }[]
   onNavigateToQuery?: (q: string) => void
+  /** Opens My List (deck editor). When set, help text links "your list" here. */
+  onNavigateToMyList?: () => void
   cardListStore?: CardListStore
   listVersion?: number
   artistName?: string | null
@@ -682,7 +684,29 @@ export default function CardDetail(props: {
 
                   return (
                     <section class="mb-6">
-                      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">List Actions</h2>
+                      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                        List Actions
+                      </h2>
+                      <p class="text-xs italic text-gray-600 dark:text-gray-400 mb-3">
+                        {props.onNavigateToMyList ? (
+                          <>
+                            Add or remove this card from{' '}
+                            <a
+                              href="?list"
+                              class="text-blue-600 dark:text-blue-400 underline hover:no-underline font-medium not-italic"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                props.onNavigateToMyList?.()
+                              }}
+                            >
+                              your list
+                            </a>
+                            .
+                          </>
+                        ) : (
+                          <>Add or remove this card from your list.</>
+                        )}
+                      </p>
                       <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
                         <Show when={props.cardListStore && oracleId()}>
                           <CardDetailListRow
