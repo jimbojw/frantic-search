@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
+import {
+  tokenizeTypeLine,
+  manaCostToCompactQuery,
+  colorBitmaskToQueryLetters,
+} from '@frantic-search/shared'
 import ListControls from './ListControls'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
@@ -16,7 +21,7 @@ import {
   formatPrice,
 } from './app-utils'
 import { Outlink } from './Outlink'
-import { captureCardDetailInteracted, type CardDetailListFinish } from './analytics'
+import { captureCardDetailInteracted, type CardDetailListFinish, type OutlinkDestination } from './analytics'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },
@@ -41,6 +46,15 @@ const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Predh', bit: Format.Predh },
   { name: 'Future', bit: Format.Future },
 ]
+
+const RARITY_TO_QUERY: Record<number, string> = {
+  1: 'common',
+  2: 'uncommon',
+  4: 'rare',
+  8: 'mythic',
+  16: 'special',
+  32: 'bonus',
+}
 
 type LegalityStatus = 'legal' | 'banned' | 'restricted' | 'not_legal'
 
@@ -259,6 +273,79 @@ function AllPrintsQueryChip(props: {
   )
 }
 
+function QueryChip(props: {
+  query: string
+  field: string
+  onNavigate?: (q: string) => void
+  label?: string
+}) {
+  const chipBase =
+    'inline-flex items-center px-2 py-1 min-h-[1.75rem] rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  const querySpans = () => (
+    <For each={buildSpans(props.query)}>
+      {(span) =>
+        span.role ? <span class={ROLE_CLASSES[span.role]}>{span.text}</span> : <>{span.text}</>
+      }
+    </For>
+  )
+  return (
+    <Show
+      when={props.onNavigate}
+      fallback={
+        <span class={chipBase}>
+          <span class="truncate">{props.label ? props.label : querySpans()}</span>
+        </span>
+      }
+    >
+      {(nav) => (
+        <button
+          type="button"
+          class={`${chipBase} cursor-pointer text-left`}
+          onClick={() => {
+            captureCardDetailInteracted({ control: 'query_chip', field: props.field, query: props.query })
+            nav()(props.query)
+          }}
+        >
+          <span class="truncate">{props.label ? props.label : querySpans()}</span>
+        </button>
+      )}
+    </Show>
+  )
+}
+
+function ManaQueryChip(props: {
+  cost: string
+  onNavigate?: (q: string) => void
+}) {
+  const compact = () => manaCostToCompactQuery(props.cost)
+  const query = () => `m=${compact()}`
+  const chipBase =
+    'inline-flex items-center px-2 py-1 min-h-[1.75rem] rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  return (
+    <Show
+      when={props.onNavigate}
+      fallback={
+        <span class={chipBase}>
+          <ManaCost cost={props.cost} />
+        </span>
+      }
+    >
+      {(nav) => (
+        <button
+          type="button"
+          class={`${chipBase} cursor-pointer`}
+          onClick={() => {
+            captureCardDetailInteracted({ control: 'query_chip', field: 'mana', query: query() })
+            nav()(query())
+          }}
+        >
+          <ManaCost cost={props.cost} />
+        </button>
+      )}
+    </Show>
+  )
+}
+
 function TagChip(props: {
   label: string
   prefix: 'otag' | 'atag'
@@ -337,6 +424,79 @@ function LegalityGrid(props: { legalities: { legal: number; banned: number; rest
   )
 }
 
+function DetailRow(props: {
+  label: string
+  children: any
+  chips?: any
+}) {
+  return (
+    <div class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+      <div>
+        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{props.label}</dt>
+        <dd class="text-sm text-gray-700 dark:text-gray-200 mt-0.5">{props.children}</dd>
+      </div>
+      <Show when={props.chips}>
+        <dd class="flex flex-wrap items-start gap-1 justify-end">{props.chips}</dd>
+      </Show>
+    </div>
+  )
+}
+
+function OutlinkButton(props: {
+  href: string
+  destination: OutlinkDestination
+  children: any
+  affiliate?: boolean
+}) {
+  return (
+    <Outlink
+      href={props.href}
+      class="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+      onClick={() => captureCardDetailInteracted({ control: 'outlink', destination: props.destination })}
+    >
+      {props.children}
+      <Show when={props.affiliate}>
+        <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">affiliate</span>
+      </Show>
+    </Outlink>
+  )
+}
+
+function formatYmd(ymd: number): string {
+  if (!ymd) return '\u2014'
+  const y = Math.floor(ymd / 10000)
+  const m = Math.floor((ymd % 10000) / 100)
+  const d = ymd % 100
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+function ymdYear(ymd: number): number {
+  return Math.floor(ymd / 10000)
+}
+
+function ymdToDateQuery(ymd: number): string {
+  const y = Math.floor(ymd / 10000)
+  const m = Math.floor((ymd % 10000) / 100)
+  const d = ymd % 100
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+function edhrecCardUrl(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `https://edhrec.com/cards/${slug}`
+}
+
+function edhrecCommanderUrl(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `https://edhrec.com/commanders/${slug}`
+}
+
+export type CardDetailPercentiles = {
+  edhrecPercentile: number | null
+  saltPercentile: number | null
+  usdPercentiles: (number | null)[]
+}
+
 export default function CardDetail(props: {
   canonicalIndex: number | undefined
   scryfallId: string
@@ -349,6 +509,8 @@ export default function CardDetail(props: {
   onNavigateToQuery?: (q: string) => void
   cardListStore?: CardListStore
   listVersion?: number
+  artistName?: string | null
+  percentiles?: CardDetailPercentiles | null
 }) {
   const ci = () => props.canonicalIndex
   const d = () => props.display
@@ -366,6 +528,7 @@ export default function CardDetail(props: {
     const cols = d()
     return cols ? faces().map(fi => cols.names[fi]).join(' // ') : ''
   }
+  const isMultiFace = () => faces().length > 1
   const imageScryfallId = () => {
     const pidx = primaryPI()
     const pcols = pd()
@@ -391,6 +554,7 @@ export default function CardDetail(props: {
 
   return (
     <div class="mx-auto max-w-2xl px-4 pb-6 pt-0">
+      {/* §0: In-body title and all-prints chip (Spec 166) */}
       <h1 class="mb-2 text-center text-lg font-bold tracking-tight truncate">{fullName()}</h1>
       <Show when={allPrintsQuery() && props.onNavigateToQuery}>
         <div class="mb-6 flex justify-center">
@@ -415,22 +579,15 @@ export default function CardDetail(props: {
             banned: cols().legalities_banned[idx],
             restricted: cols().legalities_restricted[idx],
           })
+          const oracleId = () => d()!.oracle_ids[faces()[0]]
+
           return (
             <>
-              <div class="mb-6 max-w-xs mx-auto">
-                <CardImage
-                  scryfallId={imageScryfallId()}
-                  colorIdentity={cols().color_identity[idx]}
-                  layout={cols().layouts[idx]}
-                  onFaceToggle={(face) => captureCardDetailInteracted({ control: 'face_toggle', face })}
-                />
-              </div>
-
+              {/* §1: List actions */}
               <Show when={primaryPI() !== undefined && pd()}>
                 {(pcols) => {
                   const pidx = primaryPI()!
                   const indices = pis()!
-                  const oracleId = () => d()!.oracle_ids[faces()[0]]
                   const nameCount = () => {
                     props.listVersion
                     const store = props.cardListStore
@@ -439,13 +596,14 @@ export default function CardDetail(props: {
                     if (!oid) return 0
                     return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid)
                   }
+
                   return (
-                    <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
-                      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Name</dt>
-                        <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                          {fullName()}
-                          <Show when={props.cardListStore && oracleId()}>
+                    <section class="mb-6">
+                      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">List Actions</h2>
+                      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
+                        <Show when={props.cardListStore && oracleId()}>
+                          <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-700">
+                            <span class="text-sm text-gray-700 dark:text-gray-200">This card (by name)</span>
                             <ListControls
                               count={nameCount()}
                               onAdd={() => {
@@ -471,66 +629,7 @@ export default function CardDetail(props: {
                               addLabel="Add card to list"
                               removeLabel="Remove from list"
                             />
-                          </Show>
-                        </dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Set</dt>
-                        <dd class="text-gray-700 dark:text-gray-200">
-                          <Show when={props.onNavigateToQuery} fallback={
-                            <>{pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span></>
-                          }>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const code = pcols().set_codes[pidx]
-                                captureCardDetailInteracted({ control: 'set_unique_prints', set_code: code })
-                                props.onNavigateToQuery!(`s:${code} unique:prints`)
-                              }}
-                              class="hover:text-blue-500 dark:hover:text-blue-400 transition-colors text-left"
-                            >
-                              {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({pcols().set_codes[pidx]})</span>
-                            </button>
-                          </Show>
-                        </dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Collector #</dt>
-                        <dd class="text-gray-700 dark:text-gray-200">{pcols().collector_numbers[pidx]}</dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Rarity</dt>
-                        <dd class="text-gray-700 dark:text-gray-200">{RARITY_LABELS[pcols().rarity[pidx]] ?? 'Unknown'}</dd>
-                        <dt class="font-medium text-gray-600 dark:text-gray-300">Scryfall ID</dt>
-                        <dd class="min-w-0">
-                          <Outlink
-                            href={pageScryfallUrl()}
-                            class="inline-flex min-w-0 items-center gap-1 break-all font-mono text-sm text-blue-600 hover:underline dark:text-blue-400"
-                            aria-label="View this card on Scryfall"
-                            onClick={() => captureCardDetailInteracted({ control: 'scryfall_external' })}
-                          >
-                            <span class="min-w-0 break-all">{props.scryfallId}</span>
-                          </Outlink>
-                        </dd>
-                        <Show when={d() && faces().length > 0}>
-                          {(() => {
-                            const r = d()!.edhrec_rank[faces()[0]]
-                            return (
-                              <>
-                                <dt class="font-medium text-gray-600 dark:text-gray-300">EDHREC Rank</dt>
-                                <dd class={r != null ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}>
-                                  {r != null ? `#${r}` : 'Not ranked'}
-                                </dd>
-                              </>
-                            )
-                          })()}
-                        </Show>
-                        <Show when={d() && faces().length > 0}>
-                          {(() => {
-                            const s = d()!.edhrec_salt[faces()[0]]
-                            return (
-                              <>
-                                <dt class="font-medium text-gray-600 dark:text-gray-300">EDHREC Salt</dt>
-                                <dd class={s != null ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}>
-                                  {s != null ? String(s) : 'Not rated'}
-                                </dd>
-                              </>
-                            )
-                          })()}
+                          </div>
                         </Show>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
@@ -546,75 +645,71 @@ export default function CardDetail(props: {
                                 return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
                               }
                               return (
-                                <>
-                                  <dt class="font-medium text-gray-600 dark:text-gray-300">
-                                    {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price
-                                  </dt>
-                                  <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                                    {formatPrice(pcols().price_usd[pi])}
-                                    <Show when={props.cardListStore && oracleId()}>
-                                      <ListControls
-                                        count={printingCount()}
-                                        onAdd={() => {
-                                          const store = props.cardListStore!
-                                          const oid = oracleId()
-                                          const scryfallId = pcols().scryfall_ids[pi]
-                                          const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
-                                          if (oid) {
-                                            captureCardDetailInteracted({
-                                              control: 'list_add',
-                                              list_scope: 'printing',
-                                              oracle_id: oid,
-                                              finish,
-                                              scryfall_id: scryfallId,
-                                            })
-                                          }
-                                          if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
-                                        }}
-                                        onRemove={() => {
-                                          const store = props.cardListStore!
-                                          const oid = oracleId()
-                                          const scryfallId = pcols().scryfall_ids[pi]
-                                          const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
-                                          if (oid) {
-                                            captureCardDetailInteracted({
-                                              control: 'list_remove',
-                                              list_scope: 'printing',
-                                              oracle_id: oid,
-                                              finish,
-                                              scryfall_id: scryfallId,
-                                            })
-                                          }
-                                          if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
-                                        }}
-                                        addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
-                                        removeLabel={`Remove ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing from list`}
-                                      />
-                                    </Show>
-                                  </dd>
-                                </>
+                                <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                                  <span class="text-sm text-gray-700 dark:text-gray-200">
+                                    {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} printing — {formatPrice(pcols().price_usd[pi])}
+                                  </span>
+                                  <Show when={props.cardListStore && oracleId()}>
+                                    <ListControls
+                                      count={printingCount()}
+                                      onAdd={() => {
+                                        const store = props.cardListStore!
+                                        const oid = oracleId()
+                                        const scryfallId = pcols().scryfall_ids[pi]
+                                        const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                        if (oid) {
+                                          captureCardDetailInteracted({
+                                            control: 'list_add',
+                                            list_scope: 'printing',
+                                            oracle_id: oid,
+                                            finish,
+                                            scryfall_id: scryfallId,
+                                          })
+                                        }
+                                        if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
+                                      }}
+                                      onRemove={() => {
+                                        const store = props.cardListStore!
+                                        const oid = oracleId()
+                                        const scryfallId = pcols().scryfall_ids[pi]
+                                        const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                        if (oid) {
+                                          captureCardDetailInteracted({
+                                            control: 'list_remove',
+                                            list_scope: 'printing',
+                                            oracle_id: oid,
+                                            finish,
+                                            scryfall_id: scryfallId,
+                                          })
+                                        }
+                                        if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
+                                      }}
+                                      addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
+                                      removeLabel={`Remove ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing from list`}
+                                    />
+                                  </Show>
+                                </div>
                               )
                             }}
                           </For>
                         }>
-                          <dt class="font-medium text-gray-600 dark:text-gray-300">Finish</dt>
-                          <dd class="text-gray-700 dark:text-gray-200">{FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'}</dd>
-                          <dt class="font-medium text-gray-600 dark:text-gray-300">Price</dt>
-                          <dd class="text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                            {formatPrice(pcols().price_usd[pidx])}
-                            <Show when={props.cardListStore && oracleId()}>
-                              {(() => {
-                                const singlePrintingCount = () => {
-                                  props.listVersion
-                                  const store = props.cardListStore
-                                  if (!store) return 0
-                                  const oid = oracleId()
-                                  if (!oid) return 0
-                                  const scryfallId = pcols().scryfall_ids[pidx]
-                                  const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
-                                  return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
-                                }
-                                return (
+                          {(() => {
+                            const singlePrintingCount = () => {
+                              props.listVersion
+                              const store = props.cardListStore
+                              if (!store) return 0
+                              const oid = oracleId()
+                              if (!oid) return 0
+                              const scryfallId = pcols().scryfall_ids[pidx]
+                              const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
+                              return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
+                            }
+                            return (
+                              <div class="flex items-center justify-between px-4 py-2.5">
+                                <span class="text-sm text-gray-700 dark:text-gray-200">
+                                  {FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'} printing — {formatPrice(pcols().price_usd[pidx])}
+                                </span>
+                                <Show when={props.cardListStore && oracleId()}>
                                   <ListControls
                                     count={singlePrintingCount()}
                                     onAdd={() => {
@@ -652,28 +747,375 @@ export default function CardDetail(props: {
                                     addLabel="Add this printing to list"
                                     removeLabel="Remove this printing from list"
                                   />
-                                )
-                              })()}
-                            </Show>
-                          </dd>
+                                </Show>
+                              </div>
+                            )
+                          })()}
                         </Show>
-                      </dl>
-                    </div>
+                      </div>
+                    </section>
                   )
                 }}
               </Show>
 
+              {/* §2: Oracle details — image + face blocks */}
+              <div class="mb-6 max-w-xs mx-auto">
+                <CardImage
+                  scryfallId={imageScryfallId()}
+                  colorIdentity={cols().color_identity[idx]}
+                  layout={cols().layouts[idx]}
+                  onFaceToggle={(face) => captureCardDetailInteracted({ control: 'face_toggle', face })}
+                />
+              </div>
               <div class="space-y-4 mb-8">
                 <For each={faces()}>
                   {(fi) => <FaceDetail d={cols()} fi={fi} />}
                 </For>
               </div>
 
+              {/* §3: Card details — query chip tables */}
+              <section class="mb-6">
+                <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Card Details</h2>
+                <dl class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-1">
+                  <Show when={isMultiFace()}>
+                    {/* Oracle / combined block for multi-face */}
+                    <DetailRow
+                      label="Name"
+                      chips={<QueryChip query={`!"${fullName()}"`} field="name" onNavigate={props.onNavigateToQuery} />}
+                    >
+                      {fullName()}
+                    </DetailRow>
+                  </Show>
+                  <Show when={!isMultiFace() && faces().length > 0}>
+                    <DetailRow
+                      label="Name"
+                      chips={<QueryChip query={`!"${cols().names[faces()[0]]}"`} field="name" onNavigate={props.onNavigateToQuery} />}
+                    >
+                      {cols().names[faces()[0]]}
+                    </DetailRow>
+                  </Show>
+
+                  {/* Color identity (always at oracle scope) */}
+                  <DetailRow
+                    label="Color Identity"
+                    chips={<QueryChip query={`ci:${colorBitmaskToQueryLetters(cols().color_identity[idx])}`} field="identity" onNavigate={props.onNavigateToQuery} />}
+                  >
+                    {colorBitmaskToQueryLetters(cols().color_identity[idx]).toUpperCase()}
+                  </DetailRow>
+
+                  {/* EDHREC rank */}
+                  {(() => {
+                    const r = cols().edhrec_rank[faces()[0]]
+                    const pct = props.percentiles?.edhrecPercentile
+                    return (
+                      <DetailRow
+                        label="EDHREC Rank"
+                        chips={
+                          r != null ? (
+                            <div class="flex flex-wrap gap-1 justify-end">
+                              <QueryChip query={`edhrec=${r}`} field="edhrec" onNavigate={props.onNavigateToQuery} />
+                              <Show when={pct != null}>
+                                <QueryChip query={`edhrec=${pct}%`} field="edhrec" onNavigate={props.onNavigateToQuery} />
+                              </Show>
+                            </div>
+                          ) : undefined
+                        }
+                      >
+                        {r != null ? `#${r}` : 'Not ranked'}
+                      </DetailRow>
+                    )
+                  })()}
+
+                  {/* EDHREC salt */}
+                  {(() => {
+                    const s = cols().edhrec_salt[faces()[0]]
+                    const pct = props.percentiles?.saltPercentile
+                    return (
+                      <DetailRow
+                        label="EDHREC Salt"
+                        chips={
+                          s != null ? (
+                            <div class="flex flex-wrap gap-1 justify-end">
+                              <QueryChip query={`salt=${s}`} field="salt" onNavigate={props.onNavigateToQuery} />
+                              <Show when={pct != null}>
+                                <QueryChip query={`salt=${pct}%`} field="salt" onNavigate={props.onNavigateToQuery} />
+                              </Show>
+                            </div>
+                          ) : undefined
+                        }
+                      >
+                        {s != null ? String(s) : 'Not rated'}
+                      </DetailRow>
+                    )
+                  })()}
+
+                  {/* Keywords (always shown per spec) */}
+                  {(() => {
+                    const kws = cols().keywords_for_face[faces()[0]] ?? []
+                    return (
+                      <DetailRow
+                        label="Keywords"
+                        chips={
+                          kws.length > 0 ? (
+                            <div class="flex flex-wrap gap-1 justify-end">
+                              <For each={kws}>
+                                {(kw) => <QueryChip query={`kw:${kw}`} field="keyword" onNavigate={props.onNavigateToQuery} />}
+                              </For>
+                            </div>
+                          ) : undefined
+                        }
+                      >
+                        {kws.length > 0 ? kws.join(', ') : <span class="italic text-gray-400 dark:text-gray-500">_none_</span>}
+                      </DetailRow>
+                    )
+                  })()}
+
+                  {/* Per-face blocks (single-face: inline; multi-face: separate groups) */}
+                  <For each={faces()}>
+                    {(fi) => {
+                      const faceName = () => cols().names[fi]
+                      const manaCost = () => cols().mana_costs[fi]
+                      const typeTokens = () => tokenizeTypeLine(cols().type_lines[fi])
+                      const colorLetters = () => colorBitmaskToQueryLetters(cols().colors[fi])
+                      const pow = () => cols().power_lookup[cols().powers[fi]]
+                      const tou = () => cols().toughness_lookup[cols().toughnesses[fi]]
+                      const loy = () => cols().loyalty_lookup[cols().loyalties[fi]]
+                      const def = () => cols().defense_lookup[cols().defenses[fi]]
+
+                      return (
+                        <>
+                          <Show when={isMultiFace()}>
+                            <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                              <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">Face: {faceName()}</p>
+                            </div>
+                            <DetailRow
+                              label="Name"
+                              chips={<QueryChip query={`!"${faceName()}"`} field="name" onNavigate={props.onNavigateToQuery} />}
+                            >
+                              {faceName()}
+                            </DetailRow>
+                          </Show>
+
+                          <DetailRow
+                            label="Mana Cost"
+                            chips={manaCost() ? <ManaQueryChip cost={manaCost()} onNavigate={props.onNavigateToQuery} /> : undefined}
+                          >
+                            {manaCost() ? <ManaCost cost={manaCost()} /> : <span class="italic text-gray-400 dark:text-gray-500">\u2014</span>}
+                          </DetailRow>
+
+                          <DetailRow
+                            label="Type"
+                            chips={
+                              typeTokens().length > 0 ? (
+                                <div class="flex flex-wrap gap-1 justify-end">
+                                  <For each={typeTokens()}>
+                                    {(token) => <QueryChip query={`t:${token}`} field="type" onNavigate={props.onNavigateToQuery} />}
+                                  </For>
+                                </div>
+                              ) : undefined
+                            }
+                          >
+                            {cols().type_lines[fi]}
+                          </DetailRow>
+
+                          <DetailRow
+                            label="Color"
+                            chips={<QueryChip query={`c:${colorLetters()}`} field="color" onNavigate={props.onNavigateToQuery} />}
+                          >
+                            {colorLetters().toUpperCase()}
+                          </DetailRow>
+
+                          <Show when={pow() && tou()}>
+                            <DetailRow
+                              label="Power"
+                              chips={<QueryChip query={`pow=${pow()}`} field="power" onNavigate={props.onNavigateToQuery} />}
+                            >
+                              {pow()}
+                            </DetailRow>
+                            <DetailRow
+                              label="Toughness"
+                              chips={<QueryChip query={`tou=${tou()}`} field="toughness" onNavigate={props.onNavigateToQuery} />}
+                            >
+                              {tou()}
+                            </DetailRow>
+                          </Show>
+                          <Show when={loy()}>
+                            <DetailRow
+                              label="Loyalty"
+                              chips={<QueryChip query={`loy=${loy()}`} field="loyalty" onNavigate={props.onNavigateToQuery} />}
+                            >
+                              {loy()}
+                            </DetailRow>
+                          </Show>
+                          <Show when={def()}>
+                            <DetailRow
+                              label="Defense"
+                              chips={<QueryChip query={`def=${def()}`} field="defense" onNavigate={props.onNavigateToQuery} />}
+                            >
+                              {def()}
+                            </DetailRow>
+                          </Show>
+                        </>
+                      )
+                    }}
+                  </For>
+                </dl>
+              </section>
+
+              {/* §4: Printing details */}
+              <Show when={primaryPI() !== undefined && pd()}>
+                {(pcols) => {
+                  const pidx = primaryPI()!
+                  const indices = pis()!
+                  const setCode = () => pcols().set_codes[pidx]
+                  const setType = () => pcols().set_types[pidx]
+                  const releasedAt = () => pcols().released_at[pidx]
+                  const rarityBit = () => pcols().rarity[pidx]
+                  const rarityQuery = () => RARITY_TO_QUERY[rarityBit()] ?? 'common'
+
+                  return (
+                    <section class="mb-6">
+                      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Printing Details</h2>
+                      <dl class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-1">
+                        <DetailRow
+                          label="Set"
+                          chips={<QueryChip query={`set:${setCode()}`} field="set" onNavigate={props.onNavigateToQuery} />}
+                        >
+                          {pcols().set_names[pidx]} <span class="uppercase font-mono text-gray-500 dark:text-gray-400">({setCode()})</span>
+                        </DetailRow>
+
+                        <Show when={setType()}>
+                          <DetailRow
+                            label="Set Type"
+                            chips={<QueryChip query={`st:${setType()}`} field="set_type" onNavigate={props.onNavigateToQuery} />}
+                          >
+                            {setType()}
+                          </DetailRow>
+                        </Show>
+
+                        <Show when={releasedAt()}>
+                          <DetailRow
+                            label="Released"
+                            chips={
+                              <div class="flex flex-wrap gap-1 justify-end">
+                                <QueryChip query={`year=${ymdYear(releasedAt())}`} field="year" onNavigate={props.onNavigateToQuery} />
+                                <QueryChip query={`date=${ymdToDateQuery(releasedAt())}`} field="date" onNavigate={props.onNavigateToQuery} />
+                              </div>
+                            }
+                          >
+                            {formatYmd(releasedAt())}
+                          </DetailRow>
+                        </Show>
+
+                        <DetailRow
+                          label="Collector #"
+                          chips={<QueryChip query={`cn:${pcols().collector_numbers[pidx]}`} field="collector_number" onNavigate={props.onNavigateToQuery} />}
+                        >
+                          {pcols().collector_numbers[pidx]}
+                        </DetailRow>
+
+                        <DetailRow
+                          label="Rarity"
+                          chips={<QueryChip query={`r:${rarityQuery()}`} field="rarity" onNavigate={props.onNavigateToQuery} />}
+                        >
+                          {RARITY_LABELS[rarityBit()] ?? 'Unknown'}
+                        </DetailRow>
+
+                        {/* Price rows per finish */}
+                        <Show when={indices.length === 1} fallback={
+                          <For each={indices}>
+                            {(pi, piIdx) => {
+                              const price = () => pcols().price_usd[pi]
+                              const pctIdx = piIdx()
+                              const pct = () => props.percentiles?.usdPercentiles[pctIdx] ?? null
+                              return (
+                                <DetailRow
+                                  label={`${FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} Price`}
+                                  chips={
+                                    price() !== 0 ? (
+                                      <div class="flex flex-wrap gap-1 justify-end">
+                                        <QueryChip query={`$=${(price() / 100).toFixed(2)}`} field="usd" onNavigate={props.onNavigateToQuery} />
+                                        <Show when={pct() != null}>
+                                          <QueryChip query={`$=${pct()}%`} field="usd" onNavigate={props.onNavigateToQuery} />
+                                        </Show>
+                                      </div>
+                                    ) : undefined
+                                  }
+                                >
+                                  {formatPrice(price())}
+                                </DetailRow>
+                              )
+                            }}
+                          </For>
+                        }>
+                          {(() => {
+                            const price = () => pcols().price_usd[pidx]
+                            const pct = () => props.percentiles?.usdPercentiles[0] ?? null
+                            return (
+                              <DetailRow
+                                label="Price"
+                                chips={
+                                  price() !== 0 ? (
+                                    <div class="flex flex-wrap gap-1 justify-end">
+                                      <QueryChip query={`$=${(price() / 100).toFixed(2)}`} field="usd" onNavigate={props.onNavigateToQuery} />
+                                      <Show when={pct() != null}>
+                                        <QueryChip query={`$=${pct()}%`} field="usd" onNavigate={props.onNavigateToQuery} />
+                                      </Show>
+                                    </div>
+                                  ) : undefined
+                                }
+                              >
+                                {formatPrice(price())}
+                              </DetailRow>
+                            )
+                          })()}
+                        </Show>
+
+                        <Show when={props.artistName}>
+                          <DetailRow
+                            label="Illustrated by"
+                            chips={<QueryChip query={`a:"${props.artistName}"`} field="artist" onNavigate={props.onNavigateToQuery} />}
+                          >
+                            {props.artistName}
+                          </DetailRow>
+                        </Show>
+                      </dl>
+                    </section>
+                  )
+                }}
+              </Show>
+
+              {/* §5: Outlinks */}
+              <section class="mb-8">
+                <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">External Links</h2>
+                <div class="flex flex-wrap gap-2">
+                  <OutlinkButton href={pageScryfallUrl()} destination="scryfall_card">
+                    Scryfall
+                  </OutlinkButton>
+                  <Show when={fullName()}>
+                    <OutlinkButton href={edhrecCommanderUrl(fullName())} destination="edhrec_commander">
+                      EDHREC (commander)
+                    </OutlinkButton>
+                    <OutlinkButton href={edhrecCardUrl(fullName())} destination="edhrec_card">
+                      EDHREC (card)
+                    </OutlinkButton>
+                  </Show>
+                  <OutlinkButton href={`https://manapool.com/search?q=${encodeURIComponent(fullName())}`} destination="manapool" affiliate>
+                    Mana Pool
+                  </OutlinkButton>
+                  <OutlinkButton href={`https://www.tcgplayer.com/search/magic/product?q=${encodeURIComponent(fullName())}`} destination="tcgplayer" affiliate>
+                    TCGPlayer
+                  </OutlinkButton>
+                </div>
+              </section>
+
+              {/* §6: Format legality */}
               <section>
                 <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Format Legality</h2>
                 <LegalityGrid legalities={legalities()} />
               </section>
 
+              {/* §7: Function tags (otags) */}
               <Show when={(props.otags?.length ?? 0) > 0}>
                 <section class="mt-6">
                   <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Function Tags</h2>
@@ -686,6 +1128,8 @@ export default function CardDetail(props: {
                   </div>
                 </section>
               </Show>
+
+              {/* §8: Illustration tags (atags) */}
               <Show when={(props.atags?.length ?? 0) > 0}>
                 <section class="mt-6">
                   <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Illustration Tags</h2>

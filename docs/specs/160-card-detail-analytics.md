@@ -52,6 +52,7 @@ Discriminated by `control` (required on every payload). Optional fields apply on
 - Do not modify shared `ListControls`; wrap `onAdd` / `onRemove` at card-detail call sites.
 - Navigation captures fire immediately before invoking `onNavigateToQuery` / `history.back` (or on link click for Scryfall).
 - Clipboard captures fire inside the `writeText` fulfillment path.
+- **2026-04-06 (Spec 183):** Added `query_chip` (`field` + `query`) and `outlink` (`destination: OutlinkDestination`) controls for card-detail query chips and external links. Scryfall in-body outlink uses unified `outlink` with `destination: 'scryfall_card'`; the legacy `scryfall_external` control is retained for backward compatibility but the Outlinks section uses `outlink`. `OutlinkDestination` is `'scryfall_card' | 'edhrec_commander' | 'edhrec_card' | 'manapool' | 'tcgplayer'`.
 - **2026-03-24:** List payloads include `oracle_id`, `finish` (`nonfoil` \| `foil` \| `etched`, matching `FINISH_TO_STRING`), and `scryfall_id` when `list_scope === 'printing'`.
 - **2026-03-28 (Spec 166):** Removed `slack_copy` (inline Slack row removed; use `card_copy_slack_reddit` from the header Copy… menu). `scryfall_external` applies to the metadata Scryfall ID link only. Removed `all_prints_copy`, `otag_copy`, and `atag_copy` — card detail query/tag chips are navigate-only; users copy from the header Copy… menu on the resulting search (Spec 106 / 166).
 

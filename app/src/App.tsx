@@ -141,6 +141,12 @@ function App() {
     otags: { label: string; cards: number }[]
     atags: { label: string; prints: number }[]
   } | null>(null)
+  const [cardArtistName, setCardArtistName] = createSignal<string | null>(null)
+  const [cardPercentiles, setCardPercentiles] = createSignal<{
+    edhrecPercentile: number | null
+    saltPercentile: number | null
+    usdPercentiles: (number | null)[]
+  } | null>(null)
   const [keywordLabels, setKeywordLabels] = createSignal<string[]>([])
   const [artistNames, setArtistNames] = createSignal<string[]>([])
   const [printingIndices, setPrintingIndices] = createSignal<Uint32Array | undefined>(undefined)
@@ -446,6 +452,10 @@ function App() {
   const serializePending = new Map<number, { resolve: (s: string) => void; reject: (e: unknown) => void }>()
   let validateRequestId = 0
   const validatePending = new Map<number, (r: { result: LineValidationResult[]; indices: Int32Array }) => void>()
+  let artistRequestId = 0
+  const artistPending = new Map<number, (name: string | null) => void>()
+  let percentilesRequestId = 0
+  const percentilesPending = new Map<number, (r: { edhrecPercentile: number | null; saltPercentile: number | null; usdPercentiles: (number | null)[] }) => void>()
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture(() => effectiveQuery().trim())
   let searchResolvedFromUrlFired = false
 
@@ -538,12 +548,15 @@ function App() {
   createEffect(() => {
     if (view() !== 'card') {
       setCardTags(null)
+      setCardArtistName(null)
+      setCardPercentiles(null)
       return
     }
     const cid = cardId()
     if (!cid) return
+    const d = display()
     const pd = printingDisplay()
-    if (!display()) return
+    if (!d) return
     const scry = scryfallIndex()
     const pscry = printingScryfallIndex()
     const pscryGroup = printingScryfallGroupIndex()
@@ -562,6 +575,33 @@ function App() {
       type: 'get-tags-for-card',
       canonicalIndex: resolvedCI,
       primaryPrintingIndex: primaryPI,
+    })
+
+    const faceList = facesOf().get(resolvedCI) ?? []
+    const primaryFace = faceList.length > 0 ? faceList[0] : resolvedCI
+
+    if (primaryPI !== undefined) {
+      const aReqId = ++artistRequestId
+      artistPending.set(aReqId, (name) => {
+        setCardArtistName(name)
+      })
+      worker.postMessage({
+        type: 'get-artist-for-printing',
+        requestId: aReqId,
+        printingRowIndex: primaryPI,
+        faceWithinCard: 0,
+      })
+    }
+
+    const pReqId = ++percentilesRequestId
+    percentilesPending.set(pReqId, (r) => {
+      setCardPercentiles(r)
+    })
+    worker.postMessage({
+      type: 'get-card-detail-percentiles',
+      requestId: pReqId,
+      faceIndex: primaryFace,
+      printingRowIndices: printingPIs ?? [],
     })
   })
 
@@ -629,9 +669,22 @@ function App() {
       case 'card-tags':
         setCardTags({ otags: msg.otags, atags: msg.atags })
         break
-      case 'artist-for-printing-result':
-        // Spec 183: wire requestId → callback when card-detail requests artist credit.
+      case 'artist-for-printing-result': {
+        const cb = artistPending.get(msg.requestId)
+        if (cb) {
+          artistPending.delete(msg.requestId)
+          cb(msg.artistName)
+        }
         break
+      }
+      case 'card-detail-percentiles-result': {
+        const cb = percentilesPending.get(msg.requestId)
+        if (cb) {
+          percentilesPending.delete(msg.requestId)
+          cb({ edhrecPercentile: msg.edhrecPercentile, saltPercentile: msg.saltPercentile, usdPercentiles: msg.usdPercentiles })
+        }
+        break
+      }
       case 'serialize-result': {
         const pending = serializePending.get(msg.requestId)
         if (pending) {
@@ -1606,6 +1659,8 @@ function App() {
                 onNavigateToQuery={navigateToQuery}
                 cardListStore={cardListStore}
                 listVersion={listVersion()}
+                artistName={cardArtistName()}
+                percentiles={cardPercentiles()}
               />
             </>
           )

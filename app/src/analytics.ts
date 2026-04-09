@@ -125,6 +125,13 @@ export function captureMenuChipUsed(params: {
 /** Same strings as `FINISH_TO_STRING` in app-utils (Spec 160). */
 export type CardDetailListFinish = 'nonfoil' | 'foil' | 'etched'
 
+export type OutlinkDestination =
+  | 'scryfall_card'
+  | 'edhrec_commander'
+  | 'edhrec_card'
+  | 'manapool'
+  | 'tcgplayer'
+
 /** Card detail surface only (Spec 160). */
 export type CardDetailInteractedPayload =
   | { control: 'back' }
@@ -140,6 +147,8 @@ export type CardDetailInteractedPayload =
   | { control: 'card_copy_slack_reddit' }
   | { control: 'otag_nav'; tag_label: string }
   | { control: 'atag_nav'; tag_label: string }
+  | { control: 'query_chip'; field: string; query: string }
+  | { control: 'outlink'; destination: OutlinkDestination }
   | { control: 'list_add'; list_scope: 'oracle'; oracle_id: string; finish: CardDetailListFinish }
   | {
       control: 'list_add'

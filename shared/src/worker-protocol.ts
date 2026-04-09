@@ -34,6 +34,13 @@ export type ToWorker =
       printingRowIndex: number
       faceWithinCard: number
     }
+  /** Spec 183: compute equality percentile labels for card-detail chips. */
+  | {
+      type: 'get-card-detail-percentiles'
+      requestId: number
+      faceIndex: number
+      printingRowIndices: number[]
+    }
   | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat; listName?: string }
   | { type: 'validate-list'; requestId: number; lines: string[] }
 
@@ -135,6 +142,15 @@ export type FromWorker =
   | { type: 'status'; status: 'error'; error: string; cause: 'stale' | 'network' | 'unknown' }
   | { type: 'card-tags'; otags: { label: string; cards: number }[]; atags: { label: string; prints: number }[] }
   | { type: 'artist-for-printing-result'; requestId: number; artistName: string | null }
+  /** Spec 183: equality percentile labels for card-detail chips. */
+  | {
+      type: 'card-detail-percentiles-result'
+      requestId: number
+      edhrecPercentile: number | null
+      saltPercentile: number | null
+      /** One entry per requested printingRowIndex (same order). null when price is null/excluded. */
+      usdPercentiles: (number | null)[]
+    }
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; /** Spec 085: Frantic-vs-Scryfall syntax; not derived from includeExtras or uniqueMode. */ usedExtension: boolean; includeExtras?: boolean; /** Spec 178 / 175: pre-default-filter face count when filter removed matches. */ indicesBeforeDefaultFilter?: number; /** Spec 178 / 175: pre-default-filter printing count when relevant and filter removed printings. */ printingIndicesBeforeDefaultFilter?: number; flavorUnavailable?: boolean; artistUnavailable?: boolean; suggestions: Suggestion[]; side?: DualWieldSide }
   | { type: 'serialize-result'; requestId: number; text: string }
   | { type: 'validate-result'; requestId: number; result: LineValidationResult[]; indices: Int32Array }

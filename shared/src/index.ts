@@ -170,6 +170,11 @@ export {
 } from "./display-columns";
 export { resolveArtistForPrintingRow } from "./artist-printing-resolve";
 export {
+  tokenizeTypeLine,
+  manaCostToCompactQuery,
+  colorBitmaskToQueryLetters,
+} from "./card-detail-chips";
+export {
   positionInEqualityPercentileBand,
   displayEqualityPercentileLabel,
   sortedArrayPosition,

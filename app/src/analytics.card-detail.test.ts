@@ -80,4 +80,34 @@ describe('captureCardDetailInteracted', () => {
     captureCardDetailInteracted({ control: 'card_copy_markdown' })
     expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', { control: 'card_copy_markdown' })
   })
+
+  it('captures query_chip with field and query (Spec 183)', () => {
+    captureCardDetailInteracted({ control: 'query_chip', field: 'type', query: 't:creature' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', {
+      control: 'query_chip',
+      field: 'type',
+      query: 't:creature',
+    })
+  })
+
+  it('captures outlink with destination (Spec 183)', () => {
+    captureCardDetailInteracted({ control: 'outlink', destination: 'scryfall_card' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', {
+      control: 'outlink',
+      destination: 'scryfall_card',
+    })
+  })
+
+  it('captures outlink for affiliate destinations', () => {
+    captureCardDetailInteracted({ control: 'outlink', destination: 'tcgplayer' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', {
+      control: 'outlink',
+      destination: 'tcgplayer',
+    })
+    captureCardDetailInteracted({ control: 'outlink', destination: 'manapool' })
+    expect(mockCapture).toHaveBeenCalledWith('card_detail_interacted', {
+      control: 'outlink',
+      destination: 'manapool',
+    })
+  })
 })

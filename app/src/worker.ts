@@ -32,6 +32,8 @@ import {
   normalizeArtistIndexForSearch,
   resolveIllustrationTagsToPrintingRows,
   resolveArtistForPrintingRow,
+  sortedArrayPosition,
+  displayEqualityPercentileLabel,
 } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
@@ -375,6 +377,30 @@ async function init(): Promise<void> {
         type: 'artist-for-printing-result',
         requestId: msg.requestId,
         artistName,
+      })
+      return
+    }
+    if (msg.type === 'get-card-detail-percentiles') {
+      const fi = msg.faceIndex
+      const edhrecPos = sortedArrayPosition(index.sortedEdhrecIndices, index.sortedEdhrecCount, fi)
+      const edhrecPercentile = edhrecPos != null
+        ? displayEqualityPercentileLabel(edhrecPos, index.sortedEdhrecCount)
+        : null
+      const saltPos = sortedArrayPosition(index.sortedSaltIndices, index.sortedSaltCount, fi)
+      const saltPercentile = saltPos != null
+        ? displayEqualityPercentileLabel(saltPos, index.sortedSaltCount)
+        : null
+      const usdPercentiles = msg.printingRowIndices.map((pi) => {
+        if (!printingIndex) return null
+        const pos = sortedArrayPosition(printingIndex.sortedUsdIndices, printingIndex.sortedUsdCount, pi)
+        return pos != null ? displayEqualityPercentileLabel(pos, printingIndex.sortedUsdCount) : null
+      })
+      post({
+        type: 'card-detail-percentiles-result',
+        requestId: msg.requestId,
+        edhrecPercentile,
+        saltPercentile,
+        usdPercentiles,
       })
       return
     }
