@@ -6,6 +6,7 @@ import {
   tokenizeTypeLine,
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
+  colorIdentityMaskToManaCostString,
   moxfieldPreviewLine,
 } from '@frantic-search/shared'
 import ListLineHighlight from './ListLineHighlight'
@@ -356,14 +357,17 @@ function AllPrintsQueryChip(props: {
   )
 }
 
+const QUERY_CHIP_BASE =
+  'inline-flex max-w-full min-w-0 items-center justify-center gap-0.5 min-h-11 px-2 py-2 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+
 function QueryChip(props: {
   query: string
   field: string
   onNavigate?: (q: string) => void
   label?: string
+  /** Replaces default highlighted query text (e.g. color identity: `ci:` + mana symbols). */
+  customLabel?: any
 }) {
-  const chipBase =
-    'inline-flex items-center px-2 py-1 min-h-[1.75rem] rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
   const querySpans = () => (
     <For each={buildSpans(props.query)}>
       {(span) =>
@@ -375,21 +379,31 @@ function QueryChip(props: {
     <Show
       when={props.onNavigate}
       fallback={
-        <span class={chipBase}>
-          <span class="truncate">{props.label ? props.label : querySpans()}</span>
+        <span class={QUERY_CHIP_BASE}>
+          <Show
+            when={props.customLabel !== undefined}
+            fallback={<span class="truncate min-w-0">{props.label ? props.label : querySpans()}</span>}
+          >
+            {props.customLabel}
+          </Show>
         </span>
       }
     >
       {(nav) => (
         <button
           type="button"
-          class={`${chipBase} cursor-pointer text-left`}
+          class={`${QUERY_CHIP_BASE} cursor-pointer text-left`}
           onClick={() => {
             captureCardDetailInteracted({ control: 'query_chip', field: props.field, query: props.query })
             nav()(props.query)
           }}
         >
-          <span class="truncate">{props.label ? props.label : querySpans()}</span>
+          <Show
+            when={props.customLabel !== undefined}
+            fallback={<span class="truncate min-w-0">{props.label ? props.label : querySpans()}</span>}
+          >
+            {props.customLabel}
+          </Show>
         </button>
       )}
     </Show>
@@ -402,27 +416,31 @@ function ManaQueryChip(props: {
 }) {
   const compact = () => manaCostToCompactQuery(props.cost)
   const query = () => `m=${compact()}`
-  const chipBase =
-    'inline-flex items-center px-2 py-1 min-h-[1.75rem] rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+  const label = () => (
+    <span class="inline-flex shrink-0 items-center gap-0.5">
+      <span class="shrink-0">m=</span>
+      <ManaCost cost={props.cost} />
+    </span>
+  )
   return (
     <Show
       when={props.onNavigate}
       fallback={
-        <span class={chipBase}>
-          <ManaCost cost={props.cost} />
+        <span class={QUERY_CHIP_BASE}>
+          {label()}
         </span>
       }
     >
       {(nav) => (
         <button
           type="button"
-          class={`${chipBase} cursor-pointer`}
+          class={`${QUERY_CHIP_BASE} cursor-pointer`}
           onClick={() => {
             captureCardDetailInteracted({ control: 'query_chip', field: 'mana', query: query() })
             nav()(query())
           }}
         >
-          <ManaCost cost={props.cost} />
+          {label()}
         </button>
       )}
     </Show>
@@ -519,7 +537,7 @@ function DetailRow(props: {
         <dd class="text-sm text-gray-700 dark:text-gray-200 mt-0.5">{props.children}</dd>
       </div>
       <Show when={props.chips}>
-        <dd class="flex flex-wrap items-start gap-1 justify-end">{props.chips}</dd>
+        <dd class="flex flex-wrap items-center gap-1 justify-end">{props.chips}</dd>
       </Show>
     </div>
   )
@@ -668,6 +686,21 @@ export default function CardDetail(props: {
 
           return (
             <>
+              {/* §2: Oracle details — image + face blocks */}
+              <div class="mb-6 max-w-xs mx-auto">
+                <CardImage
+                  scryfallId={imageScryfallId()}
+                  colorIdentity={cols().color_identity[idx]}
+                  layout={cols().layouts[idx]}
+                  onFaceToggle={(face) => captureCardDetailInteracted({ control: 'face_toggle', face })}
+                />
+              </div>
+              <div class="space-y-4 mb-8">
+                <For each={faces()}>
+                  {(fi) => <FaceDetail d={cols()} fi={fi} />}
+                </For>
+              </div>
+
               {/* §1: List actions */}
               <Show when={primaryPI() !== undefined && pd()}>
                 {(pcols) => {
@@ -893,21 +926,6 @@ export default function CardDetail(props: {
                 }}
               </Show>
 
-              {/* §2: Oracle details — image + face blocks */}
-              <div class="mb-6 max-w-xs mx-auto">
-                <CardImage
-                  scryfallId={imageScryfallId()}
-                  colorIdentity={cols().color_identity[idx]}
-                  layout={cols().layouts[idx]}
-                  onFaceToggle={(face) => captureCardDetailInteracted({ control: 'face_toggle', face })}
-                />
-              </div>
-              <div class="space-y-4 mb-8">
-                <For each={faces()}>
-                  {(fi) => <FaceDetail d={cols()} fi={fi} />}
-                </For>
-              </div>
-
               {/* §3: Card details — query chip tables */}
               <section class="mb-6">
                 <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Card Details</h2>
@@ -933,9 +951,21 @@ export default function CardDetail(props: {
                   {/* Color identity (always at oracle scope) */}
                   <DetailRow
                     label="Color Identity"
-                    chips={<QueryChip query={`ci:${colorBitmaskToQueryLetters(cols().color_identity[idx])}`} field="identity" onNavigate={props.onNavigateToQuery} />}
+                    chips={
+                      <QueryChip
+                        query={`ci:${colorBitmaskToQueryLetters(cols().color_identity[idx])}`}
+                        field="identity"
+                        onNavigate={props.onNavigateToQuery}
+                        customLabel={
+                          <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
+                            <span class="shrink-0 text-blue-600 dark:text-blue-400">ci:</span>
+                            <ManaCost cost={colorIdentityMaskToManaCostString(cols().color_identity[idx])} />
+                          </span>
+                        }
+                      />
+                    }
                   >
-                    {colorBitmaskToQueryLetters(cols().color_identity[idx]).toUpperCase()}
+                    <ManaCost cost={colorIdentityMaskToManaCostString(cols().color_identity[idx])} />
                   </DetailRow>
 
                   {/* EDHREC rank */}
@@ -1055,9 +1085,21 @@ export default function CardDetail(props: {
 
                           <DetailRow
                             label="Color"
-                            chips={<QueryChip query={`c:${colorLetters()}`} field="color" onNavigate={props.onNavigateToQuery} />}
+                            chips={
+                              <QueryChip
+                                query={`c:${colorLetters()}`}
+                                field="color"
+                                onNavigate={props.onNavigateToQuery}
+                                customLabel={
+                                  <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
+                                    <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
+                                    <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[fi])} />
+                                  </span>
+                                }
+                              />
+                            }
                           >
-                            {colorLetters().toUpperCase()}
+                            <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[fi])} />
                           </DetailRow>
 
                           <Show when={pow() && tou()}>

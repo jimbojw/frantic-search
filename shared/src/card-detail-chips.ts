@@ -60,3 +60,22 @@ export function colorBitmaskToQueryLetters(mask: number): string {
     .map(([, ch]) => ch)
     .join("");
 }
+
+const WUBRG_DISPLAY: [number, string][] = [
+  [1, "W"],
+  [2, "U"],
+  [4, "B"],
+  [8, "R"],
+  [16, "G"],
+];
+
+/**
+ * Braced mana string for `ManaCost` UI (color identity and per-face **Color** rows).
+ * WUBRG order matches {@link colorBitmaskToQueryLetters}. Colorless (mask 0) → `{C}`.
+ */
+export function colorIdentityMaskToManaCostString(mask: number): string {
+  if (mask === 0) return "{C}";
+  return WUBRG_DISPLAY.filter(([bit]) => mask & bit)
+    .map(([, ch]) => `{${ch}}`)
+    .join("");
+}

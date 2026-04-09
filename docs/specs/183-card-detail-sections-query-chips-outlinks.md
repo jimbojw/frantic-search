@@ -10,7 +10,7 @@
 
 ## Goal
 
-Reorganize the card detail body into clear **information sections**: list actions, oracle presentation, searchable **card-level** metadata (query chips), **printing-level** metadata (query chips), and **external outlinks**—while preserving the existing **Format legality**, **Function tags (otags)**, and **Illustration tags (atags)** blocks **unchanged in relative order** and **after** all of the new section content.
+Reorganize the card detail body into clear **information sections**: **oracle presentation** first (rules text and art), then **list actions**, then searchable **card-level** metadata (query chips), **printing-level** metadata (query chips), and **external outlinks**—while preserving the existing **Format legality**, **Function tags (otags)**, and **Illustration tags (atags)** blocks **unchanged in relative order** and **after** all of the new section content.
 
 ## Background
 
@@ -23,8 +23,8 @@ This spec is the **umbrella** for that epic. It defines information architecture
 From top to bottom within the card detail **body** (below the portaled header / Spec 165):
 
 1. **In-body title and all-prints chip** — unchanged from [Spec 166](166-card-detail-body-cleanup.md) (`fullName()` heading; all-prints query chip when applicable).
-2. **List actions** — three-column Moxfield preview layout ([§1](#1-list-actions)).
-3. **Oracle details** — large image, DFC toggle when applicable, then per-face oracle block(s) (this spec).
+2. **Oracle details** — large image, DFC toggle when applicable, then per-face oracle block(s) (this spec).
+3. **List actions** — three-column Moxfield preview layout ([§1](#1-list-actions)).
 4. **Card details** — two-column table: human-readable values + query chips (this spec).
 5. **Printing details** — two-column table: human-readable values + query chips (this spec).
 6. **Outlinks** — external references and affiliates (this spec).
@@ -104,7 +104,7 @@ Per-face blocks need **not** use the face name as a section header; the spec onl
 Oracle / combined block:
 
 - **Name** — `!"Claim // Fame"` (trimmed; no stray trailing space in the query string)
-- **Color identity** — `ci:…` for `{B}{R}` per engine syntax
+- **Color identity** — navigation `ci:br` (compact letters); **display** uses mana-font symbols for `{B}{R}` (see **Color identity** row in row catalog).
 - **EDHREC rank** — `#19350` in prose; **two chips** when ranked: `edhrec=19350` (raw rank) and `edhrec=90%` (percentile; illustrative—`%` derived from rank vs the loaded distribution)
 - **EDHREC salt** — same pattern when rated: **two chips**—raw `salt=…` and `salt=…%`
 - **Keywords** — always this row: e.g. `kw:Aftermath`, or human **`_none_`** with no `kw:` chips when empty
@@ -112,14 +112,14 @@ Oracle / combined block:
 Face **Claim:**
 
 - **Name** — `!"Claim"`
-- **Mana cost** — chip face may show symbolic `{B}`; navigation uses **compact `m=`** (e.g. `m=b`)
+- **Mana cost** — chip label shows **`m=`** plus symbolic `{B}`; navigation uses **compact `m=`** (e.g. `m=b`)
 - **Type** — `t:Sorcery` (or token sequence from **Type line tokens**)
 - **Color** — `c:…` for that face’s colors
 
 Face **Fame:**
 
 - **Name** — `!"Fame"`
-- **Mana cost** — e.g. `{1}{R}` → compact `m=1r` (illustrative)
+- **Mana cost** — chip label `m=` + `{1}{R}` as symbols; navigation compact `m=1r` (illustrative)
 - **Type** — `t:Sorcery`
 - **Color** — `c:…` for red
 
@@ -130,14 +130,14 @@ Face **Fame:**
 | Name (combined) | Oracle — **multi-face only** | `Claim // Fame` | `!"Claim // Fame"` |
 | Name (face) | Per face | Face’s printed name | `!"Claim"` |
 | Name | **Single-face only** | Full name | `!"Heartless Hidetsugu"` |
-| Mana cost | Per face | Rendered mana symbols | **Navigation:** compact **`m=`** only (not `m:`). Chip label may use symbolic `{3}{R}{R}` styling per issue #242; `onNavigateToQuery` receives the `m=` string. See **Mana cost navigation** below. |
+| Mana cost | Per face | Rendered mana symbols | **Navigation:** compact **`m=`** only (not `m:`). **Chip label** must show the literal **`m=`** prefix (monospace / query styling) **plus** the face’s symbolic mana cost as mana-font glyphs (e.g. `m=` + `{3}{R}{R}`). `onNavigateToQuery` receives the compact `m=` string only. See **Mana cost navigation** below. |
 | Type | Per face | Full type line | **Sequence** of `t:` chips from **Type line tokens** |
 | Power | Per face | Display power | `pow=4` |
 | Toughness | Per face | Display toughness | `tou=3` |
 | Loyalty | Per face | If present | `loy=…` per engine |
 | Defense | Per face | If present | `def=…` per engine |
-| Color identity | Oracle (combined block for multi-face; single-face table) | Identity symbols or text | `ci:…` (syntax per engine / [Spec 002](002-query-engine.md)) |
-| Color | Per face | Face’s colors | `c:…` |
+| Color identity | Oracle (combined block for multi-face; single-face table) | Mana-font symbols for identity (WUBRG subset in canonical order, or `{C}` when colorless) via the same `ms ms-* ms-cost` pattern as face mana costs | **Navigation:** `ci:…` compact letter form per engine ([Spec 002](002-query-engine.md)), e.g. `ci:ub`, `ci:c`. **Chip label:** `ci:` (monospace / query styling) **plus** the same braced mana sequence rendered as symbols (e.g. visual `ci:` + `{U}{B}`), not raw `UB` text. |
+| Color | Per face | Mana-font symbols for face colors (same braced pattern as color identity) | **Navigation:** `c:` + compact letters. **Chip label:** `c:` + mana symbols (parallel to **Color identity**). |
 | EDHREC rank | Oracle (combined block for multi-face; single-face table) | `#2953` or “Not ranked” | When ranked: **two separate chips**—`edhrec=<n>` (absolute rank, [Spec 099](099-edhrec-rank-support.md)) and `edhrec=<p>%` (equality percentile; `p` chosen so this card lies in the band, [Spec 095](095-percentile-filters.md)). When not ranked: no chips. |
 | EDHREC salt | Oracle (same) | Raw or “Not rated” | When rated: **two separate chips**—raw `salt=…` and `salt=<p>%` ([Spec 101](101-edhrec-salt-support.md), [Spec 095](095-percentile-filters.md)). When not rated: no chips. |
 | Keywords | Oracle (combined block for multi-face; single-face table) | **Always show.** Comma-separated list or placeholder **`_none_`** when empty | One `kw:` chip per keyword; **chips column empty** when there are no keywords |
@@ -153,6 +153,8 @@ Face **Fame:**
 **EDHREC, salt, and USD percentile chips:** For **rank** and **salt**, the UI presents **both** the **raw-value** chip and the **percentile** chip as **separate controls** whenever both are meaningful (ranked / rated). The percentile chip’s `p` is computed from the card’s value and the loaded distribution so that `edhrec=p%` / `salt=p%` uses the same **equality percentile band** as the evaluator ([Spec 095](095-percentile-filters.md)); display rounding must still yield a chip that **includes this card** when clicked (regression-test or property-test where feasible). **USD** rows in §4 use the same discipline for `$=…` and `$=…%` ([Spec 095](095-percentile-filters.md) / [Spec 080](080-usd-null-and-negated-price-semantics.md)).
 
 **Data:** Normative wire shapes: [Spec 024](024-index-based-result-protocol.md) (`DisplayColumns.colors`, `keywords_for_face`; percentile display helper § Card detail in [Spec 095](095-percentile-filters.md)).
+
+**§3–§4 query chip sizing:** Chips in **Card details** and **Printing details** that navigate via `QueryChip` / `ManaQueryChip` (not **TagChip**) use the same **minimum control height** as standard app chips in [Spec 150](150-chip-button-component.md): `min-h-11`, `px-2 py-2`, centered content—so they align visually with the all-prints control, `ChipButton`, and MenuDrawer chips. Implementation may use custom `<button>` markup; it need not extend the `ChipButton` component if classes match.
 
 ---
 
@@ -214,7 +216,7 @@ Face **Fame:**
 1. Body vertical order matches **Vertical order (required)**; **Format legality** appears only **after** outlinks; **otags** then **atags** follow legality with no reordering relative to each other.
 2. **List actions** use the three-column layout in §1: decrement | Moxfield preview (syntax-highlighted, wrapping) + italic caption (printing rows include USD price or `(price data not available)`) | increment; same list add/remove behavior and [Spec 160](160-card-detail-analytics.md) payloads as before §1 revision.
 3. **Oracle details** match the current oracle UX intent (image, DFC toggle, per-face name/cost/type/oracle/P-T/loyalty/defense) and exclude printing-only fields.
-4. **Card details** and **Printing details** use two-column tables; each query chip navigates to search with the correct string; mana chips may show symbolic rendering on the label but **always** navigate with **`m=`** (never `m:`). **Single-faced** oracles use one table per **Row catalog**. **Multi-faced** oracles use an **oracle / combined** block (name `!"A // B"`, color identity, EDHREC, keywords, …) plus **per-face** blocks (name, mana, **Type** chip sequence from **Type line tokens**, color, stats)—face-name section headers are optional. No separate supertype / type / subtype rows. **Keywords** row is **always** present; when there are no keywords, the human-facing column shows **`_none_`** and the chips column has no `kw:` chips. **EDHREC rank** and **EDHREC salt** (when ranked/rated) each show **two** chips: raw value and percentile, as in the row catalog.
+4. **Card details** and **Printing details** use two-column tables; each query chip navigates to search with the correct string; **mana** chips show **`m=`** plus symbolic mana on the label and **always** navigate with compact **`m=`** (never `m:`). **Color identity** human column and chip label use mana-font symbols (not raw WUBRG letter text); navigation remains `ci:` + compact letters. **§3–§4** navigate chips use **Spec 150**-aligned minimum height (`min-h-11`). **Single-faced** oracles use one table per **Row catalog**. **Multi-faced** oracles use an **oracle / combined** block (name `!"A // B"`, color identity, EDHREC, keywords, …) plus **per-face** blocks (name, mana, **Type** chip sequence from **Type line tokens**, color, stats)—face-name section headers are optional. No separate supertype / type / subtype rows. **Keywords** row is **always** present; when there are no keywords, the human-facing column shows **`_none_`** and the chips column has no `kw:` chips. **EDHREC rank** and **EDHREC salt** (when ranked/rated) each show **two** chips: raw value and percentile, as in the row catalog.
 5. **Outlinks** include Scryfall, EDHREC (commander + card), Mana Pool, and TCGPlayer with affiliate handling for the latter two.
 6. **Percentile** chips for `edhrec`, `salt`, and `$` are consistent with evaluator bands ([Spec 095](095-percentile-filters.md)).
 7. **Spec 160** is updated with the final payload schema for chips and outlinks; tests or manual checklist verifies one event per gesture.
@@ -236,7 +238,7 @@ Before building §3–§4 UI, the worker→main contract must include:
 |------|------------------|
 | List actions (Moxfield preview) | `app/src/CardDetail.tsx` (or subcomponents); shared helper for **one** Moxfield line matching `serializeMoxfield` in `shared/src/list-serialize.ts` (avoid O(count) synthetic instances); `buildListSpans` + same span role classes as `app/src/ListHighlight.tsx`; responsive wrap (`min-w-0`, `whitespace-pre-wrap` on the primary line) |
 | Section layout and chips | `app/src/CardDetail.tsx`, possible subcomponents |
-| Chip styling / highlight | [Spec 150](150-chip-button-component.md), `QueryHighlight` where applicable |
+| Chip styling / highlight | [Spec 150](150-chip-button-component.md) (`min-h-11` for §3–§4 query chips), `QueryHighlight` where applicable; `colorIdentityMaskToManaCostString` in `shared/src/card-detail-chips.ts` for CI display strings |
 | Display columns / worker extract | `shared/src/worker-protocol.ts`, `shared/src/display-columns.ts`, worker init |
 | Type line tokenization | New helper + `.test.ts` (split on whitespace / `—`; `t:` chips) |
 | Mana cost → `m=` navigation | Shared helper + `.test.ts` (compact `m=` only; tested against parser acceptance) |
@@ -251,3 +253,5 @@ Before building §3–§4 UI, the worker→main contract must include:
 - 2026-04-06: Locked mana chip navigation to **`m=`** (not `m:`); **Keywords** row always visible with human **`_none_`** when empty; **EDHREC rank** and **salt** use **two** chips each (raw + `%`) when ranked/rated; Scryfall analytics schema choice called out in §5 and **Analytics (summary)**; added [Spec 136](136-nullable-face-fields.md) to **Related**.
 - 2026-04-06: **Implemented.** Shared helpers in `shared/src/card-detail-chips.ts` (`tokenizeTypeLine`, `manaCostToCompactQuery`, `colorBitmaskToQueryLetters`). Worker percentile RPC via `get-card-detail-percentiles` / `card-detail-percentiles-result`. Artist wired via `artist-for-printing-result`. Unified `outlink` + `destination` analytics schema (Spec 160 updated); `scryfall_external` retained for backward compat but new Outlinks section uses `outlink`. EDHREC URLs use slug-based paths (`edhrec.com/cards/{slug}`, `edhrec.com/commanders/{slug}`).
 - 2026-04-09: **§1 List actions** — Normative layout: three columns (decrement | Moxfield preview + italic caption | increment), `buildListSpans` / `ListHighlight` parity, wrapping, no `#Tag` on preview lines, printing caption includes USD or `(price data not available)`. **Implemented** in `app/src/CardDetail.tsx` (`CardDetailListRow`, `ListLineHighlight`) and `shared/src/list-serialize.ts` (`moxfieldPreviewLine`).
+- 2026-04-09: **Cosmetics** — **Vertical order:** Oracle details above List actions (list actions immediately before Card details). **Chips:** §3–§4 query chips use Spec 150 `min-h-11` sizing. **Color identity:** value column and chip label use mana-font symbols via braced mana string helper; navigation unchanged (`ci:` + letters). **Mana cost chip:** label shows visible `m=` prefix before symbolic cost.
+- 2026-04-09: **Per-face Color** — Same mana-symbol display and `c:` + symbols chip label as color identity (`colorIdentityMaskToManaCostString` on `colors[face]`).

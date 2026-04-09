@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 
-**Used by:** SuggestionList (Spec 151) for suggestion chips
+**Used by:** SuggestionList (Spec 151) for suggestion chips; Card detail §3–§4 query chips ([Spec 183](183-card-detail-sections-query-chips-outlinks.md)) target the same `min-h-11` / padding rhythm via matching utility classes (custom buttons, not necessarily `ChipButton`).
 
 **Depends on:** Spec 083 (MenuDrawer), Spec 044 (Terms Drawer Redesign), Spec 057 (include:extras), Spec 139 (unique:prints hint), Spec 131 (oracle did-you-mean)
 
@@ -23,7 +23,7 @@ Chip buttons appear throughout the app with nearly identical base styling but du
 - **DeckEditorFormatChips** — Format selection chips with `min-h-11` and border-based selection state.
 - **ListControlsPopover** — List control chips with `min-h-11 min-w-11`.
 
-Issue #169 reported that suggestion chips were smaller on desktop due to responsive overrides (`md:min-h-0 md:py-0.5`). A quick fix removed those overrides. This spec consolidates the shared chip pattern so future chips cannot drift.
+Issue #169 reported that suggestion chips were smaller on desktop due to responsive overrides (`md:min-h-0 md:py-0.5`). A quick fix removed those overrides. This spec consolidates the shared chip pattern so future chips cannot drift. Card-detail **QueryChip** / **ManaQueryChip** controls follow the same minimum height for visual consistency (Spec 183).
 
 ### Out of scope
 

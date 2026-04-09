@@ -187,6 +187,7 @@ export {
   tokenizeTypeLine,
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
+  colorIdentityMaskToManaCostString,
 } from "./card-detail-chips";
 export {
   positionInEqualityPercentileBand,

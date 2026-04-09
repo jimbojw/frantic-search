@@ -4,6 +4,7 @@ import {
   tokenizeTypeLine,
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
+  colorIdentityMaskToManaCostString,
 } from "./card-detail-chips";
 import { parseManaSymbols, manaEquals } from "./search/mana";
 
@@ -161,5 +162,24 @@ describe("colorBitmaskToQueryLetters", () => {
     expect(colorBitmaskToQueryLetters(31)).toBe("wubrg");
     // B|R = 12
     expect(colorBitmaskToQueryLetters(12)).toBe("br");
+  });
+});
+
+describe("colorIdentityMaskToManaCostString", () => {
+  it("returns {C} for colorless", () => {
+    expect(colorIdentityMaskToManaCostString(0)).toBe("{C}");
+  });
+
+  it("returns single braced pip for one color", () => {
+    expect(colorIdentityMaskToManaCostString(2)).toBe("{U}");
+  });
+
+  it("uses WUBRG order for multicolor", () => {
+    expect(colorIdentityMaskToManaCostString(12)).toBe("{B}{R}");
+    expect(colorIdentityMaskToManaCostString(3)).toBe("{W}{U}");
+  });
+
+  it("returns all five for full WUBRG", () => {
+    expect(colorIdentityMaskToManaCostString(31)).toBe("{W}{U}{B}{R}{G}");
   });
 });
