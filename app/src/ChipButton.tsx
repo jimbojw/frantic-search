@@ -26,6 +26,9 @@ export function ChipButton(props: {
   role?: JSX.AriaAttributes['role']
   /** For pressed-state chips. */
   'aria-pressed'?: boolean
+  /** When true, native disabled + muted styling (no hover brighten). */
+  disabled?: boolean
+  'aria-label'?: string
   children: JSX.Element
 }) {
   const stateClass = () => {
@@ -39,14 +42,18 @@ export function ChipButton(props: {
     props.layout === 'col' ? 'flex-col items-start text-left' : 'items-center justify-center'
 
   const baseClass = 'inline-flex px-2 py-2 rounded text-xs font-mono cursor-pointer transition-colors'
+  const disabledClass =
+    'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
   const classes = () =>
-    [baseClass, sizeClass(), layoutClass(), stateClass(), props.class].filter(Boolean).join(' ')
+    [baseClass, sizeClass(), layoutClass(), stateClass(), disabledClass, props.class].filter(Boolean).join(' ')
 
   return (
     <button
       type={props.type ?? 'button'}
       {...(props.role !== undefined && { role: props.role })}
+      {...(props['aria-label'] !== undefined && { 'aria-label': props['aria-label'] })}
       class={classes()}
+      disabled={props.disabled}
       onClick={() => props.onClick?.()}
       aria-pressed={props['aria-pressed']}
     >

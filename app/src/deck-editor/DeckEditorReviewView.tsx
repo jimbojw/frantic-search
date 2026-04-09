@@ -4,6 +4,12 @@ import type { ImportCandidate, InstanceState, DisplayColumns, PrintingDisplayCol
 import type { DiffResult } from '@frantic-search/shared'
 import { serialize } from './serialization'
 import ListHighlight from '../ListHighlight'
+import {
+  DECK_REVIEW_LINE_ADDED_BG,
+  DECK_REVIEW_LINE_ADDED_GLYPH,
+  DECK_REVIEW_LINE_REMOVED_BG,
+  DECK_REVIEW_LINE_REMOVED_GLYPH,
+} from '../deck-review-line-styles'
 
 /** Zone order for Review diff list (Spec 119 § 7). */
 const REVIEW_ZONE_ORDER: (string | null)[] = [
@@ -174,8 +180,8 @@ export default function DeckEditorReviewView(props: {
                 {item.label}
               </div>
             ) : item.kind === 'added' ? (
-              <div class="flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-950/20">
-                <span class="shrink-0 font-mono text-green-700 dark:text-green-400 font-medium" aria-hidden>
+              <div class={`flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded ${DECK_REVIEW_LINE_ADDED_BG}`}>
+                <span class={`shrink-0 font-mono font-medium ${DECK_REVIEW_LINE_ADDED_GLYPH}`} aria-hidden>
                   +
                 </span>
                 <div class="min-w-0 overflow-x-auto">
@@ -183,8 +189,8 @@ export default function DeckEditorReviewView(props: {
                 </div>
               </div>
             ) : item.kind === 'removed' ? (
-              <div class="flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-950/20">
-                <span class="shrink-0 font-mono text-red-700 dark:text-red-400 font-medium" aria-hidden>
+              <div class={`flex items-start gap-1.5 min-w-0 -mx-1 px-1.5 py-0.5 rounded ${DECK_REVIEW_LINE_REMOVED_BG}`}>
+                <span class={`shrink-0 font-mono font-medium ${DECK_REVIEW_LINE_REMOVED_GLYPH}`} aria-hidden>
                   −
                 </span>
                 <div class="min-w-0 overflow-x-auto">

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Accessor } from 'solid-js'
-import { createSignal, For, Show } from 'solid-js'
+import { createSignal, For, onCleanup, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import {
   tokenizeTypeLine,
@@ -9,6 +9,8 @@ import {
   moxfieldPreviewLine,
 } from '@frantic-search/shared'
 import ListLineHighlight from './ListLineHighlight'
+import { ChipButton } from './ChipButton'
+import { DECK_REVIEW_LINE_ADDED_BG, DECK_REVIEW_LINE_REMOVED_BG } from './deck-review-line-styles'
 import { IconMinus, IconPlus } from './Icons'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
@@ -96,33 +98,65 @@ function CardDetailListRow(props: {
   /** When false, omit +/- (spacers keep column alignment). Printing rows still show preview without a list store. */
   showSteppers?: boolean
 }) {
+  const [flash, setFlash] = createSignal<'none' | 'added' | 'removed'>('none')
+  let flashTimer: ReturnType<typeof setTimeout> | undefined
+
+  const scheduleFlashEnd = () => {
+    if (flashTimer !== undefined) clearTimeout(flashTimer)
+    flashTimer = setTimeout(() => setFlash('none'), 450)
+  }
+
+  onCleanup(() => {
+    if (flashTimer !== undefined) clearTimeout(flashTimer)
+  })
+
+  const bumpFlash = (kind: 'added' | 'removed') => {
+    setFlash(kind)
+    scheduleFlashEnd()
+  }
+
+  const handleRemove = () => {
+    props.onRemove()
+    bumpFlash('removed')
+  }
+
+  const handleAdd = () => {
+    props.onAdd()
+    bumpFlash('added')
+  }
+
+  const previewFlashClass = () => {
+    const f = flash()
+    if (f === 'added') return DECK_REVIEW_LINE_ADDED_BG
+    if (f === 'removed') return DECK_REVIEW_LINE_REMOVED_BG
+    return ''
+  }
+
   const steppers = () => props.showSteppers !== false
   return (
     <div class={`flex items-start gap-2 px-4 py-2.5 ${props.rowClass ?? ''}`}>
-      <Show when={steppers()} fallback={<div class="w-9 shrink-0" aria-hidden="true" />}>
-        <button
-          type="button"
-          onClick={() => props.onRemove()}
+      <Show when={steppers()} fallback={<div class="min-w-11 shrink-0" aria-hidden="true" />}>
+        <ChipButton
+          class="shrink-0 self-start"
           disabled={props.count === 0}
-          class="shrink-0 mt-0.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-1"
+          onClick={handleRemove}
           aria-label={props.removeLabel}
         >
           <IconMinus class="size-4" />
-        </button>
+        </ChipButton>
       </Show>
       <div class="min-w-0 flex-1">
-        <ListLineHighlight text={props.previewLine()} class="text-sm text-gray-800 dark:text-gray-100" />
+        <div
+          class={`rounded px-1.5 py-0.5 -mx-1 transition-colors duration-300 ${previewFlashClass()}`}
+        >
+          <ListLineHighlight text={props.previewLine()} class="text-sm text-gray-800 dark:text-gray-100" />
+        </div>
         <p class="mt-1 text-xs italic text-gray-600 dark:text-gray-400">{props.caption}</p>
       </div>
-      <Show when={steppers()} fallback={<div class="w-9 shrink-0" aria-hidden="true" />}>
-        <button
-          type="button"
-          onClick={() => props.onAdd()}
-          class="shrink-0 mt-0.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1"
-          aria-label={props.addLabel}
-        >
+      <Show when={steppers()} fallback={<div class="min-w-11 shrink-0" aria-hidden="true" />}>
+        <ChipButton class="shrink-0 self-start" onClick={handleAdd} aria-label={props.addLabel}>
           <IconPlus class="size-4" />
-        </button>
+        </ChipButton>
       </Show>
     </div>
   )
