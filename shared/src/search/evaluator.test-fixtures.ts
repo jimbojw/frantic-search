@@ -122,6 +122,7 @@ export const TEST_PRINTING_DATA: PrintingColumnarData = {
   canonical_face_ref: [1, 1, 1, 3, 3, 1, 1, 3, 1, 1, 1],
   scryfall_ids: ["p-a", "p-b", "p-c", "p-d", "p-e", "p-f", "p-g", "p-h", "p-i", "p-j", "p-k"],
   collector_numbers: ["261", "261", "113", "280", "280", "187", "64", "280", "1", "262", "114"],
+  tcgplayer_product_ids: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   set_indices: [0, 0, 1, 2, 2, 3, 4, 5, 6, 0, 1],
   rarity: [Rarity.Rare, Rarity.Rare, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Uncommon, Rarity.Rare, Rarity.Uncommon, Rarity.Special, Rarity.Rare, Rarity.Uncommon],
   printing_flags: [

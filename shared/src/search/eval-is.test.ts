@@ -150,6 +150,7 @@ describe("evalPrintingIsKeyword unset (Spec 171)", () => {
       canonical_face_ref: [0, 0],
       scryfall_ids: ["a", "b"],
       collector_numbers: ["1", "2"],
+      tcgplayer_product_ids: [0, 0],
       set_indices: [0, 0],
       rarity: [Rarity.Common, Rarity.Common],
       printing_flags: [PrintingFlag.Unset, 0],

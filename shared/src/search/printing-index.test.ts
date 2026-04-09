@@ -9,6 +9,7 @@ const CANONICAL_ORDER_DATA: PrintingColumnarData = {
   canonical_face_ref: [1, 1, 1],
   scryfall_ids: ["p-a", "p-b", "p-c"],
   collector_numbers: ["1", "2", "3"],
+  tcgplayer_product_ids: [0, 0, 0],
   set_indices: [0, 0, 0],
   rarity: [Rarity.Rare, Rarity.Rare, Rarity.Rare],
   printing_flags: [0, 0, 0],

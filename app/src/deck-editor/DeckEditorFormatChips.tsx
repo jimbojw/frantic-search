@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Show, For, Switch, Match } from 'solid-js'
+import { manaPoolRef, tcgplayerMassEntryDestinationUrl } from '../affiliate-config'
+import { buildTcgplayerPartnerUrl } from '../affiliate-urls'
 import { useDeckEditorContext } from './DeckEditorContext'
 import { ALL_FORMATS } from './serialization'
+
+function deckEditorManapoolAddDeckHref(): string {
+  const ref = manaPoolRef()
+  const base = 'https://manapool.com/add-deck'
+  return ref ? `${base}?ref=${encodeURIComponent(ref)}` : base
+}
+
+function deckEditorTcgplayerMassEntryHref(): string {
+  const dest = tcgplayerMassEntryDestinationUrl() || 'https://www.tcgplayer.com/'
+  return buildTcgplayerPartnerUrl(dest, 'deck-editor-mass-entry') ?? dest
+}
 
 export default function DeckEditorFormatChips() {
   const ctx = useDeckEditorContext()
@@ -67,7 +80,7 @@ export default function DeckEditorFormatChips() {
             <Match when={ctx.selectedFormat() === 'manapool'}>
               Paste into Mana Pool's{' '}
               <a
-                href="https://manapool.com/add-deck?ref=franticsearch"
+                href={deckEditorManapoolAddDeckHref()}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"
@@ -143,7 +156,7 @@ export default function DeckEditorFormatChips() {
             <Match when={ctx.selectedFormat() === 'tcgplayer'}>
               Paste into TCGPlayer's{' '}
               <a
-                href="https://partner.tcgplayer.com/X4mx1a"
+                href={deckEditorTcgplayerMassEntryHref()}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="underline hover:no-underline"

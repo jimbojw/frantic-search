@@ -194,8 +194,12 @@ Face **Fame:**
 | Scryfall | Reference | Card page for page `scryfall_id`. If Spec 166’s metadata line or the portaled header (Spec 165) already exposes the same Scryfall URL, **remove the duplicate** so users see **one** in-body Scryfall affordance (prefer keeping it in this **Outlinks** section unless a header icon is explicitly retained—document the choice in **Implementation notes**). |
 | EDHREC (commander) | Reference | Commander-context page when applicable. |
 | EDHREC (card) | Reference | Card page on EDHREC. |
-| Mana Pool | Affiliate | Use project affiliate rules (env or config); same class of link as My List export if defined. |
-| TCGPlayer | Affiliate | Same as above. |
+| Mana Pool | Affiliate | Prefer `https://manapool.com/card/{set}/{collector}/{slug}` for the anchor printing (set lowercased, slug from oracle name); append `ref` from `VITE_MANA_POOL_REF` when set. Fall back to `/search?q=…` with the same `ref` when path cannot be built. Deck editor Mass Entry link uses `add-deck` with the same `ref`. |
+| TCGPlayer | Affiliate | Prefer `https://www.tcgplayer.com/product/{id}?page=1` using `PrintingDisplayColumns.tcgplayer_product_ids` (Scryfall `tcgplayer_id` / etched id from ETL). When `VITE_TCGPLAYER_IMPACT_ID`, `VITE_TCGPLAYER_AD_ID`, and `VITE_TCGPLAYER_PARTNER_SEGMENT` are set at build time, wrap that URL as Impact partner `https://partner.tcgplayer.com/c/{impact}/{ad}/{segment}?subId1=card-detail-page&u={encodeURIComponent(productUrl)}`. If product id is missing or partner config incomplete, fall back to TCGPlayer **search** (`/search/magic/product?q=…`). Deck editor Mass Entry uses `subId1=deck-editor-mass-entry` and optional `VITE_TCGPLAYER_MASS_ENTRY_URL` as `u` (default `https://www.tcgplayer.com/`). |
+
+**Presentation:** Every External Links control label ends with the same **↗** suffix as “Try on Scryfall” on the results column (`app/src/ResultsActionsColumn.tsx`).
+
+**Build / secrets:** Production values are passed via GitHub Actions into the Vite build (see `app/.env.example` and `.github/workflows/deploy.yml`): repository secrets `TCGPLAYER_IMPACT_ID`, `TCGPLAYER_AD_ID`, `TCGPLAYER_PARTNER_SEGMENT`, `MANA_POOL_ID` map to `VITE_*` client env vars.
 
 **Analytics:** Every outlink and every query chip in §3–§4 fires **`card_detail_interacted`** (or a dedicated event if Spec 160 is extended) with a **stable identifier** for the control (e.g. `control: 'query_chip'`, `field`, `query`; `control: 'outlink'`, `destination: 'edhrec_commander'`). Exact payload shape is added in [Spec 160](160-card-detail-analytics.md) during implementation; this spec requires **100% coverage** of chips and outlinks. **Early in the epic:** decide whether Scryfall uses the existing `scryfall_external` payload or a unified `outlink` + `destination` (see **Analytics (summary)**) and implement consistently before wiring the rest.
 
@@ -217,7 +221,7 @@ Face **Fame:**
 2. **List actions** use the three-column layout in §1: decrement | Moxfield preview (syntax-highlighted, wrapping) + italic caption (printing rows include USD price or `(price data not available)`) | increment; same list add/remove behavior and [Spec 160](160-card-detail-analytics.md) payloads as before §1 revision.
 3. **Oracle details** match the current oracle UX intent (image, DFC toggle, per-face name/cost/type/oracle/P-T/loyalty/defense) and exclude printing-only fields.
 4. **Card details** and **Printing details** use two-column tables; each query chip navigates to search with the correct string; **mana** chips show **`m=`** plus symbolic mana on the label and **always** navigate with compact **`m=`** (never `m:`). **Color identity** human column and chip label use mana-font symbols (not raw WUBRG letter text); navigation remains `ci:` + compact letters. **§3–§4** navigate chips use **Spec 150**-aligned minimum height (`min-h-11`). **Single-faced** oracles use one table per **Row catalog**. **Multi-faced** oracles use an **oracle / combined** block (name `!"A // B"`, color identity, EDHREC, keywords, …) plus **per-face** blocks (name, mana, **Type** chip sequence from **Type line tokens**, color, stats)—face-name section headers are optional. No separate supertype / type / subtype rows. **Keywords** row is **always** present; when there are no keywords, the human-facing column shows **`_none_`** and the chips column has no `kw:` chips. **EDHREC rank** and **EDHREC salt** (when ranked/rated) each show **two** chips: raw value and percentile, as in the row catalog.
-5. **Outlinks** include Scryfall, EDHREC (commander + card), Mana Pool, and TCGPlayer with affiliate handling for the latter two.
+5. **Outlinks** include Scryfall, EDHREC (commander + card), Mana Pool, and TCGPlayer; affiliate URLs and ↗ labels per §5; fallbacks when env or product id is absent.
 6. **Percentile** chips for `edhrec`, `salt`, and `$` are consistent with evaluator bands ([Spec 095](095-percentile-filters.md)).
 7. **Spec 160** is updated with the final payload schema for chips and outlinks; tests or manual checklist verifies one event per gesture.
 
@@ -226,7 +230,7 @@ Face **Fame:**
 Before building §3–§4 UI, the worker→main contract must include:
 
 - `DisplayColumns.colors` and `keywords_for_face` (face-aligned; Spec 105 reverse derivation).
-- `PrintingDisplayColumns.set_types` and `released_at` (anchor printing row).
+- `PrintingDisplayColumns.set_types` and `released_at` (anchor printing row); `tcgplayer_product_ids` for TCGPlayer affiliate product links.
 - `get-artist-for-printing` / `artist-for-printing-result` for the illustrated-by row (Spec 148).
 - Equality-percentile labels for `edhrec`, `salt`, and `$` chips per [Spec 095](095-percentile-filters.md) § Card detail.
 
@@ -244,6 +248,7 @@ Before building §3–§4 UI, the worker→main contract must include:
 | Mana cost → `m=` navigation | Shared helper + `.test.ts` (compact `m=` only; tested against parser acceptance) |
 | Percentile display values | [Spec 095](095-percentile-filters.md) § Card detail; `shared/src/percentile-chip-display.ts` |
 | Analytics | `app/src/analytics.ts` + Spec 160 |
+| Affiliate outlinks | `app/src/affiliate-config.ts`, `app/src/affiliate-urls.ts`; `PrintingDisplayColumns.tcgplayer_product_ids` + ETL `printings.json` column |
 
 ---
 
@@ -255,3 +260,4 @@ Before building §3–§4 UI, the worker→main contract must include:
 - 2026-04-09: **§1 List actions** — Normative layout: three columns (decrement | Moxfield preview + italic caption | increment), `buildListSpans` / `ListHighlight` parity, wrapping, no `#Tag` on preview lines, printing caption includes USD or `(price data not available)`. **Implemented** in `app/src/CardDetail.tsx` (`CardDetailListRow`, `ListLineHighlight`) and `shared/src/list-serialize.ts` (`moxfieldPreviewLine`).
 - 2026-04-09: **Cosmetics** — **Vertical order:** Oracle details above List actions (list actions immediately before Card details). **Chips:** §3–§4 query chips use Spec 150 `min-h-11` sizing. **Color identity:** value column and chip label use mana-font symbols via braced mana string helper; navigation unchanged (`ci:` + letters). **Mana cost chip:** label shows visible `m=` prefix before symbolic cost.
 - 2026-04-09: **Per-face Color** — Same mana-symbol display and `c:` + symbols chip label as color identity (`colorIdentityMaskToManaCostString` on `colors[face]`).
+- 2026-04-09: **Outlinks** — Trailing ↗ on all External Links buttons; Mana Pool card/search URLs with `ref` from env; TCGPlayer product + Impact partner wrap with `tcgplayer_product_ids` column in printings / `PrintingDisplayColumns`; shared helpers reused from Deck Editor format chips.

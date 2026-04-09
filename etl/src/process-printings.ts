@@ -320,6 +320,7 @@ export function processPrintings(verbose: boolean): void {
     canonical_face_ref: [],
     scryfall_ids: [],
     collector_numbers: [],
+    tcgplayer_product_ids: [],
     set_indices: [],
     rarity: [],
     printing_flags: [],
@@ -419,13 +420,15 @@ export function processPrintings(verbose: boolean): void {
       data.promo_types_flags_1!.push(promoFlags.flags1);
       data.illustration_id_index!.push(illIdx);
 
+      const tcgProductId =
+        finishStr === "etched" && card.tcgplayer_etched_id != null
+          ? card.tcgplayer_etched_id
+          : card.tcgplayer_id;
+      data.tcgplayer_product_ids.push(tcgProductId != null ? tcgProductId : 0);
+
       // TCGPlayer Mass Entry resolution (Spec 128)
       if (productMap) {
-        const productId =
-          finishStr === "etched" && card.tcgplayer_etched_id != null
-            ? card.tcgplayer_etched_id
-            : card.tcgplayer_id;
-        const entry = productId != null ? productMap[String(productId)] : undefined;
+        const entry = tcgProductId != null ? productMap[String(tcgProductId)] : undefined;
         if (entry) {
           data.tcgplayer_set_indices!.push(tcgSetEncoder.encode(entry.setAbbrev));
           data.tcgplayer_number_indices!.push(tcgNumberEncoder.encode(entry.number));

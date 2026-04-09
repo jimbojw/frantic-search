@@ -128,6 +128,8 @@ export type PrintingDisplayColumns = {
   tcgplayer_collector_numbers?: string[]
   /** TCGPlayer Mass Entry resolved product names for variant resolution. Spec 128. */
   tcgplayer_names?: string[]
+  /** Scryfall TCGPlayer product id per printing row; 0 = absent. */
+  tcgplayer_product_ids?: number[]
 }
 
 export type FromWorker =

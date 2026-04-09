@@ -28,6 +28,11 @@ import {
 } from './app-utils'
 import { Outlink } from './Outlink'
 import { captureCardDetailInteracted, type CardDetailListFinish, type OutlinkDestination } from './analytics'
+import {
+  buildManapoolCardOrSearchUrl,
+  buildTcgplayerPartnerUrl,
+  buildTcgplayerProductPageUrl,
+} from './affiliate-urls'
 
 const FORMAT_DISPLAY: { name: string; bit: number }[] = [
   { name: 'Standard', bit: Format.Standard },
@@ -556,6 +561,7 @@ function OutlinkButton(props: {
       onClick={() => captureCardDetailInteracted({ control: 'outlink', destination: props.destination })}
     >
       {props.children}
+      {' ↗'}
       <Show when={props.affiliate}>
         <span class="text-[10px] text-gray-400 dark:text-gray-500 ml-1">affiliate</span>
       </Show>
@@ -1277,10 +1283,43 @@ export default function CardDetail(props: {
                       EDHREC (card)
                     </OutlinkButton>
                   </Show>
-                  <OutlinkButton href={`https://manapool.com/search?q=${encodeURIComponent(fullName())}`} destination="manapool" affiliate>
+                  <OutlinkButton
+                    href={(() => {
+                      const name = fullName()
+                      const pcols = pd()
+                      const pidx = primaryPI()
+                      if (!name) return buildManapoolCardOrSearchUrl({ cardNameForSearch: '' })
+                      if (pcols == null || pidx === undefined) {
+                        return buildManapoolCardOrSearchUrl({ cardNameForSearch: name })
+                      }
+                      return buildManapoolCardOrSearchUrl({
+                        cardNameForSearch: name,
+                        setCode: pcols.set_codes[pidx],
+                        collectorNumber: pcols.collector_numbers[pidx],
+                        cardNameForSlug: name,
+                      })
+                    })()}
+                    destination="manapool"
+                    affiliate
+                  >
                     Mana Pool
                   </OutlinkButton>
-                  <OutlinkButton href={`https://www.tcgplayer.com/search/magic/product?q=${encodeURIComponent(fullName())}`} destination="tcgplayer" affiliate>
+                  <OutlinkButton
+                    href={(() => {
+                      const name = fullName()
+                      const searchUrl = `https://www.tcgplayer.com/search/magic/product?q=${encodeURIComponent(name)}`
+                      if (!name) return searchUrl
+                      const pcols = pd()
+                      const pidx = primaryPI()
+                      if (pcols == null || pidx === undefined) return searchUrl
+                      const pid = pcols.tcgplayer_product_ids?.[pidx] ?? 0
+                      const productUrl = buildTcgplayerProductPageUrl(pid)
+                      if (!productUrl) return searchUrl
+                      return buildTcgplayerPartnerUrl(productUrl, 'card-detail-page') ?? productUrl
+                    })()}
+                    destination="tcgplayer"
+                    affiliate
+                  >
                     TCGPlayer
                   </OutlinkButton>
                 </div>

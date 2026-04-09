@@ -91,6 +91,10 @@ jobs:
         env:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_TCGPLAYER_IMPACT_ID: ${{ secrets.TCGPLAYER_IMPACT_ID }}
+          VITE_TCGPLAYER_AD_ID: ${{ secrets.TCGPLAYER_AD_ID }}
+          VITE_TCGPLAYER_PARTNER_SEGMENT: ${{ secrets.TCGPLAYER_PARTNER_SEGMENT }}
+          VITE_MANA_POOL_REF: ${{ secrets.MANA_POOL_ID }}
 
       # -- Deploy --
       - name: Upload Pages artifact

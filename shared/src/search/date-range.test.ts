@@ -9,6 +9,7 @@ const MINIMAL_PRINTING_DATA: PrintingColumnarData = {
   canonical_face_ref: [0],
   scryfall_ids: [""],
   collector_numbers: [""],
+  tcgplayer_product_ids: [0],
   set_indices: [0],
   rarity: [Rarity.Common],
   printing_flags: [0],

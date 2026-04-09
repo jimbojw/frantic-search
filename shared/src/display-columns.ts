@@ -90,6 +90,10 @@ export function extractPrintingDisplayColumns(
     ),
   };
 
+  if (data.tcgplayer_product_ids && data.tcgplayer_product_ids.length === data.scryfall_ids.length) {
+    result.tcgplayer_product_ids = [...data.tcgplayer_product_ids];
+  }
+
   if (data.tcgplayer_set_indices && data.tcgplayer_number_indices) {
     const setLookup = data.tcgplayer_set_lookup ?? [];
     const numberLookup = data.tcgplayer_number_lookup ?? [];

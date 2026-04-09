@@ -64,6 +64,8 @@ export interface PrintingColumnarData {
   set_lookup: SetLookupEntry[];
   /** Alternate name → sorted printing row indices. Spec 111. */
   alternate_names_index?: Record<string, number[]>;
+  /** Scryfall tcgplayer_id / tcgplayer_etched_id per printing row; 0 = none. Card-detail affiliate links. */
+  tcgplayer_product_ids: number[];
   /** TCGPlayer Mass Entry resolution. Spec 128. Index 0 = "". */
   tcgplayer_set_lookup?: string[];
   tcgplayer_number_lookup?: string[];
