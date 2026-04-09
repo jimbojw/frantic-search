@@ -6,7 +6,7 @@
 
 **Depends on:** [Spec 015](015-card-page.md), [Spec 050](050-printing-aware-card-detail.md), [Spec 106](106-card-detail-tags.md), [Spec 160](160-card-detail-analytics.md), [Spec 166](166-card-detail-body-cleanup.md)
 
-**Related:** [Spec 002](002-query-engine.md) (query semantics), [Spec 024](024-index-based-result-protocol.md) (normative `DisplayColumns` / `PrintingDisplayColumns` and card-detail worker messages for this epic), [Spec 048](048-printing-aware-display.md) (printing-aware **search results**; complements Spec 050 card detail), [Spec 150](150-chip-button-component.md) (chip visuals), [Spec 047](047-printing-query-fields.md) (printing query fields), [Spec 095](095-percentile-filters.md) (percentile semantics and card-detail chip display contract), [Spec 099](099-edhrec-rank-support.md), [Spec 101](101-edhrec-salt-support.md), [Spec 102](102-edhrec-salt-percentile-chips.md), [Spec 136](136-nullable-face-fields.md) (nullable face fields including `m`), [Spec 179](179-set-type-query-field.md), [Spec 148](148-artist-etl-and-worker.md) (`artist:` queries and strided index), [ADR-008](../adr/008-documentation-strategy.md) (spec lifecycle)
+**Related:** [Spec 002](002-query-engine.md) (query semantics), [Spec 024](024-index-based-result-protocol.md) (normative `DisplayColumns` / `PrintingDisplayColumns` and card-detail worker messages for this epic), [Spec 048](048-printing-aware-display.md) (printing-aware **search results**; complements Spec 050 card detail), [Spec 108](108-list-import-textarea.md) (deck list lexer / `buildListSpans` highlighting contract), [Spec 150](150-chip-button-component.md) (chip visuals), [Spec 047](047-printing-query-fields.md) (printing query fields), [Spec 095](095-percentile-filters.md) (percentile semantics and card-detail chip display contract), [Spec 099](099-edhrec-rank-support.md), [Spec 101](101-edhrec-salt-support.md), [Spec 102](102-edhrec-salt-percentile-chips.md), [Spec 136](136-nullable-face-fields.md) (nullable face fields including `m`), [Spec 179](179-set-type-query-field.md), [Spec 148](148-artist-etl-and-worker.md) (`artist:` queries and strided index), [ADR-008](../adr/008-documentation-strategy.md) (spec lifecycle)
 
 ## Goal
 
@@ -23,7 +23,7 @@ This spec is the **umbrella** for that epic. It defines information architecture
 From top to bottom within the card detail **body** (below the portaled header / Spec 165):
 
 1. **In-body title and all-prints chip** — unchanged from [Spec 166](166-card-detail-body-cleanup.md) (`fullName()` heading; all-prints query chip when applicable).
-2. **List actions** — new layout (this spec).
+2. **List actions** — three-column Moxfield preview layout ([§1](#1-list-actions)).
 3. **Oracle details** — large image, DFC toggle when applicable, then per-face oracle block(s) (this spec).
 4. **Card details** — two-column table: human-readable values + query chips (this spec).
 5. **Printing details** — two-column table: human-readable values + query chips (this spec).
@@ -40,14 +40,28 @@ If printing columns are unavailable, omit or degrade sections that require them 
 
 **Purpose:** Adjust **My List** counts for the oracle (all finishes implied as nonfoil at oracle scope per existing behavior) and for each **printing row** (per finish) when the UI shows multiple finishes.
 
-**Layout:** A **two-column** table:
+**Layout (per row):** Three columns in visual order: **decrement** | **preview** | **increment** (e.g. `−` control, center content, `+` control). The center **preview** column must participate in flex/grid shrink (`min-width: 0` in CSS terms) so long lines do not overflow the viewport.
 
-| Column | Content |
-|--------|---------|
-| **Actions** | Existing `ListControls` (+/−) and numeric count for the row. |
-| **Description** | Short plain-language label (e.g. oracle-level row: this card by name; printing rows: finish label + “printing” wording consistent with current `ListControls` `aria` / labels). |
+**Preview column** has two lines:
 
-**Behavior:** Reuse the same add/remove semantics and `card_detail_interacted` list payloads as today ([Spec 160](160-card-detail-analytics.md)). Rows mirror the current branching: one oracle row when `cardListStore` and oracle id exist; one row per printing index when multiple finishes, else single finish row.
+1. **Primary line (Moxfield preview)** — read-only text that **must** match the plain-text shape of **one** [Moxfield](https://www.moxfield.com/) deck line per [`serializeMoxfield`](../../shared/src/list-serialize.ts) for a **hypothetical** entry with the same oracle / printing / finish semantics as the row:
+   - Leading **quantity** = current **My List** count for that row’s scope (same matching rules as today’s counts).
+   - Then the **card name** (full oracle name, including ` // ` for multifaced cards), resolved the same way as serialization (`DisplayColumns` + `PrintingDisplayColumns` when printing-scoped).
+   - **Oracle / by-name row:** quantity and name **only** (no `(SET) collector`, no `*F*` / `*E*`) — equivalent to serialization when the logical line has no printing (`scryfall_id` absent).
+   - **Printing row:** append space + `(SET)` in **uppercase** Scryfall set code + space + collector number as in `serializeMoxfield`; append ` *F*` for foil or ` *E*` for etched; **omit** finish markers for nonfoil.
+   - **Do not** append Moxfield **custom `#Tag`** segments on these preview lines. Tags stored on My List instances must **not** appear here (the line is a preview of the export **shape**, not a dump of stored rows).
+
+2. **Secondary line (caption)** — short **italic** prose under the primary line:
+   - **Oracle / by-name row:** plain-language scope only, e.g. *This card (by name only)* — align wording with accessible names for the increment/decrement controls.
+   - **Printing row:** finish label + “printing” wording consistent with today’s list rows, then an em dash or equivalent separator, then **USD price** for that printing row using the **same display rules** as the List Actions printing rows **before** this layout change (same helper / `formatPrice` behavior as `CardDetail.tsx` for `price_usd` on that finish index). If no USD price is available for that printing row, show the exact parenthetical **`(price data not available)`** (canonical fallback string).
+
+**Syntax highlighting (primary line):** Run [`buildListSpans`](../../shared/src/list-lexer.ts) on the preview string and apply the **same span `role` → CSS class mapping** as [`ListHighlight`](../../app/src/ListHighlight.tsx) (deck list **display** mode). This matches the deck editor’s highlighted list text per [Spec 108](108-list-import-textarea.md). Read-only `<span>` (or equivalent) output is enough; the textarea overlay pattern is **not** required.
+
+**Wrapping:** The primary (Moxfield) line **must wrap** on narrow viewports (e.g. `whitespace-pre-wrap` on a monospace-styled block; line breaks inside long card names are acceptable). Monospace column alignment is best-effort when wrapped.
+
+**Controls:** Decrement and increment may be **card-detail-local** buttons or a thin wrapper; they need not use the shared [`ListControls`](../../app/src/ListControls.tsx) component. [Spec 160](160-card-detail-analytics.md) still applies: one `list_add` / `list_remove` per gesture with the same payloads as today.
+
+**Behavior:** Same add/remove semantics as before this §1 revision. Same row branching: one oracle row when `cardListStore` and oracle id exist; one row per printing index when multiple finishes, else a single finish row; only show finish-specific rows when those finishes exist in the dataset (unchanged).
 
 ---
 
@@ -198,7 +212,7 @@ Face **Fame:**
 ## Acceptance criteria
 
 1. Body vertical order matches **Vertical order (required)**; **Format legality** appears only **after** outlinks; **otags** then **atags** follow legality with no reordering relative to each other.
-2. **List actions** use a two-column table (actions | description) with existing list behavior and analytics.
+2. **List actions** use the three-column layout in §1: decrement | Moxfield preview (syntax-highlighted, wrapping) + italic caption (printing rows include USD price or `(price data not available)`) | increment; same list add/remove behavior and [Spec 160](160-card-detail-analytics.md) payloads as before §1 revision.
 3. **Oracle details** match the current oracle UX intent (image, DFC toggle, per-face name/cost/type/oracle/P-T/loyalty/defense) and exclude printing-only fields.
 4. **Card details** and **Printing details** use two-column tables; each query chip navigates to search with the correct string; mana chips may show symbolic rendering on the label but **always** navigate with **`m=`** (never `m:`). **Single-faced** oracles use one table per **Row catalog**. **Multi-faced** oracles use an **oracle / combined** block (name `!"A // B"`, color identity, EDHREC, keywords, …) plus **per-face** blocks (name, mana, **Type** chip sequence from **Type line tokens**, color, stats)—face-name section headers are optional. No separate supertype / type / subtype rows. **Keywords** row is **always** present; when there are no keywords, the human-facing column shows **`_none_`** and the chips column has no `kw:` chips. **EDHREC rank** and **EDHREC salt** (when ranked/rated) each show **two** chips: raw value and percentile, as in the row catalog.
 5. **Outlinks** include Scryfall, EDHREC (commander + card), Mana Pool, and TCGPlayer with affiliate handling for the latter two.
@@ -220,6 +234,7 @@ Before building §3–§4 UI, the worker→main contract must include:
 
 | Area | Likely location |
 |------|------------------|
+| List actions (Moxfield preview) | `app/src/CardDetail.tsx` (or subcomponents); shared helper for **one** Moxfield line matching `serializeMoxfield` in `shared/src/list-serialize.ts` (avoid O(count) synthetic instances); `buildListSpans` + same span role classes as `app/src/ListHighlight.tsx`; responsive wrap (`min-w-0`, `whitespace-pre-wrap` on the primary line) |
 | Section layout and chips | `app/src/CardDetail.tsx`, possible subcomponents |
 | Chip styling / highlight | [Spec 150](150-chip-button-component.md), `QueryHighlight` where applicable |
 | Display columns / worker extract | `shared/src/worker-protocol.ts`, `shared/src/display-columns.ts`, worker init |
@@ -235,3 +250,4 @@ Before building §3–§4 UI, the worker→main contract must include:
 - 2026-04-06: Prep payload checklist and normative pointers to [Spec 024](024-index-based-result-protocol.md), [Spec 048](048-printing-aware-display.md), [Spec 002](002-query-engine.md), [Spec 095](095-percentile-filters.md).
 - 2026-04-06: Locked mana chip navigation to **`m=`** (not `m:`); **Keywords** row always visible with human **`_none_`** when empty; **EDHREC rank** and **salt** use **two** chips each (raw + `%`) when ranked/rated; Scryfall analytics schema choice called out in §5 and **Analytics (summary)**; added [Spec 136](136-nullable-face-fields.md) to **Related**.
 - 2026-04-06: **Implemented.** Shared helpers in `shared/src/card-detail-chips.ts` (`tokenizeTypeLine`, `manaCostToCompactQuery`, `colorBitmaskToQueryLetters`). Worker percentile RPC via `get-card-detail-percentiles` / `card-detail-percentiles-result`. Artist wired via `artist-for-printing-result`. Unified `outlink` + `destination` analytics schema (Spec 160 updated); `scryfall_external` retained for backward compat but new Outlinks section uses `outlink`. EDHREC URLs use slug-based paths (`edhrec.com/cards/{slug}`, `edhrec.com/commanders/{slug}`).
+- 2026-04-09: **§1 List actions** — Normative layout updated to three columns (decrement | Moxfield preview + italic caption | increment), `buildListSpans` / `ListHighlight` parity, wrapping, no `#Tag` on preview lines, printing caption includes USD or `(price data not available)`. Implementation pending; spec defines target UX.
