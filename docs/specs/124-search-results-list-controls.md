@@ -10,7 +10,7 @@ Allow users to add and remove cards from their list directly from search results
 
 ## Background
 
-The card detail page (CardDetail.tsx) already shows inline `[-] N [+]` list controls (ListControls) when `cardListStore` and `oracleId` are present. Users must open a card to adjust quantities. Adding the same capability to search results reduces friction when building or editing a list.
+The card detail page ([Spec 183](183-card-detail-sections-query-chips-outlinks.md) §1) shows **List Actions** as decrement | Moxfield preview line + caption | increment when `cardListStore` and `oracle_id` exist for the oracle row; search results still use compact `ListControls` (`[-] N [+]`) inside the popover. Users must open a card to adjust quantities from the detail layout. Adding popover-based controls to search results reduces friction when building or editing a list.
 
 Search results use four view modes (Spec 041): Slim, Detail, Images, and Full. Each has different layout constraints. A full inline ListControls block would clutter Slim and Detail rows; Images and Full views have more room but still benefit from a compact trigger.
 
@@ -121,7 +121,7 @@ When printing-expanded, the popover shows two rows: "Any printing" (oracle-level
 3. **Detail view:** Trigger is the first element in the row, before the thumbnail.
 4. **Images view:** Trigger appears below the card image — at the end of the stats row when printing-expanded; in a small row/area below the image when card-level (no stats row).
 5. **Full view:** Trigger appears centered below the card image.
-6. Clicking the trigger opens a popover containing the same `[-] N [+]` ListControls as the card detail page.
+6. Clicking the trigger opens a popover containing `[-] N [+]` `ListControls` rows (same add/remove semantics as card detail; card detail’s **List Actions** section uses the Spec 183 Moxfield preview layout instead of inline `N` between buttons).
 7. Add increases the count; Remove decreases it (disabled at 0). Changes persist to the list.
 8. The popover dismisses on outside click or Escape.
 9. The displayed count reflects the card's count in the default list (`DEFAULT_LIST_ID`), regardless of query.

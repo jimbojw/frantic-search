@@ -352,6 +352,68 @@ export function serializeArena(
   return main + "\n\n" + post;
 }
 
+/** One Moxfield card line without custom `#Tag` segments (Spec 183 list preview). */
+export function formatMoxfieldCardLine(entry: {
+  quantity: number;
+  name: string;
+  setCode: string | null;
+  collectorNumber: string | null;
+  finish: string | null;
+}): string {
+  let line = `${entry.quantity} ${entry.name}`;
+  if (entry.setCode && entry.collectorNumber) {
+    line += ` (${entry.setCode.toUpperCase()}) ${entry.collectorNumber}`;
+  }
+  if (entry.finish === "foil") line += " *F*";
+  else if (entry.finish === "etched") line += " *E*";
+  return line;
+}
+
+export interface MoxfieldPreviewLineParams {
+  quantity: number;
+  oracleId: string;
+  display: DisplayColumns;
+  printingDisplay: PrintingDisplayColumns | null;
+  /** When absent or null, oracle-only line: quantity + name only (no finish markers). */
+  scryfallId?: string | null;
+  /** Used only when `scryfallId` is set. `nonfoil` / null omit `*F*` / `*E*`. */
+  finish?: string | null;
+}
+
+/**
+ * Single-line Moxfield preview matching `serializeMoxfield` for a tagless instance
+ * with the same oracle / printing / finish (non-TCGPlayer set/collector path).
+ */
+export function moxfieldPreviewLine(
+  params: MoxfieldPreviewLineParams
+): string | null {
+  const name = resolveCardName(params.oracleId, params.display, false);
+  if (!name) return null;
+
+  const scryfallId = params.scryfallId ?? null;
+  let setCode: string | null = null;
+  let collectorNumber: string | null = null;
+  let finishForLine: string | null = null;
+
+  if (scryfallId && params.printingDisplay) {
+    const row = findPrintingRow(scryfallId, params.printingDisplay);
+    if (row >= 0) {
+      setCode = params.printingDisplay.set_codes[row]!;
+      collectorNumber = params.printingDisplay.collector_numbers[row]!;
+      const f = params.finish ?? "nonfoil";
+      finishForLine = f === "foil" || f === "etched" ? f : null;
+    }
+  }
+
+  return formatMoxfieldCardLine({
+    quantity: params.quantity,
+    name,
+    setCode,
+    collectorNumber,
+    finish: finishForLine,
+  });
+}
+
 /**
  * Serialize instances in Moxfield format: `quantity cardname (SET) collector [*F*|*E*] [#Tag...]`
  * Falls back to name-only when printing data is unavailable.
@@ -375,12 +437,13 @@ export function serializeMoxfield(
 
   for (const { zone, entries } of groups) {
     const cardLines = entries.map((e) => {
-      let line = `${e.quantity} ${e.name}`;
-      if (e.setCode && e.collectorNumber) {
-        line += ` (${e.setCode.toUpperCase()}) ${e.collectorNumber}`;
-      }
-      if (e.finish === "foil") line += " *F*";
-      else if (e.finish === "etched") line += " *E*";
+      let line = formatMoxfieldCardLine({
+        quantity: e.quantity,
+        name: e.name,
+        setCode: e.setCode,
+        collectorNumber: e.collectorNumber,
+        finish: e.finish,
+      });
       if (e.tags && e.tags.length > 0) {
         line += e.tags.map((t) => ` #${t}`).join("");
       }

@@ -156,7 +156,21 @@ export type { ListToken, ListHighlightSpan, ListHighlightRole, QuickFix, LineVal
 export { validateDeckListWithEngine, validateLines } from "./list-validate-engine";
 export { detectDeckFormat } from "./list-format";
 export type { DeckFormat } from "./list-format";
-export { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, serializeMtgsalvation, parsedEntriesFromInstances } from "./list-serialize";
+export {
+  serializeArena,
+  serializeMoxfield,
+  formatMoxfieldCardLine,
+  moxfieldPreviewLine,
+  type MoxfieldPreviewLineParams,
+  serializeArchidekt,
+  serializeMtggoldfish,
+  serializeMelee,
+  serializeTappedOut,
+  serializeTcgplayer,
+  serializeManapool,
+  serializeMtgsalvation,
+  parsedEntriesFromInstances,
+} from "./list-serialize";
 export { importDeckList } from "./list-import";
 export type { ImportCandidate, ImportResult } from "./list-import";
 export { diffDeckList } from "./list-diff";

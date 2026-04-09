@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
-import { serializeArena, serializeMoxfield, serializeArchidekt, serializeMtggoldfish, serializeMelee, serializeTappedOut, serializeTcgplayer, serializeManapool, serializeMtgsalvation, tcgplayerToScryfallSetCode } from "./list-serialize";
+import {
+  serializeArena,
+  serializeMoxfield,
+  moxfieldPreviewLine,
+  serializeArchidekt,
+  serializeMtggoldfish,
+  serializeMelee,
+  serializeTappedOut,
+  serializeTcgplayer,
+  serializeManapool,
+  serializeMtgsalvation,
+  tcgplayerToScryfallSetCode,
+} from "./list-serialize";
 import type { InstanceState } from "./card-list";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 
@@ -202,6 +214,78 @@ describe("serializeMoxfield", () => {
     });
     const result = serializeMoxfield([i], display, printingDisplay);
     expect(result).toBe("1 Lightning Bolt (M21) 141 #Ramp #Artifact");
+  });
+});
+
+describe("moxfieldPreviewLine", () => {
+  function expectMatchesSerialize(
+    quantity: number,
+    instance: InstanceState,
+    expectedLine: string
+  ) {
+    expect(
+      moxfieldPreviewLine({
+        quantity,
+        oracleId: instance.oracle_id,
+        display,
+        printingDisplay,
+        scryfallId: instance.scryfall_id,
+        finish: instance.finish,
+      })
+    ).toBe(expectedLine);
+    const ser = serializeMoxfield(
+      Array.from({ length: quantity }, () => ({ ...instance, uuid: crypto.randomUUID() })),
+      display,
+      printingDisplay
+    );
+    const lines = ser.split(/\r?\n/).filter((l) => l.trim());
+    expect(lines).toContainEqual(expectedLine);
+  }
+
+  it("matches serializeMoxfield for oracle-only (tagless)", () => {
+    const i = inst("bolt-oracle");
+    expectMatchesSerialize(1, i, "1 Lightning Bolt");
+  });
+
+  it("matches serializeMoxfield for printing nonfoil", () => {
+    const i = inst("bolt-oracle", "default", "bolt-print-a", "nonfoil");
+    expectMatchesSerialize(1, i, "1 Lightning Bolt (M21) 141");
+    expectMatchesSerialize(3, i, "3 Lightning Bolt (M21) 141");
+  });
+
+  it("matches serializeMoxfield for foil and etched", () => {
+    const foil = inst("bolt-oracle", "default", "bolt-print-b", "foil");
+    expectMatchesSerialize(1, foil, "1 Lightning Bolt (2XM) 141 *F*");
+    const etched = inst("bolt-oracle", "default", "bolt-print-a", "etched");
+    expectMatchesSerialize(1, etched, "1 Lightning Bolt (M21) 141 *E*");
+  });
+
+  it("matches serializeMoxfield for double-faced printing", () => {
+    const i = inst("delver-oracle", "default", "delver-print-a", "nonfoil");
+    expectMatchesSerialize(1, i, "1 Delver of Secrets // Insectile Aberration (ISD) 51");
+  });
+
+  it("oracle-only line ignores finish (no scryfallId)", () => {
+    expect(
+      moxfieldPreviewLine({
+        quantity: 2,
+        oracleId: "bolt-oracle",
+        display,
+        printingDisplay,
+        finish: "foil",
+      })
+    ).toBe("2 Lightning Bolt");
+  });
+
+  it("returns null for unknown oracle_id", () => {
+    expect(
+      moxfieldPreviewLine({
+        quantity: 1,
+        oracleId: "nope",
+        display,
+        printingDisplay,
+      })
+    ).toBeNull();
   });
 });
 

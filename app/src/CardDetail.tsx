@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { Accessor } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
 import type { DisplayColumns, PrintingDisplayColumns } from '@frantic-search/shared'
 import {
   tokenizeTypeLine,
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
+  moxfieldPreviewLine,
 } from '@frantic-search/shared'
-import ListControls from './ListControls'
+import ListLineHighlight from './ListLineHighlight'
+import { IconMinus, IconPlus } from './Icons'
 import { buildSpans, ROLE_CLASSES } from './QueryHighlight'
 import { Format, DEFAULT_LIST_ID } from '@frantic-search/shared'
 import type { CardListStore } from './card-list-store'
@@ -77,6 +80,52 @@ const STATUS_LABELS: Record<LegalityStatus, string> = {
   banned: 'Banned',
   restricted: 'Restricted',
   not_legal: 'Not Legal',
+}
+
+const PRICE_DATA_UNAVAILABLE = '(price data not available)'
+
+function CardDetailListRow(props: {
+  count: number
+  onAdd: () => void
+  onRemove: () => void
+  addLabel: string
+  removeLabel: string
+  previewLine: Accessor<string>
+  caption: string
+  rowClass?: string
+  /** When false, omit +/- (spacers keep column alignment). Printing rows still show preview without a list store. */
+  showSteppers?: boolean
+}) {
+  const steppers = () => props.showSteppers !== false
+  return (
+    <div class={`flex items-start gap-2 px-4 py-2.5 ${props.rowClass ?? ''}`}>
+      <Show when={steppers()} fallback={<div class="w-9 shrink-0" aria-hidden="true" />}>
+        <button
+          type="button"
+          onClick={() => props.onRemove()}
+          disabled={props.count === 0}
+          class="shrink-0 mt-0.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-600 dark:disabled:hover:text-gray-300 transition-colors p-1"
+          aria-label={props.removeLabel}
+        >
+          <IconMinus class="size-4" />
+        </button>
+      </Show>
+      <div class="min-w-0 flex-1">
+        <ListLineHighlight text={props.previewLine()} class="text-sm text-gray-800 dark:text-gray-100" />
+        <p class="mt-1 text-xs italic text-gray-600 dark:text-gray-400">{props.caption}</p>
+      </div>
+      <Show when={steppers()} fallback={<div class="w-9 shrink-0" aria-hidden="true" />}>
+        <button
+          type="button"
+          onClick={() => props.onAdd()}
+          class="shrink-0 mt-0.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1"
+          aria-label={props.addLabel}
+        >
+          <IconPlus class="size-4" />
+        </button>
+      </Show>
+    </div>
+  )
 }
 
 const DOUBLE_SIDED_LAYOUTS = new Set(['transform', 'modal_dfc'])
@@ -602,34 +651,41 @@ export default function CardDetail(props: {
                       <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">List Actions</h2>
                       <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
                         <Show when={props.cardListStore && oracleId()}>
-                          <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-700">
-                            <span class="text-sm text-gray-700 dark:text-gray-200">This card (by name)</span>
-                            <ListControls
-                              count={nameCount()}
-                              onAdd={() => {
-                                const oid = oracleId()!
-                                captureCardDetailInteracted({
-                                  control: 'list_add',
-                                  list_scope: 'oracle',
-                                  oracle_id: oid,
-                                  finish: 'nonfoil',
-                                })
-                                props.cardListStore!.addInstance(oid, DEFAULT_LIST_ID).catch(() => {})
-                              }}
-                              onRemove={() => {
-                                const oid = oracleId()!
-                                captureCardDetailInteracted({
-                                  control: 'list_remove',
-                                  list_scope: 'oracle',
-                                  oracle_id: oid,
-                                  finish: 'nonfoil',
-                                })
-                                props.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid).catch(() => {})
-                              }}
-                              addLabel="Add card to list"
-                              removeLabel="Remove from list"
-                            />
-                          </div>
+                          <CardDetailListRow
+                            rowClass="border-b border-gray-200 dark:border-gray-700"
+                            count={nameCount()}
+                            previewLine={() =>
+                              moxfieldPreviewLine({
+                                quantity: nameCount(),
+                                oracleId: oracleId()!,
+                                display: cols(),
+                                printingDisplay: pcols(),
+                              }) ?? ''
+                            }
+                            caption="This card (by name only)"
+                            onAdd={() => {
+                              const oid = oracleId()!
+                              captureCardDetailInteracted({
+                                control: 'list_add',
+                                list_scope: 'oracle',
+                                oracle_id: oid,
+                                finish: 'nonfoil',
+                              })
+                              props.cardListStore!.addInstance(oid, DEFAULT_LIST_ID).catch(() => {})
+                            }}
+                            onRemove={() => {
+                              const oid = oracleId()!
+                              captureCardDetailInteracted({
+                                control: 'list_remove',
+                                list_scope: 'oracle',
+                                oracle_id: oid,
+                                finish: 'nonfoil',
+                              })
+                              props.cardListStore!.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid).catch(() => {})
+                            }}
+                            addLabel="Add card to list"
+                            removeLabel="Remove from list"
+                          />
                         </Show>
                         <Show when={indices.length === 1} fallback={
                           <For each={indices}>
@@ -644,51 +700,62 @@ export default function CardDetail(props: {
                                 const finish = FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil'
                                 return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
                               }
+                              const printingCaption = () => {
+                                const usd = pcols().price_usd[pi]
+                                const pricePart = usd !== 0 ? formatPrice(usd) : PRICE_DATA_UNAVAILABLE
+                                return `${FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} printing — ${pricePart}`
+                              }
                               return (
-                                <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                                  <span class="text-sm text-gray-700 dark:text-gray-200">
-                                    {FINISH_LABELS[pcols().finish[pi]] ?? 'Unknown'} printing — {formatPrice(pcols().price_usd[pi])}
-                                  </span>
-                                  <Show when={props.cardListStore && oracleId()}>
-                                    <ListControls
-                                      count={printingCount()}
-                                      onAdd={() => {
-                                        const store = props.cardListStore!
-                                        const oid = oracleId()
-                                        const scryfallId = pcols().scryfall_ids[pi]
-                                        const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
-                                        if (oid) {
-                                          captureCardDetailInteracted({
-                                            control: 'list_add',
-                                            list_scope: 'printing',
-                                            oracle_id: oid,
-                                            finish,
-                                            scryfall_id: scryfallId,
-                                          })
-                                        }
-                                        if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
-                                      }}
-                                      onRemove={() => {
-                                        const store = props.cardListStore!
-                                        const oid = oracleId()
-                                        const scryfallId = pcols().scryfall_ids[pi]
-                                        const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
-                                        if (oid) {
-                                          captureCardDetailInteracted({
-                                            control: 'list_remove',
-                                            list_scope: 'printing',
-                                            oracle_id: oid,
-                                            finish,
-                                            scryfall_id: scryfallId,
-                                          })
-                                        }
-                                        if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
-                                      }}
-                                      addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
-                                      removeLabel={`Remove ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing from list`}
-                                    />
-                                  </Show>
-                                </div>
+                                <CardDetailListRow
+                                  rowClass="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                                  showSteppers={!!(props.cardListStore && oracleId())}
+                                  count={printingCount()}
+                                  previewLine={() =>
+                                    moxfieldPreviewLine({
+                                      quantity: printingCount(),
+                                      oracleId: oracleId()!,
+                                      display: cols(),
+                                      printingDisplay: pcols(),
+                                      scryfallId: pcols().scryfall_ids[pi],
+                                      finish: FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil',
+                                    }) ?? ''
+                                  }
+                                  caption={printingCaption()}
+                                  onAdd={() => {
+                                    const store = props.cardListStore!
+                                    const oid = oracleId()
+                                    const scryfallId = pcols().scryfall_ids[pi]
+                                    const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                    if (oid) {
+                                      captureCardDetailInteracted({
+                                        control: 'list_add',
+                                        list_scope: 'printing',
+                                        oracle_id: oid,
+                                        finish,
+                                        scryfall_id: scryfallId,
+                                      })
+                                    }
+                                    if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
+                                  }}
+                                  onRemove={() => {
+                                    const store = props.cardListStore!
+                                    const oid = oracleId()
+                                    const scryfallId = pcols().scryfall_ids[pi]
+                                    const finish = (FINISH_TO_STRING[pcols().finish[pi]] ?? 'nonfoil') as CardDetailListFinish
+                                    if (oid) {
+                                      captureCardDetailInteracted({
+                                        control: 'list_remove',
+                                        list_scope: 'printing',
+                                        oracle_id: oid,
+                                        finish,
+                                        scryfall_id: scryfallId,
+                                      })
+                                    }
+                                    if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
+                                  }}
+                                  addLabel={`Add ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing to list`}
+                                  removeLabel={`Remove ${FINISH_LABELS[pcols().finish[pi]] ?? 'this'} printing from list`}
+                                />
                               )
                             }}
                           </For>
@@ -704,51 +771,61 @@ export default function CardDetail(props: {
                               const finish = FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil'
                               return getMatchingCount(store.getView(), DEFAULT_LIST_ID, oid, scryfallId, finish)
                             }
+                            const singlePrintingCaption = () => {
+                              const usd = pcols().price_usd[pidx]
+                              const pricePart = usd !== 0 ? formatPrice(usd) : PRICE_DATA_UNAVAILABLE
+                              return `${FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'} printing — ${pricePart}`
+                            }
                             return (
-                              <div class="flex items-center justify-between px-4 py-2.5">
-                                <span class="text-sm text-gray-700 dark:text-gray-200">
-                                  {FINISH_LABELS[pcols().finish[pidx]] ?? 'Unknown'} printing — {formatPrice(pcols().price_usd[pidx])}
-                                </span>
-                                <Show when={props.cardListStore && oracleId()}>
-                                  <ListControls
-                                    count={singlePrintingCount()}
-                                    onAdd={() => {
-                                      const store = props.cardListStore!
-                                      const oid = oracleId()
-                                      const scryfallId = pcols().scryfall_ids[pidx]
-                                      const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
-                                      if (oid) {
-                                        captureCardDetailInteracted({
-                                          control: 'list_add',
-                                          list_scope: 'printing',
-                                          oracle_id: oid,
-                                          finish,
-                                          scryfall_id: scryfallId,
-                                        })
-                                      }
-                                      if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
-                                    }}
-                                    onRemove={() => {
-                                      const store = props.cardListStore!
-                                      const oid = oracleId()
-                                      const scryfallId = pcols().scryfall_ids[pidx]
-                                      const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
-                                      if (oid) {
-                                        captureCardDetailInteracted({
-                                          control: 'list_remove',
-                                          list_scope: 'printing',
-                                          oracle_id: oid,
-                                          finish,
-                                          scryfall_id: scryfallId,
-                                        })
-                                      }
-                                      if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
-                                    }}
-                                    addLabel="Add this printing to list"
-                                    removeLabel="Remove this printing from list"
-                                  />
-                                </Show>
-                              </div>
+                              <CardDetailListRow
+                                showSteppers={!!(props.cardListStore && oracleId())}
+                                count={singlePrintingCount()}
+                                previewLine={() =>
+                                  moxfieldPreviewLine({
+                                    quantity: singlePrintingCount(),
+                                    oracleId: oracleId()!,
+                                    display: cols(),
+                                    printingDisplay: pcols(),
+                                    scryfallId: pcols().scryfall_ids[pidx],
+                                    finish: FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil',
+                                  }) ?? ''
+                                }
+                                caption={singlePrintingCaption()}
+                                onAdd={() => {
+                                  const store = props.cardListStore!
+                                  const oid = oracleId()
+                                  const scryfallId = pcols().scryfall_ids[pidx]
+                                  const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
+                                  if (oid) {
+                                    captureCardDetailInteracted({
+                                      control: 'list_add',
+                                      list_scope: 'printing',
+                                      oracle_id: oid,
+                                      finish,
+                                      scryfall_id: scryfallId,
+                                    })
+                                  }
+                                  if (oid) store.addInstance(oid, DEFAULT_LIST_ID, { scryfallId, finish }).catch(() => {})
+                                }}
+                                onRemove={() => {
+                                  const store = props.cardListStore!
+                                  const oid = oracleId()
+                                  const scryfallId = pcols().scryfall_ids[pidx]
+                                  const finish = (FINISH_TO_STRING[pcols().finish[pidx]] ?? 'nonfoil') as CardDetailListFinish
+                                  if (oid) {
+                                    captureCardDetailInteracted({
+                                      control: 'list_remove',
+                                      list_scope: 'printing',
+                                      oracle_id: oid,
+                                      finish,
+                                      scryfall_id: scryfallId,
+                                    })
+                                  }
+                                  if (oid) store.removeMostRecentMatchingInstance(DEFAULT_LIST_ID, oid, scryfallId, finish).catch(() => {})
+                                }}
+                                addLabel="Add this printing to list"
+                                removeLabel="Remove this printing from list"
+                              />
                             )
                           })()}
                         </Show>
