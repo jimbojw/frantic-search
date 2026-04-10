@@ -990,7 +990,11 @@ export default function CardDetail(props: {
                                 <QueryChip query={`edhrec=${pct}%`} field="edhrec" onNavigate={props.onNavigateToQuery} />
                               </Show>
                             </div>
-                          ) : undefined
+                          ) : (
+                            <div class="flex flex-wrap gap-1 justify-end">
+                              <QueryChip query="edhrec=null" field="edhrec" onNavigate={props.onNavigateToQuery} />
+                            </div>
+                          )
                         }
                       >
                         {r != null ? `#${r}` : 'Not ranked'}
@@ -1013,7 +1017,11 @@ export default function CardDetail(props: {
                                 <QueryChip query={`salt=${pct}%`} field="salt" onNavigate={props.onNavigateToQuery} />
                               </Show>
                             </div>
-                          ) : undefined
+                          ) : (
+                            <div class="flex flex-wrap gap-1 justify-end">
+                              <QueryChip query="salt=null" field="salt" onNavigate={props.onNavigateToQuery} />
+                            </div>
+                          )
                         }
                       >
                         {s != null ? String(s) : 'Not rated'}
@@ -1037,7 +1045,7 @@ export default function CardDetail(props: {
                           ) : undefined
                         }
                       >
-                        {kws.length > 0 ? kws.join(', ') : <span class="italic text-gray-400 dark:text-gray-500">_none_</span>}
+                        {kws.length > 0 ? kws.join(', ') : <span class="italic text-gray-400 dark:text-gray-500">none</span>}
                       </DetailRow>
                     )
                   })()}
@@ -1223,7 +1231,11 @@ export default function CardDetail(props: {
                                           <QueryChip query={`$=${pct()}%`} field="usd" onNavigate={props.onNavigateToQuery} />
                                         </Show>
                                       </div>
-                                    ) : undefined
+                                    ) : (
+                                      <div class="flex flex-wrap gap-1 justify-end">
+                                        <QueryChip query="$=null" field="usd" onNavigate={props.onNavigateToQuery} />
+                                      </div>
+                                    )
                                   }
                                 >
                                   {formatPrice(price())}
@@ -1246,7 +1258,11 @@ export default function CardDetail(props: {
                                         <QueryChip query={`$=${pct()}%`} field="usd" onNavigate={props.onNavigateToQuery} />
                                       </Show>
                                     </div>
-                                  ) : undefined
+                                  ) : (
+                                    <div class="flex flex-wrap gap-1 justify-end">
+                                      <QueryChip query="$=null" field="usd" onNavigate={props.onNavigateToQuery} />
+                                    </div>
+                                  )
                                 }
                               >
                                 {formatPrice(price())}

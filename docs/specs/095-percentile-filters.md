@@ -154,7 +154,7 @@ Card detail shows **raw** chips (`edhrec=<n>`, `salt=…`, `$=…`) plus **perce
 - A **pre-sorted index array** of row indices (face indices for `edhrec` / `salt`; printing indices for `usd`) containing only **non-null** distribution members, in the **same order** as `CardIndex` / `PrintingIndex` use for evaluation (`sortedEdhrecIndices`, `sortedSaltIndices`, `sortedUsdIndices`, etc.).
 - `n` = length of that sorted array.
 - The **target row index** (`faceIndex` or `printingIndex`) whose label is being rendered.
-- **Null-valued** rows (no rank, no salt, no price) → **no percentile chip** (same as percentile queries excluding nulls).
+- **Null-valued** rows (no rank, no salt, no price) → **no percentile chip** (same as percentile queries excluding nulls). Card detail still shows a **raw null equality** chip so users can run the query: **`edhrec=null`**, **`salt=null`**, or **`$=null`** (price; equivalent to `usd=null`) per [Spec 183](183-card-detail-sections-query-chips-outlinks.md).
 
 **Algorithm:** Find `pos` such that `sorted[pos] === target` (if duplicates exist, any matching position in the contiguous equal-value run may be used as long as the chosen `p` still places the target inside the equality band — see tests). Compute an **integer** display `p` in `0…100` such that the index band for `field=p%` per § Equality **includes** `pos`. The helper `displayEqualityPercentileLabel` in `shared/src/percentile-chip-display.ts` implements this (rounds to a stable integer; searches adjacent `p` if needed so the band contains the row).
 
