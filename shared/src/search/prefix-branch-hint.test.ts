@@ -85,12 +85,22 @@ describe("buildPrefixBranchHint (Spec 181)", () => {
       expect(buildPrefixBranchHint("trigger", ["death-trigger"], "tag")).toBe(null);
     });
 
-    it("interior-only for short prefix: no left-anchored match", () => {
-      expect(buildPrefixBranchHint("m", ["artifact-matters"], "tag")).toBe(null);
+    it("interior boundary: single key yields full remainder suffix", () => {
+      expect(buildPrefixBranchHint("m", ["artifact-matters"], "tag")).toBe("(atters)");
     });
 
-    it("mixed vocabulary: hint from left-anchored subset only", () => {
-      expect(buildPrefixBranchHint("m", ["mana-ramp", "artifact-matters"], "tag")).toBe("(ana-ramp)");
+    it("mixed vocabulary: multi-branch first chars from each alignment", () => {
+      expect(buildPrefixBranchHint("m", ["mana-ramp", "artifact-matters"], "tag")).toBe("(a)");
+    });
+
+    it("on- at segment boundary: single key full remainder", () => {
+      expect(buildPrefixBranchHint("on-", ["cast-on-resolution"], "tag")).toBe("(resolution)");
+    });
+
+    it("on- multiple keys: first chars of remainders", () => {
+      expect(
+        buildPrefixBranchHint("on-", ["cast-on-resolution", "cast-on-stack"], "tag"),
+      ).toBe("(r|s)");
     });
   });
 });

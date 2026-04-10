@@ -5,6 +5,7 @@ import {
   normalizeForLookalikes,
   normalizeForTagResolution,
   matchesBoundaryAlignedPrefix,
+  forEachBoundaryAlignedRemainder,
 } from "./normalize";
 
 describe("normalizeForLookalikes", () => {
@@ -80,6 +81,24 @@ describe("matchesBoundaryAlignedPrefix (Spec 174)", () => {
 
   it("empty u matches any non-empty key", () => {
     expect(matchesBoundaryAlignedPrefix("x", "")).toBe(true);
+  });
+});
+
+describe("forEachBoundaryAlignedRemainder (Spec 174 / Spec 181)", () => {
+  it("yields remainder after u at each boundary match", () => {
+    const out: string[] = [];
+    forEachBoundaryAlignedRemainder("cast-on-resolution", "on-", (_i, r) => {
+      out.push(r);
+    });
+    expect(out).toEqual(["resolution"]);
+  });
+
+  it("invokes once per alignment for mana-r on mana-ramp", () => {
+    const out: string[] = [];
+    forEachBoundaryAlignedRemainder("mana-ramp", "mana-r", (_i, r) => {
+      out.push(r);
+    });
+    expect(out).toEqual(["amp"]);
   });
 });
 

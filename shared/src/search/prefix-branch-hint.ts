@@ -3,7 +3,7 @@
 import {
   normalizeForResolution,
   normalizeForTagResolution,
-  matchesBoundaryAlignedPrefix,
+  forEachBoundaryAlignedRemainder,
 } from "./categorical-resolve";
 
 const KIND_EQUALS = 0;
@@ -86,43 +86,64 @@ function uniqueNonEmptyNormalized(candidates: readonly string[]): string[] {
 /** Spec 181: `otag` / `atag` use Spec 174 tag normalization + boundary-aligned `:` eval. */
 export type PrefixBranchHintMode = "default" | "tag";
 
+/** Spec 181 tag mode: collect (normKey, R) for every Spec 174 boundary alignment. */
+function collectTagAlignmentRows(
+  nonEmpty: readonly string[],
+  u: string,
+): { normKey: string; R: string }[] {
+  const rows: { normKey: string; R: string }[] = [];
+  if (u.length === 0) return rows;
+  for (const normKey of nonEmpty) {
+    forEachBoundaryAlignedRemainder(normKey, u, (_i, R) => {
+      rows.push({ normKey, R });
+    });
+  }
+  return rows;
+}
+
+function tagFirstCharDigest(nonEmpty: readonly string[]): string {
+  const chars = new Set<string>();
+  for (const c of nonEmpty) {
+    chars.add(c[0]!);
+  }
+  const sorted = sortBranchTokens([...chars]);
+  const collapsed = collapseBranchTokens(sorted);
+  return `(${collapsed.join("|")})`;
+}
+
 function buildPrefixBranchHintTag(trimmed: string, nonEmpty: string[]): string | null {
   const u = normalizeForTagResolution(trimmed);
 
-  if (trimmed === "") {
-    const chars = new Set<string>();
-    for (const c of nonEmpty) {
-      chars.add(c[0]!);
+  if (trimmed === "" || u.length === 0) {
+    return tagFirstCharDigest(nonEmpty);
+  }
+
+  const rows = collectTagAlignmentRows(nonEmpty, u);
+  if (rows.length === 0) return null;
+
+  const distinctKeys = new Set(rows.map((r) => r.normKey));
+
+  if (distinctKeys.size === 1) {
+    const onlyKey = [...distinctKeys][0]!;
+    if (onlyKey === u) return null;
+    const rs = rows.filter((row) => row.normKey === onlyKey).map((row) => row.R);
+    const hasEmpty = rs.some((R) => R === "");
+    const uniqueNonEmpty = [...new Set(rs.filter((R) => R.length > 0))];
+    if (!hasEmpty && uniqueNonEmpty.length === 1) {
+      return `(${uniqueNonEmpty[0]!})`;
     }
-    const sorted = sortBranchTokens([...chars]);
-    const collapsed = collapseBranchTokens(sorted);
-    return `(${collapsed.join("|")})`;
+    if (hasEmpty && uniqueNonEmpty.length === 0) {
+      return null;
+    }
   }
 
-  const boundaryMatches = nonEmpty.filter((c) => matchesBoundaryAlignedPrefix(c, u));
-  if (boundaryMatches.length === 0) return null;
-
-  const digestMatches = boundaryMatches.filter((m) => m.startsWith(u));
-  if (u.length > 0 && digestMatches.length === 0) return null;
-
-  const uniqueMatches = [...new Set(digestMatches)];
-  if (uniqueMatches.length === 1) {
-    const c = uniqueMatches[0]!;
-    if (c === u) return null;
-    return `(${c.slice(u.length)})`;
-  }
-
+  const hasExact = rows.some((row) => row.R === "");
   const branchSet = new Set<string>();
-  let hasExact = false;
-  for (const m of uniqueMatches) {
-    if (m === u) {
-      hasExact = true;
-    } else {
-      const rest = m.slice(u.length);
-      if (rest.length > 0) branchSet.add(rest[0]!);
-    }
+  for (const { R } of rows) {
+    if (R.length > 0) branchSet.add(R[0]!);
   }
   if (hasExact) branchSet.add("=");
+  if (branchSet.size === 0) return null;
   const sorted = sortBranchTokens([...branchSet]);
   const collapsed = collapseBranchTokens(sorted);
   return `(${collapsed.join("|")})`;

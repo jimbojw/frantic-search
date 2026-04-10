@@ -47,7 +47,11 @@ export function normalizeForResolution(s: string): string {
   return normalizeAlphanumeric(s);
 }
 
-export { normalizeForTagResolution, matchesBoundaryAlignedPrefix } from "../normalize";
+export {
+  normalizeForTagResolution,
+  matchesBoundaryAlignedPrefix,
+  forEachBoundaryAlignedRemainder,
+} from "../normalize";
 
 /**
  * Resolve typed value to single matching candidate when exactly one matches.

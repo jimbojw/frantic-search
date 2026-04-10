@@ -103,6 +103,7 @@ export {
   normalizeForResolution,
   normalizeForTagResolution,
   matchesBoundaryAlignedPrefix,
+  forEachBoundaryAlignedRemainder,
 } from "./search/categorical-resolve";
 export {
   buildPrefixBranchHint,

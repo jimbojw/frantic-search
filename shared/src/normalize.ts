@@ -44,17 +44,35 @@ export function normalizeForTagResolution(s: string): string {
 }
 
 /**
+ * Spec 174 / Spec 181: invoke `fn(startIndex, remainder)` for each boundary-aligned match of
+ * prefix `u` in `normKey`. Remainder is `normKey.slice(startIndex + u.length)`.
+ * No-op when `u` is empty (callers treat empty-`u` separately).
+ */
+export function forEachBoundaryAlignedRemainder(
+  normKey: string,
+  u: string,
+  fn: (startIndex: number, remainder: string) => void,
+): void {
+  if (u.length === 0) return;
+  const T = normKey;
+  for (let i = 0; i < T.length; i++) {
+    if (i > 0 && T[i - 1] !== "-") continue;
+    if (!T.slice(i).startsWith(u)) continue;
+    fn(i, T.slice(i + u.length));
+  }
+}
+
+/**
  * Spec 174 `:` — true iff `u` is a prefix of `normKey` starting at the beginning of the slug
  * or immediately after a hyphen (word boundary).
  */
 export function matchesBoundaryAlignedPrefix(normKey: string, u: string): boolean {
   if (u.length === 0) return true;
-  const T = normKey;
-  for (let i = 0; i < T.length; i++) {
-    if (i > 0 && T[i - 1] !== "-") continue;
-    if (T.slice(i).startsWith(u)) return true;
-  }
-  return false;
+  let found = false;
+  forEachBoundaryAlignedRemainder(normKey, u, () => {
+    found = true;
+  });
+  return found;
 }
 
 /** Build normalized-key lookup from raw alternate names. ETL outputs raw keys;
