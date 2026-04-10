@@ -12,3 +12,4 @@ Long-running investigations that are **not** full product specs: empirical black
 |-------|----------|----------------|
 | Scryfall default search result filtering (`include:extras`, content warnings, funny sets, query-shape effects) | [scryfall-default-result-filtering.md](./scryfall-default-result-filtering.md) | [GitHub #227](https://github.com/jimbojw/frantic-search/issues/227) |
 | Scryfall `collector_number` empirical shapes in default-cards bulk (taxonomy for fast sort keys) | [scryfall-collector-number-shapes.md](./scryfall-collector-number-shapes.md) | — |
+| Commander Spellbook variant data: schema, scale, distribution, and integration design implications | [commander-spellbook-variants.md](./commander-spellbook-variants.md) | — |
