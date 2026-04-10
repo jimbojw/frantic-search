@@ -423,7 +423,8 @@ function ManaQueryChip(props: {
   const query = () => `m=${compact()}`
   const label = () => (
     <span class="inline-flex shrink-0 items-center gap-0.5">
-      <span class="shrink-0">m=</span>
+      <span class={`shrink-0 ${ROLE_CLASSES.field}`}>m</span>
+      <span class={ROLE_CLASSES.operator}>=</span>
       <ManaCost cost={props.cost} />
     </span>
   )
