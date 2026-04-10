@@ -574,9 +574,21 @@ function CardDetailFaceFields(props: {
     <>
       <DetailRow
         label="Mana Cost"
-        chips={manaCost() ? <ManaQueryChip cost={manaCost()} onNavigate={props.onNavigateToQuery} /> : undefined}
+        chips={
+          <div class="flex flex-wrap gap-1 justify-end">
+            {manaCost() ? (
+              <ManaQueryChip cost={manaCost()} onNavigate={props.onNavigateToQuery} />
+            ) : (
+              <QueryChip query="m=null" field="mana" onNavigate={props.onNavigateToQuery} />
+            )}
+          </div>
+        }
       >
-        {manaCost() ? <ManaCost cost={manaCost()} /> : <span class="italic text-gray-400 dark:text-gray-500">\u2014</span>}
+        {manaCost() ? (
+          <ManaCost cost={manaCost()} />
+        ) : (
+          <span class="italic text-gray-400 dark:text-gray-500">none</span>
+        )}
       </DetailRow>
 
       <DetailRow
