@@ -8,6 +8,7 @@ import {
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
   faceColorMasksUniform,
+  keywordAbilityToKwChipQuery,
   moxfieldPreviewLine,
 } from '@frantic-search/shared'
 import ListLineHighlight from './ListLineHighlight'
@@ -1164,7 +1165,13 @@ export default function CardDetail(props: {
                           kws.length > 0 ? (
                             <div class="flex flex-wrap gap-1 justify-end">
                               <For each={kws}>
-                                {(kw) => <QueryChip query={`kw:${kw}`} field="keyword" onNavigate={props.onNavigateToQuery} />}
+                                {(kw) => (
+                                  <QueryChip
+                                    query={keywordAbilityToKwChipQuery(kw)}
+                                    field="keyword"
+                                    onNavigate={props.onNavigateToQuery}
+                                  />
+                                )}
                               </For>
                             </div>
                           ) : undefined

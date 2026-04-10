@@ -98,3 +98,15 @@ export function faceColorMasksUniform(
   }
   return true;
 }
+
+/**
+ * Build the `kw:` query fragment for a card-detail keyword chip (Spec 183).
+ * Multi-word Oracle keywords must be quoted so the lexer keeps one FIELD value
+ * after `:` (Spec 002 § Whitespace and field clauses).
+ */
+export function keywordAbilityToKwChipQuery(keyword: string): string {
+  if (/\s/.test(keyword)) {
+    return `kw:"${keyword.replace(/"/g, '\\"')}"`;
+  }
+  return `kw:${keyword}`;
+}

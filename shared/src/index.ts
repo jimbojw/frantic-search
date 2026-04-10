@@ -197,6 +197,7 @@ export {
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
   faceColorMasksUniform,
+  keywordAbilityToKwChipQuery,
 } from "./card-detail-chips";
 export {
   positionInEqualityPercentileBand,

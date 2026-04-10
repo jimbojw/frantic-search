@@ -6,6 +6,7 @@ import {
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
   faceColorMasksUniform,
+  keywordAbilityToKwChipQuery,
 } from "./card-detail-chips";
 import { parseManaSymbols, manaEquals } from "./search/mana";
 
@@ -207,5 +208,19 @@ describe("faceColorMasksUniform", () => {
   it("returns false when any indexed face differs", () => {
     const colors = [4, 1];
     expect(faceColorMasksUniform(colors, [0, 1])).toBe(false);
+  });
+});
+
+describe("keywordAbilityToKwChipQuery", () => {
+  it("leaves single-token keywords unquoted", () => {
+    expect(keywordAbilityToKwChipQuery("infect")).toBe("kw:infect");
+  });
+
+  it("quotes multi-word keywords", () => {
+    expect(keywordAbilityToKwChipQuery("first strike")).toBe('kw:"first strike"');
+  });
+
+  it("escapes embedded double quotes when whitespace forces quoting", () => {
+    expect(keywordAbilityToKwChipQuery('say "go"')).toBe('kw:"say \\"go\\""');
   });
 });
