@@ -6,7 +6,7 @@
 
 **Addresses:** [GitHub issue #180](https://github.com/jimbojw/frantic-search/issues/180)
 
-**Related:** Spec 154 defines the multi-word sliding window for keywords and artists; this spec extends that pass with **hyphen-slug prefix** matching against oracle tag and illustration tag vocabularies. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** defines **eval** matching (`normalizeForResolution` on keys and values). Suggestion slugs here stay **`key.toLowerCase().startsWith(slug)`**; typed **`otag:`** / **`atag:`** queries follow Spec 174 — edge-case differences are acceptable unless a future spec aligns slug rules with **`normalizeForResolution`**.
+**Related:** Spec 154 defines the multi-word sliding window for keywords and artists; this spec extends that pass with **hyphen-slug prefix** matching against oracle tag and illustration tag vocabularies. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** defines **eval** matching: **`normalizeForTagResolution`**, boundary-aligned **`:`** union, exact **`=`** / **`!=`**. Suggestion slugs here stay **`key.toLowerCase().startsWith(slug)`** on wire keys (full-string prefix for discovery chips). That aligns with hyphen-preserving tags; optional follow-up: boundary-aware suggestion ranking if edge cases appear.
 
 ## Goal
 

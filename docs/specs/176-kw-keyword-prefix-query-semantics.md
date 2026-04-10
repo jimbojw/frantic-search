@@ -19,7 +19,7 @@ When the trimmed value is **non-empty** and **no** index key matches under the a
 
 ## Background
 
-Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** now aligns **`otag:`** / **`atag:`** with the same **`:`** / **`=`** / **`!=`** and unknown-token model as keywords. **`set:`** / **`set_type:`** error on a non-empty non-matching prefix (Spec 047 / 179). Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.
+Spec 103 unique-prefix resolution (`resolveForField`) plus exact key lookup meant `kw:pro` did not resolve when multiple keywords shared a prefix. **[Spec 174](174-otag-atag-prefix-query-semantics.md)** aligns **`otag:`** / **`atag:`** with the same **`:`** / **`=`** / **`!=`** and unknown-token model as keywords; for **`:`**, tags use **boundary-aligned** prefix union and **`normalizeForTagResolution`**, not full-string **`startsWith`** on **`normalizeForResolution`**-stripped keys. **`set:`** / **`set_type:`** error on a non-empty non-matching prefix (Spec 047 / 179). Keywords are **closed vocabulary** names users expect to recognize: a typo or nonsense token should surface as an error while other query clauses still apply (passthrough), not as an empty result set.
 
 Historically **`kw:`** treated **`:`** and **`=`** identically (prefix union only). This spec now **splits** them to match Spec 182’s cross-field convention.
 

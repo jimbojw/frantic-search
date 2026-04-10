@@ -493,7 +493,7 @@ Add printing-field entries once the full dataset is available.
 15. `is:rainbowfoil`, `is:poster`, `is:boosterfun`, and all other promo_types values match printings that have that value in their `promo_types` array.
 16. `is:universesbeyond` and `is:ub` evaluate in printing domain when printings are loaded; fall back to face domain (CardFlag.UniversesBeyond) when printings are not loaded.
 17. `-is:poster` correctly negates (matches printings without poster promo type).
-18. **`atag:`** / **`art:`** / **`art!=`** evaluation follows Spec 174: **`:`** = normalized prefix union over illustration tag keys; **`=`** = normalized exact; **`!=`** negates **`=`** only; non-empty no match → **`unknown illustration tag "…"`** (passthrough). Precomputed normalized keys per wire tag; eval path does not use **`resolveForField`**.
+18. **`atag:`** / **`art:`** / **`art!=`** evaluation follows Spec 174: **`:`** = boundary-aligned prefix union over illustration tag keys (**`normalizeForTagResolution`**); **`=`** = exact on full **`normKey`**; **`!=`** negates **`=`** only; non-empty no match → **`unknown illustration tag "…"`** (passthrough). Precomputed **`normKey`** per wire tag; eval path does not use **`resolveForField`**.
 
 ## Implementation Notes
 

@@ -44,32 +44,18 @@ Tag data loads asynchronously after the worker initializes. The evaluator must r
 
 ## Evaluation Logic
 
-**Superseded for matching semantics by Spec 174.** Summary: normalized prefix on all tag keys, union indices, zero hits without error; empty value matches every face/printing that has ≥1 tag in the loaded index.
+**Superseded for matching semantics by [Spec 174](174-otag-atag-prefix-query-semantics.md).** Implement **`otag`** / **`atag`** / **`art`** in **`eval-tags.ts`** (and prepared indices on **`TagDataRef`**) as follows:
 
-### `otag:label` (face domain)
-
-1. If `tagDataRef?.oracle` is null → error: `"oracle tags not loaded"`.
-2. For every key in `tagDataRef.oracle` whose normalized key starts with the normalized user prefix (Spec 103 `normalizeForResolution`), for each face index in that key’s array, set `buf[faceIndex] = 1`.
-3. If no key matches, leave buffer zero — **no** `unknown tag` error (Spec 174).
-4. Supported operators: `:` and `=` only. Other operators (e.g. `!=`, `>`) are not meaningful for tags; treat as `:` or return error. For simplicity, support `:` and `=` as match; others can produce error or be ignored per existing patterns.
-
-### `atag:label` / `art:label` (printing domain)
-
-1. If `tagDataRef?.illustration` is null → error: `"illustration tags not loaded"`.
-2. Same prefix-union rule over illustration tag map keys and printing indices (Spec 174).
-3. If no key matches, zero printings — **no** `unknown tag`.
-4. Supported operators: `:` and `=` only. Same as above.
+- **Normalization:** **`normalizeForTagResolution`** on wire keys and user values (hyphens preserved; not Spec 103 **`normalizeForResolution`**).
+- **`:`** — **Boundary-aligned prefix union** over tag keys; OR face or printing indices into the leaf buffer.
+- **`=`** / **`!=`** — Exact match / negation of exact on **`normKey`** per Spec 174.
+- **Non-empty** value with **no** matching key under the active operator → **`unknown oracle tag "…"`** / **`unknown illustration tag "…"`** (passthrough, Spec 039), not silent zero-hit.
+- **Empty** value (trimmed) — **ADR-022 §5** exception: matches every face/printing with **≥1** tag in the loaded index; empty **`!=`** inverts that set. See Spec 174.
+- **Tag data not loaded:** **`oracle tags not loaded`** / **`illustration tags not loaded`** when the corresponding ref is null.
 
 ### Negation
 
 `-otag:ramp` and `-atag:chair` work via the existing NOT node — the child FIELD produces a buffer, and NOT inverts it. No special handling.
-
-### Error vs. Zero Matches
-
-Per Issue #99 and Spec 174:
-
-- **0-match (value-zero):** No tag key matches the prefix, or a matching key has an empty index array. Valid syntax; no error.
-- **Error (value-error):** Tag data not loaded only (`oracle tags not loaded` / `illustration tags not loaded`). **Not** an error when the prefix matches no key (Spec 174).
 
 ## Evaluator Integration Points
 

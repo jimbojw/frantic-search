@@ -32,7 +32,7 @@ Examples:
 - `q=kw:first` matches **first strike** (and any other keyword whose normalized name starts with `first`).
 - `q=kw=first` matches **only** a keyword whose normalized form is exactly `first` — not **first strike** — and yields **`unknown keyword`** if no such key exists.
 
-A non-empty value that matches **no** key under the active operator yields **`unknown keyword "…"`**. Same error pattern as [`set:`](?doc=reference/fields/printing/set) and [`set_type:`](?doc=reference/fields/printing/set_type) for unknown non-empty tokens; [`otag:`](?doc=reference/fields/card/otag) and [`atag:`](?doc=reference/fields/printing/atag) still return zero hits with no error when nothing matches.
+A non-empty value that matches **no** key under the active operator yields **`unknown keyword "…"`**. Same error pattern as [`set:`](?doc=reference/fields/printing/set), [`set_type:`](?doc=reference/fields/printing/set_type), and [`otag:`](?doc=reference/fields/card/otag) / [`atag:`](?doc=reference/fields/printing/atag) for unknown non-empty tokens (passthrough).
 
 Matching is case-insensitive via the same normalization (accents and non-alphanumeric characters are stripped for comparison). Multi-word keywords (e.g. “first strike”) are compared after normalization so spacing and punctuation align with index keys.
 

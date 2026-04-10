@@ -30,9 +30,9 @@ Individual **specs** remain the normative, testable source for each field. This 
 
    How “open vs committed” is detected from spans and source text is implementation-defined; specs and tests pin observable behavior.
 
-3. **Non-empty `=` — strict equality; errors, not silent zero-hits.** **`=`** means **normalized exact match** per the field spec (typically after `normalizeForResolution` in [Spec 103](../specs/103-categorical-field-value-auto-resolution.md)). If nothing matches exactly, the leaf returns an **error** suitable for passthrough where applicable — **not** a silent all-zero match — unless the field spec documents a deliberate exception.
+3. **Non-empty `=` — strict equality; errors, not silent zero-hits.** **`=`** means **normalized exact match** per the field spec (typically after `normalizeForResolution` in [Spec 103](../specs/103-categorical-field-value-auto-resolution.md)). If nothing matches exactly, the leaf returns an **error** suitable for passthrough where applicable — **not** a silent all-zero match — unless the field spec documents a deliberate exception. **`otag`** / **`atag`** use **tag-normalized** full keys ([Spec 174](../specs/174-otag-atag-prefix-query-semantics.md) **`normalizeForTagResolution`**), not the same string as generic **`normalizeForResolution`** on hyphenated slugs.
 
-4. **Non-empty `:` — prefix union for discoverability.** **`:`** means **prefix union** after the same normalization: every candidate whose normalized form **starts with** the normalized user value contributes (**OR**). If **no** candidate matches, the leaf returns an **error** (same broad family as (3)) — unless the field spec documents a deliberate exception (e.g. historical silent zero-hit for some tag fields).
+4. **Non-empty `:` — prefix union for discoverability.** **`:`** means **prefix union** after the same normalization: every candidate whose normalized form **starts with** the normalized user value contributes (**OR**). If **no** candidate matches, the leaf returns an **error** (same broad family as (3)) — unless the field spec documents a deliberate exception (e.g. historical silent zero-hit for some tag fields). **`otag`** / **`atag`** are a **field-spec exception**: **`:`** uses **boundary-aligned prefix union** per [Spec 174](../specs/174-otag-atag-prefix-query-semantics.md), not full-string **`startsWith`** on **`normalizeForResolution`**-stripped text (hyphens must remain load-bearing for tag slugs).
 
 5. **Intentional exceptions.** Any deviation from (2)–(4) must be **stated in the field spec** with rationale. Example: **non-vocabulary** string semantics (e.g. substring **`artist:`** per [Spec 149](../specs/149-artist-evaluator.md)).
 
@@ -54,4 +54,5 @@ Individual **specs** remain the normative, testable source for each field. This 
 
 ## History
 
+- **2026-04-10:** Clarified §3–§4: **`otag`** / **`atag`** use [Spec 174](../specs/174-otag-atag-prefix-query-semantics.md) tag normalization and boundary-aligned **`:`** matching ([GitHub #253](https://github.com/jimbojw/frantic-search/issues/253)).
 - **2026-04-05:** Reworked §2 (empty values): open-clause forgiveness vs committed-empty error UX; explicit ban on empty-value subset filters; noted Scryfall whitespace contrast ([GitHub #260](https://github.com/jimbojw/frantic-search/issues/260)).
