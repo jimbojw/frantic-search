@@ -5,6 +5,7 @@ import {
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
+  faceColorMasksUniform,
 } from "./card-detail-chips";
 import { parseManaSymbols, manaEquals } from "./search/mana";
 
@@ -181,5 +182,30 @@ describe("colorIdentityMaskToManaCostString", () => {
 
   it("returns all five for full WUBRG", () => {
     expect(colorIdentityMaskToManaCostString(31)).toBe("{W}{U}{B}{R}{G}");
+  });
+});
+
+describe("faceColorMasksUniform", () => {
+  it("returns true for empty face index list", () => {
+    expect(faceColorMasksUniform([4, 1], [])).toBe(true);
+  });
+
+  it("returns true when a single face is indexed", () => {
+    expect(faceColorMasksUniform([4, 8, 1], [1])).toBe(true);
+  });
+
+  it("returns true when all indexed faces share the same mask", () => {
+    const colors = [12, 12, 12];
+    expect(faceColorMasksUniform(colors, [0, 1, 2])).toBe(true);
+  });
+
+  it("returns true when all indexed faces are colorless", () => {
+    const colors = [0, 0];
+    expect(faceColorMasksUniform(colors, [0, 1])).toBe(true);
+  });
+
+  it("returns false when any indexed face differs", () => {
+    const colors = [4, 1];
+    expect(faceColorMasksUniform(colors, [0, 1])).toBe(false);
   });
 });

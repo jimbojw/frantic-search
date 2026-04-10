@@ -188,6 +188,7 @@ export {
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
+  faceColorMasksUniform,
 } from "./card-detail-chips";
 export {
   positionInEqualityPercentileBand,

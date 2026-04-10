@@ -79,3 +79,22 @@ export function colorIdentityMaskToManaCostString(mask: number): string {
     .map(([, ch]) => `{${ch}}`)
     .join("");
 }
+
+/**
+ * True when every indexed face has the same `DisplayColumns.colors` bitmask.
+ * Used for Spec 183: hoist a single **Color** (`c:`) row to the oracle / combined
+ * panel for multi-faced cards when face colors match after ETL/broadcast.
+ *
+ * Empty `faceIndices` is treated as vacuously uniform (`true`).
+ */
+export function faceColorMasksUniform(
+  colors: readonly number[],
+  faceIndices: readonly number[],
+): boolean {
+  if (faceIndices.length === 0) return true;
+  const first = colors[faceIndices[0]!];
+  for (let i = 1; i < faceIndices.length; i++) {
+    if (colors[faceIndices[i]!] !== first) return false;
+  }
+  return true;
+}

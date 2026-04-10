@@ -7,6 +7,7 @@ import {
   manaCostToCompactQuery,
   colorBitmaskToQueryLetters,
   colorIdentityMaskToManaCostString,
+  faceColorMasksUniform,
   moxfieldPreviewLine,
 } from '@frantic-search/shared'
 import ListLineHighlight from './ListLineHighlight'
@@ -555,6 +556,8 @@ const CARD_DETAILS_DL_CLASS =
 function CardDetailFaceFields(props: {
   d: Accessor<DisplayColumns>
   fi: number
+  /** When true, **Color** (`c:`) is shown in the oracle / combined panel instead (Spec 183). */
+  omitColor?: boolean
   onNavigateToQuery?: (q: string) => void
 }) {
   const c = () => props.d()
@@ -591,24 +594,26 @@ function CardDetailFaceFields(props: {
         {c().type_lines[fi()]}
       </DetailRow>
 
-      <DetailRow
-        label="Color"
-        chips={
-          <QueryChip
-            query={`c:${colorLetters()}`}
-            field="color"
-            onNavigate={props.onNavigateToQuery}
-            customLabel={
-              <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
-                <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
-                <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
-              </span>
-            }
-          />
-        }
-      >
-        <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
-      </DetailRow>
+      <Show when={!props.omitColor}>
+        <DetailRow
+          label="Color"
+          chips={
+            <QueryChip
+              query={`c:${colorLetters()}`}
+              field="color"
+              onNavigate={props.onNavigateToQuery}
+              customLabel={
+                <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
+                  <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
+                  <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
+                </span>
+              }
+            />
+          }
+        >
+          <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
+        </DetailRow>
+      </Show>
 
       <Show when={pow() && tou()}>
         <DetailRow label="Power" chips={<QueryChip query={`pow=${pow()}`} field="power" onNavigate={props.onNavigateToQuery} />}>
@@ -1133,6 +1138,27 @@ export default function CardDetail(props: {
                     )
                   })()}
 
+                  <Show when={isMultiFace() && faceColorMasksUniform(cols().colors, faces())}>
+                    <DetailRow
+                      label="Color"
+                      chips={
+                        <QueryChip
+                          query={`c:${colorBitmaskToQueryLetters(cols().colors[faces()[0]!])}`}
+                          field="color"
+                          onNavigate={props.onNavigateToQuery}
+                          customLabel={
+                            <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
+                              <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
+                              <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[faces()[0]!])} />
+                            </span>
+                          }
+                        />
+                      }
+                    >
+                      <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[faces()[0]!])} />
+                    </DetailRow>
+                  </Show>
+
                   <Show when={!isMultiFace() && faces().length > 0}>
                     <CardDetailFaceFields d={cols} fi={faces()[0]} onNavigateToQuery={props.onNavigateToQuery} />
                   </Show>
@@ -1154,7 +1180,12 @@ export default function CardDetail(props: {
                           >
                             {cols().names[fi]}
                           </DetailRow>
-                          <CardDetailFaceFields d={cols} fi={fi} onNavigateToQuery={props.onNavigateToQuery} />
+                          <CardDetailFaceFields
+                            d={cols}
+                            fi={fi}
+                            omitColor={faceColorMasksUniform(cols().colors, faces())}
+                            onNavigateToQuery={props.onNavigateToQuery}
+                          />
                         </dl>
                       )}
                     </For>
