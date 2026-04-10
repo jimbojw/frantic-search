@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { OracleTagData } from "../data";
-import { normalizeForResolution } from "./categorical-resolve";
+import {
+  normalizeForTagResolution,
+  matchesBoundaryAlignedPrefix,
+} from "./categorical-resolve";
 
 /** One wire oracle tag key’s normalized form and face index list (Spec 174 precompute). */
 export type OracleTagEvalEntry = {
@@ -29,27 +32,27 @@ function applyPrintingIndices(printingIndices: Uint32Array, buf: Uint8Array): vo
 }
 
 /**
- * Precompute `normalizeForResolution` for each oracle tag wire key once (Spec 174).
+ * Precompute `normalizeForTagResolution` for each oracle tag wire key once (Spec 174).
  */
 export function buildOracleTagEvalIndex(oracle: OracleTagData): OracleTagEvalEntry[] {
   const keys = Object.keys(oracle);
   const out: OracleTagEvalEntry[] = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i]!;
-    out[i] = { normKey: normalizeForResolution(k), faceIndices: oracle[k]! };
+    out[i] = { normKey: normalizeForTagResolution(k), faceIndices: oracle[k]! };
   }
   return out;
 }
 
 /**
- * Precompute `normalizeForResolution` for each illustration tag wire key once (Spec 174).
+ * Precompute `normalizeForTagResolution` for each illustration tag wire key once (Spec 174).
  */
 export function buildIllustrationTagEvalIndex(illustration: Map<string, Uint32Array>): IllustrationTagEvalEntry[] {
   const keys = Array.from(illustration.keys());
   const out: IllustrationTagEvalEntry[] = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i]!;
-    out[i] = { normKey: normalizeForResolution(k), printingIndices: illustration.get(k)! };
+    out[i] = { normKey: normalizeForTagResolution(k), printingIndices: illustration.get(k)! };
   }
   return out;
 }
@@ -80,13 +83,13 @@ export function evalOracleTag(
     return null;
   }
 
-  const u = normalizeForResolution(trimmed);
+  const u = normalizeForTagResolution(trimmed);
 
   if (operator === ":") {
     let matchedAny = false;
     for (let r = 0; r < indexRows.length; r++) {
       const { normKey, faceIndices } = indexRows[r]!;
-      if (!normKey.startsWith(u)) continue;
+      if (!matchesBoundaryAlignedPrefix(normKey, u)) continue;
       matchedAny = true;
       applyOracleIndices(faceIndices, buf);
     }
@@ -144,13 +147,13 @@ export function evalIllustrationTag(
     return null;
   }
 
-  const u = normalizeForResolution(trimmed);
+  const u = normalizeForTagResolution(trimmed);
 
   if (operator === ":") {
     let matchedAny = false;
     for (let r = 0; r < indexRows.length; r++) {
       const { normKey, printingIndices } = indexRows[r]!;
-      if (!normKey.startsWith(u)) continue;
+      if (!matchesBoundaryAlignedPrefix(normKey, u)) continue;
       matchedAny = true;
       applyPrintingIndices(printingIndices, buf);
     }

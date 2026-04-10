@@ -121,11 +121,40 @@ describe("evalOracleTag", () => {
     expect(buf[2]).toBe(1);
   });
 
-  test("hyphenated key matches alphanumeric prefix under :", () => {
+  test("hyphenated key: mana matches mana-rock at boundary i=0 (Spec 174)", () => {
     const oracle: OracleTagData = { "mana-rock": [7] };
     const buf = new Uint8Array(10);
     expect(evalOracleTag(":", "mana", oracle, null, buf)).toBe(null);
     expect(buf[7]).toBe(1);
+  });
+
+  test("Spec 174: mana-r matches mana-ramp; mana alone does not match mana-r prefix", () => {
+    const oracle: OracleTagData = { mana: [1], "mana-ramp": [2] };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag(":", "mana-r", oracle, null, buf)).toBe(null);
+    expect(buf[1]).toBe(0);
+    expect(buf[2]).toBe(1);
+  });
+
+  test("Spec 174: trigger matches death-trigger at segment boundary", () => {
+    const oracle: OracleTagData = { "death-trigger": [3] };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag(":", "trigger", oracle, null, buf)).toBe(null);
+    expect(buf[3]).toBe(1);
+  });
+
+  test("Spec 174: ana does not match mana", () => {
+    const oracle: OracleTagData = { mana: [0] };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag(":", "ana", oracle, null, buf)).toBe('unknown oracle tag "ana"');
+  });
+
+  test("Spec 174 #253: on- does not spuriously match one-off", () => {
+    const oracle: OracleTagData = { "one-off": [1], "one-sided-fight": [2] };
+    const buf = new Uint8Array(8);
+    expect(evalOracleTag(":", "on-", oracle, null, buf)).toBe('unknown oracle tag "on-"');
+    expect(buf[1]).toBe(0);
+    expect(buf[2]).toBe(0);
   });
 
   test("skips indices beyond buffer length", () => {

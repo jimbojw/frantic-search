@@ -182,6 +182,9 @@ export function computePrefixBranchHintForLeaf(
   const candidates = getNormalizedCandidates(canonical, ctx)
   if (candidates === null || candidates.length === 0) return undefined
 
-  const hint = buildPrefixBranchHint(fieldNode.value, candidates)
+  const hint =
+    canonical === 'otag' || canonical === 'atag'
+      ? buildPrefixBranchHint(fieldNode.value, candidates, 'tag')
+      : buildPrefixBranchHint(fieldNode.value, candidates)
   return hint ?? undefined
 }

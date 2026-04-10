@@ -101,8 +101,15 @@ export {
   expandIsKeywordsExact,
   collectIsNotPrefixHintNormalizedCandidates,
   normalizeForResolution,
+  normalizeForTagResolution,
+  matchesBoundaryAlignedPrefix,
 } from "./search/categorical-resolve";
-export { buildPrefixBranchHint, collapseBranchTokens, sortBranchTokens } from "./search/prefix-branch-hint";
+export {
+  buildPrefixBranchHint,
+  collapseBranchTokens,
+  sortBranchTokens,
+  type PrefixBranchHintMode,
+} from "./search/prefix-branch-hint";
 export type { ResolutionContext } from "./search/categorical-resolve";
 export { queryForSortSeed } from "./search/query-for-sort";
 export { getSortByFromQuery } from "./search/query-sort";

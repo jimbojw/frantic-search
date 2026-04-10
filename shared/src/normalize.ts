@@ -31,6 +31,32 @@ export function normalizeAlphanumeric(s: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+/**
+ * Spec 174 / Spec 103: tag keys and tag field values — NFD, strip diacritics, lowercase,
+ * keep `[a-z0-9-]` only (ASCII hyphen U+002D preserved).
+ */
+export function normalizeForTagResolution(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * Spec 174 `:` — true iff `u` is a prefix of `normKey` starting at the beginning of the slug
+ * or immediately after a hyphen (word boundary).
+ */
+export function matchesBoundaryAlignedPrefix(normKey: string, u: string): boolean {
+  if (u.length === 0) return true;
+  const T = normKey;
+  for (let i = 0; i < T.length; i++) {
+    if (i > 0 && T[i - 1] !== "-") continue;
+    if (T.slice(i).startsWith(u)) return true;
+  }
+  return false;
+}
+
 /** Build normalized-key lookup from raw alternate names. ETL outputs raw keys;
  * client normalizes at load time. Collisions: last write wins. */
 export function buildNormalizedAlternateIndex<T>(

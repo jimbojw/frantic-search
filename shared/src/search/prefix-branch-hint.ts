@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeForResolution } from "./categorical-resolve";
+import {
+  normalizeForResolution,
+  normalizeForTagResolution,
+  matchesBoundaryAlignedPrefix,
+} from "./categorical-resolve";
 
 const KIND_EQUALS = 0;
 const KIND_LETTER = 1;
@@ -79,19 +83,71 @@ function uniqueNonEmptyNormalized(candidates: readonly string[]): string[] {
   return out;
 }
 
+/** Spec 181: `otag` / `atag` use Spec 174 tag normalization + boundary-aligned `:` eval. */
+export type PrefixBranchHintMode = "default" | "tag";
+
+function buildPrefixBranchHintTag(trimmed: string, nonEmpty: string[]): string | null {
+  const u = normalizeForTagResolution(trimmed);
+
+  if (trimmed === "") {
+    const chars = new Set<string>();
+    for (const c of nonEmpty) {
+      chars.add(c[0]!);
+    }
+    const sorted = sortBranchTokens([...chars]);
+    const collapsed = collapseBranchTokens(sorted);
+    return `(${collapsed.join("|")})`;
+  }
+
+  const matches = nonEmpty.filter((c) => matchesBoundaryAlignedPrefix(c, u));
+  if (matches.length === 0) return null;
+
+  if (!matches.every((m) => m.startsWith(u))) {
+    return null;
+  }
+
+  const uniqueMatches = [...new Set(matches)];
+  if (uniqueMatches.length === 1) {
+    const c = uniqueMatches[0]!;
+    if (c === u) return null;
+    return `(${c.slice(u.length)})`;
+  }
+
+  const branchSet = new Set<string>();
+  let hasExact = false;
+  for (const m of uniqueMatches) {
+    if (m === u) {
+      hasExact = true;
+    } else {
+      const rest = m.slice(u.length);
+      if (rest.length > 0) branchSet.add(rest[0]!);
+    }
+  }
+  if (hasExact) branchSet.add("=");
+  const sorted = sortBranchTokens([...branchSet]);
+  const collapsed = collapseBranchTokens(sorted);
+  return `(${collapsed.join("|")})`;
+}
+
 /**
  * Spec 181: build parenthesized prefix-branch hint from normalized vocabulary strings.
  * @param trimmedValue - field value after trim (may be empty)
  * @param normalizedCandidates - each candidate already normalized like eval (non-empty)
+ * @param mode - `tag` for Spec 174 otag/atag (boundary-aligned `:` + normalizeForTagResolution)
  */
 export function buildPrefixBranchHint(
   trimmedValue: string,
   normalizedCandidates: readonly string[],
+  mode: PrefixBranchHintMode = "default",
 ): string | null {
   const nonEmpty = uniqueNonEmptyNormalized(normalizedCandidates);
   if (nonEmpty.length === 0) return null;
 
   const t = trimmedValue.trim();
+  if (mode === "tag") {
+    return buildPrefixBranchHintTag(t, nonEmpty);
+  }
+
   const prefix = normalizeForResolution(t);
 
   if (t === "") {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { FORMAT_NAMES, GAME_NAMES, RARITY_FROM_STRING, FRAME_NAMES } from "../bits";
-import { normalizeAlphanumeric } from "../normalize";
+import { normalizeAlphanumeric, normalizeForTagResolution } from "../normalize";
 import { SORT_FIELDS } from "./sort-fields";
 import { IS_KEYWORDS, IS_PREFIX_VOCABULARY, UNSUPPORTED_IS_KEYWORDS } from "./eval-is";
 
@@ -46,6 +46,8 @@ export interface ResolutionContext {
 export function normalizeForResolution(s: string): string {
   return normalizeAlphanumeric(s);
 }
+
+export { normalizeForTagResolution, matchesBoundaryAlignedPrefix } from "../normalize";
 
 /**
  * Resolve typed value to single matching candidate when exactly one matches.
@@ -226,6 +228,9 @@ export function resolveForField(
   const candidates = getCandidatesForField(canonical, context);
   if (!candidates) return value;
 
-  const resolved = resolveCategoricalValue(value, candidates);
+  const resolved =
+    canonical === "otag" || canonical === "atag"
+      ? resolveCategoricalValue(value, candidates, normalizeForTagResolution)
+      : resolveCategoricalValue(value, candidates);
   return resolved ?? value;
 }

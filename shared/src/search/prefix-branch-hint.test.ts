@@ -71,4 +71,18 @@ describe("buildPrefixBranchHint (Spec 181)", () => {
   it("trims whitespace on value", () => {
     expect(buildPrefixBranchHint("  p  ", ["paper"])).toBe("(aper)");
   });
+
+  describe("tag mode (Spec 174 / Spec 181 otag/atag)", () => {
+    it("mana-r vs mana-ramp + mana-rock: multi-branch first remainder chars", () => {
+      expect(buildPrefixBranchHint("mana-r", ["mana-ramp", "mana-rock"], "tag")).toBe("(a|o)");
+    });
+
+    it("empty tag prefix: first chars of norm keys", () => {
+      expect(buildPrefixBranchHint("", ["mana-ramp", "removal"], "tag")).toBe("(m|r)");
+    });
+
+    it("interior-only boundary match yields no hint (MVP)", () => {
+      expect(buildPrefixBranchHint("trigger", ["death-trigger"], "tag")).toBe(null);
+    });
+  });
 });

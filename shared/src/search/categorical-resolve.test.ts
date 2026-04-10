@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   normalizeForResolution,
+  normalizeForTagResolution,
   resolveCategoricalValue,
   resolveForField,
   expandIsKeywordsFromPrefix,
@@ -244,6 +245,16 @@ describe("resolveForField", () => {
       };
       expect(resolveForField("otag", "t", ctx)).toBe("tribal");
       expect(resolveForField("otag", "rem", ctx)).toBe("removal");
+    });
+
+    it("resolves otag/atag with tag normalization (hyphens preserved, Spec 103)", () => {
+      const ctx: ResolutionContext = {
+        oracleTagLabels: ["mana-rock", "ramp"],
+        illustrationTagLabels: ["bolt-storm", "chair"],
+      };
+      expect(normalizeForTagResolution("mana-rock")).toBe("mana-rock");
+      expect(resolveForField("otag", "mana-ro", ctx)).toBe("mana-rock");
+      expect(resolveForField("atag", "bolt", ctx)).toBe("bolt-storm");
     });
 
     it("resolves atag when context has illustrationTagLabels", () => {
