@@ -10,6 +10,8 @@ export type PendingSearchCapturePayload = {
   triggered_by: 'url' | 'user'
   /** `pathname` + `search` when the worker result was handled (GitHub #184). */
   url_snapshot: string
+  /** Spec 184: left-pane breakdown accordion at schedule time. */
+  breakdown_expanded: boolean
 }
 
 export function useSearchCapture(getEffectiveQuery: () => string) {
@@ -44,7 +46,8 @@ export function useSearchCapture(getEffectiveQuery: () => string) {
     usedExtension: boolean,
     resultsCount: number,
     triggeredBy: 'url' | 'user',
-    urlSnapshot: string
+    urlSnapshot: string,
+    breakdownExpanded: boolean,
   ): void {
     if (!query.trim()) return
     if (searchCaptureTimer !== null || pendingBatchCompletionCount > 0) {
@@ -57,6 +60,7 @@ export function useSearchCapture(getEffectiveQuery: () => string) {
       results_count: resultsCount,
       triggered_by: triggeredBy,
       url_snapshot: urlSnapshot,
+      breakdown_expanded: breakdownExpanded,
     }
     if (searchCaptureTimer) clearTimeout(searchCaptureTimer)
     searchCaptureTimer = setTimeout(() => {

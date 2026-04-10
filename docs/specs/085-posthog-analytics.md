@@ -85,7 +85,7 @@ Standardize event properties for easy grouping in the PostHog dashboard:
 
 | Event                     | Properties                                                              |
 |---------------------------|-------------------------------------------------------------------------|
-| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user", url_snapshot: string, session_search_index: number, coalesced_prior_search_count: number }` (Spec 144; `url_snapshot` + coherence rules — [GitHub #184](https://github.com/jimbojw/frantic-search/issues/184); session ordinals — §7a) |
+| `search_executed`         | `{ query: string, used_extension: boolean, results_count: number, triggered_by: "url" \| "user", url_snapshot: string, session_search_index: number, coalesced_prior_search_count: number, breakdown_expanded: boolean }` (Spec 144; Spec 184 — [GitHub #256](https://github.com/jimbojw/frantic-search/issues/256); `url_snapshot` + coherence rules — [GitHub #184](https://github.com/jimbojw/frantic-search/issues/184); session ordinals — §7a) |
 | `search_resolved_from_url`| `{ duration_ms: number, results_count: number, had_results: boolean }` (Spec 140) |
 | `ui_interacted`           | `{ element_name: string, action: 'toggled' \| 'clicked', state?: string }` — for `element_name: 'copy_link_menu'`, `state` is one of `opened`, `copied_url`, `copied_markdown_search`, `copied_markdown_card_name` (Spec 164). |
 | `suggestion_applied`       | `{ suggestion_id: string, suggestion_label: string, variant: 'rewrite' \| 'cta', applied_query?: string, cta_action?: string, mode?: 'empty' \| 'rider' }` (Spec 151, Spec 153) |
@@ -126,9 +126,9 @@ Search runs on every keystroke (ADR-003). Emitting every search would flood Post
 
 **Throttling:** Debounce or throttle: only capture after the user stops typing for 500–1000 ms, or on blur of the search input.
 
-**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.usedExtension`, `msg.uniqueMode`, `msg.includeExtras`, and `location.pathname` + `location.search` read synchronously in that handler.
+**Location:** Main thread when `worker.onmessage` receives a `result` message. Data available: `query()`, `pinnedQuery()`, `effectiveQuery()`, result count (from `msg.indices` / printing rows or pinned-only counts), `msg.usedExtension`, `msg.uniqueMode`, `msg.includeExtras`, **left/single pane** unified breakdown accordion expanded state (`breakdownExpanded` in `App.tsx`; Spec 184), and `location.pathname` + `location.search` read synchronously in that handler.
 
-**Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot, session_search_index, coalesced_prior_search_count })`.
+**Event:** `captureSearchExecuted({ query, used_extension, results_count, triggered_by, url_snapshot, session_search_index, coalesced_prior_search_count, breakdown_expanded })`.
 
 **Coherence (Issue #184):** The debounced send must not fire if the trimmed effective query has changed since that result was scheduled; discard the pending payload. PostHog’s automatic `$current_url` reflects the moment `capture` runs, which can lag the stored `query` by the debounce window—use `url_snapshot` (pathname + search at result-handling time) for analysis that must align query, result count, and URL.
 
@@ -219,6 +219,8 @@ PostHog's JS SDK uses `fetch` for payloads to `https://[api_host]/e/`. The servi
 7. `npm run dev` surfaces analytics payloads in the console; `npm test -w app` behavior is unchanged (no console-only path during tests).
 
 ## Revision history
+
+- **2026-04-10** ([GitHub #256](https://github.com/jimbojw/frantic-search/issues/256)): `search_executed` adds `breakdown_expanded` (boolean snapshot of left-pane unified query breakdown accordion at `scheduleSearchCapture` time; Spec 184).
 
 - **2026-03-29**: `search_executed` adds `session_search_index` (0-based per-tab emission ordinal) and `coalesced_prior_search_count` (completed captures not emitted as separate events before this one, including debounce coalescing and coherence-discarded batches attributed to the next emit).
 

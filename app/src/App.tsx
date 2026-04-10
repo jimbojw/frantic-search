@@ -759,7 +759,7 @@ function App() {
                 ? 'url'
                 : 'user'
             const urlSnapshot = `${location.pathname}${location.search}`
-            scheduleSearchCapture(eq, usedExt, resultsCount, triggeredBy, urlSnapshot)
+            scheduleSearchCapture(eq, usedExt, resultsCount, triggeredBy, urlSnapshot, breakdownExpanded())
             if (hadQueryInUrlOnInit && !searchResolvedFromUrlFired && query().trim() === initialQueries.left.trim()) {
               searchResolvedFromUrlFired = true
               captureSearchResolvedFromUrl({

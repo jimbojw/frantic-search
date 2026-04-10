@@ -63,6 +63,8 @@ export function captureSearchExecuted(params: {
    * and coherence-discarded batches; Spec 085 §7a).
    */
   coalesced_prior_search_count: number
+  /** Left/single pane unified query breakdown accordion expanded at schedule time (Spec 184). */
+  breakdown_expanded: boolean
 }): void {
   captureEvent('search_executed', params)
 }
