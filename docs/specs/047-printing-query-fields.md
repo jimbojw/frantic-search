@@ -103,6 +103,17 @@ These move from `UNSUPPORTED_IS_KEYWORDS` in the evaluator to active printing-do
 
 **ATYPICAL_FRAME_MASK** = `FullArt | Borderless | ExtendedArt | Masterpiece | Colorshifted | Showcase | Inverted | Nyxtouched`. All map to existing `PrintingFlag` bits (Spec 046); no new bits or ETL changes.
 
+### `is:old` / `is:new` — Frame era ([Issue #263](https://github.com/jimbojw/frantic-search/issues/263))
+
+Scryfall groups these under “Border, Frame, Foil & Resolution” ([syntax reference](https://scryfall.com/docs/syntax)). They classify the **frame era** (which of the five `frame` vocabulary values applies to a printing), **not** atypical frame *treatments* (`is:default` / `is:atypical` above) and not the user-driven **`frame:`** prefix/exact operators (which select explicit era keys).
+
+| Keyword | Scryfall semantics | Implementation |
+|---------|-------------------|----------------|
+| `is:old` | Classic frame only (Alpha–Portal era styles) | `(frame[i] & OLD_FRAME_MASK) !== 0` where `OLD_FRAME_MASK = Frame.Y1993 \| Frame.Y1997` |
+| `is:new` | Non-classic frame (post-classic: Modern 2003, M15 2015, Future) | `(frame[i] & NEW_FRAME_MASK) !== 0` where `NEW_FRAME_MASK = Frame.Y2003 \| Frame.Y2015 \| Frame.Future` |
+
+The five `Frame` bits partition printings: each row matches **exactly one** of `is:old` or `is:new` (e.g. `frame:2003` intersects `is:new`, not `is:old`). Evaluation uses the existing per-printing `frame` column ([`shared/src/bits.ts`](../../shared/src/bits.ts)); no ETL changes.
+
 ### `is:rainbowfoil` / `is:poster` / `is:boosterfun` / … — Promo types (Scryfall `promo_types`)
 
 | Operator | Semantics |
@@ -337,7 +348,7 @@ if (isPrintingField(canonical)) {
 
 ### `is:` keyword changes (`shared/src/search/eval-is.ts`)
 
-Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, `unset`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
+Printing-domain `is:` keywords (`foil`, `nonfoil`, `etched`, `fullart`, `textless`, `reprint`, `promo`, `digital`, `borderless`, `extended`, `oversized`, `old`, `new`, `unset`, plus all 52 `promo_types` values including `alchemy`, `rebalanced`, `rainbowfoil`, `poster`, `glossy`, `universesbeyond`, `playtest`, etc., plus `ub` as an alias for `universesbeyond`) are listed in `PRINTING_IS_KEYWORDS` and evaluated by `evalPrintingIsKeyword()`. `evalPrintingIsKeyword()` handles `ub` by looking up the same `PROMO_TYPE_FLAGS` entry as `universesbeyond`. Face-domain keywords (all existing ones) are handled by `evalIsKeyword()`.
 
 **Query evaluation** does **not** use Spec 103 **`resolveForField("is", …)`** for semantic matching. It uses operator-aware expansion over the closed `is:` vocabulary (**[Spec 032](032-is-operator.md)** § Value resolution): **`:`** prefix union, **`=`** exact, **`!=`** negation of the **`=`** positive mask (ADR-022). **`resolveForField("is", …)`** remains for **canonicalize** and other non-eval paths that need unique-prefix collapse.
 
@@ -507,3 +518,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-04-04: **`frame:`** / **`frame=`** — Spec 182 operator split on `FRAME_NAMES`; precomputed normalized keys; empty **`frame:`** / **`frame=`** neutral (all printings, **`kw:`** parity). Evaluator invokes `evalPrintingField` for `frame` when the AST value is empty (same dispatch fix pattern as **`set`** / **`set_type`**).
 - 2026-04-04: **`frame!=`** — negation of **`frame=`** exact mask only (principled Frantic extension vs Scryfall); empty neutral.
 - 2026-04-04: **`atag:`** / **`art:`** — Spec 174 ADR-022 migration: **`:`** / **`=`** / **`!=`**, **`unknown illustration tag`**, precomputed normalized keys (same family as **`kw:`** / **`set:`**).
+- 2026-04-10: Added **`is:old`** and **`is:new`** (frame era from `Frame` bitmask; [Issue #263](https://github.com/jimbojw/frantic-search/issues/263)). Distinct from **`is:default`** / **`is:atypical`** (printing_flags treatments). No ETL changes.

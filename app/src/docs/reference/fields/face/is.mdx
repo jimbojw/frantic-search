@@ -45,7 +45,7 @@ Keywords for mechanics, layouts, roles, and finish. Examples:
 | Layouts | `q=is:dfc`, `q=is:meld`, `q=is:split` |
 | Roles | `q=is:booster`, `q=is:promo` |
 | Finish | `q=is:foil`, `q=is:etched`, `q=is:nonfoil` |
-| Frame | `q=is:default`, `q=is:atypical` |
+| Frame | `q=is:old`, `q=is:new` (era); `q=is:default`, `q=is:atypical` (treatment) |
 | Land cycles | `q=is:fetchland`, `q=is:shockland`, `q=is:pathway` |
 | Promo / printing (when printings load) | `q=is:alchemy`, `q=is:rebalanced`, `q=is:rainbowfoil`, … | See below |
 
@@ -60,6 +60,7 @@ For a small edge case, **seven** [Mystery Booster 2](?q=set%3Amb2+unique%3Aprint
 ## Notes
 
 - `q=is:commander` matches cards that can be your commander (legendary creatures, planeswalkers with "can be your commander", etc.).
+- `q=is:old` and `q=is:new` match printings by **frame era** (classic 1993/1997 vs post-classic 2003/2015/future), using the same `frame` data as `frame:`. They are not the same as **`is:default`** / **`is:atypical`**, which classify atypical frame *treatments* (borderless, showcase, etc.).
 - `q=is:default` matches printings with the default Magic frame; `q=is:atypical` matches printings with atypical frame treatments (borderless, extended art, showcase, etc.).
 - Land cycle keywords (e.g. `q=is:fetchland`) match curated card-name sets.
 

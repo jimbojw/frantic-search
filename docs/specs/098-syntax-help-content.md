@@ -41,7 +41,7 @@ The Fields table must include every queryable field with canonical name, aliases
 | `legal` | `f`, `format` | Format legality; **`:`** = normalized **prefix** union over **`FORMAT_NAMES`**, **`=`** = exact, **`!=`** = negation of **`=`** mask (Spec 182); empty **`:`** / **`=`** / **`!=`** neutral | `f:modern`, `f=commander`, `f!=standard` |
 | `banned` | — | Banned in format; same **`:`** / **`=`** / **`!=`** semantics as **`legal:`** on the banned column (Spec 182) | `banned:legacy`, `banned!=legacy` |
 | `restricted` | — | Restricted in format; same operator semantics as **`legal:`** (Spec 182) | `restricted:vintage` |
-| `is` | `not` | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil); `not:` = `-is:` | `is:commander`, `not:dfc` |
+| `is` | `not` | Mechanics, layouts, roles, finish (is:commander, is:dfc, is:foil); frame era (is:old, is:new) vs treatment (is:default, is:atypical); `not:` = `-is:` | `is:commander`, `is:new`, `not:dfc` |
 | `kw` | `keyword` | Keyword ability; normalized **prefix** with union over matching names; no match → `unknown keyword` (Spec 176) | `kw:flying`, `kw:first` |
 | `otag` | `function`, `oracletag` | Oracle tag (community-curated) | `otag:ramp` |
 | `atag` | — | Illustration tag (community-curated) | `atag:bolt` |

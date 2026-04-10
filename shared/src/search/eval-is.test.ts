@@ -168,3 +168,55 @@ describe("evalPrintingIsKeyword unset (Spec 171)", () => {
     expect(buf[1]).toBe(0);
   });
 });
+
+describe("evalPrintingIsKeyword is:old / is:new (Spec 047 / Issue #263)", () => {
+  const fiveEraFrames = [
+    Frame.Y1993,
+    Frame.Y1997,
+    Frame.Y2003,
+    Frame.Y2015,
+    Frame.Future,
+  ];
+  const data: PrintingColumnarData = {
+    canonical_face_ref: [0, 0, 0, 0, 0],
+    scryfall_ids: ["a", "b", "c", "d", "e"],
+    collector_numbers: ["1", "2", "3", "4", "5"],
+    tcgplayer_product_ids: [0, 0, 0, 0, 0],
+    set_indices: [0, 0, 0, 0, 0],
+    rarity: Array(5).fill(Rarity.Common),
+    printing_flags: Array(5).fill(0),
+    finish: Array(5).fill(Finish.Nonfoil),
+    frame: fiveEraFrames,
+    price_usd: Array(5).fill(100),
+    released_at: Array(5).fill(20200101),
+    set_lookup: [{ code: "TST", name: "Test", released_at: 20200101 }],
+  };
+
+  test("is:old matches only 1993 and 1997 frame rows", () => {
+    const pIdx = new PrintingIndex(data);
+    const n = 5;
+    const buf = new Uint8Array(n);
+    expect(evalPrintingIsKeyword("old", pIdx, buf, n)).toBe("ok");
+    expect(Array.from(buf)).toEqual([1, 1, 0, 0, 0]);
+  });
+
+  test("is:new matches 2003, 2015, and future frame rows", () => {
+    const pIdx = new PrintingIndex(data);
+    const n = 5;
+    const buf = new Uint8Array(n);
+    expect(evalPrintingIsKeyword("new", pIdx, buf, n)).toBe("ok");
+    expect(Array.from(buf)).toEqual([0, 0, 1, 1, 1]);
+  });
+
+  test("is:old and is:new partition every printing row", () => {
+    const pIdx = new PrintingIndex(data);
+    const n = 5;
+    const oldBuf = new Uint8Array(n);
+    const newBuf = new Uint8Array(n);
+    evalPrintingIsKeyword("old", pIdx, oldBuf, n);
+    evalPrintingIsKeyword("new", pIdx, newBuf, n);
+    for (let i = 0; i < n; i++) {
+      expect(oldBuf[i]! + newBuf[i]!).toBe(1);
+    }
+  });
+});

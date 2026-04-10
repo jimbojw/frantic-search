@@ -665,6 +665,16 @@ describe("is: operator", () => {
     expect((defaultOut.printingIndices?.length ?? 0) + (atypicalOut.printingIndices?.length ?? 0)).toBe(11);
   });
 
+  // --- is:old / is:new (Issue #263) — fixture printings are all Y2015 ---
+
+  test("is:old matches no printings when all frames are 2015", () => {
+    expect(matchCountWithPrintings("is:old")).toBe(0);
+  });
+
+  test("is:new matches all printings when all frames are 2015", () => {
+    expect(matchCountWithPrintings("is:new")).toBe(11);
+  });
+
   test("is: unsupported operators yield leaf error (Spec 032 / ADR-022)", () => {
     const cache = new NodeCache(isIndex);
     for (const q of ["is>spell", "is<commander", "is>=vanilla"]) {

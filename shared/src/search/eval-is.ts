@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { CardFlag, Finish, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
+import { CardFlag, Finish, Frame, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
 import { faceRowMatchesIsCommanderFields } from "../is-commander-face";
 
 // ---------------------------------------------------------------------------
@@ -228,6 +228,11 @@ const ATYPICAL_FRAME_MASK =
   PrintingFlag.Inverted |
   PrintingFlag.Nyxtouched;
 
+/** Scryfall `is:old` — classic frame only (Spec 047 / Issue #263). */
+const OLD_FRAME_MASK = Frame.Y1993 | Frame.Y1997;
+/** Scryfall `is:new` — post-classic frame (2003, 2015, future). */
+const NEW_FRAME_MASK = Frame.Y2003 | Frame.Y2015 | Frame.Future;
+
 function hasHybridSymbol(text: string): boolean {
   let i = 0;
   while ((i = text.indexOf('{', i)) !== -1) {
@@ -260,7 +265,7 @@ export const PRINTING_IS_KEYWORDS = new Set([
   "borderless", "extended", "oversized",
   "spotlight", "booster", "masterpiece", "colorshifted", "showcase", "inverted", "nyxtouched",
   "unset",
-  "default", "atypical",
+  "default", "atypical", "old", "new",
   ...Object.keys(PROMO_TYPE_FLAGS),
 ]);
 
@@ -573,6 +578,12 @@ export function evalPrintingIsKeyword(
       break;
     case "default":
       for (let i = 0; i < n; i++) if (!(pIdx.printingFlags[i] & ATYPICAL_FRAME_MASK)) buf[i] = 1;
+      break;
+    case "old":
+      for (let i = 0; i < n; i++) if (pIdx.frame[i] & OLD_FRAME_MASK) buf[i] = 1;
+      break;
+    case "new":
+      for (let i = 0; i < n; i++) if (pIdx.frame[i] & NEW_FRAME_MASK) buf[i] = 1;
       break;
     default: {
       const entry = PROMO_TYPE_FLAGS[keyword];
