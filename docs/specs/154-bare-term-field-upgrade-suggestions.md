@@ -38,7 +38,7 @@ All of the following must hold:
 
 ### Suggestion model
 
-All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion is a single chip: label = the new term (e.g. `kw:landfall`), query = full query with that term spliced in, explain = teaching copy.
+All suggestions in this category use `id: 'bare-term-upgrade'`. Each suggestion is a single chip: label = the new term (e.g. `kw:landfall`), **`query` = modified live query** after `spliceQuery(msg.query, …)` (Spec 151 / Issue #258 — not the combined pinned+live string), explain = teaching copy.
 
 - **Placement:** Empty state only (below Results Summary Bar, alongside oracle, wrong-field, etc.).
 - **Priority:** **16** for kw:, t:, set:, f:, is:, game:, frame:, and rarity: upgrades (Spec 151). **`otag:`** and **`atag:`** upgrades (exact + Spec 159 prefix) use **21** so they sort **after** the oracle “did you mean” hint (**20**) when both appear; other suggestion priorities are unchanged.
@@ -261,7 +261,7 @@ For the multi-word pass, the following are checked:
 
 - In `buildSuggestions` (app/src/worker-suggestions.ts), run bare-term-upgrade **before** the oracle hint block. Order: empty-list, include-extras, unique-prints, **bare-term-upgrade**, wrong-field, oracle.
 - Use the live AST: `ast = parse(msg.query)`; call `getBareNodes(ast)` to collect all positive BARE nodes (anywhere in the tree). If empty, skip. Bare nodes are always in the live portion when pinned+live.
-- For each bare node: for each domain (in order), check if the value matches. If match: build replacement query by splicing the live query at the node's span; when pinned, combine with sealed pinned query; use `evaluateAlternative`; push a `Suggestion` with `id: 'bare-term-upgrade'`. Include count/printingCount when > 0; omit when 0.
+- For each bare node: for each domain (in order), check if the value matches. If match: build replacement by splicing the live query at the node's span (`modifiedLive`); when pinned, combine with sealed pinned query for **`evaluateAlternative`** only; set **`Suggestion.query`** to **`modifiedLive`**, not the combined string (Issue #258). Include count/printingCount when > 0; omit when 0.
 - **Multi-word window pass:** For each adjacent bare window from `getAdjacentBareWindows`, call `getMultiWordAlternatives(phrase, context, segments)` where `phrase` is space-joined bare values and `segments` is the same values as an array (Spec 159 hyphen-slug path uses per-node trimming).
 - Track which bare terms (by value) received a **non-tag** bare-term-upgrade suggestion. When building the oracle hint (Spec 131), add only those values to **`oracleSuppressedBareValues`** — do not suggest `o:{term}` for the same token when `kw:landfall` (or another non-tag upgrade) was already offered. **`otag:`** / **`atag:`** emissions do not populate that set.
 

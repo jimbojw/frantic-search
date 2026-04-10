@@ -1046,6 +1046,22 @@ describe('oracle hint (Spec 131)', () => {
     expect(result.suggestions.find((s) => s.id === 'oracle')).toBeUndefined()
   })
 
+  it('rewrite suggestion query is live-only when pinned (issue #258)', () => {
+    const result = runSearch({
+      msg: { type: 'search', queryId: 1, query: 'landfall', pinnedQuery: 'f:commander' },
+      cache,
+      index,
+      printingIndex,
+      sessionSalt,
+      keywordLabels: ['landfall'],
+    })
+    expect(result.indices.length).toBe(0)
+    const kwChip = result.suggestions.find((s) => s.id === 'bare-term-upgrade' && s.label === 'kw:landfall')
+    expect(kwChip).toBeDefined()
+    expect(kwChip!.query).toBe('kw:landfall')
+    expect(kwChip!.query).not.toContain('f:commander')
+  })
+
   it('single-token hybrid suggests raptor o:double when primaries fail (Spec 131 / issue #221)', () => {
     const idx = new CardIndex(RAPTOR_DOUBLE_HYBRID_DATA)
     const localCache = new NodeCache(idx, null)

@@ -42,7 +42,7 @@ This is **suggestion-only** — parser and evaluator behavior are unchanged.
 | **`explain`** | Teaching copy, e.g. omit space between operator and value (Scryfall-style) |
 | **`docRef`** | `reference/syntax` |
 | **`label`** | Fixed clause snippet(s): space-separated fragments in query order (e.g. `ci:blue`; multiple gaps → `ci:blue o:surveil`). Fallback short label if needed. |
-| **`query`** | Full effective query after all gap fixes |
+| **`query`** | **Live** query after all gap fixes (same string `setQuery` receives; Spec 151 / Issue #258). Detection uses the effective query AST; derive the live apply string when pinned + live (e.g. prefix-strip sealed pinned + space from the cleaned effective string when the pinned half is unchanged). |
 | **`count` / `printingCount`** | From `evaluateAlternative` when `cardCount > 0` |
 
 ### Trigger conditions (worker)
@@ -72,7 +72,7 @@ This is **suggestion-only** — parser and evaluator behavior are unchanged.
 ## Acceptance criteria
 
 1. `ci: blue` (and `ancestral ci: blue` when the dataset yields hits for the merged form) can surface a `field-value-gap` suggestion with **`priority` 15** and correct **`query`** / **`label`**.
-2. Tapping applies the rewrite via the same path as other Spec 151 rewrites.
+2. Tapping applies the rewrite via the same path as other Spec 151 rewrites (`setQuery` with the **live** `query` payload).
 3. Suggestion does **not** appear when the gap contains non-whitespace or when merged query still returns zero results.
 4. No duplicate row when another trigger emits the same `query`.
 5. `npm test` and `npm run typecheck` pass.

@@ -77,6 +77,8 @@ When ineligible, treat the ordered-regex candidate as having **zero** matches fo
 
 Evaluate candidates against the effective (pinned + live) query using the same playable-filter rules as other suggestion rewrites. Let `phraseCount`, `regexCount`, and `perWordCount` be the resulting card counts (0 if not evaluated).
 
+**Suggestion payload (`query`):** The chip’s `query` field is the **live** query after `spliceBareToOracle` on `msg.query` (trailing spans are in live coordinates). Evaluation uses the combined `sealQuery(pinned) + ' ' + sealQuery(live)` string when pinned; **`query` must not** repeat the pinned prefix (Spec 151 / Issue #258).
+
 1. If **`phraseCount > 0`**, use the **phrase** variant (stop).
 2. Else if ordered-regex was **eligible** and **`regexCount > 0`** and **`regexCount < perWordCount`**, use **ordered-regex**.
 3. Else if **`perWordCount > 0`**, use **per-word**.

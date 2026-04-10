@@ -32,7 +32,7 @@ In each case, the value is valid for color-related fields (`ci:`, `c:`, `produce
 
 ### Suggestion model
 
-All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a single chip: label = the new term (e.g. `ci:w`), query = full query with that term spliced in, explain = teaching copy.
+All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a single chip: label = the new term (e.g. `ci:w`), **`query` = live query string** after the rewrite (Spec 151 / Issue #258). The worker splices the **effective** query for evaluation; **`Suggestion.query`** is derived for `setQuery` (e.g. strip `sealQuery(pinnedTrim) + ' '` when the pinned half is unchanged). explain = teaching copy.
 
 - **Placement:** Primarily above the Results Summary Bar in the **empty** state. When the trigger is **unknown `is:`/`not:`** while other clauses still match cards, the same chips may appear as a **rider** above the bar (Spec 151 / `SuggestionList`) so users still see the fix.
 - **Priority:** 22 (between oracle 20 and unique-prints 30).
@@ -44,7 +44,7 @@ All suggestions in this category use `id: 'wrong-field'`. Each suggestion is a s
 - Use `spliceQuery` from `app/src/query-edit-core.ts` (same as Spec 131 oracle hint).
 - For positive terms: replace the FIELD node's `span` with the new term. FIELD nodes carry `span` from the parser (Spec 036).
 - For negated terms: replace the **NOT node's span** with `-{newTerm}`. The `parseBreakdown` NOT node's span covers the full `-is:white` (Spec 036). Replacing at that span with `-ci:w` produces the correct result.
-- Build the full query by splicing in the effective query string. When pinned + live: the suggestion's `query` is the full effective query with the replacement. The app applies it via `setQuery` (which may update live only; app handles split).
+- Build the replacement by splicing the **effective** query string at breakdown spans for **`evaluateAlternative`**. Emit **`Suggestion.query`** as the **live** apply string (Spec 151), not the combined pinned+live string unless there is no pinned query.
 
 ### Domain: Color values in non-color fields
 
@@ -183,7 +183,7 @@ When the query has multiple terms that match the pattern (e.g. `is:white type:az
 - **Keyword/type in is/not:** As above; dedupe suggestion `query` strings against chips already emitted in the pass.
 - **Artist/atag domain:** If field ∈ artist trigger set, try atag:{value}; if field ∈ atag trigger set, try a:{value}. No value predicate — evaluation decides.
 - For each alternative: evaluate the query with the term replaced when a positive count is required; if count > 0, push a Suggestion (except `kw:` in the is/not domain, which may emit with zero count).
-- Use `spliceQuery(effectiveQuery, node.span, newTerm)` — the node's span is in effective-query coordinates. The suggestion's `query` is the full effective query with that replacement.
+- Use `spliceQuery(effectiveQuery, node.span, newTerm)` — the node's span is in effective-query coordinates. **`Suggestion.query`** is the live-buffer string to assign on tap (derive from the new effective string per Spec 151 § “Rewrite `query` and pinned query”). When a rewrite changes only the **pinned** region, prefix-stripping may not apply; dual apply (update pinned + live) is **out of scope** until the UI supports it.
 
 ### Suggestion type extension
 
@@ -205,7 +205,7 @@ Add `'wrong-field'` to the `Suggestion.id` union in `shared/src/suggestion-types
 ## Implementation Notes
 
 - **Negation handling:** When the offending term is under a NOT node (e.g. `-is:white`), replace the **NOT node's span** with `-{newTerm}`. The NOT node's span covers the full negated term.
-- **Pinned + live:** The effective query is `sealQuery(pinned) + ' ' + sealQuery(live)`. Detection walks `parseBreakdown(effectiveQuery)`, so spans are byte offsets into the effective query string. Splice at the node's span to produce the replacement; the suggestion's `query` is the full effective query with that splice. The app applies it via `setQuery`. When the offending term is in the live portion, span offsets are correct as-is; the worker constructs the full `query` by splicing the effective string.
+- **Pinned + live:** The effective query is `sealQuery(pinned) + ' ' + sealQuery(live)`. Detection walks `parseBreakdown(effectiveQuery)`, so spans are byte offsets into the effective query string. Splice at the node's span to produce the new **effective** string for evaluation; **`Suggestion.query`** is the **live** apply string (Issue #258). When the offending term is in the live portion, prefix-stripping the sealed pinned prefix from the new effective string usually yields the correct live text.
 
 ## Future domains (out of scope)
 
@@ -224,7 +224,7 @@ Each would be a new section in this spec (or a separate spec if complex). Artist
 
 1. `is:white` with zero results shows up to three chips: ci:w, c:w, produces:w — only those that return results.
 2. `in:azorius` with zero results shows ci:azorius, c:azorius, produces:azorius (or letter form if preferred for display) when each returns results.
-3. Tapping a chip applies the full query with the offending term replaced.
+3. Tapping a chip applies the rewritten **live** query (or the full string when there is no pinned query) via `setQuery`, matching Spec 151.
 4. `-is:white` suggests -ci:w, -c:w, -produces:w (negation preserved).
 5. `t:creature is:white` suggests for is:white only; tapping ci:w produces `t:creature ci:w`.
 6. Wrong-field suggestions appear when `totalCards === 0`, or when the evaluated breakdown has an `is:`/`not:` **unknown keyword** error (including rider placement when other clauses still match cards).

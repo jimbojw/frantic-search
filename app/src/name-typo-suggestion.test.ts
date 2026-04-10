@@ -139,4 +139,31 @@ describe('buildNameTypoSuggestion', () => {
     expect(s!.query!.toLowerCase()).toBe('t:legendary creator')
     expect(s!.count).toBeGreaterThan(0)
   })
+
+  it('query is live-only when pinned (issue #258)', () => {
+    const index = new CardIndex(hearthfireHeroSpellcheckFixture())
+    const cache = new NodeCache(index, null)
+    const live = 'hearthfire hero'
+    const ast = parse(live)
+
+    const s = buildNameTypoSuggestion({
+      ast,
+      liveQuery: live,
+      index,
+      cache,
+      printingIndex: null,
+      hasPinned: true,
+      pinnedQueryTrim: 'f:commander',
+      pinnedIndicesCount: 1,
+      hasLive: true,
+      totalCards: 0,
+      includeExtras: false,
+      viewMode: 'slim',
+      sealQuery,
+    })
+
+    expect(s).toBeDefined()
+    expect(s!.query).toBe('heartfire hero')
+    expect(s!.query).not.toContain('f:commander')
+  })
 })

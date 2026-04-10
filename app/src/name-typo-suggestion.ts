@@ -94,13 +94,9 @@ export function buildNameTypoSuggestion(p: BuildNameTypoSuggestionParams): Sugge
 
   if (!best) return null
 
-  const altEffective = p.hasPinned
-    ? p.sealQuery(p.pinnedQueryTrim) + ' ' + p.sealQuery(best.modifiedLive)
-    : best.modifiedLive
-
   return {
     id: 'name-typo',
-    query: altEffective,
+    query: best.modifiedLive,
     label: best.candidate,
     explain: 'Did you mean this spelling for a card name?',
     count: best.cardCount,

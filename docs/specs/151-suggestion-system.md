@@ -4,7 +4,7 @@
 
 **Depends on:** Spec 057 (include:extras), Spec 126 (Empty List CTA), Spec 131 (Oracle Did You Mean), Spec 139 (unique:prints hint), Spec 150 (ChipButton)
 
-**Addresses:** [Issue #171](https://github.com/jimbojw/frantic-search/issues/171)
+**Addresses:** [Issue #171](https://github.com/jimbojw/frantic-search/issues/171), [Issue #258](https://github.com/jimbojw/frantic-search/issues/258) (rewrite `query` = live-only when applying through `setQuery`)
 
 ## Goal
 
@@ -51,7 +51,7 @@ A suggestion is a single actionable item the user can tap.
 export type Suggestion = {
   /** Unique id for this trigger; used for deduplication and analytics. */
   id: 'empty-list' | 'include-extras' | 'unique-prints' | 'oracle' | 'wrong-field' | 'bare-term-upgrade' | 'nonexistent-field' | 'field-value-gap' | 'card-type' | 'artist-atag' | 'name-typo' | 'near-miss' | 'relaxed' | 'stray-comma' | 'example-query'
-  /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
+  /** Live query string to apply when user taps (`setQuery`; Spec 054). Omit for CTA-style (navigate, paste). See § Rewrite `query` and pinned query. */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
   label: string
@@ -73,6 +73,16 @@ export type Suggestion = {
   emptyListVariant?: 'my' | 'tag'
 }
 ```
+
+### Rewrite `query` and pinned query (Spec 054)
+
+For `variant: 'rewrite'`, **`query` is always the live-query string** passed to `setQuery` on tap ([`SearchResults`](app/src/SearchResults.tsx) → [`SuggestionList`](app/src/SuggestionList.tsx)). The search input edits **live** query only; pinned criteria are separate ([Spec 054](054-pinned-search-criteria.md)).
+
+- The worker may **evaluate** alternatives using `sealQuery(pinned) + ' ' + sealQuery(live)` (or the same shape the evaluator uses for the effective query). That combined string is for **`evaluateAlternative`** and must **not** be copied into `query` when the rewrite only changes the live slice (or when the apply semantics are expressible as updating live only). Duplicating pinned text into `query` would repeat pinned terms at evaluation time ([Issue #258](https://github.com/jimbojw/frantic-search/issues/258)).
+
+- For rewrites computed by splicing the **effective** query string, **`query`** must still be the string assigned to the live buffer—typically by stripping a leading `sealQuery(pinnedTrim) + ' '` prefix from the new effective string when the pinned half is unchanged, or by splicing `msg.query` when spans lie in the live range only. When a mistake sits **only** in the pinned region, applying through `setQuery` alone is insufficient; dual apply (update pinned + live) is **out of scope** until the UI supports it.
+
+- **Analytics (Spec 085 / PostHog):** `suggestion_applied` **`applied_query`** should match what appears in the live input after tap, not a shadow “effective-only” payload.
 
 ### Control flow
 
@@ -168,7 +178,7 @@ Unified flex-row layout for all suggestions. Header: "Try a query refinement?" �
 | Relaxed operator (Spec 156) | One `Suggestion` per (matching term, alternative operator) pair: `{ id: 'relaxed', query, label, explain, count, printingCount, docRef, priority: 24 }`. Trigger: totalCards === 0; positive FIELD on color/identity with `=` and non-count color value; alternative `:` / `>=` returns > 0. Empty state only. |
 | Artist-atag (Spec 153) | One `Suggestion` per offending term: `{ id: 'artist-atag', query, label, explain, count, docRef }`. Trigger: totalCards === 0; FIELD node is a:/artist: or atag:/art:; swapped field (atag: or a:) returns > 0. Empty state only. |
 | Nonexistent field (Spec 158) | One `Suggestion` per offending span (deduped by `query`): `{ id: 'nonexistent-field', query, label, explain, docRef, priority: 14 }`. Trigger: effective query contains a registry-matched mistaken field (e.g. supertype:, subtype:); **no** totalCards gate; **no** alternative evaluation required for MVP (omit counts). Empty state and rider. |
-| Field operator–value gap (Spec 177) | At most one `Suggestion`: `{ id: 'field-value-gap', query: cleanedEffective, label, explain, count, printingCount, docRef: 'reference/syntax', priority: 15 }`. Trigger: `totalCards === 0`; same pinned-empty skip as Spec 131/154; AST has `FIELD` empty value + adjacent `BARE` with whitespace-only gap; `evaluateAlternative` &gt; 0. Empty state only. |
+| Field operator–value gap (Spec 177) | At most one `Suggestion`: `{ id: 'field-value-gap', query: <live apply string>, label, explain, count, printingCount, docRef: 'reference/syntax', priority: 15 }` — `query` is live after gap fixes (Spec 151 / 177). Trigger: `totalCards === 0`; same pinned-empty skip as Spec 131/154; AST has `FIELD` empty value + adjacent `BARE` with whitespace-only gap; `evaluateAlternative` &gt; 0. Empty state only. |
 
 **Invariant:** Same triggers and tap actions as before. Placement and layout may be improved—looking good takes precedence over perfect parity with the status quo. "Learn more" links (docRef) are encouraged as part of the unified UI pattern.
 
@@ -182,7 +192,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 | Card type tokens | card-type | TBD | "creatures" → `t:creature`; "creatures scry" → `t:creature o:scry`; narrowest first |
 | Bare term field upgrade | bare-term-upgrade | Spec 154 | Bare terms matching known values (keywords, set, format, otag, atag, game, frame, rarity) → suggest field prefix. "landfall" → `kw:landfall`; "mh2" → `set:mh2`. Implemented. |
 | Artist / atag confusion | artist-atag | Spec 153 | Reflexive: `atag:frazer` + 0 but `a:frazer` returns results → suggest `a:`; `a:spear` + 0 but `atag:spear` returns results → suggest `atag:`. [Issue #128 comment](https://github.com/jimbojw/frantic-search/issues/128) |
-| Name-token spellcheck (zero results) | name-typo | Spec 163 | Levenshtein vs card-name word list; one token per suggestion; verify &gt; 0 results; chip shows corrected token, `query` shows full rewrite |
+| Name-token spellcheck (zero results) | name-typo | Spec 163 | Levenshtein vs card-name word list; one token per suggestion; verify &gt; 0 results; chip shows corrected token; `query` is modified **live** only |
 | Near-miss: unquoted multi-word | near-miss | TBD | Bare term(s) after a field term: `a:Dan Frazer` parsed as `a:Dan` + bare `Frazer`; when `a:"Dan Frazer"` would match → "Did you mean `a:"Dan Frazer"`?" Same for `atag:dan frazier` → `atag:"dan frazier"` |
 | Operator–value whitespace (#240 UX) | field-value-gap | Spec 177 | `ci: blue` → suggest `ci:blue` when merge returns results |
 | Small result set | (id TBD) | future spec | 1–3 results; broader query returns more. **Not** `relaxed` — Spec 156 reserves `relaxed` for **zero-result** color/identity `=` operator relaxation only. |
@@ -191,7 +201,7 @@ Each future trigger gets its own spec. This document records the intended ids an
 ## Implementation notes
 
 - **Worker suggestion building:** `runSearch` calls `buildSuggestions(params)` from `app/src/worker-suggestions.ts`. That module receives `getListMask` via params. For empty-list: when `hasListSyntaxInQuery(effectiveBd)` and `getListMask("default")` is empty, push one Suggestion per term from `collectListOffendingTerms(effectiveBd)` (label = term, emptyListVariant = 'my' or 'tag'). No totalCards constraint.
-- **Name-token spellcheck (Spec 163):** After bare-term-upgrade, before oracle: `buildNameTypoSuggestion` in `app/src/name-typo-suggestion.ts` uses `index.nameWords` / `index.nameWordsByFirstChar`, `getBareNodes`, `levenshteinDistance`, `spliceQuery`, and `evaluateAlternative`. Priority **17**. Same pinned-zero skip as Spec 131. Tokens are **not** skipped merely because they appear in `nameWords` (zero hits can be “valid words that never appear together”). Chip **`label`** is the substituted name word only; **`query`** is the full effective rewrite.
+- **Name-token spellcheck (Spec 163):** After bare-term-upgrade, before oracle: `buildNameTypoSuggestion` in `app/src/name-typo-suggestion.ts` uses `index.nameWords` / `index.nameWordsByFirstChar`, `getBareNodes`, `levenshteinDistance`, `spliceQuery`, and `evaluateAlternative`. Priority **17**. Same pinned-zero skip as Spec 131. Tokens are **not** skipped merely because they appear in `nameWords` (zero hits can be “valid words that never appear together”). Chip **`label`** is the substituted name word only; **`query`** is the modified **live** query (evaluate with combined query internally; Issue #258).
 - **Oracle hint (Spec 131):** After bare-term-upgrade, `buildSuggestions` picks **one** rewrite among phrase, ordered-regex (`o:/a.*b/`), per-word, and (if no primary wins) **single-token hybrid** splices, using counts and eligibility in Spec 131; implementation in `app/src/oracle-hint-edit.ts` + oracle block in `worker-suggestions.ts`.
 - **Bare-term-upgrade (Spec 154):** In `buildSuggestions`, when totalCards === 0, call `getBareNodes(ast)` to collect positive BARE nodes; multi-word window pass then single-node pass; splice and evaluate each alternative; emit suggestions per Spec 154 (counts optional when > 0). Runs before the oracle block. Maintain **`oracleSuppressedBareValues`:** `Set` of lowercase bare **values** to omit from Spec 131’s trailing set. Add a value only when a **non-tag** alternative is emitted for that token: multi-word window — add all window token values **only if** `alts` includes at least one label that does **not** start with `otag:` or `atag:`; single-node loop — add `node.value` only for alternatives whose label is **not** `otag:`… / `atag:`…. **Multi-word:** `getMultiWordAlternatives` (keywords, artists, Spec 159 tag prefix on hyphen slug); **single-node:** `getBareTagPrefixAlternatives` after exact domains. **Priority:** non–tag domains use **16**; `otag:`… / `atag:`… use **21** (after oracle **20**).
 - **Design note:** Future disambiguation specs (e.g. commander → name vs `f:` vs `is:commander`) may add new suggestion ids and priority slots between these tiers without collapsing oracle (**20**) and tag bare-term chips (**21**).

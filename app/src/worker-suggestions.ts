@@ -39,6 +39,7 @@ import {
 } from './oracle-hint-edit'
 import { evaluateAlternative } from './worker-alternative-eval'
 import { buildNameTypoSuggestion } from './name-typo-suggestion'
+import { liveQueryForSuggestionApply } from './suggestion-live-apply'
 
 /** Spec 151: `otag:` / `atag:` bare-term-upgrade chips sort after oracle (20). */
 function bareTermUpgradePriority(label: string): 16 | 21 {
@@ -199,6 +200,10 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
     artistLabels,
   } = params
 
+  const pinnedTrim = hasPinned ? msg.pinnedQuery!.trim() : ''
+  const toLiveApply = (newEffective: string) =>
+    liveQueryForSuggestionApply(newEffective, hasPinned, pinnedTrim, sealQuery)
+
   const suggestions: Suggestion[] = []
   const viewMode = msg.viewMode ?? 'slim'
 
@@ -236,7 +241,8 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
   const trimmedEffective = effectiveQuery.trim()
   if (trimmedEffective) {
     for (const r of collectNonexistentFieldRewrites(trimmedEffective)) {
-      const query = spliceQuery(trimmedEffective, r.span, r.label)
+      const newEff = spliceQuery(trimmedEffective, r.span, r.label)
+      const query = toLiveApply(newEff)
       const dupRewrite = suggestions.some((s) => s.variant === 'rewrite' && s.query === query)
       if (dupRewrite) continue
       suggestions.push({
@@ -260,8 +266,9 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
   ) {
     const gap = buildFieldOperatorGapCleanup(effectiveQuery, parse(effectiveQuery))
     if (gap && gap.cleanedQuery !== effectiveQuery) {
+      const queryApply = toLiveApply(gap.cleanedQuery)
       const dupRewrite = suggestions.some(
-        (s) => s.variant === 'rewrite' && s.query === gap.cleanedQuery,
+        (s) => s.variant === 'rewrite' && s.query === queryApply,
       )
       if (!dupRewrite) {
         const { cardCount, printingCount } = evaluateAlternative({
@@ -275,7 +282,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         if (cardCount > 0) {
           suggestions.push({
             id: 'field-value-gap',
-            query: gap.cleanedQuery,
+            query: queryApply,
             label: gap.label,
             explain:
               'Omit space between operator and value.',
@@ -378,7 +385,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         })
         suggestions.push({
           id: 'bare-term-upgrade',
-          query: altEffective,
+          query: modifiedLive,
           label: alt.label,
           explain: alt.explain,
           ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
@@ -422,7 +429,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         })
         suggestions.push({
           id: 'bare-term-upgrade',
-          query: altEffective,
+          query: modifiedLive,
           label: alt.label,
           explain: alt.explain,
           ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
@@ -471,7 +478,6 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
       )
       if (trailing && trailing.length > 0) {
         const quotedPhraseOnly = trailing.length === 1 && trailing[0].quoted
-        const pinnedTrim = hasPinned ? msg.pinnedQuery!.trim() : ''
 
         const evalLiveOracleAlt = (altLiveQuery: string) => {
           const altCombinedQuery = hasPinned
@@ -493,7 +499,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           cardCount: number,
           printingCount: number | undefined,
         ) => ({
-          query: hasPinned ? sealQuery(pinnedTrim) + ' ' + sealQuery(altLiveQuery) : altLiveQuery,
+          query: altLiveQuery,
           label: getOracleLabel(trailing, variant),
           count: cardCount,
           printingCount,
@@ -557,7 +563,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
               (ev.cardCount === hybridWinner.count && spanStart > hybridWinner.spanStart)
             ) {
               hybridWinner = {
-                query: hasPinned ? sealQuery(pinnedTrim) + ' ' + sealQuery(altLive) : altLive,
+                query: altLive,
                 label: getOracleLabelSingleUpgrade(node),
                 count: ev.cardCount,
                 printingCount: ev.printingCount,
@@ -626,7 +632,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           wrongFieldEmittedQueries.add(altQuery)
           suggestions.push({
             id: 'wrong-field',
-            query: altQuery,
+            query: toLiveApply(altQuery),
             label: alt.label,
             explain: alt.explain,
             count: cardCount,
@@ -662,7 +668,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           wrongFieldEmittedQueries.add(altQuery)
           suggestions.push({
             id: 'wrong-field',
-            query: altQuery,
+            query: toLiveApply(altQuery),
             label: alt.label,
             explain: alt.explain,
             count: cardCount,
@@ -712,7 +718,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         wrongFieldEmittedQueries.add(altQuery)
         suggestions.push({
           id: 'wrong-field',
-          query: altQuery,
+          query: toLiveApply(altQuery),
           label: alt.label,
           explain: alt.explain,
           ...(cardCount > 0 ? { count: cardCount, printingCount } : {}),
@@ -742,7 +748,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         if (cardCount > 0) {
           suggestions.push({
             id: 'stray-comma',
-            query: cleanedStray,
+            query: toLiveApply(cleanedStray),
             label: strayCleanup.label,
             explain: 'Separate terms with spaces, not commas. Commas inside quoted oracle text stay as you typed.',
             docRef: 'reference/syntax',
@@ -797,7 +803,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
           relaxedEmitted.add(altQuery)
           suggestions.push({
             id: 'relaxed',
-            query: altQuery,
+            query: toLiveApply(altQuery),
             label: alt.label,
             explain: alt.explain,
             count: cardCount,
@@ -837,7 +843,7 @@ export function buildSuggestions(params: BuildSuggestionsParams): Suggestion[] {
         if (cardCount > 0) {
           suggestions.push({
             id: 'artist-atag',
-            query: altQuery,
+            query: toLiveApply(altQuery),
             label: alt.label,
             explain: alt.explain,
             count: cardCount,

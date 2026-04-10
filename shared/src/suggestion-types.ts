@@ -20,7 +20,7 @@ export type Suggestion = {
     | 'stray-comma'
     | 'field-value-gap'
     | 'example-query'
-  /** Full query to apply when user taps (rewrite suggestions). Omit for CTA-style (navigate, paste). */
+  /** Live query to apply when user taps (`setQuery`; Spec 151). Omit for CTA-style (navigate, paste). */
   query?: string
   /** Short label for the chip, e.g. "include:extras", "o:scry". */
   label: string

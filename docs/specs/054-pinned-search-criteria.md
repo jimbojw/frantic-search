@@ -31,6 +31,8 @@ Two independent query strings:
 
 The input box displays and edits only the live query. The pinned query is never shown in the input.
 
+**Rewrite suggestions (Spec 151):** Chips that apply an alternative query (`variant: 'rewrite'`) update the **live** query via `setQuery` only. The worker evaluates candidates against the effective (pinned + live) string internally; the `Suggestion.query` payload must be the **live** string after the rewrite so pinned terms are not duplicated in the input (see Spec 151 § “Rewrite `query` and pinned query”, Issue #258).
+
 ### Effective query
 
 When both are non-empty, the effective query sent to the worker is the pinned query AND'd with the live query:

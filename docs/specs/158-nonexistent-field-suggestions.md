@@ -73,7 +73,7 @@ MVP rows:
 - **`variant`:** `rewrite`.
 - **`priority`:** **14** — corrects an **invalid field name** before `bare-term-upgrade` (16) and oracle (20): the clause is actively wrong for the engine, not merely a missing prefix on an otherwise legal bare term.
 - **`label`:** The replacement clause as the user would type it (e.g. `t:elf`, `-t:legendary`).
-- **`query`:** Full effective query with that clause spliced.
+- **`query`:** String assigned to the **live** query on tap (Spec 151 / Issue #258). The worker splices the effective query for the rewrite; when pinned + live and the pinned half is unchanged, derive the live apply string (e.g. strip `sealQuery(pinnedTrim) + ' '` from the new effective string).
 - **`explain`:** Short teaching line, e.g. for supertype/subtype: Scryfall does not define separate `supertype:` / `subtype:` fields; **`t:`** searches the type line. Wording can vary per registry row.
 - **`docRef`:** `reference/fields/face/type` (or current path for the `t:` / type line field doc).
 - **`count` / `printingCount`:** **Omit** for MVP (no alternative evaluation required).
@@ -94,7 +94,7 @@ MVP rows:
 ### Dedup and interaction
 
 - If the rewritten `query` is **identical** to another suggestion’s `query` from the same `buildSuggestions` pass, emit **one** chip.
-- **Pinned + live:** Spans are in **effective** query coordinates; the worker’s `query` field is the full effective string after splice (same as Spec 153). The app applies via `setQuery` per existing behavior.
+- **Pinned + live:** Spans are in **effective** query coordinates; **`Suggestion.query`** is the **live** apply string (Spec 151 / Issue #258), not the combined pinned+live string. Rewrites that touch only the **pinned** region may not be expressible via `setQuery` alone until dual apply exists.
 
 ### Analytics
 
