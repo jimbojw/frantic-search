@@ -19,7 +19,7 @@ Remove chrome duplicated by the portaled card header (Spec 165), replace the pla
 ### 1. In-page header strip (body)
 
 - **Remove** the body back button and the unlabeled Scryfall icon from the row that previously balanced the title.
-- **Keep** the oracle-level **card name** as the in-body title (`fullName()`), full width, **horizontally centered** (no empty columns for removed controls).
+- **Keep** the oracle-level **card name** as the in-body title (`fullName()`), full width, **horizontally centered** (no empty columns for removed controls). Long names (including multi-face `//` names) **wrap** to multiple lines; do not single-line truncate the `<h1>`.
 
 ### 2. All-prints query chip
 
@@ -27,6 +27,7 @@ Remove chrome duplicated by the portaled card header (Spec 165), replace the pla
 - **Query string:** `!"{fullName}" unique:prints include:extras` (same semantics as [Spec 050](050-printing-aware-card-detail.md) all-prints navigation; `include:extras` per that spec).
 - **Syntax highlight:** Reuse `buildSpans` / `ROLE_CLASSES` from `app/src/QueryHighlight.tsx` on the query string, same as tag chips.
 - **Click target:** The **entire chip** (query row and subtitle row when present) is a single control that runs `onNavigateToQuery` with that full string.
+- **Long names:** The highlighted query row **wraps** (`break-words`, full width of the card body column) so long `!"…" unique:prints include:extras` strings do not single-line truncate; chip **minimum** height rules still apply and the chip **grows** when the query spans multiple lines.
 
 #### Subtitle row (counts)
 
@@ -42,7 +43,7 @@ Second line: small, muted, tabular numbers—same role as the tag chip count lin
 #### Layout when the subtitle is omitted
 
 - The chip’s **outer minimum height** matches a **two-line** tag chip (fixed `min-height` / flex column) so toggling between one and two lines does not change overall chip height.
-- The **primary row** (highlighted query only) is **vertically centered** in the chip when the subtitle row is absent.
+- The **primary row** (highlighted query only) uses vertical padding when the subtitle row is absent; **short** single-line queries appear comfortably padded. **Long** queries **wrap** and increase chip height (no truncation).
 
 ### 3. Inline Slack / Reddit row
 
@@ -60,8 +61,8 @@ See [Spec 160](160-card-detail-analytics.md): `scryfall_external` (metadata outl
 
 ## Acceptance criteria
 
-1. Card body shows only the card name heading in the former header row, **horizontally centered** (no body back, no header-style Scryfall icon).
-2. When the all-prints query is available and `onNavigateToQuery` is set, a query chip appears with highlight + full-chip navigate; subtitle follows the count rules above; single-row layout is vertically centered with stable chip height.
+1. Card body shows only the card name heading in the former header row, **horizontally centered** (no body back, no header-style Scryfall icon); long names **wrap** rather than truncating.
+2. When the all-prints query is available and `onNavigateToQuery` is set, a query chip appears with highlight + full-chip navigate; subtitle follows the count rules above; stable minimum chip height; long queries **wrap** in the primary row (no truncation).
 3. No Slack / Reddit bracket row in the printing metadata panel.
 4. When printing metadata is shown, **Scryfall ID** appears after **Rarity** and opens Scryfall in a new tab.
 5. PostHog payloads match Spec 160.
@@ -76,3 +77,5 @@ See [Spec 160](160-card-detail-analytics.md): `scryfall_external` (metadata outl
 ## Implementation notes
 
 - **2026-03-28:** Initial spec; supersedes the “out of scope” cleanup deferred from Spec 165.
+- **2026-04-10:** In-body title `<h1>` uses wrapping (`break-words`, `min-w-0`) instead of `truncate` for long oracle names.
+- **2026-04-10:** All-prints query chip primary row wraps long highlighted queries (`break-words`, `w-full`); wrapper `div` uses `w-full min-w-0` so the chip can use the content column width.

@@ -23,7 +23,7 @@ Chip buttons appear throughout the app with nearly identical base styling but du
 - **DeckEditorFormatChips** — Format selection chips with `min-h-11` and border-based selection state.
 - **ListControlsPopover** — List control chips with `min-h-11 min-w-11`.
 
-Issue #169 reported that suggestion chips were smaller on desktop due to responsive overrides (`md:min-h-0 md:py-0.5`). A quick fix removed those overrides. This spec consolidates the shared chip pattern so future chips cannot drift. Card-detail **QueryChip** / **ManaQueryChip** controls follow the same minimum height for visual consistency (Spec 183).
+Issue #169 reported that suggestion chips were smaller on desktop due to responsive overrides (`md:min-h-0 md:py-0.5`). A quick fix removed those overrides. This spec consolidates the shared chip pattern so future chips cannot drift. Card-detail **QueryChip** / **ManaQueryChip** controls follow the same minimum height for visual consistency (Spec 183). **QueryChip** may grow past one line only on **Card name** / **Face name** rows when Spec 183’s wrapping option is enabled; the `min-h-11` floor still applies.
 
 ### Out of scope
 
