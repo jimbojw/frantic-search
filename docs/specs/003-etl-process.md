@@ -41,6 +41,9 @@ Cards with multi-face layouts emit one row per face. The face data comes from th
 | `split`               | 2–5   | Fire // Ice (left + right)                |
 | `flip`                | 2     | Akki Lavarunner (top + bottom)            |
 | `double_faced_token`  | 2     | Double-faced tokens                       |
+| `prepare`             | 2     | Stensian Sanguinist // Exsanguinate (creature + spell; Prepared) |
+
+For `prepare`, Scryfall carries oracle text and other face fields on **`card_faces`**; root-level `oracle_text` may be absent. The process command must expand **`card_faces`** like other multi-face layouts so `oracle_texts` is not stored as empty.
 
 All other layouts (`normal`, `saga`, `class`, `mutate`, `leveler`, `meld`, `prototype`, `case`, `token`, `art_series`, `emblem`, `planar`, `scheme`, `vanguard`) emit a single row using top-level card fields.
 
@@ -147,7 +150,7 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
 
 1. Running `npm run etl -- process` after `download` produces `data/dist/columns.json`.
 2. All layouts from oracle-cards.json are present in the output.
-3. Multi-face cards (transform, modal_dfc, adventure, split, flip, double_faced_token) produce one row per face with face-level field values.
+3. Multi-face cards (transform, modal_dfc, adventure, split, flip, double_faced_token, prepare) produce one row per face with face-level field values.
 4. Card-level fields (color_identity, legalities) are duplicated identically across all faces of the same card.
 5. `canonical_face` for all faces of a multi-face card points to the same row (the first-emitted face).
 6. `card_index` correctly maps back to the card's position in the original `oracle-cards.json`.
@@ -202,3 +205,6 @@ With the current Scryfall dataset (~37k raw oracle cards), the process expands ~
   raw artist name → (face_index_within_card, printing_row_index) pairs. Produced
   by processPrintings() alongside printings.json and flavor-index.json. Supplemental
   file loaded by the worker after printings for future `a:` / `artist:` query support.
+- 2026-04-10: Added `prepare` to multi-face expansion (Issue #264). Same `card_faces`
+  iteration as other multi-face layouts so `oracle_texts` and face stats are not read
+  from the root object when Scryfall omits root-level `oracle_text`.

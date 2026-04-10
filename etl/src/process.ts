@@ -73,13 +73,14 @@ interface AtomicCardsJson {
   data?: Record<string, CardAtomic[]>;
 }
 
-const MULTI_FACE_LAYOUTS = new Set([
+export const MULTI_FACE_LAYOUTS = new Set([
   "transform",
   "modal_dfc",
   "adventure",
   "split",
   "flip",
   "double_faced_token",
+  "prepare",
 ]);
 
 // ---------------------------------------------------------------------------

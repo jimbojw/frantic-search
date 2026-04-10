@@ -54,6 +54,11 @@
       - "Isamaru, Hound of Konda"
     count_min: 100
 
+- name: "prepare layout does not false-positive is:vanilla from empty root oracle (Issue #264)"
+  query: 'name:"Stensian Sanguinist // Exsanguinate" is:vanilla'
+  assertions:
+    count: 0
+
 - name: "is:funny includes acorn-stamped, silver-bordered, and funny-set cards"
   query: "is:funny"
   scryfall_query: "is:funny"

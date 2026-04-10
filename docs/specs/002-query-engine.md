@@ -10,7 +10,7 @@ Implement the lexer, parser, and evaluator described in ADR-009 inside the `shar
 
 ## Background
 
-The ETL pipeline (Spec 001) produces a columnar JSON file. Each row represents a **card face**, not a card. Single-face cards (layout `normal`, `saga`, `class`, etc.) have one row. Multi-face cards (layouts `transform`, `modal_dfc`, `adventure`, `split`, `flip`) have one row per face. Non-searchable layouts (`art_series`, `token`, `double_faced_token`, `emblem`, `planar`, `scheme`, `vanguard`, `augment`, `host`) are filtered out during ETL processing.
+The ETL pipeline (Spec 001) produces a columnar JSON file. Each row represents a **card face**, not a card. Single-face cards (layout `normal`, `saga`, `class`, etc.) have one row. Multi-face cards emit one row per face; the authoritative list of multi-face layouts is **Spec 003 § Face Expansion** (`transform`, `modal_dfc`, `adventure`, `split`, `flip`, `double_faced_token`, `prepare`). All layouts from oracle-cards.json are indexed in ETL (Spec 003); default “playable only” and extras visibility are applied at **query time** ([Spec 178](178-default-search-inclusion-filter.md)), not by dropping layouts during `process`.
 
 ### Per-face columns
 

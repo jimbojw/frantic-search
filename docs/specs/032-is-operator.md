@@ -155,7 +155,7 @@ Positive **`is:`** / **`not:`** / **`is=`** / **`not=`** terms whose expanded se
 
 | Keyword | Logic |
 |---|---|
-| `is:vanilla` | Oracle text is empty (after reminder text stripping, which `CardIndex` already performs) |
+| `is:vanilla` | Oracle text is empty (after reminder text stripping, which `CardIndex` already performs). **Data:** Per-face `oracle_texts` must follow Spec 003 face expansion; an empty string means no rules text on that face in the index (ETL bugs that omit `card_faces` oracle text can false-positive here). |
 | `is:frenchvanilla` | Oracle text, after stripping reminder text, contains only recognized keyword abilities (see § French Vanilla) |
 | `is:commander` | Front face type line contains `Legendary` AND (`Creature` or `Vehicle` or `Background`), OR oracle text contains `"can be your commander"` or `"spell commander"`, OR hardcoded exception (e.g. Grist); Vehicle/Spacecraft must have power and toughness (can become a creature); excludes tokens, meld results, and cards banned in Commander (Scryfall parity, Issue #148, #149). **Consumers:** Card-detail **EDHREC (commander)** outlink ([Spec 183](183-card-detail-sections-query-chips-outlinks.md) §5) and Moxfield commander zone inference ([Spec 109](109-deck-instance-model.md)) use the **same** predicate via `DisplayColumns.is_commander` / `faceRowMatchesIsCommander` (Spec 024) — do not duplicate a simplified heuristic. |
 | `is:brawler` | Same logic as `is:commander` |
