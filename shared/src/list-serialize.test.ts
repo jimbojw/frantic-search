@@ -44,6 +44,7 @@ const display: DisplayColumns = {
   defense_lookup: [],
   edhrec_rank: [null, null, null],
   edhrec_salt: [null, null, null],
+  is_commander: [false, false, false],
 };
 
 const printingDisplay: PrintingDisplayColumns = {

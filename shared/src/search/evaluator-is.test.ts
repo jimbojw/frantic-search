@@ -5,6 +5,7 @@ import { parse } from "./parser";
 import { CardIndex } from "./card-index";
 import { Color, CardFlag } from "../bits";
 import type { ColumnarData } from "../data";
+import { faceRowMatchesIsCommander } from "../is-commander-face";
 import { index, printingIndex, matchCountWithPrintings } from "./evaluator.test-fixtures";
 
 // ---------------------------------------------------------------------------
@@ -549,6 +550,14 @@ describe("is: operator", () => {
 
   test("is:brawler is an alias for is:commander", () => {
     expect(isMatchIndices("is:brawler")).toEqual(isMatchIndices("is:commander"));
+  });
+
+  test("faceRowMatchesIsCommander agrees with is:commander on extended pool", () => {
+    const indices = isMatchIndices("is:commander");
+    const want = new Set(indices);
+    for (let i = 0; i < IS_TEST_DATA.names.length; i++) {
+      expect(faceRowMatchesIsCommander(IS_TEST_DATA, i)).toBe(want.has(i));
+    }
   });
 
   test("is:companion matches cards with Companion keyword", () => {

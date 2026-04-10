@@ -65,6 +65,7 @@ function makeDisplay(): DisplayColumns {
     oracle_ids: ["oid-bolt", "oid-sol", "oid-counterspell"],
     edhrec_rank: [null, null, null],
     edhrec_salt: [null, null, null],
+    is_commander: [false, false, false],
   };
 }
 

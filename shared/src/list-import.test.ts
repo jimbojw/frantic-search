@@ -31,7 +31,7 @@ function makeValidationResult(
 function makeDisplay(
   overrides?: Partial<DisplayColumns>
 ): DisplayColumns {
-  return {
+  const base: DisplayColumns = {
     names: [
       "Birds of Paradise",
       "Lightning Bolt",
@@ -65,8 +65,15 @@ function makeDisplay(
     oracle_ids: ["oid0", "oid1", "oid2", "oid3", "oid4", "oid5"],
     edhrec_rank: [null, null, null, null, null, null],
     edhrec_salt: [null, null, null, null, null, null],
-    ...overrides,
+    is_commander: [false, false, false, false, false, false],
   };
+  const merged = { ...base, ...overrides };
+  const len = merged.names.length;
+  const is_commander =
+    merged.is_commander.length === len
+      ? merged.is_commander
+      : Array.from({ length: len }, () => false);
+  return { ...merged, is_commander };
 }
 
 function makePrintingDisplay(
@@ -400,6 +407,7 @@ describe("importDeckList", () => {
       keywords_for_face: [[], [], [], [], [], [], []],
       edhrec_rank: [null, null, null, null, null, null, null],
       edhrec_salt: [null, null, null, null, null, null, null],
+      is_commander: [false, false, false, false, false, false, true],
     });
     const text = "1 Thalia, Guardian of Thraben (DMU) 30\n1 Lightning Bolt (M21) 159\n1 Counterspell";
     const vr = makeValidationResult(text, [
@@ -450,6 +458,7 @@ describe("importDeckList", () => {
       keywords_for_face: [[], [], [], [], [], [], []],
       edhrec_rank: [null, null, null, null, null, null, null],
       edhrec_salt: [null, null, null, null, null, null, null],
+      is_commander: [false, false, false, false, false, false, true],
     });
     const text = "1 Lightning Bolt\n1 Counterspell\n\nSIDEBOARD:\n1 Shock\n\n1 Sliver Overlord";
     const vr = makeValidationResult(text, [

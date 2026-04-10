@@ -2,6 +2,7 @@
 import type { ColumnarData, PrintingColumnarData } from "./data";
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
 import { buildNormalizedAlternateIndex } from "./normalize";
+import { faceRowMatchesIsCommander } from "./is-commander-face";
 
 /** Spec 105 / 024: reverse keywords_index → per-face sorted lists (canonical → all faces). */
 export function buildKeywordsForFace(data: ColumnarData): string[][] {
@@ -34,6 +35,10 @@ export function buildKeywordsForFace(data: ColumnarData): string[][] {
 
 export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
   const len = data.names.length;
+  const is_commander = new Array<boolean>(len);
+  for (let i = 0; i < len; i++) {
+    is_commander[i] = faceRowMatchesIsCommander(data, i);
+  }
   return {
     names: data.names,
     mana_costs: data.mana_costs,
@@ -61,6 +66,7 @@ export function extractDisplayColumns(data: ColumnarData): DisplayColumns {
     oracle_ids: data.oracle_ids ?? new Array<string>(len).fill(""),
     edhrec_rank: data.edhrec_ranks,
     edhrec_salt: data.edhrec_salts,
+    is_commander,
     alternate_name_to_canonical_face: buildNormalizedAlternateIndex(
       data.alternate_names_index ?? {},
     ),

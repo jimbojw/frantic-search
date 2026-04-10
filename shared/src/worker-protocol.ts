@@ -73,6 +73,8 @@ export type DisplayColumns = {
   oracle_ids: string[]
   edhrec_rank: (number | null)[]
   edhrec_salt: (number | null)[]
+  /** Per face row; true iff `is:commander` matches (Spec 032 / 024 / 183). */
+  is_commander: boolean[]
   /** Alternate name (normalized) → canonical face index. Spec 111. */
   alternate_name_to_canonical_face?: Record<string, number>
 }

@@ -76,5 +76,39 @@ describe("extractDisplayColumns", () => {
     const d = extractDisplayColumns(data);
     expect(d.colors[0]).toBe(Color.Red);
     expect(d.keywords_for_face[0]).toEqual(["flying"]);
+    expect(d.is_commander[0]).toBe(false);
+  });
+
+  it("sets is_commander true for legendary creature face", () => {
+    const data: ColumnarData = {
+      names: ["Z"],
+      mana_costs: [""],
+      oracle_texts: [""],
+      colors: [0],
+      color_identity: [0],
+      type_lines: ["Legendary Creature — Elf"],
+      powers: [1],
+      toughnesses: [1],
+      loyalties: [0],
+      defenses: [0],
+      legalities_legal: [0],
+      legalities_banned: [0],
+      legalities_restricted: [0],
+      card_index: [0],
+      canonical_face: [0],
+      scryfall_ids: [""],
+      layouts: ["normal"],
+      flags: [0],
+      edhrec_ranks: [null],
+      edhrec_salts: [null],
+      loyalty_lookup: [""],
+      defense_lookup: [""],
+      power_lookup: ["", "1"],
+      toughness_lookup: ["", "1"],
+      keywords_index: {},
+      produces: {},
+    };
+    const d = extractDisplayColumns(data);
+    expect(d.is_commander[0]).toBe(true);
   });
 });

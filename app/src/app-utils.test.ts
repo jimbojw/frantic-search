@@ -249,6 +249,7 @@ function stubDisplay(overrides: Partial<DisplayColumns> = {}): DisplayColumns {
     oracle_ids: [],
     edhrec_rank: [],
     edhrec_salt: [],
+    is_commander: [],
     ...overrides,
   }
 }

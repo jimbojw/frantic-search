@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CardIndex } from "./card-index";
 import type { PrintingIndex } from "./printing-index";
-import { CardFlag, Finish, Format, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
+import { CardFlag, Finish, PrintingFlag, PROMO_TYPE_FLAGS } from "../bits";
+import { faceRowMatchesIsCommanderFields } from "../is-commander-face";
 
 // ---------------------------------------------------------------------------
 // is: keyword evaluation (Spec 032)
@@ -63,10 +64,6 @@ const _slowland = new Set([
   "overgrown farmland", "rockfall vale", "shattered sanctum", "shipwreck marsh",
   "stormcarved coast", "sundown pass",
 ]);
-// Cards that can be commanders despite lacking "can be your commander" in oracle text.
-// Grist: Legendary Planeswalker that is a creature at deck construction (not on battlefield).
-const COMMANDER_EXCEPTION_NAMES = new Set(["grist, the hunger tide"]);
-
 const _bounceland = new Set([
   "arid archway", "azorius chancery", "boros garrison", "coral atoll",
   "dimir aqueduct", "dormant volcano", "everglades", "golgari rot farm",
@@ -386,33 +383,25 @@ export function evalIsKeyword(
     case "commander":
     case "brawler":
       for (let i = 0; i < n; i++) {
-        const layout = index.layouts[i];
-        const isToken = layout === "token" || layout === "double_faced_token";
-        if (isToken) continue;
-        if ((index.flags[i] & CardFlag.MeldResult) !== 0) continue;
-        const tl = index.typeLinesLower[i];
-        const isLegendary = tl.includes("legendary");
-        const isFront = cf[i] === i;
-        const isCreature = tl.includes("creature");
-        const isVehicle = tl.includes("vehicle") || tl.includes("spacecraft");
-        const isBackground = tl.includes("background");
-        // Vehicle/Spacecraft must have printed power and toughness (can become a creature); Eternity Elevator has none
-        const powStr = index.powerLookup[index.powers[i]] ?? "";
-        const touStr = index.toughnessLookup[index.toughnesses[i]] ?? "";
-        const hasPowerToughness = powStr.length > 0 && touStr.length > 0;
-        const hasCommanderText =
-          index.oracleTextsLower[i].includes("can be your commander") ||
-          index.oracleTextsLower[i].includes("spell commander");
-        const isException = COMMANDER_EXCEPTION_NAMES.has(index.namesLower[i]);
-        const notBanned = (index.legalitiesBanned[cf[i]] & Format.Commander) === 0;
+        const canon = cf[i]!;
         if (
-          notBanned &&
-          ((isFront &&
-            isLegendary &&
-            (isCreature || (isVehicle && hasPowerToughness) || isBackground)) ||
-            hasCommanderText ||
-            isException)
-        ) buf[cf[i]] = 1;
+          faceRowMatchesIsCommanderFields({
+            layout: index.layouts[i]!,
+            flags: index.flags[i]!,
+            typeLineLower: index.typeLinesLower[i]!,
+            oracleTextLower: index.oracleTextsLower[i]!,
+            nameLower: index.namesLower[i]!,
+            powerIndex: index.powers[i]!,
+            toughnessIndex: index.toughnesses[i]!,
+            powerLookup: index.powerLookup,
+            toughnessLookup: index.toughnessLookup,
+            canonicalFaceForRow: canon,
+            faceRowIndex: i,
+            legalitiesBannedAtCanonical: index.legalitiesBanned[canon]!,
+          })
+        ) {
+          buf[canon] = 1;
+        }
       }
       break;
     case "companion":

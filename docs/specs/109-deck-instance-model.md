@@ -122,8 +122,8 @@ for each line:
     determine zone:
       1. If ROLE_MARKER token (*CMDR* or *CMPN*) → set zone to Commander or Companion (TappedOut)
       2. Else if CATEGORY token's primary segment matches KNOWN_ZONES → use it
-      3. Else if format is Moxfield and currentZone is null and this is the first card line in the main block (before SIDEBOARD:) and the card matches `is:commander` (Spec 032: Legendary + Creature/Planeswalker in type line, or "can be your commander" in oracle text) → set zone to Commander
-      3a. Else if format is Moxfield or Arena and this card line is preceded by a blank line and the card matches `is:commander` → set zone to Commander (Moxfield plain-text export puts commander alone at end; plain text lacks Moxfield markers so is often detected as Arena)
+      3. Else if format is Moxfield and currentZone is null and this is the first card line in the main block (before SIDEBOARD:) and the card matches `is:commander` (Spec 032; implementation: any face row for that oracle has `DisplayColumns.is_commander[i] === true`, same predicate as the query engine) → set zone to Commander
+      3a. Else if format is Moxfield or Arena and this card line is preceded by a blank line and the card matches `is:commander` (same check as 3) → set zone to Commander (Moxfield plain-text export puts commander alone at end; plain text lacks Moxfield markers so is often detected as Arena)
       3b. Else if format is Moxfield and currentZone is Sideboard and this is the first card line in the sideboard and the card matches `is:companion` (Spec 032: oracle text contains "Companion —") → set zone to Companion (Moxfield "Copy for Moxfield" puts companions in SIDEBOARD:)
       4. Else if currentZone is set → use currentZone
       5. Else → null
@@ -330,8 +330,9 @@ Matching is substring-based: `#value` succeeds if the search string appears anyw
 ## Implementation Notes
 
 - 2026-03-10: Added TappedOut import support. ROLE_MARKER (*CMDR*, *CMPN*) sets zone; HASH_TAG tokens populate tags (slash preserved in tag names). TappedOut uses *f*/*f-etch*/*e* for finish (same as Moxfield); *f-pre* uses variant fallback per Spec 108.
-- 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. Uses DisplayColumns (type_lines, oracle_texts) for the check; no worker changes. `importDeckList` accepts optional `format` parameter.
+- 2026-03-11: Moxfield zone inference: when format is Moxfield and the first card line in the main block (before SIDEBOARD:) matches `is:commander` (Spec 032), set zone to Commander. `importDeckList` accepts optional `format` parameter.
 - 2026-03-11: Moxfield plain-text export: when a card line is preceded by a blank line and matches `is:commander`, set zone to Commander (Moxfield puts commander alone at end in plain-text export). Applied to both Moxfield and Arena since plain text lacks Moxfield markers and is often detected as Arena.
+- 2026-04-09: Commander detection uses `DisplayColumns.is_commander` (Spec 024): same predicate as the query engine’s `is:commander` / `faceRowMatchesIsCommander`, not a separate type-line heuristic.
 - 2026-03-12: Spec 075 Instance granularity invariant: when `ParsedEntry` has `scryfall_id` but `finish` is null (no foil/etched marker), import sets `finish` to `"nonfoil"` so the stored Instance satisfies the invariant. `list-mask-builder` retains a fallback for legacy data (scryfall_id + null finish → treat as nonfoil).
 - 2026-03-12: Moxfield custom tags: HASH_TAG tokens from Moxfield-style lines (Spec 108 CARD_LINE_RE with trailing `#Tag`) populate `tags[]` same as TappedOut. Import extracts tags from HASH_TAG regardless of format.
 - 2026-03-13: MTGSalvation export (Spec 110): type-based section grouping (Creature, Enchantment, Land, etc.) instead of zone-based. Uses `display.type_lines` for section assignment; multi-type cards (e.g. Artifact Creature) go to Creature section.

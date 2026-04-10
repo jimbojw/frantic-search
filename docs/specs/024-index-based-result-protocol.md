@@ -77,6 +77,7 @@ The display column set:
 | `edhrec_rank`, `edhrec_salt` | Card-detail and breakdown (nullable per face row) |
 | `colors` | Per-face mana color bitmask for `c:` query chips ([Spec 183](183-card-detail-sections-query-chips-outlinks.md) §3); same length and indexing as `names` (face-aligned oracle rows). Distinct from `color_identity` (deck-building identity). |
 | `keywords_for_face` | Per-face row: sorted keyword strings for that oracle (Spec 105 § Card detail); empty array when none. Same list duplicated on every face row of the same oracle. |
+| `is_commander` | Per face row: `true` iff that row matches **`is:commander`** in the query engine ([Spec 032](032-is-operator.md)). Derived at worker init from columnar data via the same predicate as evaluation (`shared/src/is-commander-face.ts`); used for card-detail **EDHREC (commander)** visibility ([Spec 183](183-card-detail-sections-query-chips-outlinks.md) §5) and list-import commander zone inference ([Spec 109](109-deck-instance-model.md)). |
 
 Columns **not** sent to the main thread (evaluation-only):
 
@@ -120,6 +121,8 @@ export type DisplayColumns = {
   oracle_ids: string[]
   edhrec_rank: (number | null)[]
   edhrec_salt: (number | null)[]
+  /** Per face row; matches `is:commander` evaluator semantics (Spec 032 / 183). */
+  is_commander: boolean[]
   alternate_name_to_canonical_face?: Record<string, number>
 }
 ```

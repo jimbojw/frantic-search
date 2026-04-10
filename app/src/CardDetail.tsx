@@ -1276,9 +1276,11 @@ export default function CardDetail(props: {
                     Scryfall
                   </OutlinkButton>
                   <Show when={fullName()}>
-                    <OutlinkButton href={edhrecCommanderUrl(fullName())} destination="edhrec_commander">
-                      EDHREC (commander)
-                    </OutlinkButton>
+                    <Show when={faces().some((fi) => cols().is_commander[fi])}>
+                      <OutlinkButton href={edhrecCommanderUrl(fullName())} destination="edhrec_commander">
+                        EDHREC (commander)
+                      </OutlinkButton>
+                    </Show>
                     <OutlinkButton href={edhrecCardUrl(fullName())} destination="edhrec_card">
                       EDHREC (card)
                     </OutlinkButton>
