@@ -8,7 +8,7 @@
 
 ## Goal
 
-When the URL represents the card detail view (`card` query parameter per Spec 015), show the **same persistent header chrome** as single-pane search: left group (Home, Back when viewport is narrow, Split view when wide, Copy…), right group (My list, Menu). Layout and control sizing match the search header (`h-11`, same button styling).
+When the URL represents the card detail view (`card` query parameter per Spec 015), show the **same persistent header chrome** as single-pane search: left group (Home, Back, Split view when wide, Copy…), right group (My list, Menu). Layout and control sizing match the search header (`h-11`, same button styling). Back is always shown on card detail (all viewports) so users can return to search results after opening a card from search.
 
 ## Background
 
@@ -22,7 +22,7 @@ Only the **persistent bar row** is portaled into `app-header-slot` (Spec 137 / 1
 
 ### Back
 
-- **Visibility:** `!viewportWide()` (1024px, `useViewportWide`), same breakpoint as Spec 129. **No** requirement for non-empty `q` — narrow viewports always show Back when `card` is set.
+- **Visibility:** Always when `card` is set (card detail header is shown), at **any** viewport width — same placement as single-pane search (immediately after Home, before Split view when wide).
 - **Action:** `history.back()`.
 - **Analytics:** `card_detail_interacted` with `control: 'back'` (Spec 160).
 
@@ -64,9 +64,9 @@ Use `card_detail_interacted` only (not `ui_interacted`). New `control` values �
 
 ## Acceptance criteria
 
-1. With `card` set in the URL and data loaded, the header slot shows Home, Back (narrow), Split (wide), Copy…, My list, Menu — visually consistent with single-pane search.
+1. With `card` set in the URL and data loaded, the header slot shows Home, Back, Split (wide), Copy…, My list, Menu — visually consistent with single-pane search.
 2. Copy… offers URL (as is), URL (card only), Card name, Markdown link; Slack/Reddit row appears only when printing set + collector exist.
-3. Back on narrow calls `history.back()` and fires `card_detail_interacted` `back`.
+3. Back calls `history.back()` and fires `card_detail_interacted` `back` at any viewport width.
 4. Menu opens the same filter drawer as search (chips, help links) with working context.
 5. Analytics fire per Spec 160 additions for copy menu open and each copy kind.
 
@@ -74,6 +74,7 @@ Use `card_detail_interacted` only (not `ui_interacted`). New `control` values �
 
 - **2026-03-27:** Split URL copy into **URL (as is)** and **URL (card only)** so sharers can omit `q` and other query noise; Markdown link still uses the full page URL.
 - **2026-03-27:** Changing the query via menu chips (including `onSetQuery`, view mode, or unique mode) from the card view **leaves** card detail: `card` is removed from the URL, the user returns to the search view, and `q` is synced with the same rules as single-pane search (including empty-`q` when the box is “engaged”).
+- **2026-04-10:** Header Back is shown on card detail at all viewport widths (not only narrow), matching the affordance for returning from search after opening a card.
 
 ## Scope of documentation updates
 

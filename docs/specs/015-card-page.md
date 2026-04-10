@@ -68,7 +68,7 @@ The card detail page is a single-column scrollable view within the same `max-w-2
 
 - **Card name** as the primary heading below the portaled app bar (Spec 165), **horizontally centered**. No duplicate back control or header-style Scryfall icon in the body (Spec 166).
 
-**PostHog:** Portaled header back (narrow) and Copy… menu (Spec 165); body interactions including all-prints chip, Scryfall ID outlink in printing metadata, set navigation, DFC face toggle, list controls, and tag chips — `card_detail_interacted` (Spec 160, Spec 166)—distinct from **Try on Scryfall** in search results (`scryfall_outlink_clicked`, Spec 152).
+**PostHog:** Portaled header back and Copy… menu (Spec 165); body interactions including all-prints chip, Scryfall ID outlink in printing metadata, set navigation, DFC face toggle, list controls, and tag chips — `card_detail_interacted` (Spec 160, Spec 166)—distinct from **Try on Scryfall** in search results (`scryfall_outlink_clicked`, Spec 152).
 
 **All prints** and **Scryfall** access on the body are defined in [Spec 166](166-card-detail-body-cleanup.md) (query chip; labeled Scryfall ID in the printing metadata panel when shown).
 

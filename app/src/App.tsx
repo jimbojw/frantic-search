@@ -1564,19 +1564,17 @@ function App() {
                       >
                         <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
                       </button>
-                      <Show when={!viewportWide()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            captureCardDetailInteracted({ control: 'back' })
-                            history.back()
-                          }}
-                          aria-label="Go back"
-                          class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <IconChevronLeft class="size-5" />
-                        </button>
-                      </Show>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          captureCardDetailInteracted({ control: 'back' })
+                          history.back()
+                        }}
+                        aria-label="Go back"
+                        class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <IconChevronLeft class="size-5" />
+                      </button>
                       <Show when={viewportWide()}>
                         <button
                           type="button"

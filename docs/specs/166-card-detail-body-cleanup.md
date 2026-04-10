@@ -12,7 +12,7 @@ Remove chrome duplicated by the portaled card header (Spec 165), replace the pla
 
 ## Background
 
-[Spec 165](165-card-detail-app-bar-and-copy-menu.md) adds Back (narrow), Copy… (including Slack / Reddit), and global navigation on the card view. The card body still carried a second back control, an unlabeled Scryfall icon, a text “All prints →” link, and a Slack bracket line with copy—redundant or less discoverable than the new header and metadata patterns.
+[Spec 165](165-card-detail-app-bar-and-copy-menu.md) adds Back (header, all viewports), Copy… (including Slack / Reddit), and global navigation on the card view. The card body still carried a second back control, an unlabeled Scryfall icon, a text “All prints →” link, and a Slack bracket line with copy—redundant or less discoverable than the new header and metadata patterns.
 
 ## Design
 
