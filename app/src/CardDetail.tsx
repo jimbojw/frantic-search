@@ -549,6 +549,89 @@ function DetailRow(props: {
   )
 }
 
+const CARD_DETAILS_DL_CLASS =
+  'rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-1'
+
+function CardDetailFaceFields(props: {
+  d: Accessor<DisplayColumns>
+  fi: number
+  onNavigateToQuery?: (q: string) => void
+}) {
+  const c = () => props.d()
+  const fi = () => props.fi
+  const manaCost = () => c().mana_costs[fi()]
+  const typeTokens = () => tokenizeTypeLine(c().type_lines[fi()])
+  const colorLetters = () => colorBitmaskToQueryLetters(c().colors[fi()])
+  const pow = () => c().power_lookup[c().powers[fi()]]
+  const tou = () => c().toughness_lookup[c().toughnesses[fi()]]
+  const loy = () => c().loyalty_lookup[c().loyalties[fi()]]
+  const def = () => c().defense_lookup[c().defenses[fi()]]
+
+  return (
+    <>
+      <DetailRow
+        label="Mana Cost"
+        chips={manaCost() ? <ManaQueryChip cost={manaCost()} onNavigate={props.onNavigateToQuery} /> : undefined}
+      >
+        {manaCost() ? <ManaCost cost={manaCost()} /> : <span class="italic text-gray-400 dark:text-gray-500">\u2014</span>}
+      </DetailRow>
+
+      <DetailRow
+        label="Type"
+        chips={
+          typeTokens().length > 0 ? (
+            <div class="flex flex-wrap gap-1 justify-end">
+              <For each={typeTokens()}>
+                {(token) => <QueryChip query={`t:${token}`} field="type" onNavigate={props.onNavigateToQuery} />}
+              </For>
+            </div>
+          ) : undefined
+        }
+      >
+        {c().type_lines[fi()]}
+      </DetailRow>
+
+      <DetailRow
+        label="Color"
+        chips={
+          <QueryChip
+            query={`c:${colorLetters()}`}
+            field="color"
+            onNavigate={props.onNavigateToQuery}
+            customLabel={
+              <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
+                <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
+                <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
+              </span>
+            }
+          />
+        }
+      >
+        <ManaCost cost={colorIdentityMaskToManaCostString(c().colors[fi()])} />
+      </DetailRow>
+
+      <Show when={pow() && tou()}>
+        <DetailRow label="Power" chips={<QueryChip query={`pow=${pow()}`} field="power" onNavigate={props.onNavigateToQuery} />}>
+          {pow()}
+        </DetailRow>
+        <DetailRow label="Toughness" chips={<QueryChip query={`tou=${tou()}`} field="toughness" onNavigate={props.onNavigateToQuery} />}>
+          {tou()}
+        </DetailRow>
+      </Show>
+      <Show when={loy()}>
+        <DetailRow label="Loyalty" chips={<QueryChip query={`loy=${loy()}`} field="loyalty" onNavigate={props.onNavigateToQuery} />}>
+          {loy()}
+        </DetailRow>
+      </Show>
+      <Show when={def()}>
+        <DetailRow label="Defense" chips={<QueryChip query={`def=${def()}`} field="defense" onNavigate={props.onNavigateToQuery} />}>
+          {def()}
+        </DetailRow>
+      </Show>
+    </>
+  )
+}
+
 function OutlinkButton(props: {
   href: string
   destination: OutlinkDestination
@@ -936,11 +1019,11 @@ export default function CardDetail(props: {
               {/* §3: Card details — query chip tables */}
               <section class="mb-6">
                 <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Card Details</h2>
-                <dl class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-1">
+                <div class="flex flex-col gap-3">
+                  <dl class={CARD_DETAILS_DL_CLASS}>
                   <Show when={isMultiFace()}>
-                    {/* Oracle / combined block for multi-face */}
                     <DetailRow
-                      label="Name"
+                      label="Card name"
                       chips={<QueryChip query={`!"${fullName()}"`} field="name" onNavigate={props.onNavigateToQuery} />}
                     >
                       {fullName()}
@@ -948,7 +1031,7 @@ export default function CardDetail(props: {
                   </Show>
                   <Show when={!isMultiFace() && faces().length > 0}>
                     <DetailRow
-                      label="Name"
+                      label="Card name"
                       chips={<QueryChip query={`!"${cols().names[faces()[0]]}"`} field="name" onNavigate={props.onNavigateToQuery} />}
                     >
                       {cols().names[faces()[0]]}
@@ -1050,108 +1133,33 @@ export default function CardDetail(props: {
                     )
                   })()}
 
-                  {/* Per-face blocks (single-face: inline; multi-face: separate groups) */}
-                  <For each={faces()}>
-                    {(fi) => {
-                      const faceName = () => cols().names[fi]
-                      const manaCost = () => cols().mana_costs[fi]
-                      const typeTokens = () => tokenizeTypeLine(cols().type_lines[fi])
-                      const colorLetters = () => colorBitmaskToQueryLetters(cols().colors[fi])
-                      const pow = () => cols().power_lookup[cols().powers[fi]]
-                      const tou = () => cols().toughness_lookup[cols().toughnesses[fi]]
-                      const loy = () => cols().loyalty_lookup[cols().loyalties[fi]]
-                      const def = () => cols().defense_lookup[cols().defenses[fi]]
+                  <Show when={!isMultiFace() && faces().length > 0}>
+                    <CardDetailFaceFields d={cols} fi={faces()[0]} onNavigateToQuery={props.onNavigateToQuery} />
+                  </Show>
+                  </dl>
 
-                      return (
-                        <>
-                          <Show when={isMultiFace()}>
-                            <div class="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
-                              <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">Face: {faceName()}</p>
-                            </div>
-                            <DetailRow
-                              label="Name"
-                              chips={<QueryChip query={`!"${faceName()}"`} field="name" onNavigate={props.onNavigateToQuery} />}
-                            >
-                              {faceName()}
-                            </DetailRow>
-                          </Show>
-
+                  <Show when={isMultiFace()}>
+                    <For each={faces()}>
+                      {(fi) => (
+                        <dl class={CARD_DETAILS_DL_CLASS}>
                           <DetailRow
-                            label="Mana Cost"
-                            chips={manaCost() ? <ManaQueryChip cost={manaCost()} onNavigate={props.onNavigateToQuery} /> : undefined}
-                          >
-                            {manaCost() ? <ManaCost cost={manaCost()} /> : <span class="italic text-gray-400 dark:text-gray-500">\u2014</span>}
-                          </DetailRow>
-
-                          <DetailRow
-                            label="Type"
-                            chips={
-                              typeTokens().length > 0 ? (
-                                <div class="flex flex-wrap gap-1 justify-end">
-                                  <For each={typeTokens()}>
-                                    {(token) => <QueryChip query={`t:${token}`} field="type" onNavigate={props.onNavigateToQuery} />}
-                                  </For>
-                                </div>
-                              ) : undefined
-                            }
-                          >
-                            {cols().type_lines[fi]}
-                          </DetailRow>
-
-                          <DetailRow
-                            label="Color"
+                            label="Face name"
                             chips={
                               <QueryChip
-                                query={`c:${colorLetters()}`}
-                                field="color"
+                                query={`!"${cols().names[fi]}"`}
+                                field="name"
                                 onNavigate={props.onNavigateToQuery}
-                                customLabel={
-                                  <span class="inline-flex max-w-full min-w-0 items-center gap-0.5">
-                                    <span class="shrink-0 text-blue-600 dark:text-blue-400">c:</span>
-                                    <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[fi])} />
-                                  </span>
-                                }
                               />
                             }
                           >
-                            <ManaCost cost={colorIdentityMaskToManaCostString(cols().colors[fi])} />
+                            {cols().names[fi]}
                           </DetailRow>
-
-                          <Show when={pow() && tou()}>
-                            <DetailRow
-                              label="Power"
-                              chips={<QueryChip query={`pow=${pow()}`} field="power" onNavigate={props.onNavigateToQuery} />}
-                            >
-                              {pow()}
-                            </DetailRow>
-                            <DetailRow
-                              label="Toughness"
-                              chips={<QueryChip query={`tou=${tou()}`} field="toughness" onNavigate={props.onNavigateToQuery} />}
-                            >
-                              {tou()}
-                            </DetailRow>
-                          </Show>
-                          <Show when={loy()}>
-                            <DetailRow
-                              label="Loyalty"
-                              chips={<QueryChip query={`loy=${loy()}`} field="loyalty" onNavigate={props.onNavigateToQuery} />}
-                            >
-                              {loy()}
-                            </DetailRow>
-                          </Show>
-                          <Show when={def()}>
-                            <DetailRow
-                              label="Defense"
-                              chips={<QueryChip query={`def=${def()}`} field="defense" onNavigate={props.onNavigateToQuery} />}
-                            >
-                              {def()}
-                            </DetailRow>
-                          </Show>
-                        </>
-                      )
-                    }}
-                  </For>
-                </dl>
+                          <CardDetailFaceFields d={cols} fi={fi} onNavigateToQuery={props.onNavigateToQuery} />
+                        </dl>
+                      )}
+                    </For>
+                  </Show>
+                </div>
               </section>
 
               {/* §4: Printing details */}
