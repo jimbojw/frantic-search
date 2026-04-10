@@ -131,7 +131,7 @@ function popcount(buf: Uint8Array, len: number): number {
 
 /** Spec 182 / ADR-022: still call evalPrintingField when `ast.value === ""` so match-all empty semantics run. */
 const PRINTING_FIELDS_EVAL_WHEN_VALUE_EMPTY = new Set([
-  "set", "set_type", "frame", "in", "collectornumber", "game", "rarity",
+  "set", "set_type", "frame", "in", "collectornumber", "game", "rarity", "year", "date",
 ]);
 
 export type EvalDomain = "face" | "printing";

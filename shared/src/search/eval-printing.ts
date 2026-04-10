@@ -384,6 +384,10 @@ export function evalPrintingField(
       break;
     }
     case "year": {
+      if (val.trim() === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
       if (val.includes("-") || /^\d{5,}/.test(val)) {
         return `invalid year "${val}" (year: accepts only YYYY or partial year, e.g. 2025 or 202)`;
       }
@@ -407,6 +411,10 @@ export function evalPrintingField(
       break;
     }
     case "date": {
+      if (val.trim() === "") {
+        for (let i = 0; i < n; i++) buf[i] = 1;
+        break;
+      }
       const datePercentile = parsePercentile(val);
       if (datePercentile !== null) {
         applyPercentileSlice(

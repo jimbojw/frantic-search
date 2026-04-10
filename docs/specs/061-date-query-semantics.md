@@ -109,6 +109,10 @@ The `year:` field inherits the same range-based semantics as `date:` with one ca
 - `year=2025` — Performs identically to `date=2025` (year range `[2025-01-01, 2026-01-01)`).
 - `year=2025-02` — **Error.** Produces an error from the evaluator. The `date:` field accepts `YYYY-MM`; `year:` does not.
 
+## Empty value / incomplete input
+
+When the user has typed the field and operator but not yet a value (trailing operator while still typing — e.g. `year:` or `date:` with no adjacent RHS), the parser produces a `FieldNode` with an **empty** value (Spec 002). After **trim**, **`year:`** and **`date:`** treat that as **neutral** in the printing leaf: **every printing matches** (the leaf buffer is all `1`s). This matches the intent of Spec 002’s neutral incomplete filter and Spec 047 empty behavior for **`frame:`** / **`kw:`** parity. It is **not** a zero-result term. See [GitHub #259](https://github.com/jimbojw/frantic-search/issues/259).
+
 ## Scryfall Outlink Canonicalization
 
 For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
@@ -130,6 +134,7 @@ For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
 - The evaluator uses `floorNext` for `>` and `<=` operators; `>=` and `<` use `lo`.
 - Canonicalization must use the same range logic so Scryfall outlinks match evaluated results.
 - Rows where `released_at === 0` (unknown) remain excluded from all date comparisons.
+- 2026-04-10: **Empty `year:` / `date:`** — neutral all-printings match while typing; implementation must call `evalPrintingField` for these fields even when `value === ""`, and short-circuit before `parseDateRange` / invalid-value errors ([GitHub #259](https://github.com/jimbojw/frantic-search/issues/259)).
 
 ## Scope of Changes
 
@@ -157,3 +162,5 @@ For `date:` and `year:` fields in Scryfall outlinks (Spec 052):
 10. Scryfall outlink canonicalization produces queries that match Scryfall's expected semantics.
 11. `year=202` and `year=2025` behave identically to `date=202` and `date=2025` respectively.
 12. `year=2025-02` (or any `year:` value with month/day components) produces an error.
+13. `year:` and `date:` with an empty value (after trim) are **neutral**: all printings match in the leaf; query results are unchanged from omitting the term (Spec 002 / Spec 047 / [#259](https://github.com/jimbojw/frantic-search/issues/259)).
+14. `date:` percentile syntax does not apply when the value is empty; empty remains neutral as in criterion 13.

@@ -188,6 +188,8 @@ The value is a four-digit year or partial-year prefix (e.g. `202`). Uses the sam
 
 Examples: `year<=1994`, `year=2026`, `year=202`
 
+**Empty value:** After trim, **`:`**, **`=`**, **`!=`**, and comparison operators with an empty value are **neutral** — all printings match in the leaf buffer (same as **`kw:`** / **`frame:`** / Spec 061). The evaluator must call **`evalPrintingField`** for **`year`** even when **`ast.value === ""`** (same dispatch pattern as **`set`** / **`frame`**).
+
 ### `date:` — Release date
 
 | Operator | Semantics |
@@ -214,6 +216,8 @@ Accepted formats:
 Rows where `released_at === 0` (unknown) are excluded from all date comparisons.
 
 Examples: `date=2025`, `date>=2015-08-18`, `date>2025`, `date=202`, `date>ori`, `date>now`
+
+**Empty value:** After trim, **`:`**, **`=`**, **`!=`**, and comparison operators with an empty value are **neutral** — all printings match in the leaf buffer (same as **`kw:`** / **`frame:`** / Spec 061). Percentile values (**`…%`**) do not apply when the value is empty; empty remains neutral. The evaluator must call **`evalPrintingField`** for **`date`** even when **`ast.value === ""`** (same dispatch pattern as **`set`** / **`frame`**).
 
 ## Engine Changes
 
@@ -519,3 +523,4 @@ Add printing-field entries once the full dataset is available.
 - 2026-04-04: **`frame!=`** — negation of **`frame=`** exact mask only (principled Frantic extension vs Scryfall); empty neutral.
 - 2026-04-04: **`atag:`** / **`art:`** — Spec 174 ADR-022 migration: **`:`** / **`=`** / **`!=`**, **`unknown illustration tag`**, precomputed normalized keys (same family as **`kw:`** / **`set:`**).
 - 2026-04-10: Added **`is:old`** and **`is:new`** (frame era from `Frame` bitmask; [Issue #263](https://github.com/jimbojw/frantic-search/issues/263)). Distinct from **`is:default`** / **`is:atypical`** (printing_flags treatments). No ETL changes.
+- 2026-04-10: **`year:`** / **`date:`** — empty value (after trim) is **neutral** (all printings); **`evalPrintingField`** must run when **`value === ""`** ([issue #259](https://github.com/jimbojw/frantic-search/issues/259), Spec 061).

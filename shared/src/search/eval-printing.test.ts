@@ -757,6 +757,13 @@ describe("year field", () => {
   test("year=202 uses range semantics (2020s)", () => {
     expect(marked(evalField("year", ":", "202").buf)).toEqual([0, 1, 3, 4, 5, 6]);
   });
+
+  test("empty year: is neutral (all printings) — issue #259 / Spec 061", () => {
+    expect(marked(evalField("year", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("year", "=", "  ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(evalField("year", ">=", "").error).toBeNull();
+    expect(evalField("year", "!=", "").error).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -806,6 +813,13 @@ describe("date field", () => {
     expect(evalField("date", ":", "2020-123").error).toMatch(/invalid date/);
     expect(evalField("date", ":", "2020-01-123").error).toMatch(/invalid date/);
     expect(evalField("date", ":", "2020-01-01-05").error).toMatch(/invalid date/);
+  });
+
+  test("empty date: is neutral (all printings) — issue #259 / Spec 061", () => {
+    expect(marked(evalField("date", ":", "").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(marked(evalField("date", ">", "  ").buf)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(evalField("date", "<=", "").error).toBeNull();
+    expect(evalField("date", "!=", "").error).toBeNull();
   });
 
   // -- Range semantics (Spec 061) --------------------------------------------

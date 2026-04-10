@@ -329,7 +329,7 @@ After evaluation, when the AST is discarded (e.g. user types a new query), all n
 
 The parser must handle incomplete input gracefully, since it runs on every keystroke. Principles:
 
-- **Trailing operator:** When the field name is **adjacent** to the operator (`c:` with no space between) and there is no adjacent value token (end of input or the next token is separated by whitespace), parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter) unless a field-specific spec says otherwise.
+- **Trailing operator:** When the field name is **adjacent** to the operator (`c:` with no space between) and there is no adjacent value token (end of input or the next token is separated by whitespace), parse as a `FieldNode` with an empty value. The evaluator treats empty-value field nodes as matching all cards (neutral filter) unless a field-specific spec says otherwise. **Printing-domain** fields (**Spec 047**) must still run printing-leaf evaluation for that neutral semantics—e.g. **`year:`** / **`date:`** empty behavior is defined in **Spec 047** / **Spec 061**; the implementation must not skip `evalPrintingField` solely because `value === ""`.
 - **Standalone operators:** Leading or isolated operator tokens (`:`, `=`, `!=`, comparators) must parse as `BARE` terms (or `COLON` + adjacent `WORD` per § Grammar), never as silent `NOP` drops.
 - **Unclosed parenthesis:** `(c:wu OR` → implicitly close at EOF. The AST is structurally valid; the UI can indicate the unclosed group.
 - **Empty operand:** When `parseAndGroup` finds no term-starting tokens, it produces a `NopNode` instead of an empty AND. This arises from trailing `OR` (`a OR`), leading `OR` (`OR a`), double `OR` (`a OR OR b`), empty parentheses (`()`), and empty input.
@@ -537,3 +537,4 @@ Parser tests must cover § Whitespace and field clauses: spaced operator/value (
   Whitespace and field clauses document the behavior.
 - 2026-04-01: Spec 177 (`field-value-gap` suggestion) documents optional empty-state UX when users type a space between operator and value and get zero results; see § Whitespace and field clauses (**Recovery UX**).
 - 2026-04-04: Printing-domain **`set:`** / **`set_type:`** — **`:`** is normalized prefix union, **`=`** is normalized exact match; empty **`=`** is neutral (Specs 047 / 179 / 178). Dual-domain overview unchanged (Spec 047).
+- 2026-04-10: **Trailing operator** bullet clarifies printing-domain empty-value neutral semantics (**Spec 047** / **Spec 061** for **`year:`** / **`date:`**); see [issue #259](https://github.com/jimbojw/frantic-search/issues/259).

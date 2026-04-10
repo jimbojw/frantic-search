@@ -163,6 +163,13 @@ describe("printing-domain leaves", () => {
     expect(cardCount("year:2021")).toBe(2);
   });
 
+  test("year: and date: with empty value are neutral (issue #259, Spec 061)", () => {
+    for (const q of ["year:", "date:", "year>=", "date="] as const) {
+      expect(cardCount(q)).toBe(2);
+      expect(evaluate(q).result.error).toBeUndefined();
+    }
+  });
+
   test('date:"2018-03-16" matches Lightning Bolt (quoted to avoid dash-as-NOT)', () => {
     expect(cardCount('date:"2018-03-16"')).toBe(1);
   });
