@@ -16,17 +16,17 @@ describe("collapseBranchTokens (Spec 181)", () => {
   it("collapses 3+ contiguous letters", () => {
     expect(
       collapseBranchTokens(["a", "b", "c", "d", "e", "f", "h", "j", "0", "1", "2", "3", "4", "5"]),
-    ).toEqual(["a-f", "h", "j", "0-5"]);
+    ).toEqual(["a..f", "h", "j", "0..5"]);
   });
 
-  it("isolates gap then collapses following run (a|c-f)", () => {
-    expect(collapseBranchTokens(["a", "c", "d", "e", "f"])).toEqual(["a", "c-f"]);
+  it("isolates gap then collapses following run (a|c..f)", () => {
+    expect(collapseBranchTokens(["a", "c", "d", "e", "f"])).toEqual(["a", "c..f"]);
   });
 
   it("collapses full letter and digit ranges", () => {
     const letters = "abcdefghijklmnopqrstuvwxyz".split("");
     const digits = "0123456789".split("");
-    expect(collapseBranchTokens([...letters, ...digits])).toEqual(["a-z", "0-9"]);
+    expect(collapseBranchTokens([...letters, ...digits])).toEqual(["a..z", "0..9"]);
   });
 
   it("does not collapse runs of length 2", () => {
@@ -41,7 +41,7 @@ describe("collapseBranchTokens (Spec 181)", () => {
 describe("buildPrefixBranchHint (Spec 181)", () => {
   it("empty prefix: first chars with collapse", () => {
     const cands = ["a", "b", "c", "d", "e", "f", "h", "j", "0", "1", "2", "3", "4", "5"];
-    expect(buildPrefixBranchHint("", cands)).toBe("(a-f|h|j|0-5)");
+    expect(buildPrefixBranchHint("", cands)).toBe("(a..f|h|j|0..5)");
   });
 
   it("single completion: suffix after prefix", () => {
@@ -81,8 +81,16 @@ describe("buildPrefixBranchHint (Spec 181)", () => {
       expect(buildPrefixBranchHint("", ["mana-ramp", "removal"], "tag")).toBe("(m|r)");
     });
 
-    it("interior-only boundary match yields no hint (MVP)", () => {
+    it("interior-only boundary match yields no hint", () => {
       expect(buildPrefixBranchHint("trigger", ["death-trigger"], "tag")).toBe(null);
+    });
+
+    it("interior-only for short prefix: no left-anchored match", () => {
+      expect(buildPrefixBranchHint("m", ["artifact-matters"], "tag")).toBe(null);
+    });
+
+    it("mixed vocabulary: hint from left-anchored subset only", () => {
+      expect(buildPrefixBranchHint("m", ["mana-ramp", "artifact-matters"], "tag")).toBe("(ana-ramp)");
     });
   });
 });

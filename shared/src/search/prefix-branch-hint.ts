@@ -36,7 +36,7 @@ export function sortBranchTokens(tokens: string[]): string[] {
 }
 
 /**
- * Collapse 3+ contiguous single-letter (a–z) or single-digit (0–9) branches into X–Y.
+ * Collapse 3+ contiguous single-letter (a–z) or single-digit (0–9) branches into X..Y (Spec 181).
  * Input must be sorted per {@link sortBranchTokens}. `=` and other tokens pass through.
  */
 export function collapseBranchTokens(sorted: string[]): string[] {
@@ -62,7 +62,7 @@ export function collapseBranchTokens(sorted: string[]): string[] {
     }
     const runLen = j - i;
     if (runLen >= 3) {
-      out.push(`${sorted[i]}-${sorted[j - 1]}`);
+      out.push(`${sorted[i]}..${sorted[j - 1]}`);
     } else {
       for (let k = i; k < j; k++) out.push(sorted[k]!);
     }
@@ -99,14 +99,13 @@ function buildPrefixBranchHintTag(trimmed: string, nonEmpty: string[]): string |
     return `(${collapsed.join("|")})`;
   }
 
-  const matches = nonEmpty.filter((c) => matchesBoundaryAlignedPrefix(c, u));
-  if (matches.length === 0) return null;
+  const boundaryMatches = nonEmpty.filter((c) => matchesBoundaryAlignedPrefix(c, u));
+  if (boundaryMatches.length === 0) return null;
 
-  if (!matches.every((m) => m.startsWith(u))) {
-    return null;
-  }
+  const digestMatches = boundaryMatches.filter((m) => m.startsWith(u));
+  if (u.length > 0 && digestMatches.length === 0) return null;
 
-  const uniqueMatches = [...new Set(matches)];
+  const uniqueMatches = [...new Set(digestMatches)];
   if (uniqueMatches.length === 1) {
     const c = uniqueMatches[0]!;
     if (c === u) return null;

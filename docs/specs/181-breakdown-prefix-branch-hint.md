@@ -22,7 +22,9 @@ Typical cases:
 
 Many categorical fields use **`normalizeForResolution`** plus full-string **`startsWith`** on **`:`** to **OR** matches (ADR-022 §4; field specs). **`otag`** / **`atag`** are an exception: [Spec 174](174-otag-atag-prefix-query-semantics.md) uses **`normalizeForTagResolution`** and **boundary-aligned** prefix matching (not full-string `startsWith` on alphanumeric-stripped keys). The chip label uses the user’s typed text (`app/src/worker-breakdown.ts` uses `sourceText ?? value`), so users cannot see which vocabulary entries fired. This spec lists every field where **`:`** evaluation uses prefix-union discovery (or the **`in:`** three-namespace union per Spec 072 / 182) and requires matching breakdown hints.
 
-**Eval alignment:** Hints **MUST** use the **same** normalization and **same** candidate-matching rule as **`:`** evaluation for that field.
+**Eval alignment:** Hints **MUST** use the **same** normalization as **`:`** evaluation for that field. For candidate **matching**, hints **MUST** follow the same rules as eval **except** for **`otag`** / **`atag`** non-empty values—see **Tag fields (`otag` / `atag`) digest vs evaluation** below.
+
+**Tag fields (`otag` / `atag`) digest vs evaluation:** [Spec 174](174-otag-atag-prefix-query-semantics.md) **`:`** evaluation unions every wire key whose **`normKey`** matches the user prefix under **boundary-aligned** rules. The breakdown **parenthesized digest** for a **non-empty** normalized prefix **`u`** cannot list “next characters” consistently for keys that only match at an **interior** hyphen boundary (e.g. `trigger` on `death-trigger`). Therefore, for **non-empty** **`u`**, single-completion and multi-branch rendering **MUST** use only candidates whose **`normKey.startsWith(u)`** (the **left-anchored subset** of boundary-aligned matches). **Evaluation** is unchanged: it still ORs the full boundary-aligned set. If the left-anchored subset is **empty** but at least one boundary-aligned match exists (**interior-only** case), **omit** the hint. **Empty** trimmed value (`otag:`, `atag:`) is unchanged: first-character digest over **all** non-empty normalized candidates.
 
 **Eval baseline (current):** `is:`, `not:`, `game:`, and `rarity:` follow ADR-022 on **`:`** (normalized prefix union) and on **`=`** / **`!=`** (exact / exact-negated) per their field specs and tests. They are **in scope** for breakdown hints on **`:`** under the same rules as the rest of the in-scope table—not a future or exceptional case.
 
@@ -69,14 +71,14 @@ These are the fields where **evaluation** on **`:`** applies normalized prefix d
 - Trimmed value may be **empty** or **non-empty**. Empty is **in scope** for first-character digest when the candidate set supports it.
 - Leaf has **no** evaluator error for that term (e.g. omit hint for `unknown keyword`, `unknown set`, `unknown in value`, etc.).
 - **`in:`:** If the trimmed value is a **known unsupported language** token (Spec 072), the leaf errors—**no** hint.
-- **Non-empty trimmed value:** Show a hint when **at least one** matching candidate exists (after the same matching rule as eval). Use **single-completion** vs **multi-branch** rendering below.
+- **Non-empty trimmed value:** Show a hint when the digest can be formed per **Content** (for **`otag`** / **`atag`**, when the **left-anchored** subset is non-empty—see **Tag fields (`otag` / `atag`) digest vs evaluation**). Use **single-completion** vs **multi-branch** rendering below.
 - **Empty trimmed value:** Show a hint when the candidate set yields **at least one** distinct first character after the continuation logic. Omit only if there is no usable candidate (e.g. index not loaded where required).
 
 ### Content
 
 Let the **normalized prefix** be the same string evaluation uses after trim: for most in-scope fields, **`normalizeForResolution(trimmed user value)`** (may be `""`); for **`otag`** / **`atag`**, **`normalizeForTagResolution(trimmed user value)`** per [Spec 174](174-otag-atag-prefix-query-semantics.md).
 
-Collect all **matching** candidates using the **same rule as eval**: for most fields, normalized candidate **`startsWith`** normalized prefix; for **`otag`** / **`atag`**, Spec 174 **boundary-aligned** prefix (see that spec). For an empty prefix, every non-empty normalized candidate matches (subject to the field’s eval rules); **exclude** candidates whose normalized form is empty so the continuation step is well-defined.
+Collect **matching** candidates using the **same rule as eval**: for most fields, normalized candidate **`startsWith`** normalized prefix; for **`otag`** / **`atag`**, Spec 174 **boundary-aligned** prefix (see that spec). For an empty prefix, every non-empty normalized candidate matches (subject to the field’s eval rules); **exclude** candidates whose normalized form is empty so the continuation step is well-defined. For **`otag`** / **`atag`** with **non-empty** prefix, apply **single-completion** / **multi-branch** / **`=`** rendering to the **left-anchored subset** only (`normKey.startsWith(u)`); see **Tag fields (`otag` / `atag`) digest vs evaluation** above.
 
 **Multi-branch delimiter (normative):** Any hint that lists **multiple** branch or first-character options **MUST** use the form **`(`** *token* **`|`** *token* **`|`** … **`)`** — tokens separated **only** by **U+007C VERTICAL LINE** (`|`). Do **not** use commas, spaces, or slashes as separators inside the digest. **Single-completion** hints (exactly one extended match) **MUST NOT** contain `|` (they are **`(`** *suffix* **`)`** only).
 
@@ -108,11 +110,12 @@ Optional follow-up: align `app/src/QueryHighlight.tsx` ([Spec 088](088-syntax-hi
 1. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **two or more** **`:`** candidates, and does not error produces a breakdown `FIELD` node with a non-empty `prefixBranchHint` using the **multi-branch** form with pipe-separated branch units and **range collapsing** for 3+ contiguous characters (e.g. `(a..f|h|0..5)`).
 2. For each **canonical** field in the in-scope table, a query whose trimmed value is **non-empty**, matches **exactly one** **`:`** candidate, and does not error: if the sole candidate’s normalized form **equals** the prefix, **omit** `prefixBranchHint` (nothing to complete); otherwise produce `prefixBranchHint` using the **single-completion** form `(suffix)` — the normalized candidate with the normalized prefix removed.
 3. For each **canonical** field in the in-scope table, a query whose trimmed value is **empty** on **`:`** (e.g. `is:`, `kw:`, `in:`) produces a `prefixBranchHint` over **all distinct first characters** of that field’s candidate set when data is loaded and the leaf is not errored, using the same pipe-delimited, range-collapsed multi-branch form as criterion 1.
-4. Hints use the **same** normalization and matching rules as **`:`** evaluation: Spec 103 **`normalizeForResolution`** for most in-scope fields; [Spec 174](174-otag-atag-prefix-query-semantics.md) **`normalizeForTagResolution`** and boundary-aligned matching for **`otag`** / **`atag`**.
-5. `BreakdownNode.label` remains the user-facing term as today; hint is separate wire data.
-6. Chip interactions (pin, remove, click-to-edit) behave as before; hint string is not part of those code paths.
-7. **Errored** leaves produce **no** hint.
-8. Aliases (`kw:`, `s:`, `st:`, `art:`, `function:`, `not:`, `r:`, `f:`, `cn:`, etc.) behave the same as their canonical field after alias resolution.
+4. Hints use the **same** normalization as **`:`** evaluation: Spec 103 **`normalizeForResolution`** for most in-scope fields; [Spec 174](174-otag-atag-prefix-query-semantics.md) **`normalizeForTagResolution`** for **`otag`** / **`atag`**. For **`otag`** / **`atag`**, digest content for non-empty prefixes follows **Tag fields (`otag` / `atag`) digest vs evaluation** (left-anchored subset); evaluation remains full boundary-aligned union per Spec 174.
+5. For **`otag:`** / **`atag:`** with a **short non-empty** prefix (e.g. one letter) where the vocabulary includes **both** left-anchored and interior-only boundary matches, the breakdown shows a **non-empty** `prefixBranchHint` whenever the left-anchored subset is non-empty (regression guard for mixed vocabulary).
+6. `BreakdownNode.label` remains the user-facing term as today; hint is separate wire data.
+7. Chip interactions (pin, remove, click-to-edit) behave as before; hint string is not part of those code paths.
+8. **Errored** leaves produce **no** hint.
+9. Aliases (`kw:`, `s:`, `st:`, `art:`, `function:`, `not:`, `r:`, `f:`, `cn:`, etc.) behave the same as their canonical field after alias resolution.
 
 ## Implementation notes (for implementers)
 
