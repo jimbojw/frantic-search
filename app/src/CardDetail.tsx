@@ -311,9 +311,9 @@ function AllPrintsQueryChip(props: {
 }) {
   const sub = () => allPrintsChipSubtitle(props.cards, props.prints)
   const chipBase =
-    'inline-flex w-full min-w-0 max-w-full flex-col rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
+    'inline-flex min-w-0 max-w-full flex-col rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
   const row1Class = () =>
-    `flex w-full min-w-0 items-start px-2 ${sub() ? 'min-h-[2.25rem] pt-1 pb-0.5' : 'flex-1 py-2'}`
+    `flex w-full min-w-0 items-center justify-center px-2 py-2 ${sub() ? 'min-h-[2.25rem]' : 'flex-1'}`
   const querySpans = () => (
     <For each={buildSpans(props.query)}>
       {(span) =>
@@ -327,7 +327,7 @@ function AllPrintsQueryChip(props: {
       fallback={
         <span class={`${chipBase} min-h-[3.75rem]`}>
           <div class={row1Class()}>
-            <span class="block min-w-0 flex-1 break-words text-left">{querySpans()}</span>
+            <span class="block w-full min-w-0 break-words text-center">{querySpans()}</span>
           </div>
           <Show when={sub()}>
             <div class="flex items-center justify-center px-1.5 pb-1 pt-0.5">
@@ -342,14 +342,14 @@ function AllPrintsQueryChip(props: {
       {(nav) => (
         <button
           type="button"
-          class={`${chipBase} min-h-[3.75rem] cursor-pointer text-left`}
+          class={`${chipBase} min-h-[3.75rem] cursor-pointer text-center`}
           onClick={() => {
             captureCardDetailInteracted({ control: 'all_prints' })
             nav()(props.query)
           }}
         >
           <div class={row1Class()}>
-            <span class="block min-w-0 flex-1 break-words text-left">{querySpans()}</span>
+            <span class="block w-full min-w-0 break-words text-center">{querySpans()}</span>
           </div>
           <Show when={sub()}>
             <div class="flex items-center justify-center px-1.5 pb-1 pt-0.5">
@@ -368,7 +368,7 @@ const QUERY_CHIP_BASE =
   'inline-flex max-w-full min-w-0 gap-0.5 min-h-11 px-2 py-2 rounded text-xs font-mono bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors'
 
 const QUERY_CHIP_ALIGN_CENTER = 'items-center justify-center'
-const QUERY_CHIP_ALIGN_WRAP = 'items-start justify-start'
+const QUERY_CHIP_ALIGN_WRAP = 'items-center justify-center'
 
 function QueryChip(props: {
   query: string
@@ -391,7 +391,7 @@ function QueryChip(props: {
     `${QUERY_CHIP_BASE} ${props.wrapLabel ? QUERY_CHIP_ALIGN_WRAP : QUERY_CHIP_ALIGN_CENTER}`
   const defaultLabelClass = () =>
     props.wrapLabel
-      ? 'min-w-0 text-left break-words whitespace-normal'
+      ? 'min-w-0 w-full max-w-full text-center break-words whitespace-normal'
       : 'truncate min-w-0'
   return (
     <Show
@@ -410,7 +410,7 @@ function QueryChip(props: {
       {(nav) => (
         <button
           type="button"
-          class={`${outerClass()} cursor-pointer text-left`}
+          class={`${outerClass()} cursor-pointer ${props.wrapLabel ? 'text-center' : 'text-left'}`}
           onClick={() => {
             captureCardDetailInteracted({ control: 'query_chip', field: props.field, query: props.query })
             nav()(props.query)

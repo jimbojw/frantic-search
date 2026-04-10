@@ -27,7 +27,9 @@ Remove chrome duplicated by the portaled card header (Spec 165), replace the pla
 - **Query string:** `!"{fullName}" unique:prints include:extras` (same semantics as [Spec 050](050-printing-aware-card-detail.md) all-prints navigation; `include:extras` per that spec).
 - **Syntax highlight:** Reuse `buildSpans` / `ROLE_CLASSES` from `app/src/QueryHighlight.tsx` on the query string, same as tag chips.
 - **Click target:** The **entire chip** (query row and subtitle row when present) is a single control that runs `onNavigateToQuery` with that full string.
-- **Long names:** The highlighted query row **wraps** (`break-words`, full width of the card body column) so long `!"…" unique:prints include:extras` strings do not single-line truncate; chip **minimum** height rules still apply and the chip **grows** when the query spans multiple lines.
+- **Horizontal sizing:** The chip is **`inline-flex` / shrink-to-fit** up to the **max width of the card detail content column** (`max-w-full` / `min-w-0`), **centered** under the title (parent uses flex `justify-center`). It does **not** stretch to the full column width unless the query text is that wide.
+- **Long names:** The highlighted query row **wraps** (`break-words`) within that bound so long `!"…" unique:prints include:extras` strings do not single-line truncate; chip **minimum** height rules still apply and the chip **grows** when the query spans multiple lines.
+- **Alignment:** The primary row matches the **TagChip** pattern: **`items-center`** on the query row (no top-heavy flex alignment). Query text is **centered** in the chip; the subtitle row (when present) stays centered as today.
 
 #### Subtitle row (counts)
 
@@ -43,7 +45,7 @@ Second line: small, muted, tabular numbers—same role as the tag chip count lin
 #### Layout when the subtitle is omitted
 
 - The chip’s **outer minimum height** matches a **two-line** tag chip (fixed `min-height` / flex column) so toggling between one and two lines does not change overall chip height.
-- The **primary row** (highlighted query only) uses vertical padding when the subtitle row is absent; **short** single-line queries appear comfortably padded. **Long** queries **wrap** and increase chip height (no truncation).
+- The **primary row** (highlighted query only) uses **balanced** vertical padding when the subtitle row is absent or present—**short** single-line queries appear comfortably padded (not stuck to the top of the min-height box). **Long** queries **wrap** and increase chip height (no truncation).
 
 ### 3. Inline Slack / Reddit row
 
@@ -78,4 +80,4 @@ See [Spec 160](160-card-detail-analytics.md): `scryfall_external` (metadata outl
 
 - **2026-03-28:** Initial spec; supersedes the “out of scope” cleanup deferred from Spec 165.
 - **2026-04-10:** In-body title `<h1>` uses wrapping (`break-words`, `min-w-0`) instead of `truncate` for long oracle names.
-- **2026-04-10:** All-prints query chip primary row wraps long highlighted queries (`break-words`, `w-full`); wrapper `div` uses `w-full min-w-0` so the chip can use the content column width.
+- **2026-04-10:** All-prints query chip primary row wraps long highlighted queries (`break-words`); chip uses `max-w-full` / `min-w-0` and is centered under the title (no `w-full` stretch). **2026-04-10 (revision):** Shrink-to-fit width, centered query text, and primary-row `items-center` aligned with `TagChip`.
