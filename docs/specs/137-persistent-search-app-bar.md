@@ -38,7 +38,7 @@ Layout structure:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ [ Home ] [ Split View ] [ Back ] [ Copy URL ]   [ My List ] [ Menu ]   │  ← persistent bar
+│ [ Home ] [ Back ] [ Split View ] [ Copy URL ]   [ My List ] [ Menu ]   │  ← persistent bar
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  [ Hero image + title — when !headerCollapsed ]                          │
@@ -53,8 +53,8 @@ Layout structure:
 
 - **Left group:**
   - **Home** — Always visible. Industry standard; keeps the bar consistent. Uses app icon (e.g. `/pwa-192x192.png`). Action: `navigateHome()`.
+  - **Back** — When query present. Immediately after Home, before Split view. Per Spec 129.
   - **Split View** — When `viewportWide()` only. Action: `enterDualWield()`.
-  - **Back** — When `!viewportWide()` and query present. Per Spec 129.
   - **Copy URL** — When query present. Per Spec 129.
 - **Right group:**
   - **My List** — Action: `navigateToLists()`.
@@ -105,7 +105,7 @@ Remove the `IconAdjustmentsHorizontal` button from inside the search box. The Me
 ## Acceptance Criteria
 
 1. The app bar is always visible from first load, including when the hero is shown.
-2. Bar content: Home, Split View (wide only), Back (narrow + query), Copy URL (query), My List, Menu. Home is always present.
+2. Bar content: Home, Back (query), Split View (wide only), Copy URL (query), My List, Menu. Home is always present.
 3. Focusing the search box alone does not collapse the hero (users can see the hero on fresh load).
 4. Typing a non-empty query collapses the hero.
 5. Opening the menu (Menu button) collapses the hero.
@@ -117,6 +117,7 @@ Remove the `IconAdjustmentsHorizontal` button from inside the search box. The Me
 ## Implementation Notes
 
 - 2026-03-18: Implemented persistent bar, filter toggle removal. Bar order: Home, Split view (wide), Back (narrow + query), Copy URL (query), My List, Menu.
+- 2026-04-10: Back in single-pane search shows whenever the query is non-empty, including wide viewports (Spec 129). Bar order: Home, Back (query), Split view (wide), Copy URL (query), My List, Menu.
 - 2026-03-18: Removed `inputFocused()` from collapse triggers — focus alone was too aggressive; users could not see the hero. Collapse now only on query non-empty, termsExpanded, or urlHasQueryParam.
 - 2026-03-18: Renamed urlEngaged to urlHasQueryParam; collapse when URL has `q` param (any value, including empty). Hero shows when URL is parameterless.
 - 2026-03-18: Home button two-step clear: first tap `q=foo` → `q=`; second tap `q=` → parameterless. Hero returns after second tap.

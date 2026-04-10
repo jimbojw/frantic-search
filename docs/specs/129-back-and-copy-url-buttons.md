@@ -40,8 +40,8 @@ When no query is present, neither button is shown.
 
 ### Back button
 
-- **Visibility:** Shown only when `!viewportWide()` (narrow viewport) **and** a query is present.
-- **Rationale:** Desktop users have easy access to the browser back button. Back is primarily for mobile web and PWA.
+- **Visibility (single pane):** Shown whenever a query is present (`q` non-empty), **at any viewport width**. Independent of `viewportWide()`.
+- **Rationale:** Mobile web and standalone PWA users still lack reliable browser chrome; wide screens also benefit from a consistent in-app control immediately after Home (before Split view), while desktop users may still use the browser back button.
 - **Action:** Calls `history.back()` on click.
 - **Icon:** `IconChevronLeft` from the internal icon library.
 - **aria-label:** "Go back" (or equivalent).
@@ -58,13 +58,13 @@ When no query is present, neither button is shown.
 
 ### Single-pane layout
 
-Left-aligned next to the Home button. Order: Home, Split view (wide only), Back (if visible), Copy… (if visible).
+Left-aligned next to the Home button. Order: Home, Back (if visible), Split view (wide only), Copy… (if visible).
 
 ```
-[ Home ] [ Split View ] [ Back ] [ Copy… ] ... [ My List ] [ Menu ]
+[ Home ] [ Back ] [ Split View ] [ Copy… ] ... [ My List ] [ Menu ]
 ```
 
-- **Left group:** Home (always), Split view (when `viewportWide`), Back (narrow only), Copy… — conditionally visible per rules above.
+- **Left group:** Home (always), Back (when query present), Split view (when `viewportWide`), Copy… — conditionally visible per rules above.
 - **Right group:** My List, Menu — unchanged.
 
 The app bar is **persistent** (Spec 137): always visible from first load, including when the hero is shown.
@@ -85,23 +85,22 @@ Copy… appears in the **left rail**, after the Home button:
 
 ### Viewport breakpoint
 
-Use the existing `useViewportWide()` hook (1024px breakpoint). Back is shown when `!viewportWide()`.
+Use the existing `useViewportWide()` hook (1024px breakpoint) for **Split view** and Dual Wield layout only. Single-pane Back visibility does **not** depend on this breakpoint.
 
 ## Scope of Changes
 
 | File | Change |
 |------|--------|
-| `app/src/App.tsx` | Add Back and copy control to single-pane header. Condition on `viewportWide`, query presence. Wire Back to `history.back()`; copy menu per Spec 164. |
+| `app/src/App.tsx` | Add Back and copy control to single-pane header. Back when query present (all viewports); Split view when `viewportWide`. Wire Back to `history.back()`; copy menu per Spec 164. |
 | `app/src/DualWieldLayout.tsx` | Add Copy control to left rail, after Home. Condition on query presence (q1 or q2). See Spec 164 for menu behavior. |
 | `docs/specs/086-dual-wield.md` | Add "Modified by Spec 129" note: left rail gains copy control. |
 
 ## Acceptance Criteria
 
-1. **Single pane, narrow viewport:** When a query is present and viewport &lt; 1024px, Back and Copy… appear left of My List, after Home.
-2. **Single pane, wide viewport:** When a query is present and viewport ≥ 1024px, Back is hidden; Copy… is shown.
-3. **Single pane, no query:** Neither Back nor Copy… is shown.
-4. **Copy menu:** The control opens a menu (Spec 164). Choosing the URL item copies the current `location.href` to the clipboard. Brief "Copied!" feedback is shown (e.g., checkmark icon for ~2 seconds).
-5. **Back action:** Clicking Back calls `history.back()`.
-6. **Dual Wield:** Copy… appears in the left rail after Home when q1 or q2 is non-empty. Back is not shown.
-7. **Icons:** Back uses `IconChevronLeft`; Copy… uses `IconClipboardDocument`.
-8. **Accessibility:** Both buttons have appropriate `aria-label` values.
+1. **Single pane, query present:** Back and Copy… appear left of My List, after Home; Back is immediately after Home, then Split view when viewport ≥ 1024px, then Copy…, at any viewport width.
+2. **Single pane, no query:** Neither Back nor Copy… is shown.
+3. **Copy menu:** The control opens a menu (Spec 164). Choosing the URL item copies the current `location.href` to the clipboard. Brief "Copied!" feedback is shown (e.g., checkmark icon for ~2 seconds).
+4. **Back action:** Clicking Back calls `history.back()`.
+5. **Dual Wield:** Copy… appears in the left rail after Home when q1 or q2 is non-empty. Back is not shown.
+6. **Icons:** Back uses `IconChevronLeft`; Copy… uses `IconClipboardDocument`.
+7. **Accessibility:** Both buttons have appropriate `aria-label` values.

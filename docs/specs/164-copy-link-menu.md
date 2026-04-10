@@ -79,7 +79,7 @@ Programmatic events only (Spec 085). Use `ui_interacted` with `element_name: 'co
 3. When the parsed AST contains **exactly one** non-empty `EXACT` node (e.g. `!"Lightning Bolt"` alone, or `!"Bolt" t:instant`), a third row appears and copies Markdown with that name as anchor text (user’s quoted spelling preserved).
 4. Two or more non-empty `EXACT` nodes: no card-name row.
 5. Dual Wield: Markdown (search) uses the ` · ` join rule; card-name row uses the **left** pane effective query only.
-6. Spec 129 visibility rules remain satisfied; Back button behavior unchanged.
+6. Spec 129 visibility rules remain satisfied: Back still calls `history.back()` and appears only when a query is present in single pane; visibility includes wide viewports per Spec 129.
 7. Analytics events fire as specified in the table above.
 
 ## Scope of documentation updates

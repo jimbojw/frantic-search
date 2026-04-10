@@ -1564,6 +1564,19 @@ function App() {
                       >
                         <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
                       </button>
+                      <Show when={!viewportWide()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            captureCardDetailInteracted({ control: 'back' })
+                            history.back()
+                          }}
+                          aria-label="Go back"
+                          class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <IconChevronLeft class="size-5" />
+                        </button>
+                      </Show>
                       <Show when={viewportWide()}>
                         <button
                           type="button"
@@ -1577,19 +1590,6 @@ function App() {
                             <rect x="12" y="3" width="9" height="18" rx="1" />
                           </svg>
                           <span class="text-sm whitespace-nowrap">Split view</span>
-                        </button>
-                      </Show>
-                      <Show when={!viewportWide()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            captureCardDetailInteracted({ control: 'back' })
-                            history.back()
-                          }}
-                          aria-label="Go back"
-                          class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <IconChevronLeft class="size-5" />
                         </button>
                       </Show>
                       <CardCopyMenu
@@ -1698,6 +1698,16 @@ function App() {
             >
               <img src="/pwa-192x192.png" alt="" class="size-8 rounded-lg" />
             </button>
+            <Show when={query().trim() !== ''}>
+              <button
+                type="button"
+                onClick={() => history.back()}
+                aria-label="Go back"
+                class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <IconChevronLeft class="size-5" />
+              </button>
+            </Show>
             <Show when={viewportWide()}>
               <button
                 type="button"
@@ -1711,16 +1721,6 @@ function App() {
                   <rect x="12" y="3" width="9" height="18" rx="1" />
                 </svg>
                 <span class="text-sm whitespace-nowrap">Split view</span>
-              </button>
-            </Show>
-            <Show when={!viewportWide() && query().trim() !== ''}>
-              <button
-                type="button"
-                onClick={() => history.back()}
-                aria-label="Go back"
-                class="flex h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <IconChevronLeft class="size-5" />
               </button>
             </Show>
             <Show when={query().trim() !== ''}>

@@ -8,7 +8,7 @@
 
 ## Goal
 
-When the URL represents the card detail view (`card` query parameter per Spec 015), show the **same persistent header chrome** as single-pane search: left group (Home, Split view when viewport is wide, Back when narrow, Copy…), right group (My list, Menu). Layout and control sizing match the search header (`h-11`, same button styling).
+When the URL represents the card detail view (`card` query parameter per Spec 015), show the **same persistent header chrome** as single-pane search: left group (Home, Back when viewport is narrow, Split view when wide, Copy…), right group (My list, Menu). Layout and control sizing match the search header (`h-11`, same button styling).
 
 ## Background
 
@@ -64,7 +64,7 @@ Use `card_detail_interacted` only (not `ui_interacted`). New `control` values �
 
 ## Acceptance criteria
 
-1. With `card` set in the URL and data loaded, the header slot shows Home, Split (wide), Back (narrow), Copy…, My list, Menu — visually consistent with single-pane search.
+1. With `card` set in the URL and data loaded, the header slot shows Home, Back (narrow), Split (wide), Copy…, My list, Menu — visually consistent with single-pane search.
 2. Copy… offers URL (as is), URL (card only), Card name, Markdown link; Slack/Reddit row appears only when printing set + collector exist.
 3. Back on narrow calls `history.back()` and fires `card_detail_interacted` `back`.
 4. Menu opens the same filter drawer as search (chips, help links) with working context.
