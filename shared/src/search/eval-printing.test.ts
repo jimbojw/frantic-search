@@ -842,6 +842,12 @@ describe("date field", () => {
     expect(marked(gte.buf)).toEqual([0, 1, 3, 4, 6]);
   });
 
+  test("invalid colon–comparison operators return error (Spec 002 / #255)", () => {
+    expect(evalField("date", ":>", "2022").error).toMatch(/unknown operator ":>"/);
+    expect(evalField("date", ":<", "2018").error).toMatch(/unknown operator ":<"/);
+    expect(evalField("set", ":=", "mh2").error).toMatch(/unknown operator ":="/);
+  });
+
   test("year-month date<2018-04", () => {
     const lt = evalField("date", "<", "2018-04");
     expect(lt.error).toBeNull();

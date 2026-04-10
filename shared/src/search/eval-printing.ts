@@ -5,6 +5,7 @@ import { RARITY_NAMES, RARITY_ORDER, FRAME_NAMES, GAME_NAMES, Finish } from "../
 import { parseDateRange } from "./date-range";
 import { resolveForField, normalizeForResolution, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
+import { invalidColonCompositeOperatorError } from "./field-operator-invalid";
 
 export const PERCENTILE_RE = /^(\d+(?:\.\d+)?)%$/;
 
@@ -194,6 +195,9 @@ export function evalPrintingField(
   artistIndex?: ArtistIndexData | null,
 ): string | null {
   const n = pIdx.printingCount;
+
+  const invalidColonOp = invalidColonCompositeOperatorError(op);
+  if (invalidColonOp) return invalidColonOp;
 
   switch (canonical) {
     case "set": {

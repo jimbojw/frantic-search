@@ -51,7 +51,7 @@ export interface ComputedResult {
 }
 ```
 
-When `error` is set, `matchCount` is `-1` and `buf` is an empty `Uint8Array(0)` — the same representation as NOP. The error string is a short, human-readable reason (e.g., `"unknown field"`, `"invalid regex"`).
+When `error` is set, `matchCount` is `-1` and `buf` is an empty `Uint8Array(0)` — the same representation as NOP. The error string is a short, human-readable reason (e.g., `"unknown field"`, `"invalid regex"`). The same path applies when a leaf returns a structured error for an **invalid or unsupported operator** on a `FIELD` node (e.g. unknown colon–comparison composite per [Spec 002](../specs/002-query-engine.md)): the leaf does not silently zero-hit; it surfaces `error` on the `QueryNodeResult` like other field errors.
 
 ### 2. Error detection in leaf evaluators
 

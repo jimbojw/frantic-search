@@ -64,6 +64,8 @@ export interface FieldNode {
   valueSpan?: Span;
   /** Display form for desugared aliases (e.g. "++", "@@"). Used by breakdown. */
   sourceText?: string;
+  /** Set only when the user wrote `==` (merged to `operator: "="`). Spec 002 / Spec 085. */
+  operatorSynonym?: "==";
 }
 
 export interface BareWordNode {

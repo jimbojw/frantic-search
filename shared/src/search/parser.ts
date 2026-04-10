@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { TokenType, type Token, type ASTNode, type Span } from "./ast";
+import { TokenType, type Token, type ASTNode, type Span, type FieldNode } from "./ast";
 import { lex } from "./lexer";
 
 const BARE_REGEX_FIELDS = ["name", "oracle", "type"];
@@ -23,6 +23,44 @@ function compoundSpan(children: ASTNode[]): Span | undefined {
   const last = children[children.length - 1]?.span;
   if (first && last) return { start: first.start, end: last.end };
   return undefined;
+}
+
+/**
+ * After consuming the first operator token (adjacent to the field name), merge `=>`, `=<`, `==`,
+ * `:>`, `:<`, `:=` when the next token is adjacent. Spec 002.
+ */
+function mergeAdjacentFieldOperators(op: Token, peek: () => Token, advance: () => Token): {
+  opStr: string;
+  operatorSynonym?: "==";
+  lastTok: Token;
+} {
+  const n = peek();
+  if (op.end !== n.start) {
+    return { opStr: op.value, lastTok: op };
+  }
+  if (op.type === TokenType.EQ) {
+    if (n.type === TokenType.GT) {
+      return { opStr: ">=", lastTok: advance() };
+    }
+    if (n.type === TokenType.LT) {
+      return { opStr: "<=", lastTok: advance() };
+    }
+    if (n.type === TokenType.EQ) {
+      return { opStr: "=", operatorSynonym: "==", lastTok: advance() };
+    }
+  }
+  if (op.type === TokenType.COLON) {
+    if (n.type === TokenType.GT) {
+      return { opStr: ":>", lastTok: advance() };
+    }
+    if (n.type === TokenType.LT) {
+      return { opStr: ":<", lastTok: advance() };
+    }
+    if (n.type === TokenType.EQ) {
+      return { opStr: ":=", lastTok: advance() };
+    }
+  }
+  return { opStr: op.value, lastTok: op };
 }
 
 class Parser {
@@ -137,34 +175,51 @@ class Parser {
           return { type: "BARE", value: word.value, quoted: false, span: { start: word.start, end: word.end } };
         }
         const op = this.advance();
+        const { opStr, operatorSynonym, lastTok } = mergeAdjacentFieldOperators(
+          op,
+          () => this.peek(),
+          () => this.advance(),
+        );
         const next = this.peek();
         if (
           (this.at(TokenType.WORD) || this.at(TokenType.QUOTED)) &&
-          op.end === next.start
+          lastTok.end === next.start
         ) {
           const valueTok = this.advance();
           const sourceText =
             valueTok.type === TokenType.QUOTED
               ? this.input.slice(valueTok.start, valueTok.end)
               : undefined;
-          return {
-            type: "FIELD", field: word.value, operator: op.value, value: valueTok.value,
+          const field: FieldNode = {
+            type: "FIELD",
+            field: word.value,
+            operator: opStr,
+            value: valueTok.value,
             span: { start: word.start, end: valueTok.end },
             valueSpan: { start: valueTok.start, end: valueTok.end },
             ...(sourceText !== undefined && { sourceText }),
+            ...(operatorSynonym !== undefined && { operatorSynonym }),
           };
+          return field;
         }
-        if (this.at(TokenType.REGEX) && op.end === next.start) {
+        if (this.at(TokenType.REGEX) && lastTok.end === next.start) {
           const regex = this.advance();
           return {
-            type: "REGEX_FIELD", field: word.value, operator: op.value, pattern: regex.value,
+            type: "REGEX_FIELD",
+            field: word.value,
+            operator: opStr,
+            pattern: regex.value,
             span: { start: word.start, end: regex.end },
           };
         }
         return {
-          type: "FIELD", field: word.value, operator: op.value, value: "",
-          span: { start: word.start, end: op.end },
-          valueSpan: { start: op.end, end: op.end },
+          type: "FIELD",
+          field: word.value,
+          operator: opStr,
+          value: "",
+          span: { start: word.start, end: lastTok.end },
+          valueSpan: { start: lastTok.end, end: lastTok.end },
+          ...(operatorSynonym !== undefined && { operatorSynonym }),
         };
       }
       // Scryfall display aliases (Spec 048): ++ → unique:prints, @@ → unique:art

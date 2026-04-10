@@ -373,10 +373,54 @@ describe("parse", () => {
     });
   });
 
+  describe("operator aliases and invalid colon composites (Spec 002 / GitHub #255)", () => {
+    test("=> and =< merge to >= and <=", () => {
+      expect(parse("date=>2005")).toMatchObject(field("date", ">=", "2005"));
+      expect(parse("date=<2005")).toMatchObject(field("date", "<=", "2005"));
+    });
+
+    test("== merges to = with operatorSynonym", () => {
+      const ast = parse("set==fin") as import("./ast").FieldNode;
+      expect(ast).toMatchObject({
+        type: "FIELD",
+        field: "set",
+        operator: "=",
+        value: "fin",
+        operatorSynonym: "==",
+      });
+    });
+
+    test("colon-comparison typos merge to two-character operators", () => {
+      expect(parse("date:>2022")).toMatchObject(field("date", ":>", "2022"));
+      expect(parse("date:<2018")).toMatchObject(field("date", ":<", "2018"));
+      expect(parse("set:=mh2")).toMatchObject(field("set", ":=", "mh2"));
+    });
+
+    test("date:>2022 is a single FIELD, not AND of three terms", () => {
+      const ast = parse("date:>2022");
+      expect(ast.type).toBe("FIELD");
+      if (ast.type === "FIELD") {
+        expect(ast.field).toBe("date");
+        expect(ast.operator).toBe(":>");
+        expect(ast.value).toBe("2022");
+      }
+    });
+
+    test("spaced := does not merge", () => {
+      expect(parse("set: =mh2")).toMatchObject(and(field("set", ":", ""), bare("="), bare("mh2")));
+    });
+  });
+
   describe("source spans", () => {
     test("FIELD node span covers field through value", () => {
       const ast = parse("ci:wub");
       expect(ast.span).toEqual({ start: 0, end: 6 });
+    });
+
+    test("merged => operator span covers both punctuators and value", () => {
+      const ast = parse("date=>2005") as import("./ast").FieldNode;
+      expect(ast.span).toEqual({ start: 0, end: 10 });
+      expect(ast.operator).toBe(">=");
     });
 
     test("FIELD node valueSpan covers just the value", () => {

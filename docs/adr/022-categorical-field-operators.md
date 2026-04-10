@@ -54,5 +54,6 @@ Individual **specs** remain the normative, testable source for each field. This 
 
 ## History
 
+- **2026-04-10:** Parser-level operator aliases (`=>` / `=<` / `==`) and invalid colon–comparison composites (`:>` / `:<` / `:=`) are normative in [Spec 002](../specs/002-query-engine.md); invalid composites always evaluate as errors ([GitHub #255](https://github.com/jimbojw/frantic-search/issues/255)).
 - **2026-04-10:** Clarified §3–§4: **`otag`** / **`atag`** use [Spec 174](../specs/174-otag-atag-prefix-query-semantics.md) tag normalization and boundary-aligned **`:`** matching ([GitHub #253](https://github.com/jimbojw/frantic-search/issues/253)).
 - **2026-04-05:** Reworked §2 (empty values): open-clause forgiveness vs committed-empty error UX; explicit ban on empty-value subset filters; noted Scryfall whitespace contrast ([GitHub #260](https://github.com/jimbojw/frantic-search/issues/260)).

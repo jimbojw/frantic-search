@@ -13,6 +13,15 @@ describe("astUsesFranticExtensionSyntax", () => {
     expect(ext("c:r o:draw")).toBe(false);
   });
 
+  it("is true for == equality synonym (Spec 002 Frantic-only)", () => {
+    expect(ext("set==fin")).toBe(true);
+  });
+
+  it("is false for => and =< (Scryfall-aligned aliases)", () => {
+    expect(ext("date=>2005")).toBe(false);
+    expect(ext("date=<2005")).toBe(false);
+  });
+
   it("is true for is!= / not!= (Frantic-only, Spec 032 / ADR-022 / Spec 085)", () => {
     expect(ext("is!=bear")).toBe(true);
     expect(ext("not!=token")).toBe(true);

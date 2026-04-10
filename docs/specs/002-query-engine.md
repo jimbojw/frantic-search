@@ -74,7 +74,18 @@ operator  = ":" | "=" | "!=" | "<" | ">" | "<=" | ">="
 
 Informally:
 
-- **`field_clause`:** A `WORD` (field name) immediately followed by an `operator` token with **no whitespace between** (`word.end === operator.start` in source spans), then an optional value. A value token (`WORD`, `QUOTED`, or `REGEX`) is consumed only if it is **adjacent** to the operator (`operator.end === value.start`). Otherwise the field has an **empty string** value and the next token stays available for following terms.
+- **`field_clause`:** A `WORD` (field name) immediately followed by an `operator` token with **no whitespace between** (`word.end === operator.start` in source spans), then an optional value. A value token (`WORD`, `QUOTED`, or `REGEX`) is consumed only if it is **adjacent** to the **final** operator lexeme (`lastOperator.end === value.start`). Otherwise the field has an **empty string** value and the next token stays available for following terms.
+
+**Operator synonyms (parser merge, same adjacency rules):** The lexer still emits single-character `EQ` (`=`), `GT` (`>`), and `LT` (`<`) tokens. The parser **merges** adjacent two-token sequences after the field name into one logical operator (no new lexer token types):
+
+| Source (adjacent tokens after field name) | Logical `operator` on `FIELD` |
+|-------------------------------------------|----------------------------------|
+| `=` then `>` | `>=` (Scryfall accepts this; same as `>=`) |
+| `=` then `<` | `<=` (Scryfall accepts this; same as `<=`) |
+| `=` then `=` | `=` (with optional `operatorSynonym: "=="` on `FieldNode`; Frantic-only; Scryfall does not accept `==`) |
+
+**Invalid colon–comparison composites:** If the first token after the field name is `:` (`COLON`) and the **next** token is **adjacent** and is `>`, `<`, or `=`, the parser merges them into a **two-character** operator lexeme: `":>"`, `":<"`, or `":="`. These are not valid Scryfall operators. The AST still uses a normal `FIELD` node with `operator` set to that string; the evaluator **always** returns an error for these operators (Spec 039), never silent zero-hit.
+
 - **`bare_colon_word`:** A `COLON` token parsed as a standalone term (not part of a `field_clause`) immediately followed by an adjacent `WORD` merges into one `BARE` atom with value `":" + word.value` (Scryfall-style bare text starting with `:`). `QUOTED` or `REGEX` after a standalone `COLON` are **not** merged; they parse as separate terms (`BARE(":")` then the quoted/regex atom).
 - **`standalone_operator`:** Any `operator` token at a position where it does not complete a `field_clause` (e.g. leading `:` or `=` at term start, or after a `WORD` that was **not** adjacent to it) is a valid **term** and parses as `BARE` with `value` equal to the operator lexeme (`":"`, `"="`, `"!="`, …).
 
@@ -99,6 +110,10 @@ Normative parse examples (conceptual AST shape):
 | `kw : flying` | `AND(BARE("kw"), BARE(":"), BARE("flying"))` |
 | `kw :flying` | `AND(BARE("kw"), BARE(":flying"))` |
 | `ci> r` | `AND(FIELD("ci", ">", ""), BARE("r"))` |
+| `date=>2005` | `FIELD("date", ">=", "2005")` (same as `date>=2005`) |
+| `date=<2005` | `FIELD("date", "<=", "2005")` (same as `date<=2005`) |
+| `set==fin` | `FIELD("set", "=", "fin")` with `operatorSynonym: "=="` (same as `set=fin`) |
+| `date:>2022` | `FIELD("date", ":>", "2022")` — **not** `AND(FIELD("date", ":", ""), BARE(">"), BARE("2022"))` |
 
 **Recovery UX (suggestions):** When users type a space between the operator and the value (as in the table above) and the search returns **zero** results, the app may suggest removing that gap so the clause parses as a single `FIELD` with a non-empty value — see **Spec 177** (`field-value-gap`); grammar and parse rules here are unchanged.
 
@@ -126,6 +141,8 @@ The lexer produces a flat array of tokens. Each token has a `type`, a `value` st
 | `EOF`     | End of input                                       |                         |
 
 Multi-character operators (`!=`, `<=`, `>=`) are matched greedily before single-character ones.
+
+`=<`, `=>`, and `==` are **not** lexer token types: they appear as two adjacent tokens (`EQ`+`LT`, `EQ`+`GT`, `EQ`+`EQ`). The parser merges them in `field_clause` positions per § Grammar. Similarly, `":>"` / `":<"` / `":="` are parser-merged `COLON` plus a comparison character.
 
 Single quotes behave identically to double quotes for `QUOTED` tokens. An apostrophe mid-word (e.g. `can't`) is consumed as part of the word, not as a quote delimiter. Unclosed quotes of either kind consume to end of input (error recovery).
 
@@ -160,6 +177,8 @@ interface FieldNode {
   field: string;
   operator: string;
   value: string;
+  /** Present only when the user wrote `==` (merged to `operator: "="`). Used for Frantic-only extension analytics; do not use `sourceText` for this (see name-field `sourceText` semantics). */
+  operatorSynonym?: "==";
 }
 
 interface BareWordNode {

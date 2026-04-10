@@ -20,6 +20,8 @@ const STAT_EXTENSION_FIELDS = new Set(["power", "toughness", "loyalty", "defense
 
 function fieldUsesFranticExtension(node: FieldNode): boolean {
   if (node.value === "") return false;
+  // Spec 002 / 085: `==` merges to `=` but is Frantic-only vs Scryfall.
+  if (node.operatorSynonym === "==") return true;
   // Spec 057 / 085: `**` parses to include:extras but is Frantic-only token; include:extras alone is not extension.
   if (node.sourceText === "**") return true;
 

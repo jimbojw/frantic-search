@@ -10,6 +10,7 @@ import { parseStatValue, isPlainNumericStatQueryToken } from "./stats";
 import { parsePercentile, applyPercentileSlice, PERCENTILE_RE } from "./eval-printing";
 import { normalizeForResolution, type ResolutionContext } from "./categorical-resolve";
 import { isEquatableNullLiteral } from "./null-query-literal";
+import { invalidColonCompositeOperatorError } from "./field-operator-invalid";
 import { normalizeAlphanumeric } from "../normalize";
 
 export const FIELD_ALIASES: Record<string, string> = {
@@ -227,6 +228,8 @@ export function evalLeafField(
   if (!canonical) {
     return `unknown field "${node.field}"`;
   }
+  const invalidColonOp = invalidColonCompositeOperatorError(op);
+  if (invalidColonOp) return invalidColonOp;
   if (val === "") {
     if (canonical !== "produces" && !LEGALITY_CANONICAL.has(canonical)) {
       fillCanonical(buf, cf, n);
@@ -763,6 +766,9 @@ export function evalLeafRegex(
 ): string | null {
   const canonical = FIELD_ALIASES[node.field.toLowerCase()];
   if (!canonical) return `unknown field "${node.field}"`;
+
+  const invalidColonOp = invalidColonCompositeOperatorError(node.operator);
+  if (invalidColonOp) return invalidColonOp;
 
   if (canonical === "name" && NAME_CMP_OPS.has(node.operator)) {
     return "name field does not support comparison operators with regex; use a literal value (e.g. name>M)";
