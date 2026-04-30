@@ -10,6 +10,7 @@ import {
   ATAGS_PATH,
   ensureDistDir,
 } from "./paths";
+import { loadRootJsonArray } from "./load-json-array";
 import { log } from "./log";
 import type { ColumnarData, PrintingColumnarData, OracleTagData, IllustrationTagData } from "@frantic-search/shared";
 
@@ -122,9 +123,9 @@ function processOracleTags(verbose: boolean): OracleTagData | null {
 // Illustration tag processing
 // ---------------------------------------------------------------------------
 
-function buildIllustrationIdMap(
+async function buildIllustrationIdMap(
   verbose: boolean,
-): Map<string, Array<[number, number]>> {
+): Promise<Map<string, Array<[number, number]>>> {
   log("Building illustration_id → (face, illust_idx) map…", verbose);
 
   const printingsRaw = fs.readFileSync(PRINTINGS_PATH, "utf-8");
@@ -144,8 +145,7 @@ function buildIllustrationIdMap(
     }
   }
 
-  const defaultRaw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
-  const defaultCards: DefaultCard[] = JSON.parse(defaultRaw);
+  const defaultCards: DefaultCard[] = await loadRootJsonArray<DefaultCard>(DEFAULT_CARDS_PATH);
 
   const illustrationIdMap = new Map<string, Array<[number, number]>>();
   for (const card of defaultCards) {
@@ -167,7 +167,7 @@ function buildIllustrationIdMap(
   return illustrationIdMap;
 }
 
-function processIllustrationTags(verbose: boolean): IllustrationTagData | null {
+async function processIllustrationTags(verbose: boolean): Promise<IllustrationTagData | null> {
   if (!fs.existsSync(ILLUSTRATION_TAGS_PATH)) {
     log("illustration-tags.json not found — skipping illustration tags", true);
     return null;
@@ -183,7 +183,7 @@ function processIllustrationTags(verbose: boolean): IllustrationTagData | null {
     return null;
   }
 
-  const illustrationIdMap = buildIllustrationIdMap(verbose);
+  const illustrationIdMap = await buildIllustrationIdMap(verbose);
 
   const raw = fs.readFileSync(ILLUSTRATION_TAGS_PATH, "utf-8");
   const response: IllustrationTagResponse = JSON.parse(raw);
@@ -231,7 +231,7 @@ function processIllustrationTags(verbose: boolean): IllustrationTagData | null {
 // Main entry
 // ---------------------------------------------------------------------------
 
-export function processTags(verbose: boolean): void {
+export async function processTags(verbose: boolean): Promise<void> {
   if (!fs.existsSync(ORACLE_TAGS_PATH) && !fs.existsSync(ILLUSTRATION_TAGS_PATH)) {
     log("No tag files found (oracle-tags.json, illustration-tags.json) — skipping tag processing", true);
     return;
@@ -253,7 +253,7 @@ export function processTags(verbose: boolean): void {
     log(`Wrote otags.json (${(size / 1024 / 1024).toFixed(2)} MB)`, verbose);
   }
 
-  const atags = processIllustrationTags(verbose);
+  const atags = await processIllustrationTags(verbose);
   if (atags !== null) {
     const json = JSON.stringify(atags);
     fs.writeFileSync(ATAGS_PATH, json);

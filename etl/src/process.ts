@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
 import { ORACLE_CARDS_PATH, DEFAULT_CARDS_PATH, ATOMIC_CARDS_PATH, COLUMNS_PATH, THUMBS_PATH, ensureDistDir } from "./paths";
+import { loadRootJsonArray } from "./load-json-array";
 import { log } from "./log";
 import { loadArtCropManifest, loadCardManifest } from "./thumbhash";
 import {
@@ -191,55 +192,63 @@ class DictEncoder {
 // Columnar output
 // ---------------------------------------------------------------------------
 
+/** Subset of default-cards bulk rows for UB detection and alternate names (Spec 111). */
+interface DefaultCardBulkRow {
+  oracle_id?: string;
+  name?: string;
+  printed_name?: string;
+  flavor_name?: string;
+  promo_types?: string[];
+  security_stamp?: string;
+  card_faces?: Array<{
+    oracle_id?: string;
+    name?: string;
+    printed_name?: string;
+    flavor_name?: string;
+  }>;
+}
+
 /** Build alternate_names_index from default-cards. Spec 111.
  * Keys are raw alternate names; client normalizes at load time. */
 function buildAlternateNamesIndex(
   data: ColumnarDataBuilder,
-  verbose: boolean
+  verbose: boolean,
+  defaultCards: DefaultCardBulkRow[] | null,
 ): Record<string, number> {
   const index: Record<string, number> = {};
-  try {
-    const defaultRaw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
-    const defaultCards: Array<{
-      oracle_id?: string;
-      name?: string;
-      printed_name?: string;
-      flavor_name?: string;
-      card_faces?: Array<{ oracle_id?: string; name?: string; printed_name?: string; flavor_name?: string }>;
-    }> = JSON.parse(defaultRaw);
-
-    // Build oracle_id → canonical_face from columns
-    const oracleToFace = new Map<string, number>();
-    for (let i = 0; i < data.oracle_ids.length; i++) {
-      const oid = data.oracle_ids[i];
-      if (oid) oracleToFace.set(oid, data.canonical_face[i] ?? i);
-    }
-
-    for (const card of defaultCards) {
-      const collect = (alt: string | undefined, oracleName: string, oid: string | undefined) => {
-        if (!alt || !oid) return;
-        if (alt.toLowerCase() === oracleName.toLowerCase()) return;
-        const canonicalFace = oracleToFace.get(oid);
-        if (canonicalFace === undefined) return;
-        index[alt] = canonicalFace;
-      };
-
-      const oracleId = card.oracle_id ?? card.card_faces?.[0]?.oracle_id;
-      collect(card.printed_name, card.name ?? "", oracleId);
-      collect(card.flavor_name, card.name ?? "", oracleId);
-
-      for (const face of card.card_faces ?? []) {
-        const faceOid = face.oracle_id ?? oracleId;
-        const faceName = face.name ?? card.name ?? "";
-        collect(face.printed_name, faceName, faceOid);
-        collect(face.flavor_name, faceName, faceOid);
-      }
-    }
-
-    log(`Alternate names: ${Object.keys(index).length} entries from default-cards`, verbose);
-  } catch {
+  if (!defaultCards) {
     log("default-cards.json not found; alternate_names_index empty", verbose);
+    return index;
   }
+
+  const oracleToFace = new Map<string, number>();
+  for (let i = 0; i < data.oracle_ids.length; i++) {
+    const oid = data.oracle_ids[i];
+    if (oid) oracleToFace.set(oid, data.canonical_face[i] ?? i);
+  }
+
+  for (const card of defaultCards) {
+    const collect = (alt: string | undefined, oracleName: string, oid: string | undefined) => {
+      if (!alt || !oid) return;
+      if (alt.toLowerCase() === oracleName.toLowerCase()) return;
+      const canonicalFace = oracleToFace.get(oid);
+      if (canonicalFace === undefined) return;
+      index[alt] = canonicalFace;
+    };
+
+    const oracleId = card.oracle_id ?? card.card_faces?.[0]?.oracle_id;
+    collect(card.printed_name, card.name ?? "", oracleId);
+    collect(card.flavor_name, card.name ?? "", oracleId);
+
+    for (const face of card.card_faces ?? []) {
+      const faceOid = face.oracle_id ?? oracleId;
+      const faceName = face.name ?? card.name ?? "";
+      collect(face.printed_name, faceName, faceOid);
+      collect(face.flavor_name, faceName, faceOid);
+    }
+  }
+
+  log(`Alternate names: ${Object.keys(index).length} entries from default-cards`, verbose);
   return index;
 }
 
@@ -318,19 +327,25 @@ function pushFaceRow(
   data.edhrec_salts.push(saltMap.get(card.oracle_id ?? "") ?? null);
 }
 
-export function processCards(verbose: boolean): void {
-  // Build oracle_ids that have any UB printing (from default-cards, which has all printings)
-  let oracleIdsWithUB = new Set<string>();
+export async function processCards(verbose: boolean): Promise<void> {
+  let defaultCardsForExtras: DefaultCardBulkRow[] | null = null;
   try {
-    const defaultRaw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
-    const defaultCards: Array<{ oracle_id?: string; promo_types?: string[]; security_stamp?: string }> = JSON.parse(defaultRaw);
-    for (const c of defaultCards) {
+    if (fs.existsSync(DEFAULT_CARDS_PATH)) {
+      defaultCardsForExtras = await loadRootJsonArray<DefaultCardBulkRow>(DEFAULT_CARDS_PATH);
+    }
+  } catch {
+    defaultCardsForExtras = null;
+  }
+
+  let oracleIdsWithUB = new Set<string>();
+  if (defaultCardsForExtras) {
+    for (const c of defaultCardsForExtras) {
       if ((c.promo_types?.includes("universesbeyond") || c.security_stamp === "triangle") && c.oracle_id) {
         oracleIdsWithUB.add(c.oracle_id);
       }
     }
     log(`Universes Beyond: ${oracleIdsWithUB.size} oracle_ids from default-cards`, verbose);
-  } catch {
+  } else {
     log("default-cards.json not found; Universes Beyond from oracle-cards only", verbose);
   }
 
@@ -427,7 +442,7 @@ export function processCards(verbose: boolean): void {
   data.keywords_index = keywordsIndex;
 
   // Build alternate_names_index from default-cards (Spec 111)
-  data.alternate_names_index = buildAlternateNamesIndex(data, verbose);
+  data.alternate_names_index = buildAlternateNamesIndex(data, verbose, defaultCardsForExtras);
 
   log(`Emitted ${data.names.length} face rows`, verbose);
   log(`Lookup table sizes: power=${data.power_lookup.length}, toughness=${data.toughness_lookup.length}, loyalty=${data.loyalty_lookup.length}, defense=${data.defense_lookup.length}`, verbose);

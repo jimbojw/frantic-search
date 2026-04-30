@@ -128,12 +128,12 @@ cli
 cli
   .command("process", "Extract searchable fields into columnar JSON files")
   .option("--verbose", "Print detailed progress", { default: false })
-  .action((options: { verbose: boolean }) => {
+  .action(async (options: { verbose: boolean }) => {
     try {
-      processCards(options.verbose);
+      await processCards(options.verbose);
       processTcgcsv(options.verbose);
-      processPrintings(options.verbose);
-      processTags(options.verbose);
+      await processPrintings(options.verbose);
+      await processTags(options.verbose);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       process.stderr.write(`Error: ${msg}\n`);

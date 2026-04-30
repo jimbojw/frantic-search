@@ -22,6 +22,7 @@ import {
   type SetLookupEntry,
   type ColumnarData,
 } from "@frantic-search/shared";
+import { loadRootJsonArray } from "./load-json-array";
 
 // ---------------------------------------------------------------------------
 // Scryfall default-cards shape (fields we care about)
@@ -235,7 +236,7 @@ function getFrontIllustrationId(card: DefaultCard): string | undefined {
 // Main processing
 // ---------------------------------------------------------------------------
 
-export function processPrintings(verbose: boolean): void {
+export async function processPrintings(verbose: boolean): Promise<void> {
   if (!fs.existsSync(DEFAULT_CARDS_PATH)) {
     log(`${DEFAULT_CARDS_PATH} not found — skipping printings processing`, true);
     return;
@@ -251,8 +252,7 @@ export function processPrintings(verbose: boolean): void {
   const canonicalScryfallIdMap = buildCanonicalScryfallIdMap();
 
   log(`Reading ${DEFAULT_CARDS_PATH}…`, verbose);
-  const raw = fs.readFileSync(DEFAULT_CARDS_PATH, "utf-8");
-  const defaultCards: DefaultCard[] = JSON.parse(raw);
+  const defaultCards: DefaultCard[] = await loadRootJsonArray<DefaultCard>(DEFAULT_CARDS_PATH);
 
   // Pass 1: build illustration_id -> index per canonical face (Issue #75)
   const faceIllustrationOrder = new Map<number, string[]>();
