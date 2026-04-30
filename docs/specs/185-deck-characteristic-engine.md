@@ -1,6 +1,6 @@
 # Spec 185: Deck Characteristic Engine (Salt, Conformity, Bling)
 
-**Status:** Draft
+**Status:** In Progress
 
 **GitHub Issue:** [#163](https://github.com/jimbojw/frantic-search/issues/163)
 
@@ -89,7 +89,14 @@ w = \begin{cases}
 
 **Missing data:** Any instance whose metric is invalid (`null` salt/rank; USD sentinel `0` for bling) receives weight **`0.0`** for that gauge. This is intentional; UI should show **coverage** (e.g. "Salt: 92/100 cards scored") so users understand when missing data drags a score.
 
-**Precomputation:** Weights depend only on loaded columnar + printing data. The worker **should** compute three dense arrays at init: `Float32Array(faceCount)` for salt and conformity (indexed by face row), `Float32Array(printingCount)` for bling (indexed by printing row). This gives O(1) lookup during deck aggregation. The bling array may be 200k–400k entries (~1.5 MB as Float32); this is acceptable.
+**Precomputation:** Weights depend only on loaded columnar + printing data. The worker **should** compute four dense arrays at init:
+
+1. `Float32Array(faceCount)` for **salt** weights (indexed by face row).
+2. `Float32Array(faceCount)` for **conformity** weights (indexed by face row).
+3. `Float32Array(printingCount)` for **bling** weights (indexed by printing row).
+4. `Int32Array(faceCount)` for **cheapest-printing-per-face** — maps each canonical face index to the printing row of its cheapest valid-USD printing (`price_usd !== 0`, tie-break by smallest row index), or `-1` if no valid printing exists. This makes oracle-only Bling resolution (§ Deck instances) O(1) per instance.
+
+This gives O(1) lookup during deck aggregation. The bling array may be 200k–400k entries (~1.5 MB as Float32); this is acceptable.
 
 ---
 
@@ -116,7 +123,7 @@ For a deck with `D ≥ 1` scored instances and per-instance weights `w_i` for th
 
 **Logical true zero:** Iff **every** scored instance has weight `w_i = 0` for that gauge, then `raw = 0` (exact arithmetic) and § Step 3 yields display integer **`0`** (Renard is not applied). Implementations **may** test `raw === 0` after computing `raw` with the same expression as § Step 2, or use an equivalent predicate on instance weights; they **must not** depend on undocumented epsilon hacks unless a later spec revision pins numeric tolerances.
 
-**Coverage:** For each gauge, report `scored_copies` = count of instances with non-missing metric, and `total_copies` = `D`.
+**Coverage:** For each gauge, report `scored_copies` = count of instances with non-missing metric, and `total_copies` = `D`. An oracle-only instance that resolves to a valid printing is scored for Bling coverage even if its ranked weight is `0.0`; only instances where no valid-USD printing exists (weight forced to `0.0` by missing data) are excluded from `scored_copies`.
 
 ---
 
@@ -185,14 +192,14 @@ Then:
 
 - **Location:** Computation runs in the **search worker** after `CardIndex` / `PrintingIndex` and list caches are available (ADR-003). The worker holds the precomputed weight arrays (§ Step 1) and the columnar data needed for oracle-only Bling resolution.
 - **Protocol (pull model):** Extend `shared/src/worker-protocol.ts` with a **request/response** pair. The main thread requests scores; the worker computes on demand. Scores are **not** pushed automatically on `list-update`.
-  - **Request:** `type` (message discriminant), `requestId` (correlate with response), `lines` (resolved deck — see below).
+  - **Request:** `type` (message discriminant), `requestId` (correlate with response), `resolvedInstances` (resolved deck — see below).
   - **Response:** `type`, `requestId`, `salt` / `conformity` / `bling` (each integer `0`–`1000` per § Step 3), and per-gauge **coverage** objects each containing `scored_copies` and `total_copies` (non-negative integers; `total_copies` equals `D` from § Step 2 when the deck is non-empty).
   - Message **type names** are implementation choices as long as they are stable and documented next to other worker messages (Spec 024 family patterns).
-- **Resolved deck lines:** The existing `list-update` message (Spec 076) sends deduplicated `printingIndices` for `my:` query evaluation — it intentionally discards copy counts. The scoring engine needs **per-instance** data, so the **request message** carries the resolved lines. The main thread builds them from its `MaterializedView`:
+- **Resolved instances:** The existing `list-update` message (Spec 076) sends deduplicated `printingIndices` for `my:` query evaluation — it intentionally discards copy counts. The scoring engine needs **per-instance** data, so the **request message** carries the resolved instances. The main thread builds them from its `MaterializedView`:
   - Each element represents one instance: `{ canonicalFaceIndex: number; printingRowIndex: number | -1 }`. Use `-1` (or a sentinel) when the instance is oracle-only (`scryfall_id` null) and the main thread cannot resolve a printing.
-  - `lines.length` equals `D`. The main thread omits unresolved instances (oracle not in map).
+  - `resolvedInstances.length` equals `D`. The main thread omits unresolved instances (oracle not in map).
   - The main thread already builds the `oracleToCanonicalFace`, `printingLookup`, and `canonicalPrintingPerFace` maps (Spec 076 / `list-mask-builder.ts`); reuse them to resolve instances.
-- **Invalidation:** The main thread re-requests scores when a `list-update` is sent for the viewed list, or when card/printing data loads. The worker does **not** cache gauge results across requests.
+- **Invalidation:** The main thread re-requests scores when a `list-update` is sent for the viewed list, or when card/printing data loads. The main thread tracks the latest `requestId`; responses whose `requestId` does not match are silently discarded. The worker does **not** cache gauge results across requests.
 - **UI:** Lists / deck surfaces show three gauges (0–1000 integers), optional tooltips explaining the gauge and coverage. Exact placement follows Lists page / deck editor specs (e.g. Spec 090, Spec 110) — **layout is not normative in this spec** beyond readability and accessibility (contrast, labels).
 
 ---
@@ -220,3 +227,17 @@ Then:
 - 2026-04-10: **Salt `p`** — Ship default `3`; revisiting `4` is a product/telemetry decision, not a spec blocker.
 - 2026-04-10: **Instance model alignment** — Reframed from "deck lines with quantity" to "one InstanceState per copy" to match Spec 109 implementation. `D` is the count of scored instances, not a sum of quantities. The existing `list-update` protocol (Spec 076) sends deduplicated printing indices for `my:` queries; the scoring request carries per-instance resolved lines instead, since copy counts matter for aggregation.
 - 2026-04-10: **Pull model** — Scoring uses request/response (not auto-push on `list-update`) to avoid wasted computation for lists the user is not viewing.
+- 2026-04-10: **Spec review fixes** — Added cheapest-printing-per-face precomputed `Int32Array` to § Step 1; clarified coverage vs. missing-data distinction for Bling in § Step 2; added stale-request discard note to § Worker integration; renamed `lines` → `resolvedInstances` in protocol to avoid confusion with `validate-list`.
+
+### Implementation checklist
+
+- [X] **Phase 1 — Pure scoring math** (`shared/src/deck-scoring/`):
+  - [X] `weights.ts` — competition ranking + `Float31Array` builders (salt, conformity, bling) + `Int32Array` cheapest-printing-per-face
+  - [X] `aggregate.ts` — p-mean aggregation with coverage tracking
+  - [X] `renard.ts` — Renard-scaled precision ceiling (`ceilGrid`)
+  - [X] `score-deck.ts` — top-level orchestrator wiring weights + aggregate + Renard
+  - [X] `.test.ts` siblings for all of the above
+- [ ] **Phase 2 — Worker protocol types** (`shared/src/worker-protocol.ts`): `score-deck` / `score-deck-result` messages + `ResolvedInstance` type
+- [ ] **Phase 3 — Worker integration** (`app/src/worker.ts`): precompute weight arrays at init; handle `score-deck` message
+- [ ] **Phase 4 — Main thread** (`app/src/App.tsx`, `shared/src/list-mask-builder.ts`): `resolveInstancesForScoring` helper; request/response flow; pass `deckScores` prop to `DeckEditor`
+- [ ] **Phase 5 — UI** (`app/src/deck-editor/`): add `deckScores` to `DeckEditorContext`; render Salt/Conformity/Bling gauges in `DeckEditorStatus` display mode
