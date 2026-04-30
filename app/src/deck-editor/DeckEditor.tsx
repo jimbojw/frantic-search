@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createMemo, createEffect, onMount, onCleanup, Show } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import {
   lexDeckList,
   detectDeckFormat,
@@ -9,6 +10,7 @@ import {
   parsedEntriesFromInstances,
 } from '@frantic-search/shared'
 import type {
+  DeckScores,
   DisplayColumns,
   PrintingDisplayColumns,
   InstanceState,
@@ -71,6 +73,7 @@ export default function DeckEditor(props: {
   display: DisplayColumns | null
   printingDisplay: PrintingDisplayColumns | null
   workerStatus: () => 'loading' | 'ready' | 'error'
+  deckScores?: Accessor<DeckScores | null>
   cardListStore: CardListStore
   onApplySuccess?: () => void
   onSerializeRequest?: (instances: InstanceState[], format: DeckFormat, listName?: string) => Promise<string>
@@ -913,6 +916,7 @@ export default function DeckEditor(props: {
     highlightText,
     highlightValidation,
     workerStatus: props.workerStatus,
+    deckScores: () => (props.deckScores ? props.deckScores() : null),
     isValidating,
     saveInProgress,
     copied,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createSignal, createEffect, createMemo, Show, Suspense, lazy, onCleanup, onMount } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult } from '@frantic-search/shared'
+import type { FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms, InstanceState, LineValidationResult, DeckScores } from '@frantic-search/shared'
 import type { DeckFormat } from '@frantic-search/shared'
 import { parse, toScryfallQuery, DEFAULT_LIST_ID, TRASH_LIST_ID, formatSlackCardReference } from '@frantic-search/shared'
 import SearchWorker from './worker?worker'
@@ -43,6 +43,7 @@ import {
   countListEntriesPerCard,
   getMatchingCount,
   getUniqueTagsFromView,
+  resolveInstancesForScoring,
 } from '@frantic-search/shared'
 import {
   captureCardDetailInteracted,
@@ -456,6 +457,7 @@ function App() {
   const artistPending = new Map<number, (name: string | null) => void>()
   let percentilesRequestId = 0
   const percentilesPending = new Map<number, (r: { edhrecPercentile: number | null; saltPercentile: number | null; usdPercentiles: (number | null)[] }) => void>()
+  let scoreDeckRequestId = 0
   const { scheduleSearchCapture, flushSearchCapture } = useSearchCapture(() => effectiveQuery().trim())
   let searchResolvedFromUrlFired = false
 
@@ -520,6 +522,7 @@ function App() {
   }
 
   const [listVersion, setListVersion] = createSignal(0)
+  const [deckScores, setDeckScores] = createSignal<DeckScores | null>(null)
   let cardListStore: CardListStore
   cardListStore = new CardListStore((affectedListIds) => {
     setListVersion((v) => v + 1)
@@ -604,6 +607,18 @@ function App() {
       printingRowIndices: printingPIs ?? [],
     })
   })
+
+  function emptyDeckScores(): DeckScores {
+    const c = { scoredCopies: 0, totalCopies: 0 }
+    return {
+      salt: 0,
+      conformity: 0,
+      bling: 0,
+      saltCoverage: { ...c },
+      conformityCoverage: { ...c },
+      blingCoverage: { ...c },
+    }
+  }
 
   worker.onmessage = (e: MessageEvent<FromWorker>) => {
     const msg = e.data
@@ -701,6 +716,18 @@ function App() {
         }
         break
       }
+      case 'score-deck-result': {
+        if (msg.requestId !== scoreDeckRequestId) break
+        setDeckScores({
+          salt: msg.salt,
+          conformity: msg.conformity,
+          bling: msg.bling,
+          saltCoverage: msg.saltCoverage,
+          conformityCoverage: msg.conformityCoverage,
+          blingCoverage: msg.blingCoverage,
+        })
+        break
+      }
       case 'result': {
         const side = msg.side
         const matchesLeft = !side && msg.queryId === latestQueryId
@@ -774,6 +801,40 @@ function App() {
       }
     }
   }
+
+  createEffect(() => {
+    if (workerStatus() !== 'ready') return
+    if (view() !== 'lists') {
+      setDeckScores(null)
+      return
+    }
+    const d = display()
+    if (!d) return
+    listVersion()
+    listTab()
+    const pd = printingDisplay()
+    const listId = listTab() === 'trash' ? TRASH_LIST_ID : DEFAULT_LIST_ID
+    const storeView = cardListStore.getView()
+    const uuids = storeView.instancesByList.get(listId)
+    if (!uuids || uuids.size === 0) {
+      setDeckScores(emptyDeckScores())
+      return
+    }
+    const instances: InstanceState[] = []
+    for (const uuid of uuids) {
+      const inst = storeView.instances.get(uuid)
+      if (inst) instances.push(inst)
+    }
+    const oracleMap = buildOracleToCanonicalFaceMap(d)
+    const printingLookup = pd ? buildPrintingLookup(pd) : undefined
+    const resolved = resolveInstancesForScoring(instances, {
+      oracleToCanonicalFace: oracleMap,
+      printingLookup,
+    })
+    const reqId = ++scoreDeckRequestId
+    setDeckScores(null)
+    worker.postMessage({ type: 'score-deck', requestId: reqId, resolvedInstances: resolved })
+  })
 
   createEffect(() => {
     const pq = pinnedQuery()
@@ -1955,6 +2016,7 @@ function App() {
             display={display()}
             printingDisplay={printingDisplay()}
             workerStatus={workerStatus}
+            deckScores={deckScores}
             onSerializeRequest={serializeDeckList}
             onValidateRequest={validateLines}
             onBack={() => history.back()}

@@ -3,6 +3,7 @@ import { createContext, useContext } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type {
   DeckFormat,
+  DeckScores,
   InstanceState,
   LineValidation,
   ListValidationResult,
@@ -59,6 +60,8 @@ export interface DeckEditorContextValue {
   toggleReviewFilterUnchanged: () => void
   validationErrorsExpanded: Accessor<boolean>
   toggleValidationErrorsExpanded: () => void
+  /** Spec 185: deck gauges; null while loading */
+  deckScores: Accessor<DeckScores | null>
   copied: Accessor<boolean>
   quickFixApplying: Accessor<{ lineIndex: number; fixIndex: number } | null>
   handleEdit: () => void

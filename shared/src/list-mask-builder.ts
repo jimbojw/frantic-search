@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayColumns, PrintingDisplayColumns } from "./worker-protocol";
+import type { ResolvedInstance } from "./deck-scoring/types";
 import type { MaterializedView, InstanceState } from "./card-list";
 import type { ParsedEntry } from "./list-lexer";
 import { FINISH_FROM_STRING } from "./bits";
@@ -88,6 +89,54 @@ function encodeFinish(finish: string | null): number | undefined {
   if (!finish) return undefined;
   const n = FINISH_FROM_STRING[finish.toLowerCase()];
   return n !== undefined ? n : undefined;
+}
+
+/** Spec 185: maps for resolving instances to canonical face + optional printing row. */
+export interface ResolveInstancesForScoringOptions {
+  oracleToCanonicalFace: Map<string, number>;
+  printingLookup?: Map<string, number>;
+}
+
+/**
+ * Spec 185: resolve one list line for deck scoring. Oracle-only lines use
+ * `printingRowIndex: -1` (worker picks cheapest valid USD). Omits unknown oracle
+ * or failed printing lookup (same as unresolved validation).
+ */
+export function resolveInstanceForScoring(
+  instance: InstanceState,
+  options: ResolveInstancesForScoringOptions,
+): ResolvedInstance | null {
+  const { oracleToCanonicalFace, printingLookup } = options;
+  const cf = oracleToCanonicalFace.get(instance.oracle_id);
+  if (cf === undefined) return null;
+
+  if (instance.scryfall_id) {
+    if (!printingLookup) return null;
+    const enc = encodeFinish(instance.finish ?? "nonfoil");
+    if (enc === undefined) return null;
+    const key = `${instance.scryfall_id}:${enc}`;
+    const pi = printingLookup.get(key);
+    if (pi === undefined) return null;
+    return { canonicalFaceIndex: cf, printingRowIndex: pi };
+  }
+
+  return { canonicalFaceIndex: cf, printingRowIndex: -1 };
+}
+
+/**
+ * Same as {@link resolveInstanceForScoring} for each instance in order; drops
+ * unresolved entries so `length` is deck size D for scoring.
+ */
+export function resolveInstancesForScoring(
+  instances: InstanceState[],
+  options: ResolveInstancesForScoringOptions,
+): ResolvedInstance[] {
+  const out: ResolvedInstance[] = [];
+  for (let i = 0; i < instances.length; i++) {
+    const r = resolveInstanceForScoring(instances[i], options);
+    if (r !== null) out.push(r);
+  }
+  return out;
 }
 
 export interface BuildMasksOptions {

@@ -34,7 +34,13 @@ import {
   resolveArtistForPrintingRow,
   sortedArrayPosition,
   displayEqualityPercentileLabel,
+  buildSaltWeights,
+  buildConformityWeights,
+  buildBlingWeights,
+  buildCheapestPrintingPerFace,
+  scoreDeck,
 } from '@frantic-search/shared'
+import type { DeckScoringWeights } from '@frantic-search/shared'
 import { runSearch } from './worker-search'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -219,6 +225,37 @@ async function init(): Promise<void> {
   const printingIndex = printingData
     ? new PrintingIndex(printingData, data.scryfall_ids)
     : null
+
+  let deckScoringWeights: DeckScoringWeights | null = null
+  if (printingData) {
+    const { weights: saltWeights, valid: saltValid } = buildSaltWeights(
+      data.canonical_face,
+      data.edhrec_salts,
+    )
+    const { weights: conformityWeights, valid: conformityValid } = buildConformityWeights(
+      data.canonical_face,
+      data.edhrec_ranks,
+    )
+    const { weights: blingWeights, valid: blingValid } = buildBlingWeights(
+      printingData.price_usd,
+      printingData.canonical_face_ref,
+    )
+    const faceCount = data.canonical_face.length
+    const cheapestPrintingPerFace = buildCheapestPrintingPerFace(
+      printingData.canonical_face_ref,
+      printingData.price_usd,
+      faceCount,
+    )
+    deckScoringWeights = {
+      saltWeights,
+      conformityWeights,
+      blingWeights,
+      cheapestPrintingPerFace,
+      saltValid,
+      conformityValid,
+      blingValid,
+    }
+  }
   const listMaskCache = new Map<
     string,
     { printingIndices?: Uint32Array; metadataIndex?: { keys: string[]; indexArrays: Uint32Array[] } }
@@ -348,6 +385,35 @@ async function init(): Promise<void> {
         msg.lines, index, printingIndex, displayRef, printingDisplayRef, cache,
       )
       post({ type: 'validate-result', requestId: msg.requestId, result, indices }, [indices.buffer])
+      return
+    }
+    if (msg.type === 'score-deck') {
+      const D = msg.resolvedInstances.length
+      const zeroCoverage = { scoredCopies: 0, totalCopies: D }
+      if (!deckScoringWeights) {
+        post({
+          type: 'score-deck-result',
+          requestId: msg.requestId,
+          salt: 0,
+          conformity: 0,
+          bling: 0,
+          saltCoverage: { ...zeroCoverage },
+          conformityCoverage: { ...zeroCoverage },
+          blingCoverage: { ...zeroCoverage },
+        })
+        return
+      }
+      const scores = scoreDeck(msg.resolvedInstances, deckScoringWeights)
+      post({
+        type: 'score-deck-result',
+        requestId: msg.requestId,
+        salt: scores.salt,
+        conformity: scores.conformity,
+        bling: scores.bling,
+        saltCoverage: scores.saltCoverage,
+        conformityCoverage: scores.conformityCoverage,
+        blingCoverage: scores.blingCoverage,
+      })
       return
     }
     if (msg.type === 'get-tags-for-card') {

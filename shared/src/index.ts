@@ -35,7 +35,24 @@ export type {
   KeywordData,
 } from "./data";
 
-export type { ToWorker, FromWorker, DisplayColumns, PrintingDisplayColumns, UniqueMode, BreakdownNode, Histograms } from "./worker-protocol";
+export type {
+  ToWorker,
+  FromWorker,
+  DisplayColumns,
+  PrintingDisplayColumns,
+  UniqueMode,
+  BreakdownNode,
+  Histograms,
+  ResolvedInstance,
+} from "./worker-protocol";
+export type { DeckScores, Coverage, DeckScoringWeights } from "./deck-scoring/types";
+export { scoreDeck } from "./deck-scoring/score-deck";
+export {
+  buildSaltWeights,
+  buildConformityWeights,
+  buildBlingWeights,
+  buildCheapestPrintingPerFace,
+} from "./deck-scoring/weights";
 export type { Suggestion } from "./suggestion-types";
 
 export type {
@@ -216,10 +233,13 @@ export {
   countListEntriesPerCard,
   hasPrintingLevelEntries,
   getUniqueTagsFromView,
+  resolveInstanceForScoring,
+  resolveInstancesForScoring,
 } from "./list-mask-builder";
 export type {
   BuildMasksOptions,
   BuildMasksResult,
   BuildMetadataIndexOptions,
   MetadataIndexResult,
+  ResolveInstancesForScoringOptions,
 } from "./list-mask-builder";

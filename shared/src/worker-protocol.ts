@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { InstanceState } from './card-list'
+import type { Coverage, ResolvedInstance } from './deck-scoring/types'
 import type { DeckFormat } from './list-format'
 import type { LineValidationResult } from './list-lexer'
 import type { Suggestion } from './suggestion-types'
+
+export type { ResolvedInstance } from './deck-scoring/types'
 
 export type ViewMode = 'slim' | 'detail' | 'images' | 'full'
 
@@ -43,6 +46,8 @@ export type ToWorker =
     }
   | { type: 'serialize-list'; requestId: number; instances: InstanceState[]; format: DeckFormat; listName?: string }
   | { type: 'validate-list'; requestId: number; lines: string[] }
+  /** Spec 185: deck characteristic scores from resolved instances (pull model). */
+  | { type: 'score-deck'; requestId: number; resolvedInstances: ResolvedInstance[] }
 
 export type DisplayColumns = {
   names: string[]
@@ -158,3 +163,14 @@ export type FromWorker =
   | { type: 'result'; queryId: number; indices: Uint32Array; breakdown: BreakdownNode; pinnedBreakdown?: BreakdownNode; effectiveBreakdown?: BreakdownNode; pinnedIndicesCount?: number; pinnedPrintingCount?: number; histograms: Histograms; printingIndices?: Uint32Array; hasPrintingConditions: boolean; uniqueMode: UniqueMode; /** Spec 085: Frantic-vs-Scryfall syntax; not derived from includeExtras or uniqueMode. */ usedExtension: boolean; includeExtras?: boolean; /** Spec 178 / 175: pre-default-filter face count when filter removed matches. */ indicesBeforeDefaultFilter?: number; /** Spec 178 / 175: pre-default-filter printing count when relevant and filter removed printings. */ printingIndicesBeforeDefaultFilter?: number; flavorUnavailable?: boolean; artistUnavailable?: boolean; suggestions: Suggestion[]; side?: DualWieldSide }
   | { type: 'serialize-result'; requestId: number; text: string }
   | { type: 'validate-result'; requestId: number; result: LineValidationResult[]; indices: Int32Array }
+  /** Spec 185: Salt / Conformity / Bling integers 0–1000 plus per-gauge coverage. */
+  | {
+      type: 'score-deck-result'
+      requestId: number
+      salt: number
+      conformity: number
+      bling: number
+      saltCoverage: Coverage
+      conformityCoverage: Coverage
+      blingCoverage: Coverage
+    }

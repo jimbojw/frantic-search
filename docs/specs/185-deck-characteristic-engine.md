@@ -1,6 +1,6 @@
 # Spec 185: Deck Characteristic Engine (Salt, Conformity, Bling)
 
-**Status:** In Progress
+**Status:** Implemented
 
 **GitHub Issue:** [#163](https://github.com/jimbojw/frantic-search/issues/163)
 
@@ -228,16 +228,3 @@ Then:
 - 2026-04-10: **Instance model alignment** — Reframed from "deck lines with quantity" to "one InstanceState per copy" to match Spec 109 implementation. `D` is the count of scored instances, not a sum of quantities. The existing `list-update` protocol (Spec 076) sends deduplicated printing indices for `my:` queries; the scoring request carries per-instance resolved lines instead, since copy counts matter for aggregation.
 - 2026-04-10: **Pull model** — Scoring uses request/response (not auto-push on `list-update`) to avoid wasted computation for lists the user is not viewing.
 - 2026-04-10: **Spec review fixes** — Added cheapest-printing-per-face precomputed `Int32Array` to § Step 1; clarified coverage vs. missing-data distinction for Bling in § Step 2; added stale-request discard note to § Worker integration; renamed `lines` → `resolvedInstances` in protocol to avoid confusion with `validate-list`.
-
-### Implementation checklist
-
-- [X] **Phase 1 — Pure scoring math** (`shared/src/deck-scoring/`):
-  - [X] `weights.ts` — competition ranking + `Float31Array` builders (salt, conformity, bling) + `Int32Array` cheapest-printing-per-face
-  - [X] `aggregate.ts` — p-mean aggregation with coverage tracking
-  - [X] `renard.ts` — Renard-scaled precision ceiling (`ceilGrid`)
-  - [X] `score-deck.ts` — top-level orchestrator wiring weights + aggregate + Renard
-  - [X] `.test.ts` siblings for all of the above
-- [ ] **Phase 2 — Worker protocol types** (`shared/src/worker-protocol.ts`): `score-deck` / `score-deck-result` messages + `ResolvedInstance` type
-- [ ] **Phase 3 — Worker integration** (`app/src/worker.ts`): precompute weight arrays at init; handle `score-deck` message
-- [ ] **Phase 4 — Main thread** (`app/src/App.tsx`, `shared/src/list-mask-builder.ts`): `resolveInstancesForScoring` helper; request/response flow; pass `deckScores` prop to `DeckEditor`
-- [ ] **Phase 5 — UI** (`app/src/deck-editor/`): add `deckScores` to `DeckEditorContext`; render Salt/Conformity/Bling gauges in `DeckEditorStatus` display mode

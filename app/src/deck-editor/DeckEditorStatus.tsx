@@ -23,9 +23,62 @@ export default function DeckEditorStatus() {
         <p>List is empty. Paste a deck list or add cards from search results.</p>
       </Show>
       <Show when={ctx.mode() === 'display'} fallback={null}>
-        <p>
-          {ctx.instances().length} card{ctx.instances().length !== 1 ? 's' : ''}
-        </p>
+        <div class="flex flex-col gap-2">
+          <p>
+            {ctx.instances().length} card{ctx.instances().length !== 1 ? 's' : ''}
+          </p>
+          <Show when={ctx.instances().length > 0} fallback={null}>
+            <Show
+              when={ctx.deckScores()}
+              fallback={
+                <p class="text-xs text-gray-500 dark:text-gray-400" aria-live="polite">
+                  Scoring deck…
+                </p>
+              }
+            >
+              {(scores) => (
+                <dl class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600 dark:text-gray-400">
+                  <div class="min-w-0">
+                    <dt class="sr-only">Salt</dt>
+                    <dd class="m-0">
+                      <span class="font-medium text-gray-800 dark:text-gray-200">Salt</span>{' '}
+                      <span
+                        class="tabular-nums font-semibold text-gray-900 dark:text-gray-100"
+                        title={`EDHREC salt aggregate (higher = saltier). Coverage: ${scores().saltCoverage.scoredCopies} of ${scores().saltCoverage.totalCopies} cards scored.`}
+                      >
+                        {scores().salt}
+                      </span>
+                    </dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="sr-only">Conformity</dt>
+                    <dd class="m-0">
+                      <span class="font-medium text-gray-800 dark:text-gray-200">Conformity</span>{' '}
+                      <span
+                        class="tabular-nums font-semibold text-gray-900 dark:text-gray-100"
+                        title={`EDHREC popularity aggregate (higher = more staple-heavy). Coverage: ${scores().conformityCoverage.scoredCopies} of ${scores().conformityCoverage.totalCopies} cards scored.`}
+                      >
+                        {scores().conformity}
+                      </span>
+                    </dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="sr-only">Bling</dt>
+                    <dd class="m-0">
+                      <span class="font-medium text-gray-800 dark:text-gray-200">Bling</span>{' '}
+                      <span
+                        class="tabular-nums font-semibold text-gray-900 dark:text-gray-100"
+                        title={`Printing price aggregate (higher = pricier). Coverage: ${scores().blingCoverage.scoredCopies} of ${scores().blingCoverage.totalCopies} cards scored.`}
+                      >
+                        {scores().bling}
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+              )}
+            </Show>
+          </Show>
+        </div>
       </Show>
       <Show when={(ctx.mode() === 'edit' || ctx.mode() === 'review') && ctx.instances().length > 0} fallback={null}>
         <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-2">

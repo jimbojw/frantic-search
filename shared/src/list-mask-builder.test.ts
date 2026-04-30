@@ -13,6 +13,8 @@ import {
   hasPrintingLevelEntries,
   countListEntriesPerCard,
   getUniqueTagsFromView,
+  resolveInstanceForScoring,
+  resolveInstancesForScoring,
 } from "./list-mask-builder";
 import type {
   DisplayColumns,
@@ -990,5 +992,118 @@ describe("countListEntriesPerCard", () => {
     const result = countListEntriesPerCard(view, "default", oracleMap);
     expect(result.get(0)).toBe(2);
     expect(result.get(1)).toBe(1);
+  });
+});
+
+describe("resolveInstanceForScoring (Spec 185)", () => {
+  const oracleMap = buildOracleToCanonicalFaceMap(makeDisplay());
+  const printingLookup = buildPrintingLookup(makePrintingDisplay());
+
+  it("returns null when oracle_id is unknown", () => {
+    expect(
+      resolveInstanceForScoring(
+        inst({
+          uuid: "u",
+          oracle_id: "nope",
+          scryfall_id: null,
+          finish: null,
+          list_id: "default",
+        }),
+        { oracleToCanonicalFace: oracleMap, printingLookup },
+      ),
+    ).toBeNull();
+  });
+
+  it("oracle-only uses printingRowIndex -1", () => {
+    expect(
+      resolveInstanceForScoring(
+        inst({
+          uuid: "u",
+          oracle_id: "oid-bolt",
+          scryfall_id: null,
+          finish: null,
+          list_id: "default",
+        }),
+        { oracleToCanonicalFace: oracleMap, printingLookup },
+      ),
+    ).toEqual({ canonicalFaceIndex: 0, printingRowIndex: -1 });
+  });
+
+  it("printing-level resolves to printing row index", () => {
+    expect(
+      resolveInstanceForScoring(
+        inst({
+          uuid: "u",
+          oracle_id: "oid-bolt",
+          scryfall_id: "p-a",
+          finish: "nonfoil",
+          list_id: "default",
+        }),
+        { oracleToCanonicalFace: oracleMap, printingLookup },
+      ),
+    ).toEqual({ canonicalFaceIndex: 0, printingRowIndex: 0 });
+  });
+
+  it("returns null when printing key is missing", () => {
+    expect(
+      resolveInstanceForScoring(
+        inst({
+          uuid: "u",
+          oracle_id: "oid-bolt",
+          scryfall_id: "p-a",
+          finish: "foil",
+          list_id: "default",
+        }),
+        { oracleToCanonicalFace: oracleMap, printingLookup },
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null when scryfall_id set but printingLookup absent", () => {
+    expect(
+      resolveInstanceForScoring(
+        inst({
+          uuid: "u",
+          oracle_id: "oid-bolt",
+          scryfall_id: "p-a",
+          finish: "nonfoil",
+          list_id: "default",
+        }),
+        { oracleToCanonicalFace: oracleMap },
+      ),
+    ).toBeNull();
+  });
+
+  it("resolveInstancesForScoring drops unresolved and keeps order", () => {
+    const out = resolveInstancesForScoring(
+      [
+        inst({
+          uuid: "a",
+          oracle_id: "oid-bolt",
+          scryfall_id: null,
+          finish: null,
+          list_id: "default",
+        }),
+        inst({
+          uuid: "b",
+          oracle_id: "bad-oracle",
+          scryfall_id: null,
+          finish: null,
+          list_id: "default",
+        }),
+        inst({
+          uuid: "c",
+          oracle_id: "oid-sol",
+          scryfall_id: null,
+          finish: null,
+          list_id: "default",
+        }),
+      ],
+      { oracleToCanonicalFace: oracleMap, printingLookup },
+    );
+    expect(out).toEqual([
+      { canonicalFaceIndex: 0, printingRowIndex: -1 },
+      { canonicalFaceIndex: 1, printingRowIndex: -1 },
+    ]);
   });
 });
