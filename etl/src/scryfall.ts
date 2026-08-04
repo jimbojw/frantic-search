@@ -8,9 +8,8 @@ const BULK_DATA_URL = "https://api.scryfall.com/bulk-data";
 const BulkDataEntrySchema = z.object({
   type: z.string(),
   updated_at: z.string(),
-  download_uri: z.string().url(),
-  size: z.number(),
-  content_encoding: z.string().optional(),
+  jsonl_download_uri: z.string().url(),
+  compressed_size: z.number(),
 });
 
 const BulkDataResponseSchema = z.object({
@@ -22,10 +21,9 @@ export type BulkDataEntry = z.infer<typeof BulkDataEntrySchema>;
 /** @deprecated Use fetchBulkMetadata("oracle_cards", verbose) instead. */
 export type OracleCardsEntry = BulkDataEntry;
 
-export async function fetchBulkMetadata(
-  bulkType: string,
+export async function fetchBulkDataList(
   verbose: boolean,
-): Promise<BulkDataEntry> {
+): Promise<BulkDataEntry[]> {
   log(`GET ${BULK_DATA_URL}`, verbose);
 
   const response = await axios.get(BULK_DATA_URL, {
@@ -39,7 +37,17 @@ export async function fetchBulkMetadata(
     );
   }
 
-  const entry = parsed.data.data.find((e) => e.type === bulkType);
+  return parsed.data.data;
+}
+
+export async function fetchBulkMetadata(
+  bulkType: string,
+  verbose: boolean,
+  data?: BulkDataEntry[],
+): Promise<BulkDataEntry> {
+  const entries = data ?? (await fetchBulkDataList(verbose));
+
+  const entry = entries.find((e) => e.type === bulkType);
   if (!entry) {
     throw new Error(
       `Scryfall API returned no "${bulkType}" entry in bulk-data list`,
@@ -47,7 +55,7 @@ export async function fetchBulkMetadata(
   }
 
   log(
-    `Found ${bulkType}: updated_at=${entry.updated_at}, size=${entry.size}`,
+    `Found ${bulkType}: updated_at=${entry.updated_at}, compressed_size=${entry.compressed_size}`,
     verbose,
   );
 

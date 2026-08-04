@@ -31,13 +31,23 @@ export const TCGCSV_PRODUCTS_DIR = path.join(RAW_DIR, "tcgcsv-products");
 export const TCGCSV_META_PATH = path.join(RAW_DIR, "tcgcsv-meta.json");
 export const TCGCSV_PRODUCT_MAP_PATH = path.join(DIST_DIR, "tcgcsv-product-map.json");
 
-const LocalMetaSchema = z.object({
+const CurrentLocalMetaSchema = z.object({
+  updated_at: z.string(),
+  jsonl_download_uri: z.string(),
+  compressed_size: z.number(),
+  type: z.string(),
+});
+
+const LegacyLocalMetaSchema = z.object({
   updated_at: z.string(),
   download_uri: z.string(),
   size: z.number(),
   type: z.string(),
 });
 
+const LocalMetaSchema = z.union([CurrentLocalMetaSchema, LegacyLocalMetaSchema]);
+
+export type CurrentLocalMeta = z.infer<typeof CurrentLocalMetaSchema>;
 export type LocalMeta = z.infer<typeof LocalMetaSchema>;
 
 export function ensureDataDir(): void {
@@ -52,7 +62,7 @@ export function readLocalMeta(): LocalMeta | null {
   return readLocalMetaFor(META_PATH);
 }
 
-export function writeLocalMeta(meta: LocalMeta): void {
+export function writeLocalMeta(meta: CurrentLocalMeta): void {
   writeLocalMetaFor(META_PATH, meta);
 }
 
@@ -65,6 +75,6 @@ export function readLocalMetaFor(metaPath: string): LocalMeta | null {
   }
 }
 
-export function writeLocalMetaFor(metaPath: string, meta: LocalMeta): void {
+export function writeLocalMetaFor(metaPath: string, meta: CurrentLocalMeta): void {
   fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n");
 }

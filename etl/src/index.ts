@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import cac from "cac";
-import { fetchBulkMetadata } from "./scryfall";
-import { downloadToFile } from "./download";
+import { fetchBulkDataList } from "./scryfall";
+import { downloadJsonlBulkToJsonArray } from "./download";
 import {
   readLocalMeta,
   writeLocalMeta,
@@ -36,19 +36,34 @@ cli
 
     try {
       log("Fetching Scryfall bulk-data metadata…", verbose);
-      const oracleEntry = await fetchBulkMetadata("oracle_cards", verbose);
-      const defaultEntry = await fetchBulkMetadata("default_cards", verbose);
+      const bulkData = await fetchBulkDataList(verbose);
+      const oracleEntry = bulkData.find((e) => e.type === "oracle_cards");
+      const defaultEntry = bulkData.find((e) => e.type === "default_cards");
+      if (!oracleEntry) {
+        throw new Error(
+          'Scryfall API returned no "oracle_cards" entry in bulk-data list',
+        );
+      }
+      if (!defaultEntry) {
+        throw new Error(
+          'Scryfall API returned no "default_cards" entry in bulk-data list',
+        );
+      }
 
       ensureDataDir();
 
       // Oracle cards
       const oracleLocal = readLocalMeta();
       if (force || !oracleLocal || oracleLocal.updated_at < oracleEntry.updated_at) {
-        await downloadToFile(oracleEntry.download_uri, ORACLE_CARDS_PATH, verbose);
+        await downloadJsonlBulkToJsonArray(
+          oracleEntry.jsonl_download_uri,
+          ORACLE_CARDS_PATH,
+          verbose,
+        );
         writeLocalMeta({
           updated_at: oracleEntry.updated_at,
-          download_uri: oracleEntry.download_uri,
-          size: oracleEntry.size,
+          jsonl_download_uri: oracleEntry.jsonl_download_uri,
+          compressed_size: oracleEntry.compressed_size,
           type: oracleEntry.type,
         });
         log(`Download complete → ${ORACLE_CARDS_PATH}`, true);
@@ -59,11 +74,15 @@ cli
       // Default cards (printings)
       const defaultLocal = readLocalMetaFor(DEFAULT_CARDS_META_PATH);
       if (force || !defaultLocal || defaultLocal.updated_at < defaultEntry.updated_at) {
-        await downloadToFile(defaultEntry.download_uri, DEFAULT_CARDS_PATH, verbose);
+        await downloadJsonlBulkToJsonArray(
+          defaultEntry.jsonl_download_uri,
+          DEFAULT_CARDS_PATH,
+          verbose,
+        );
         writeLocalMetaFor(DEFAULT_CARDS_META_PATH, {
           updated_at: defaultEntry.updated_at,
-          download_uri: defaultEntry.download_uri,
-          size: defaultEntry.size,
+          jsonl_download_uri: defaultEntry.jsonl_download_uri,
+          compressed_size: defaultEntry.compressed_size,
           type: defaultEntry.type,
         });
         log(`Download complete → ${DEFAULT_CARDS_PATH}`, true);
